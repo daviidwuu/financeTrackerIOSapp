@@ -1,0 +1,313 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -scheme FinanceTracker -destination "platform=iOS Simulator,name=iPhone 17 Pro" clean build
+
+2025-12-16 00:15:20.848 xcodebuild[6157:105806] [MT] IDERunDestination: Supported platforms for the buildables in the current scheme is empty.
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+** CLEAN SUCCEEDED **
+
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (1 target)
+    Target 'FinanceTracker' in project 'FinanceTracker' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/ibtool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/momc --dry-run --action generate --swift-version 5.0 --sdkroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk --iphonesimulator-deployment-target 26.2 --module FinanceTracker /Users/davidwu/Documents/FinanceTracker/FinanceTracker/FinanceTracker.xcdatamodeld /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources/CoreDataGenerated/FinanceTracker
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --print-asset-tag-combinations --output-format xml1 /Users/davidwu/Documents/FinanceTracker/FinanceTracker/Assets.xcassets
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: 1e7b4c8aa80a24a6fb388f15f3529054
+Build description path: /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/XCBuildData/1e7b4c8aa80a24a6fb388f15f3529054.xcbuilddata
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk /Users/davidwu/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache
+    cd /Users/davidwu/Documents/FinanceTracker/FinanceTracker.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -o /Users/davidwu/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache
+
+CreateBuildDirectory /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products
+    cd /Users/davidwu/Documents/FinanceTracker/FinanceTracker.xcodeproj
+    builtin-create-build-directory /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products
+
+CreateBuildDirectory /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex
+    cd /Users/davidwu/Documents/FinanceTracker/FinanceTracker.xcodeproj
+    builtin-create-build-directory /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex
+
+CreateBuildDirectory /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+    cd /Users/davidwu/Documents/FinanceTracker/FinanceTracker.xcodeproj
+    builtin-create-build-directory /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+
+CreateBuildDirectory /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/ExplicitPrecompiledModules
+    cd /Users/davidwu/Documents/FinanceTracker/FinanceTracker.xcodeproj
+    builtin-create-build-directory /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/ExplicitPrecompiledModules
+
+WriteAuxiliaryFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker-9851b28ff07f43a2131dd5e470caf966-VFS-iphonesimulator/all-product-headers.yaml
+    cd /Users/davidwu/Documents/FinanceTracker/FinanceTracker.xcodeproj
+    write-file /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker-9851b28ff07f43a2131dd5e470caf966-VFS-iphonesimulator/all-product-headers.yaml
+
+CreateBuildDirectory /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator
+    cd /Users/davidwu/Documents/FinanceTracker/FinanceTracker.xcodeproj
+    builtin-create-build-directory /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator
+
+CreateBuildDirectory /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator
+    cd /Users/davidwu/Documents/FinanceTracker/FinanceTracker.xcodeproj
+    builtin-create-build-directory /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator
+
+WriteAuxiliaryFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker.SwiftFileList (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    write-file /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker.SwiftFileList
+
+WriteAuxiliaryFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker_const_extract_protocols.json (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    write-file /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker_const_extract_protocols.json
+
+WriteAuxiliaryFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker.SwiftConstValuesFileList (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    write-file /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker-OutputFileMap.json (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    write-file /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker-OutputFileMap.json
+
+WriteAuxiliaryFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker.LinkFileList (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    write-file /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker.LinkFileList
+
+WriteAuxiliaryFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker.hmap (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    write-file /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker.hmap
+
+WriteAuxiliaryFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker.DependencyStaticMetadataFileList (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    write-file /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker.DependencyMetadataFileList (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    write-file /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker.DependencyMetadataFileList
+
+WriteAuxiliaryFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-project-headers.hmap (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    write-file /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-project-headers.hmap
+
+WriteAuxiliaryFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-own-target-headers.hmap (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    write-file /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-own-target-headers.hmap
+
+WriteAuxiliaryFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-generated-files.hmap (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    write-file /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-generated-files.hmap
+
+WriteAuxiliaryFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-all-target-headers.hmap (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    write-file /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-all-target-headers.hmap
+
+WriteAuxiliaryFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-all-non-framework-target-headers.hmap (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    write-file /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-all-non-framework-target-headers.hmap
+
+WriteAuxiliaryFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-DebugDylibPath-normal-arm64.txt (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    write-file /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-DebugDylibPath-normal-arm64.txt
+
+WriteAuxiliaryFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-DebugDylibInstallName-normal-arm64.txt (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    write-file /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-DebugDylibInstallName-normal-arm64.txt
+
+WriteAuxiliaryFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources/Entitlements-Simulated.plist (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    write-file /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources/Entitlements-Simulated.plist
+
+MkDir /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    /bin/mkdir -p /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app
+
+ProcessProductPackaging "" /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker.app-Simulated.xcent (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    
+    Entitlements:
+    
+    {
+    "application-identifier" = "H6U663Z4ZQ.com.wu.FinanceTracker";
+}
+    
+    builtin-productPackagingUtility -entitlements -format xml -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker.app-Simulated.xcent
+
+ProcessProductPackagingDER /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker.app-Simulated.xcent /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker.app-Simulated.xcent.der (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    /usr/bin/derq query -f xml -i /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker.app-Simulated.xcent -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker.app-Simulated.xcent.der --raw
+
+GenerateAssetSymbols /Users/davidwu/Documents/FinanceTracker/FinanceTracker/Assets.xcassets (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    /Applications/Xcode.app/Contents/Developer/usr/bin/actool /Users/davidwu/Documents/FinanceTracker/FinanceTracker/Assets.xcassets --compile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app --output-format human-readable-text --notices --warnings --export-dependency-info /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/assetcatalog_dependencies --output-partial-info-plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/assetcatalog_generated_info.plist --app-icon AppIcon --accent-color AccentColor --compress-pngs --enable-on-demand-resources YES --development-region en --target-device iphone --target-device ipad --minimum-deployment-target 26.2 --platform iphonesimulator --bundle-identifier com.wu.FinanceTracker --generate-swift-asset-symbols /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources/GeneratedAssetSymbols.swift --generate-objc-asset-symbols /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources/GeneratedAssetSymbols.h --generate-asset-symbol-index /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/* com.apple.actool.compilation-results */
+/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources/GeneratedAssetSymbols.h
+/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources/GeneratedAssetSymbols.swift
+
+
+DataModelCompile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/ /Users/davidwu/Documents/FinanceTracker/FinanceTracker/FinanceTracker.xcdatamodeld (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    /Applications/Xcode.app/Contents/Developer/usr/bin/momc --sdkroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk --iphonesimulator-deployment-target 26.2 --module FinanceTracker /Users/davidwu/Documents/FinanceTracker/FinanceTracker/FinanceTracker.xcdatamodeld /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/
+FinanceTracker.xcdatamodel: note: Model FinanceTracker version checksum: 47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+
+Ld /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/__preview.dylib normal (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios26.2-simulator -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -O0 -L/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator -install_name @rpath/FinanceTracker.debug.dylib -dead_strip -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -debug_variant -Xlinker -dependency_info -Xlinker /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker_dependency_info.dat -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __entitlements -Xlinker /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker.app-Simulated.xcent -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __ents_der -Xlinker /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker.app-Simulated.xcent.der -Xlinker -no_adhoc_codesign -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/__preview.dylib
+
+MkDir /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/assetcatalog_output/thinned (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    /bin/mkdir -p /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/assetcatalog_output/thinned
+
+MkDir /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/assetcatalog_output/unthinned (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    /bin/mkdir -p /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/assetcatalog_output/unthinned
+
+CompileStoryboard /Users/davidwu/Documents/FinanceTracker/FinanceTracker/Base.lproj/LaunchScreen.storyboard (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    /Applications/Xcode.app/Contents/Developer/usr/bin/ibtool --errors --warnings --notices --module FinanceTracker --output-partial-info-plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Base.lproj/LaunchScreen-SBPartialInfo.plist --auto-activate-custom-fonts --target-device iphone --target-device ipad --minimum-deployment-target 26.2 --output-format human-readable-text /Users/davidwu/Documents/FinanceTracker/FinanceTracker/Base.lproj/LaunchScreen.storyboard --compilation-directory /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Base.lproj
+
+CompileAssetCatalogVariant thinned /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app /Users/davidwu/Documents/FinanceTracker/FinanceTracker/Assets.xcassets (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    /Applications/Xcode.app/Contents/Developer/usr/bin/actool /Users/davidwu/Documents/FinanceTracker/FinanceTracker/Assets.xcassets --compile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/assetcatalog_output/thinned --output-format human-readable-text --notices --warnings --export-dependency-info /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/assetcatalog_dependencies_thinned --output-partial-info-plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/assetcatalog_generated_info.plist_thinned --app-icon AppIcon --accent-color AccentColor --compress-pngs --enable-on-demand-resources YES --filter-for-thinning-device-configuration iPhone18,1 --filter-for-device-os-version 26.2 --development-region en --target-device iphone --target-device ipad --minimum-deployment-target 26.2 --platform iphonesimulator
+
+SwiftDriver FinanceTracker normal arm64 com.apple.xcode.tools.swift.compiler (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name FinanceTracker -Onone -enforce-exclusivity\=checked @/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker.SwiftFileList -DDEBUG -default-isolation\=MainActor -enable-bare-slash-regex -enable-upcoming-feature DisableOutwardActorInference -enable-upcoming-feature InferSendableFromCaptures -enable-upcoming-feature GlobalActorIsolatedTypesUsability -enable-upcoming-feature MemberImportVisibility -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature NonisolatedNonsendingByDefault -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -target arm64-apple-ios26.2-simulator -g -module-cache-path /Users/davidwu/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -enable-testing -index-store-path /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator -emit-localized-strings -emit-localized-strings-path /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64 -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/davidwu/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache -output-file-map /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/davidwu/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/davidwu/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/davidwu/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker_const_extract_protocols.json -Xcc -iquote -Xcc /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-generated-files.hmap -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-own-target-headers.hmap -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-all-target-headers.hmap -Xcc -iquote -Xcc /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-project-headers.hmap -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources-normal/arm64 -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources/arm64 -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker-Swift.h -working-directory /Users/davidwu/Documents/FinanceTracker -experimental-emit-module-separately -disable-cmo
+
+LinkStoryboards (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    /Applications/Xcode.app/Contents/Developer/usr/bin/ibtool --errors --warnings --notices --module FinanceTracker --target-device iphone --target-device ipad --minimum-deployment-target 26.2 --output-format human-readable-text --link /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Base.lproj/LaunchScreen.storyboardc
+
+SwiftCompile normal arm64 Compiling\ Color+Extensions.swift /Users/davidwu/Documents/FinanceTracker/FinanceTracker/Color+Extensions.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+
+SwiftCompile normal arm64 /Users/davidwu/Documents/FinanceTracker/FinanceTracker/Color+Extensions.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    
+
+SwiftCompile normal arm64 Compiling\ AddBudgetView.swift,\ AddRecurringTransactionView.swift /Users/davidwu/Documents/FinanceTracker/FinanceTracker/AddBudgetView.swift /Users/davidwu/Documents/FinanceTracker/FinanceTracker/AddRecurringTransactionView.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+SwiftCompile normal arm64 /Users/davidwu/Documents/FinanceTracker/FinanceTracker/AddBudgetView.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    
+
+SwiftCompile normal arm64 /Users/davidwu/Documents/FinanceTracker/FinanceTracker/AddRecurringTransactionView.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    
+
+SwiftCompile normal arm64 Compiling\ ContentView.swift /Users/davidwu/Documents/FinanceTracker/FinanceTracker/ContentView.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+
+SwiftCompile normal arm64 /Users/davidwu/Documents/FinanceTracker/FinanceTracker/ContentView.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    
+
+SwiftCompile normal arm64 Compiling\ FinanceTrackerApp.swift /Users/davidwu/Documents/FinanceTracker/FinanceTracker/FinanceTrackerApp.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+
+SwiftCompile normal arm64 /Users/davidwu/Documents/FinanceTracker/FinanceTracker/FinanceTrackerApp.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    
+
+SwiftCompile normal arm64 Compiling\ HomeView.swift /Users/davidwu/Documents/FinanceTracker/FinanceTracker/HomeView.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+SwiftCompile normal arm64 /Users/davidwu/Documents/FinanceTracker/FinanceTracker/HomeView.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    
+
+SwiftCompile normal arm64 Compiling\ CalendarView.swift /Users/davidwu/Documents/FinanceTracker/FinanceTracker/CalendarView.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+
+SwiftCompile normal arm64 /Users/davidwu/Documents/FinanceTracker/FinanceTracker/CalendarView.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ FinanceTracker (in target 'FinanceTracker' from project 'FinanceTracker')
+
+EmitSwiftModule normal arm64 (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    
+
+SwiftCompile normal arm64 Compiling\ WalletView.swift /Users/davidwu/Documents/FinanceTracker/FinanceTracker/WalletView.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+Failed frontend command:
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -frontend -c /Users/davidwu/Documents/FinanceTracker/FinanceTracker/AddBudgetView.swift /Users/davidwu/Documents/FinanceTracker/FinanceTracker/AddRecurringTransactionView.swift /Users/davidwu/Documents/FinanceTracker/FinanceTracker/CalendarView.swift /Users/davidwu/Documents/FinanceTracker/FinanceTracker/Color+Extensions.swift /Users/davidwu/Documents/FinanceTracker/FinanceTracker/ContentView.swift /Users/davidwu/Documents/FinanceTracker/FinanceTracker/FinanceTrackerApp.swift /Users/davidwu/Documents/FinanceTracker/FinanceTracker/HomeView.swift -primary-file /Users/davidwu/Documents/FinanceTracker/FinanceTracker/WalletView.swift /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources/GeneratedAssetSymbols.swift -emit-dependencies-path /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/WalletView.d -emit-const-values-path /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/WalletView.swiftconstvalues -emit-reference-dependencies-path /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/WalletView.swiftdeps -serialize-diagnostics-path /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/WalletView.dia -emit-localized-strings -emit-localized-strings-path /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64 -target arm64-apple-ios26.2-simulator -module-can-import-version DeveloperToolsSupport 23.0.4 23.0.4 -module-can-import-version SwiftUI 7.2.5.1 7.2.5 -module-can-import-version UIKit 9126.2.4.1 9126.2.4 -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/swift/host/plugins/libFoundationMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server\#FoundationMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/swift/host/plugins/libObservationMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server\#ObservationMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/swift/host/plugins/libPreviewsMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server\#PreviewsMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/swift/host/plugins/libSwiftMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server\#SwiftMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/swift/host/plugins/libSwiftUIMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server\#SwiftUIMacros -disable-implicit-swift-modules -Xcc -fno-implicit-modules -Xcc -fno-implicit-module-maps -explicit-swift-module-map-file /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker-dependencies-1.json -Xllvm -aarch64-use-tbi -enable-objc-interop -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -I /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator -no-color-diagnostics -Xcc -fno-color-diagnostics -enable-testing -g -debug-info-format\=dwarf -dwarf-version\=5 -module-cache-path /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -profile-generate -profile-coverage-mapping -swift-version 5 -enforce-exclusivity\=checked -Onone -D DEBUG -serialize-debugging-options -const-gather-protocols-file /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker_const_extract_protocols.json -enable-upcoming-feature DisableOutwardActorInference -enable-upcoming-feature InferSendableFromCaptures -enable-upcoming-feature GlobalActorIsolatedTypesUsability -enable-upcoming-feature MemberImportVisibility -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature NonisolatedNonsendingByDefault -enable-experimental-feature DebugDescriptionMacro -enable-bare-slash-regex -default-isolation\=MainActor -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /Users/davidwu/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -working-directory -Xcc /Users/davidwu/Documents/FinanceTracker -enable-anonymous-context-mangled-names -file-compilation-dir /Users/davidwu/Documents/FinanceTracker -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -Xcc -ivfsstatcache -Xcc /Users/davidwu/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/swift-overrides.hmap -Xcc -iquote -Xcc /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-generated-files.hmap -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-own-target-headers.hmap -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-all-target-headers.hmap -Xcc -iquote -Xcc /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-project-headers.hmap -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources-normal/arm64 -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources/arm64 -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources -Xcc -DDEBUG\=1 -no-auto-bridging-header-chaining -module-name FinanceTracker -frontend-parseable-output -disable-clang-spi -target-sdk-version 26.2 -target-sdk-name iphonesimulator26.2 -clang-target arm64-apple-ios26.2-simulator -in-process-plugin-server-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/WalletView.o -index-unit-output-path /FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/WalletView.o -index-store-path /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Index.noindex/DataStore -index-system-modules
+
+SwiftCompile normal arm64 /Users/davidwu/Documents/FinanceTracker/FinanceTracker/WalletView.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    
+/Users/davidwu/Documents/FinanceTracker/FinanceTracker/WalletView.swift:88:13: error: cannot find 'AddSavingGoalView' in scope
+            AddSavingGoalView()
+            ^~~~~~~~~~~~~~~~~
+/Users/davidwu/Documents/FinanceTracker/FinanceTracker/WalletView.swift:89:40: error: type 'Any' has no member 'fraction'
+                .presentationDetents([.fraction(0.55)])
+                                      ~^~~~~~~~
+/Users/davidwu/Documents/FinanceTracker/FinanceTracker/WalletView.swift:90:45: error: cannot infer contextual base in reference to member 'visible'
+                .presentationDragIndicator(.visible)
+                                           ~^~~~~~~
+
+SwiftDriverJobDiscovery normal arm64 Compiling Color+Extensions.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+
+SwiftCompile normal arm64 Compiling\ GeneratedAssetSymbols.swift /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+
+SwiftCompile normal arm64 /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling FinanceTrackerApp.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for FinanceTracker (in target 'FinanceTracker' from project 'FinanceTracker')
+
+SwiftDriver\ Compilation\ Requirements FinanceTracker normal arm64 com.apple.xcode.tools.swift.compiler (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name FinanceTracker -Onone -enforce-exclusivity\=checked @/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker.SwiftFileList -DDEBUG -default-isolation\=MainActor -enable-bare-slash-regex -enable-upcoming-feature DisableOutwardActorInference -enable-upcoming-feature InferSendableFromCaptures -enable-upcoming-feature GlobalActorIsolatedTypesUsability -enable-upcoming-feature MemberImportVisibility -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature NonisolatedNonsendingByDefault -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -target arm64-apple-ios26.2-simulator -g -module-cache-path /Users/davidwu/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -enable-testing -index-store-path /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator -emit-localized-strings -emit-localized-strings-path /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64 -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/davidwu/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache -output-file-map /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/davidwu/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/davidwu/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/davidwu/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker_const_extract_protocols.json -Xcc -iquote -Xcc /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-generated-files.hmap -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-own-target-headers.hmap -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-all-target-headers.hmap -Xcc -iquote -Xcc /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-project-headers.hmap -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources-normal/arm64 -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources/arm64 -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker-Swift.h -working-directory /Users/davidwu/Documents/FinanceTracker -experimental-emit-module-separately -disable-cmo
+
+SwiftMergeGeneratedHeaders /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources/FinanceTracker-Swift.h /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker-Swift.h (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-swiftHeaderTool -arch arm64 /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker-Swift.h -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources/FinanceTracker-Swift.h
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.swiftmodule/arm64-apple-ios-simulator.swiftmodule /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker.swiftmodule (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker.swiftmodule /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.swiftmodule/arm64-apple-ios-simulator.swiftmodule
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.swiftmodule/arm64-apple-ios-simulator.swiftdoc /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker.swiftdoc (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker.swiftdoc /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.swiftmodule/arm64-apple-ios-simulator.swiftdoc
+
+SwiftDriverJobDiscovery normal arm64 Compiling ContentView.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.swiftmodule/arm64-apple-ios-simulator.abi.json /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker.abi.json (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker.abi.json /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.swiftmodule/arm64-apple-ios-simulator.abi.json
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker.swiftsourceinfo (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker.swiftsourceinfo /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo
+
+SwiftDriverJobDiscovery normal arm64 Compiling GeneratedAssetSymbols.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+
+** BUILD FAILED **
+
+
+The following build commands failed:
+	SwiftCompile normal arm64 Compiling\ WalletView.swift /Users/davidwu/Documents/FinanceTracker/FinanceTracker/WalletView.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+	SwiftCompile normal arm64 /Users/davidwu/Documents/FinanceTracker/FinanceTracker/WalletView.swift (in target 'FinanceTracker' from project 'FinanceTracker')
+	Building project FinanceTracker with scheme FinanceTracker
+(3 failures)
