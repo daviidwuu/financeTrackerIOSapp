@@ -171,7 +171,7 @@ struct AddTransactionView: View {
                 NotificationManager.shared.sendTransactionNotification(
                     amount: finalAmount,
                     category: category.name,
-                    type: category.type ?? "expense"
+                    type: category.type
                 )
             }
         }

@@ -30,8 +30,8 @@ struct AllTransactionsView: View {
             
             // Type filter
             let matchesType = selectedType == "All" ||
-                            (selectedType == "Income" && (transaction.type ?? "expense") == "income") ||
-                            (selectedType == "Expense" && (transaction.type ?? "expense") == "expense")
+                            (selectedType == "Income" && transaction.type == "income") ||
+                            (selectedType == "Expense" && transaction.type == "expense")
             
             // Search filter
             let matchesSearch = searchText.isEmpty || 

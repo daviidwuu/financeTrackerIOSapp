@@ -22,8 +22,9 @@ struct CalendarView: View {
             HStack {
                 Button(action: { changeMonth(by: -1) }) {
                     Image(systemName: "chevron.left")
-                        .foregroundColor(.primary)
+                        .foregroundColor(canGoToPreviousMonth() ? .primary : .gray.opacity(0.3))
                 }
+                .disabled(!canGoToPreviousMonth())
                 
                 Spacer()
                 
@@ -55,30 +56,35 @@ struct CalendarView: View {
             LazyVGrid(columns: columns, spacing: 15) {
                 ForEach(daysInMonth(), id: \.self) { date in
                     if let date = date {
-                        let isPastOrToday = date <= Date()
-                        let status = dailyStatus(for: date)
+                        let calendar = Calendar.current
+                        let dayTransactions = transactions.filter { calendar.isDate($0.date, inSameDayAs: date) }
+                        let totalAmount = dayTransactions.reduce(0) { $0 + $1.amount }
+                        let isBeforeSignup = isDateBeforeSignup(date)
+                        
                         VStack(spacing: 2) {
                             Text("\(Calendar.current.component(.day, from: date))")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(isPastOrToday ? .primary : .secondary.opacity(0.3))
+                                .font(.caption)
+                                .fontWeight(Calendar.current.isDateInToday(date) ? .bold : .regular)
+                                .foregroundColor(isBeforeSignup ? .gray.opacity(0.3) : (Calendar.current.isDateInToday(date) ? .white : .primary))
+                                .frame(width: 30, height: 30)
+                                .background(Calendar.current.isDateInToday(date) ? Color.blue : Color.clear)
+                                .clipShape(Circle())
                             
-                            // Daily Balance - only show for past/today
-                            if isPastOrToday {
-                                Text("\(status.balance >= 0 ? "+" : "")\(Int(status.balance))")
-                                    .font(.system(size: 10, weight: .bold))
-                                    .foregroundColor(status.color)
+                            if !isBeforeSignup && totalAmount != 0 {
+                                Text(totalAmount > 0 ? "+\(Int(totalAmount))" : "\(Int(totalAmount))")
+                                    .font(.system(size: 8))
+                                    .foregroundColor(totalAmount > 0 ? .green : .red)
                             }
                         }
-                        .frame(height: 45)
                     } else {
                         Text("")
-                            .frame(height: 45)
+                            .frame(width: 30, height: 30)
                     }
                 }
             }
         }
         .padding()
-        .background(Color(UIColor.systemBackground))
+        .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(20)
         .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
     }
@@ -161,6 +167,27 @@ struct CalendarView: View {
         }
         
         return (totalSaved, totalOverspent)
+    }
+    
+    // Check if can navigate to previous month based on signup date
+    func canGoToPreviousMonth() -> Bool {
+        guard let signupDate = UserDefaults.standard.object(forKey: "userSignupDate") as? Date else {
+            return true // If no signup date, allow navigation
+        }
+        
+        let calendar = Calendar.current
+        let currentMonth = calendar.date(from: DateComponents(year: selectedYear, month: selectedMonth))!
+        let signupMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: signupDate))!
+        
+        return currentMonth > signupMonth
+    }
+    
+    // Check if date is before user signup
+    func isDateBeforeSignup(_ date: Date) -> Bool {
+        guard let signupDate = UserDefaults.standard.object(forKey: "userSignupDate") as? Date else {
+            return false // If no signup date, show all dates
+        }
+        return date < signupDate
     }
 }
 

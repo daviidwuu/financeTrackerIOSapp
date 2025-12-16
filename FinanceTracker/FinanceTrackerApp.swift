@@ -23,6 +23,12 @@ struct FinanceTrackerApp: App {
                 ContentView()
                     .environmentObject(appState)
                     .preferredColorScheme(isDarkMode ? .dark : .light)
+                    .onAppear {
+                        // Start listening for transactions added via shortcuts
+                        if !appState.currentUserId.isEmpty {
+                            NotificationManager.shared.startListeningForShortcutTransactions(userId: appState.currentUserId)
+                        }
+                    }
             } else {
                 WelcomeView()
                     .environmentObject(appState)

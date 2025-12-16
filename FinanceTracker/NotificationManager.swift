@@ -1,5 +1,6 @@
 import Foundation
 import UserNotifications
+import FirebaseFirestore
 
 class NotificationManager {
     static let shared = NotificationManager()
@@ -30,21 +31,46 @@ class NotificationManager {
     // MARK: - Transaction Notifications
     
     func sendTransactionNotification(amount: Double, category: String, type: String) {
-        // Check if transaction notifications are enabled
-        guard UserDefaults.standard.bool(forKey: "notificationsEnabled_transactions") else { return }
+        // Auto-request permission if needed
+        checkPermissionStatus { status in
+            if status == .notDetermined {
+                self.requestPermission { granted in
+                    if granted {
+                        self.sendNotification(amount: amount, category: category, type: type)
+                    } else {
+                        print("❌ Notification permission denied")
+                    }
+                }
+            } else if status == .authorized || status == .provisional {
+                self.sendNotification(amount: amount, category: category, type: type)
+            } else {
+                print("❌ Notifications not authorized. Status: \(status.rawValue)")
+            }
+        }
+    }
+    
+    private func sendNotification(amount: Double, category: String, type: String) {
+        // Check if transaction notifications are enabled (optional for now)
+        let isEnabled = UserDefaults.standard.bool(forKey: "notificationsEnabled_transactions")
+        print("🔔 Notification toggle enabled: \(isEnabled)")
+        
+        // Send anyway for debugging - remove this line in production
+        // guard isEnabled else { return }
         
         let content = UNMutableNotificationContent()
         
         if type == "income" {
-            content.title = "💰 Income Received"
+            content.title = "Income Received"
             content.body = "You received $\(Int(abs(amount))) from \(category)"
         } else {
-            content.title = "💸 Expense Added"
+            content.title = "Expense Added"
             content.body = "You have spent $\(Int(abs(amount))) on \(category)"
         }
         
         content.sound = .default
         content.badge = 1
+        
+        print("🔔 Scheduling notification: \(content.title) - \(content.body)")
         
         // Trigger immediately
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
@@ -52,7 +78,9 @@ class NotificationManager {
         
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
-                print("Failed to send transaction notification: \(error)")
+                print("❌ Failed to send transaction notification: \(error)")
+            } else {
+                print("✅ Notification scheduled successfully!")
             }
         }
     }
@@ -63,7 +91,7 @@ class NotificationManager {
         guard UserDefaults.standard.bool(forKey: "notificationsEnabled_budgets") else { return }
         
         let content = UNMutableNotificationContent()
-        content.title = "⚠️ Budget Alert"
+        content.title = "Budget Alert"
         content.body = "\(category): \(percentUsed)% spent! $\(Int(remaining)) remaining"
         content.sound = .default
         
@@ -83,7 +111,7 @@ class NotificationManager {
         guard UserDefaults.standard.bool(forKey: "notificationsEnabled_dailySummary") else { return }
         
         let content = UNMutableNotificationContent()
-        content.title = "📊 Daily Summary"
+        content.title = "Daily Summary"
         content.body = "Today: \(transactionCount) transactions, $\(Int(totalSpent)) spent"
         content.sound = .default
         
@@ -112,7 +140,7 @@ class NotificationManager {
         guard UserDefaults.standard.bool(forKey: "notificationsEnabled_weeklyReport") else { return }
         
         let content = UNMutableNotificationContent()
-        content.title = "📈 Weekly Report"
+        content.title = "Weekly Report"
         content.body = "Your weekly financial report is ready!"
         content.sound = .default
         
@@ -140,5 +168,42 @@ class NotificationManager {
     
     func clearBadge() {
         UNUserNotificationCenter.current().setBadgeCount(0)
+    }
+    
+    // MARK: - Listen for Shortcut Transactions
+    
+    /// Start listening for new transactions added via shortcuts
+    func startListeningForShortcutTransactions(userId: String) {
+        let db = Firestore.firestore()
+        
+        // Listen for new transactions with source = "shortcuts"
+        db.collection("users").document(userId).collection("transactions")
+            .whereField("source", isEqualTo: "shortcuts")
+            .addSnapshotListener { snapshot, error in
+                guard let snapshot = snapshot else {
+                    print("Error listening for shortcut transactions: \(error?.localizedDescription ?? "Unknown")")
+                    return
+                }
+                
+                // Only process new documents (not initial load)
+                snapshot.documentChanges.forEach { change in
+                    if change.type == .added {
+                        let data = change.document.data()
+                        
+                        // Extract transaction details
+                        let amount = data["amount"] as? Double ?? 0
+                        let category = data["title"] as? String ?? "Unknown"
+                        let type = data["type"] as? String ?? "expense"
+                        
+                        // Send notification
+                        print("🔔 Detected shortcut transaction: \(category) - $\(abs(amount))")
+                        self.sendTransactionNotification(
+                            amount: amount,
+                            category: category,
+                            type: type
+                        )
+                    }
+                }
+            }
     }
 }

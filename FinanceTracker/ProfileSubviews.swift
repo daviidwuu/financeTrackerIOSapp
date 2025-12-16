@@ -173,6 +173,23 @@ struct NotificationsSettingsView: View {
                 }
             }
             
+            // Test Notification Button
+            Section {
+                Button(action: {
+                    testNotification()
+                }) {
+                    HStack {
+                        Image(systemName: "bell.badge")
+                            .foregroundColor(.white)
+                        Text("Send Test Notification")
+                            .foregroundColor(.white)
+                        Spacer()
+                        Image(systemName: "paperplane.fill")
+                            .foregroundColor(.white)
+                    }
+                }
+            }
+            
             // Transaction Alerts
             Section(header: Text("Transaction Alerts"), footer: Text("Get notified when you add or edit transactions")) {
                 Toggle("Transaction Notifications", isOn: $transactionNotifs)
@@ -290,6 +307,39 @@ struct NotificationsSettingsView: View {
                 requestPermission()
             } else if status == .denied {
                 showingPermissionAlert = true
+            }
+        }
+    }
+    
+    private func testNotification() {
+        // Check permission first
+        NotificationManager.shared.checkPermissionStatus { status in
+            print("📱 Permission Status: \(status.rawValue)")
+            
+            if status == .authorized || status == .provisional {
+                NotificationManager.shared.sendTransactionNotification(
+                    amount: -25.50,
+                    category: "Test",
+                    type: "expense"
+                )
+                HapticManager.shared.success()
+                print("✅ Test notification sent! Background the app to see it.")
+            } else if status == .notDetermined {
+                NotificationManager.shared.requestPermission { granted in
+                    if granted {
+                        NotificationManager.shared.sendTransactionNotification(
+                            amount: -25.50,
+                            category: "Test",
+                            type: "expense"
+                        )
+                        HapticManager.shared.success()
+                        print("✅ Permission granted and notification sent!")
+                    } else {
+                        print("❌ Permission denied!")
+                    }
+                }
+            } else {
+                print("❌ Notifications are DENIED. Go to Settings → FinanceTracker → Notifications")
             }
         }
     }

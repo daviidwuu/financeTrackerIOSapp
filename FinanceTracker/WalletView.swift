@@ -15,8 +15,17 @@ struct WalletView: View {
     @State private var goalToEdit: FirestoreModels.SavingGoal?
     @State private var recurringToEdit: FirestoreModels.RecurringTransaction?
     @State private var budgetToEdit: FirestoreModels.CategoryBudget?
+    @State private var showEditBalance = false
+    @State private var balanceInput = ""
     
+    @AppStorage("initialBalance") private var initialBalance = 0.0
     @AppStorage("monthlyIncome") private var monthlyIncome = 5000.0 // Changed from monthlyBudget
+    
+    var totalBalance: Double {
+        // Initial balance + all-time net (income - expenses)
+        let allTimeNet = transactionRepo.transactions.reduce(0) { $0 + $1.amount }
+        return initialBalance + allTimeNet
+    }
     
     var totalBudget: Double {
         budgetRepo.budgets.reduce(0) { $0 + $1.totalAmount }
@@ -59,21 +68,24 @@ struct WalletView: View {
                 List {
                     // Section 1: Financial Overview
                     Section {
-                        VStack(spacing: 16) {
-                            // Income Left
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Income Left")
+                        VStack(alignment: .leading, spacing: 16) {
+                            // Total Balance
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Total Balance")
                                         .font(.subheadline)
                                         .fontWeight(.medium)
                                         .foregroundColor(.secondary)
-                                    Text("$\(String(format: "%.2f", incomeLeft))")
-                                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                                        .foregroundColor(incomeLeft >= 0 ? .primary : .red)
+                                    
+                                    Button(action: { showEditBalance.toggle() }) {
+                                        Image(systemName: "pencil.circle.fill")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                    }
                                 }
-                                Spacer()
-                                CircularProgressView(progress: monthlyIncome > 0 ? incomeLeft / monthlyIncome : 0)
-                                    .frame(width: 50, height: 50)
+                                Text("$\(String(format: "%.2f", totalBalance))")
+                                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                                    .foregroundColor(totalBalance >= 0 ? .primary : .red)
                             }
                             
                             Divider()
@@ -368,6 +380,11 @@ struct WalletView: View {
                 .presentationDetents([.fraction(0.55)])
                 .presentationDragIndicator(.visible)
             }
+            .sheet(isPresented: $showEditBalance) {
+                EditBalanceView(initialBalance: $initialBalance)
+                    .presentationDetents([.fraction(0.4)])
+                    .presentationDragIndicator(.visible)
+            }
         }
     }
     
@@ -505,7 +522,7 @@ struct CircularProgressView: View {
             Circle()
                 .trim(from: 0, to: progress)
                 .stroke(
-                    progress >= 0 ? Color.blue : Color.red,
+                    progress >= 0 ? Color.white : Color.red,
                     style: StrokeStyle(
                         lineWidth: 6,
                         lineCap: .round

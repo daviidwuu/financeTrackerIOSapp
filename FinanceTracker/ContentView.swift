@@ -5,13 +5,13 @@ struct ContentView: View {
         TabView {
             HomeView()
                 .tabItem {
-                    Image(systemName: "house.fill")
-                    Text("Home")
+                    Image(systemName: "square.grid.2x2.fill")
+                    Text("Dashboard")
                 }
             
             WalletView()
                 .tabItem {
-                    Image(systemName: "wallet.pass.fill")
+                    Image(systemName: "creditcard.fill")
                     Text("Wallet")
                 }
         }

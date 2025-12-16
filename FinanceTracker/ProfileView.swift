@@ -59,6 +59,10 @@ struct ProfileView: View {
                     .listRowBackground(Color(UIColor.secondarySystemBackground))
                     
                     Section("Support") {
+                        NavigationLink(destination: ShortcutsView()) {
+                            Label("Apple Shortcuts", systemImage: "bolt.fill")
+                                .foregroundStyle(.white)
+                        }
                         NavigationLink(destination: HelpCenterView()) {
                             Label("Help Center", systemImage: "questionmark.circle.fill")
                                 .foregroundStyle(.white)
