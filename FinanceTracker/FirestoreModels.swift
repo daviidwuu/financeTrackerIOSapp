@@ -72,6 +72,7 @@ enum FirestoreModels {
             case icon
             case colorHex
             case frequency
+            case type
             case userId
             case monthStartDate
             case createdAt
