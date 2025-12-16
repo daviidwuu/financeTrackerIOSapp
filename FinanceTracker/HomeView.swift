@@ -235,6 +235,13 @@ struct HomeView: View {
                     createdAt: Date()
                 )
                 try await transactionRepo.addTransaction(firestoreTransaction)
+                
+                // Send notification after successful save
+                NotificationManager.shared.sendTransactionNotification(
+                    amount: amount,
+                    category: transaction.title,
+                    type: transaction.type
+                )
             } catch {
                 print("Failed to add transaction: \(error)")
             }
