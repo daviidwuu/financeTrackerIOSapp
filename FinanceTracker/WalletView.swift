@@ -50,6 +50,12 @@ struct WalletView: View {
         return currentMonthTransactions.reduce(0) { $0 + $1.amount }
     }
     
+    var totalExpense: Double {
+        // All-time total expenses (negative amounts)
+        let allExpenses = transactionRepo.transactions.filter { $0.type == "expense" }
+        return abs(allExpenses.reduce(0) { $0 + $1.amount })
+    }
+    
     var netCashFlow: Double {
         let calendar = Calendar.current
         let currentMonthTransactions = transactionRepo.transactions.filter { transaction in
@@ -100,6 +106,22 @@ struct WalletView: View {
                                     Text("$\(String(format: "%.2f", currentMonthIncome))")
                                         .font(.system(size: 28, weight: .bold, design: .rounded))
                                         .foregroundColor(.green)
+                                }
+                                Spacer()
+                            }
+                            
+                            Divider()
+                            
+                            // Total Expense (All-time)
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Total Expense")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.secondary)
+                                    Text("$\(String(format: "%.2f", totalExpense))")
+                                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                                        .foregroundColor(.red)
                                 }
                                 Spacer()
                             }
@@ -220,18 +242,41 @@ struct WalletView: View {
                         .padding(.bottom, 8)
                     ) {
                         ForEach(recurringRepo.recurringTransactions) { recurring in
-                            HStack {
+                            HStack(spacing: 16) {
+                                // Icon
                                 Image(systemName: recurring.icon)
-                                    .frame(width: 40, height: 40)
+                                    .font(.title2)
+                                    .frame(width: 50, height: 50)
                                     .background(Color(hex: recurring.colorHex).opacity(0.2))
                                     .foregroundColor(Color(hex: recurring.colorHex))
                                     .clipShape(Circle())
-                                Text(recurring.name)
-                                    .font(.headline)
-                                Spacer()
-                                Text("$\(Int(recurring.amount))/\(recurring.frequency == "Monthly" ? "mo" : "yr")")
-                                    .font(.system(.subheadline, design: .rounded))
-                                    .foregroundColor(.secondary)
+                                
+                                // Content
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack {
+                                        Text(recurring.name)
+                                            .font(.headline)
+                                            .foregroundColor(.primary)
+                                        Spacer()
+                                        Text("$\(Int(recurring.amount))")
+                                            .font(.headline)
+                                            .foregroundColor(.primary)
+                                    }
+                                    
+                                    if let note = recurring.note, !note.isEmpty {
+                                        Text(note)
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    
+                                    Text(recurring.frequency)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color(hex: recurring.colorHex).opacity(0.1))
+                                        .cornerRadius(8)
+                                }
                             }
                             .padding()
                             .background(Color(UIColor.secondarySystemBackground))

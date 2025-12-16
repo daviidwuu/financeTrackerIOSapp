@@ -29,7 +29,10 @@ struct AddBudgetView: View {
         "creditcard.fill", "chart.line.uptrend.xyaxis", "banknote.fill", "percent",
         "wrench.and.screwdriver.fill", "hammer.fill", "paintbrush.fill", "lightbulb.fill"
     ]
-    let colors: [Color] = [.orange, .blue, .purple, .red, .green, .pink, .yellow, .gray]
+    let colors: [Color] = [
+        .orange, .blue, .purple, .red, .green, .pink, .yellow, .gray,
+        .cyan, .indigo, .mint, .teal, .brown
+    ]
     let frequencies = ["Weekly", "Bi-Weekly", "Monthly", "Yearly"]
     
     init(budgetToEdit: FirestoreModels.CategoryBudget? = nil, onSave: ((Budget) -> Void)? = nil) {

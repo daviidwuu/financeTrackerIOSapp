@@ -150,14 +150,13 @@ struct AddTransactionView: View {
         let newTransaction = Transaction(
             title: category.name,
             subtitle: category.name,
-            amount: (selectedCategory?.type == "income" ? "" : "-") + amount, // Negative for expense, positive for income
+            amount: (category.type == "income" ? "" : "-") + amount, // Use category type
             icon: category.icon,
             color: Color(hex: category.colorHex),
             date: selectedDate,
             notes: transactionNotes,
-            type: category.type // Pass type
+            type: category.type // Pass category type
         )
-
         
         if let _ = transactionToEdit {
             let updatedTransaction = newTransaction
@@ -167,7 +166,7 @@ struct AddTransactionView: View {
             
             // Send notification for new transaction
             if let amountValue = Double(amount) {
-                let finalAmount = (selectedCategory?.type == "income") ? amountValue : -amountValue
+                let finalAmount = (category.type == "income") ? amountValue : -amountValue
                 NotificationManager.shared.sendTransactionNotification(
                     amount: finalAmount,
                     category: category.name,
