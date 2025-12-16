@@ -283,16 +283,33 @@ struct HomeView: View {
 
 struct TransactionRow: View {
     let transaction: FirestoreModels.Transaction
+    @StateObject private var budgetRepo = BudgetRepository()
+    @EnvironmentObject var appState: AppState
+    
+    // Dynamic lookup of category icon/color
+    private var categoryIcon: String {
+        if let budget = budgetRepo.budgets.first(where: { $0.category.lowercased() == (transaction.subtitle?.lowercased() ?? "") }) {
+            return budget.icon
+        }
+        return "questionmark.circle.fill" // Fallback for "Others"
+    }
+    
+    private var categoryColor: String {
+        if let budget = budgetRepo.budgets.first(where: { $0.category.lowercased() == (transaction.subtitle?.lowercased() ?? "") }) {
+            return budget.colorHex
+        }
+        return "#808080" // Gray for "Others"
+    }
     
     var body: some View {
         HStack(spacing: 16) {
             Circle()
-                .fill(Color(hex: transaction.colorHex).opacity(0.1))
+                .fill(Color(hex: categoryColor).opacity(0.1))
                 .frame(width: 48, height: 48)
                 .overlay(
-                    Image(systemName: transaction.icon)
+                    Image(systemName: categoryIcon)
                         .font(.system(size: 20))
-                        .foregroundColor(Color(hex: transaction.colorHex))
+                        .foregroundColor(Color(hex: categoryColor))
                 )
             
             VStack(alignment: .leading, spacing: 4) {
@@ -322,6 +339,16 @@ struct TransactionRow: View {
                 .foregroundColor(transaction.amount > 0 ? .green : .primary)
         }
         .padding(16)
+        .onAppear {
+            if !appState.currentUserId.isEmpty {
+                let calendar = Calendar.current
+                let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
+                budgetRepo.startListening(userId: appState.currentUserId, monthStartDate: startOfMonth)
+            }
+        }
+        .onDisappear {
+            budgetRepo.stopListening()
+        }
     }
 }
 
