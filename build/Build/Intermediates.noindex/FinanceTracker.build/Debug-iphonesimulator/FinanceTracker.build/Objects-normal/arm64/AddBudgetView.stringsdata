@@ -1,0 +1,104 @@
+{
+  "source": "/Users/davidwu/Documents/FinanceTracker/FinanceTracker/AddBudgetView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Step %lld of 5",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 61
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 99
+        }
+      },
+      {
+        "comment": "",
+        "key": "Update Budget",
+        "location": {
+          "startingColumn": 76,
+          "startingLine": 99
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save Budget",
+        "location": {
+          "startingColumn": 94,
+          "startingLine": 99
+        }
+      },
+      {
+        "comment": "",
+        "key": "Budget Limit",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 171
+        }
+      },
+      {
+        "comment": "",
+        "key": "0.00",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 176
+        }
+      },
+      {
+        "comment": "",
+        "key": "Category Name",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 186
+        }
+      },
+      {
+        "comment": "",
+        "key": "e.g. Rent",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 191
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Icon",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 204
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Color",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 228
+        }
+      },
+      {
+        "comment": "",
+        "key": "Budget Period",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 257
+        }
+      },
+      {
+        "comment": "",
+        "key": "Frequency",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 262
+        }
+      }
+    ]
+  },
+  "version": 1
+}

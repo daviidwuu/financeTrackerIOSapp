@@ -2,19 +2,22 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(\.colorScheme) var colorScheme
+    @EnvironmentObject var appState: AppState
+    
+    @AppStorage("monthlyIncome") private var monthlyIncome = 5000.0 // Changed from monthlyBudget
+    
+    @StateObject private var transactionRepo = TransactionRepository()
+    @StateObject private var budgetRepo = BudgetRepository()
+    
     @State private var showAddTransaction = false
     @State private var showProfile = false
-    @State private var transactionToEdit: Transaction?
+    @State private var showAllTransactions = false
+    @State private var selectedTransaction: FirestoreModels.Transaction?
     @State private var showRemainingBudget = false
     
-    let monthlyBudget = 5000.0
-    let totalSpent = 4250.0
-    
-    @State private var transactions: [Transaction] = [
-        Transaction(title: "Apple Music", subtitle: "Subscription", amount: "-$9.99", icon: "music.note", color: .pink),
-        Transaction(title: "Uber", subtitle: "Transport", amount: "-$24.50", icon: "car.fill", color: .black),
-        Transaction(title: "Salary", subtitle: "Income", amount: "+$3,200.00", icon: "dollarsign.circle.fill", color: .green)
-    ]
+    var totalSpent: Double {
+        transactionRepo.transactions.reduce(0) { $0 + ($1.amount < 0 ? abs($1.amount) : 0) }
+    }
     
     var body: some View {
         NavigationStack {
@@ -24,13 +27,13 @@ struct HomeView: View {
                     Section {
                         VStack(spacing: 24) {
                             // Custom Header
-                            HStack(alignment: .bottom) {
+                            HStack(alignment: .center) {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Welcome")
                                         .font(.subheadline)
                                         .fontWeight(.medium)
                                         .foregroundColor(.secondary)
-                                    Text("David")
+                                    Text(appState.userName.isEmpty ? "User" : appState.userName)
                                         .font(.system(size: 34, weight: .bold, design: .rounded))
                                         .foregroundColor(.primary)
                                 }
@@ -60,10 +63,11 @@ struct HomeView: View {
                                         .foregroundColor(.secondary)
                                     
                                     HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                        Text(showRemainingBudget ? "$\(String(format: "%.2f", monthlyBudget - totalSpent))" : "$\(String(format: "%.2f", totalSpent))")
+                                        Text("$\(String(format: "%.2f", showRemainingBudget ? (monthlyIncome - totalSpent) : totalSpent))")
                                             .font(.system(size: 42, weight: .bold, design: .rounded))
                                             .foregroundColor(.primary)
                                             .contentTransition(.numericText())
+                                        
                                         Text(showRemainingBudget ? "left" : "spent")
                                             .font(.subheadline)
                                             .foregroundColor(.secondary)
@@ -78,23 +82,24 @@ struct HomeView: View {
                                 
                                 // Custom Pill-Shaped Progress Bar
                                 GeometryReader { geometry in
-                                    ZStack(alignment: .leading) {
-                                        Capsule()
-                                            .fill(Color.secondary.opacity(0.15))
-                                            .frame(height: 24)
-                                        
-                                        Capsule()
-                                            .fill(Color.primary)
-                                            .frame(width: geometry.size.width * 0.35, height: 24)
-                                    }
+                                    Capsule()
+                                        .fill(Color.secondary.opacity(0.15))
+                                        .frame(height: 24)
+                                        .overlay(
+                                            Capsule()
+                                                .fill(Color.white)
+                                                .frame(width: min(geometry.size.width * (totalSpent / max(monthlyIncome, 1.0)), geometry.size.width))
+                                        , alignment: .leading)
+                                        .clipShape(Capsule())
                                 }
                                 .frame(height: 24)
                                 .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
                             }
                             .padding(24)
-                            .background(Color(uiColor: .secondarySystemBackground))
+                            .background(Color(UIColor.secondarySystemBackground))
                             .clipShape(RoundedRectangle(cornerRadius: 28))
                         }
+
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
@@ -102,8 +107,26 @@ struct HomeView: View {
                     }
                     
                     // Section 2: Recent Transactions
-                    Section(header: Text("Recent Transactions").font(.title2).fontWeight(.bold).foregroundColor(.primary)) {
-                        ForEach(transactions) { transaction in
+                    Section(header: 
+                        HStack {
+                            Text("Recent Transactions")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Button(action: {
+                                HapticManager.shared.light()
+                                showAllTransactions = true
+                            }) {
+                                Text("View All")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.white)
+                            }
+                        }
+                        .textCase(nil)
+                    ) {
+                        ForEach(transactionRepo.transactions.prefix(5)) { transaction in
                             TransactionRow(transaction: transaction)
                                 .background(Color(uiColor: .secondarySystemBackground))
                                 .cornerRadius(16)
@@ -113,17 +136,14 @@ struct HomeView: View {
                                 .padding(.bottom, 8)
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                     Button(role: .destructive) {
-                                        if let index = transactions.firstIndex(where: { $0.id == transaction.id }) {
-                                            transactions.remove(at: index)
-                                        }
+                                        deleteTransaction(transaction)
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
                                 }
                                 .swipeActions(edge: .leading, allowsFullSwipe: true) {
                                     Button {
-                                        transactionToEdit = transaction
-                                        showAddTransaction = true
+                                        selectedTransaction = transaction
                                     } label: {
                                         Label("Edit", systemImage: "pencil")
                                     }
@@ -139,7 +159,8 @@ struct HomeView: View {
                 
                 // Floating Action Button
                 Button(action: {
-                    transactionToEdit = nil
+                    HapticManager.shared.medium()
+                    selectedTransaction = nil
                     showAddTransaction = true
                 }) {
                     Circle()
@@ -155,37 +176,116 @@ struct HomeView: View {
                 .padding(.trailing, 20)
                 .padding(.bottom, 20)
                 .sheet(isPresented: $showAddTransaction) {
-                    AddTransactionView(transactionToEdit: transactionToEdit, onSave: { updatedTransaction in
-                        if let index = transactions.firstIndex(where: { $0.id == updatedTransaction.id }) {
-                            transactions[index] = updatedTransaction
-                        } else {
-                            transactions.insert(updatedTransaction, at: 0)
-                        }
+                    AddTransactionView(onSave: { transaction in
+                        addTransaction(transaction)
                     })
-                    .presentationDetents([.fraction(0.55)])
+                    .presentationDetents([.fraction(0.65)])
+                    .presentationDragIndicator(.visible)
+                }
+                .sheet(item: $selectedTransaction) { transaction in
+                    AddTransactionView(transactionToEdit: transaction, onSave: { updatedTransaction in
+                        updateTransaction(transaction, with: updatedTransaction)
+                    })
+                    .presentationDetents([.fraction(0.65)])
                     .presentationDragIndicator(.visible)
                 }
                 .sheet(isPresented: $showProfile) {
                     ProfileView()
                 }
+                .sheet(isPresented: $showAllTransactions) {
+                    AllTransactionsView(
+                        transactionRepo: transactionRepo,
+                        budgetRepo: budgetRepo
+                    )
+                    .environmentObject(appState)
+                }
             }
             .navigationBarHidden(true)
+            .onAppear {
+                // Start listening to transactions when view appears
+                if !appState.currentUserId.isEmpty {
+                    transactionRepo.startListening(userId: appState.currentUserId)
+                    let calendar = Calendar.current
+                    let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
+                    budgetRepo.startListening(userId: appState.currentUserId, monthStartDate: startOfMonth)
+                }
+            }
+            .onDisappear {
+                transactionRepo.stopListening()
+                budgetRepo.stopListening()
+            }
+        }
+    }
+    
+    private func addTransaction(_ transaction: Transaction) {
+        Task {
+            do {
+                // Convert UI Transaction to Firestore Transaction
+                let amount = Double(transaction.amount) ?? 0.0
+                let firestoreTransaction = FirestoreModels.Transaction(
+                    title: transaction.title,
+                    subtitle: transaction.subtitle,
+                    amount: amount,
+                    date: transaction.date,
+                    icon: transaction.icon,
+                    colorHex: transaction.color.toHex() ?? "#000000",
+                    note: transaction.notes,
+                    type: amount < 0 ? "expense" : "income",
+                    userId: appState.currentUserId,
+                    createdAt: Date()
+                )
+                try await transactionRepo.addTransaction(firestoreTransaction)
+            } catch {
+                print("Failed to add transaction: \(error)")
+            }
+        }
+    }
+    
+    private func updateTransaction(_ entity: FirestoreModels.Transaction, with transaction: Transaction) {
+        Task {
+            do {
+                let amount = Double(transaction.amount) ?? 0.0
+                var updatedTransaction = entity
+                updatedTransaction.title = transaction.title
+                updatedTransaction.subtitle = transaction.subtitle
+                updatedTransaction.amount = amount
+                updatedTransaction.date = transaction.date
+                updatedTransaction.icon = transaction.icon
+                updatedTransaction.colorHex = transaction.color.toHex() ?? "#000000"
+                updatedTransaction.note = transaction.notes
+                updatedTransaction.type = amount < 0 ? "expense" : "income"
+                
+                try await transactionRepo.updateTransaction(updatedTransaction)
+            } catch {
+                print("Failed to update transaction: \(error)")
+            }
+        }
+    }
+    
+    private func deleteTransaction(_ transaction: FirestoreModels.Transaction) {
+        guard let id = transaction.id else { return }
+        Task {
+            do {
+                try await transactionRepo.deleteTransaction(id: id)
+            } catch {
+                print("Failed to delete transaction: \(error)")
+            }
         }
     }
 }
 
 struct TransactionRow: View {
-    let transaction: Transaction
+    let transaction: FirestoreModels.Transaction
     
     var body: some View {
         HStack(spacing: 16) {
             Circle()
-                .fill(transaction.color.opacity(0.1))
+                .fill(Color(hex: transaction.colorHex).opacity(0.1))
                 .frame(width: 48, height: 48)
                 .overlay(
                     Image(systemName: transaction.icon)
                         .font(.system(size: 20))
-                        .foregroundColor(transaction.color)
+                        .foregroundColor(Color(hex: transaction.colorHex))
                 )
             
             VStack(alignment: .leading, spacing: 4) {
@@ -193,17 +293,26 @@ struct TransactionRow: View {
                     .font(.body)
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)
-                Text(transaction.subtitle)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                if let subtitle = transaction.subtitle, !subtitle.isEmpty, subtitle != transaction.title {
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                if let note = transaction.note, !note.isEmpty {
+                    Text(note)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
             }
             
             Spacer()
             
-            Text(transaction.amount)
+            Text(String(format: "%@$%.2f", transaction.amount > 0 ? "+" : "", abs(transaction.amount)))
                 .font(.system(.callout, design: .rounded))
                 .fontWeight(.bold)
-                .foregroundColor(transaction.amount.hasPrefix("+") ? .green : .primary)
+                .foregroundColor(transaction.amount > 0 ? .green : .primary)
         }
         .padding(16)
     }
@@ -211,4 +320,5 @@ struct TransactionRow: View {
 
 #Preview {
     HomeView()
+        .environmentObject(AppState.shared)
 }

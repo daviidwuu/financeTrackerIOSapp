@@ -4,33 +4,33 @@ struct AddRecurringTransactionView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
     
-    var recurringToEdit: RecurringTransaction?
+    var recurringToEdit: FirestoreModels.RecurringTransaction?
     var onSave: ((RecurringTransaction) -> Void)?
     
     @State private var currentStep = 1
     @State private var amount: String = ""
-    @State private var categoryName: String = ""
+    @State private var name: String = ""
     @State private var selectedIcon: String = "house.fill"
-    @State private var selectedColor: Color = .orange
-    @State private var selectedFrequency: String = "Monthly"
+    @State private var selectedColor: Color = .blue
+    @State private var frequency: String = "Monthly"
     @State private var notes: String = ""
     @State private var direction: Edge = .trailing
     
-    let icons = ["house.fill", "car.fill", "cart.fill", "tv.fill", "bolt.fill", "drop.fill", "phone.fill", "wifi", "gamecontroller.fill", "book.fill"]
-    let frequencies = ["Weekly", "Bi-Weekly", "Monthly", "Quarterly", "Yearly"]
-    let colors: [Color] = [.blue, .red, .green, .orange, .purple, .pink, .yellow, .mint, .teal, .indigo]
+    let icons = ["house.fill", "tv.fill", "car.fill", "bolt.fill", "drop.fill", "phone.fill", "wifi", "cart.fill"]
+    let colors: [Color] = [.blue, .red, .orange, .green, .purple, .pink, .yellow, .gray]
+    let frequencies = ["Weekly", "Bi-Weekly", "Monthly", "Yearly"]
     
-    init(recurringToEdit: RecurringTransaction? = nil, onSave: ((RecurringTransaction) -> Void)? = nil) {
+    init(recurringToEdit: FirestoreModels.RecurringTransaction? = nil, onSave: ((RecurringTransaction) -> Void)? = nil) {
         self.recurringToEdit = recurringToEdit
         self.onSave = onSave
         
-        if let recurring = recurringToEdit {
-            _amount = State(initialValue: String(format: "%.2f", recurring.amount))
-            _categoryName = State(initialValue: recurring.name)
-            _selectedIcon = State(initialValue: recurring.icon)
-            _selectedColor = State(initialValue: recurring.color)
-            _selectedFrequency = State(initialValue: recurring.frequency)
-            _notes = State(initialValue: recurring.notes)
+        if let transaction = recurringToEdit {
+            _amount = State(initialValue: String(format: "%.2f", transaction.amount))
+            _name = State(initialValue: transaction.name)
+            _selectedIcon = State(initialValue: transaction.icon)
+            _selectedColor = State(initialValue: Color(hex: transaction.colorHex))
+            _frequency = State(initialValue: transaction.frequency)
+            _notes = State(initialValue: transaction.note ?? "")
         }
     }
     
@@ -45,9 +45,11 @@ struct AddRecurringTransactionView: View {
                 HStack {
                     Button(action: {
                         if currentStep > 1 {
+                            HapticManager.shared.light()
                             direction = .leading
                             withAnimation { currentStep -= 1 }
                         } else {
+                            HapticManager.shared.light()
                             dismiss()
                         }
                     }) {
@@ -92,9 +94,11 @@ struct AddRecurringTransactionView: View {
                 // Action Button
                 Button(action: {
                     if currentStep < 6 {
+                        HapticManager.shared.light()
                         direction = .trailing
                         withAnimation { currentStep += 1 }
                     } else {
+                        HapticManager.shared.success()
                         saveRecurring()
                     }
                 }) {
@@ -114,24 +118,20 @@ struct AddRecurringTransactionView: View {
     }
     
     private func saveRecurring() {
-        let amountValue = Double(amount) ?? 0.0
+        guard let amountValue = Double(amount) else { return }
+        
         let newRecurring = RecurringTransaction(
-            name: categoryName,
+            name: name,
             amount: amountValue,
             icon: selectedIcon,
             color: selectedColor,
-            frequency: selectedFrequency,
+            frequency: frequency,
             notes: notes
         )
         
-        if var recurring = recurringToEdit {
-            recurring.name = categoryName
-            recurring.amount = amountValue
-            recurring.icon = selectedIcon
-            recurring.color = selectedColor
-            recurring.frequency = selectedFrequency
-            recurring.notes = notes
-            onSave?(recurring)
+        if let _ = recurringToEdit {
+            // Update logic handled by parent
+            onSave?(newRecurring)
         } else {
             onSave?(newRecurring)
         }
@@ -146,7 +146,7 @@ struct AddRecurringTransactionView: View {
             }
             return false
         case 2:
-            return !categoryName.isEmpty
+            return !name.isEmpty
         case 3:
             return true
         case 4:
@@ -199,7 +199,7 @@ struct AddRecurringTransactionView: View {
                 .fontWeight(.semibold)
                 .foregroundColor(.secondary)
             
-            TextField("e.g. Rent", text: $categoryName)
+            TextField("e.g. Rent", text: $name)
                 .font(.title)
                 .fontWeight(.bold)
                 .multilineTextAlignment(.center)
@@ -270,7 +270,7 @@ struct AddRecurringTransactionView: View {
                 .fontWeight(.semibold)
                 .foregroundColor(.secondary)
             
-            Picker("Frequency", selection: $selectedFrequency) {
+            Picker("Frequency", selection: $frequency) {
                 ForEach(frequencies, id: \.self) { freq in
                     Text(freq).tag(freq)
                 }

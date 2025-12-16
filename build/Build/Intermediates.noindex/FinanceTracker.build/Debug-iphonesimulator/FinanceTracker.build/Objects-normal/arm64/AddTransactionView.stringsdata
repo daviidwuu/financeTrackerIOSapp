@@ -1,0 +1,104 @@
+{
+  "source": "/Users/davidwu/Documents/FinanceTracker/FinanceTracker/AddTransactionView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Step %lld of 3",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 61
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 99
+        }
+      },
+      {
+        "comment": "",
+        "key": "Update Transaction",
+        "location": {
+          "startingColumn": 81,
+          "startingLine": 99
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save Transaction",
+        "location": {
+          "startingColumn": 104,
+          "startingLine": 99
+        }
+      },
+      {
+        "comment": "",
+        "key": "Amount",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 177
+        }
+      },
+      {
+        "comment": "",
+        "key": "0.00",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 182
+        }
+      },
+      {
+        "comment": "",
+        "key": "Category",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 193
+        }
+      },
+      {
+        "comment": "",
+        "key": "No categories found.",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 198
+        }
+      },
+      {
+        "comment": "",
+        "key": "Date",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 220
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 224
+        }
+      },
+      {
+        "comment": "",
+        "key": "Notes (Optional)",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 233
+        }
+      },
+      {
+        "comment": "",
+        "key": "e.g. Lunch with friends",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 238
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -4,7 +4,7 @@ struct AddSavingGoalView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
     
-    var goalToEdit: SavingGoal?
+    var goalToEdit: FirestoreModels.SavingGoal?
     var onSave: ((SavingGoal) -> Void)?
     
     @State private var currentStep = 1
@@ -16,7 +16,7 @@ struct AddSavingGoalView: View {
     
     let icons = ["car.fill", "house.fill", "airplane", "gift.fill", "graduationcap.fill", "display", "gamecontroller.fill", "cart.fill"]
     
-    init(goalToEdit: SavingGoal? = nil, onSave: ((SavingGoal) -> Void)? = nil) {
+    init(goalToEdit: FirestoreModels.SavingGoal? = nil, onSave: ((SavingGoal) -> Void)? = nil) {
         self.goalToEdit = goalToEdit
         self.onSave = onSave
         
@@ -39,9 +39,11 @@ struct AddSavingGoalView: View {
                 HStack {
                     Button(action: {
                         if currentStep > 1 {
+                            HapticManager.shared.light()
                             direction = .leading
                             withAnimation { currentStep -= 1 }
                         } else {
+                            HapticManager.shared.light()
                             dismiss()
                         }
                     }) {
@@ -85,9 +87,11 @@ struct AddSavingGoalView: View {
                 // Action Button
                 Button(action: {
                     if currentStep < 3 {
+                        HapticManager.shared.light()
                         direction = .trailing
                         withAnimation { currentStep += 1 }
                     } else {
+                        HapticManager.shared.success()
                         saveGoal()
                     }
                 }) {
@@ -107,7 +111,8 @@ struct AddSavingGoalView: View {
     }
     
     private func saveGoal() {
-        let targetAmount = Double(amount) ?? 0.0
+        guard let targetAmount = Double(amount) else { return }
+        
         let newGoal = SavingGoal(
             name: goalName,
             currentAmount: 0, // Start with 0 for new goals
@@ -116,12 +121,17 @@ struct AddSavingGoalView: View {
             targetDate: targetDate
         )
         
-        if var goal = goalToEdit {
-            goal.name = goalName
-            goal.targetAmount = targetAmount
-            goal.icon = selectedIcon
-            goal.targetDate = targetDate
-            onSave?(goal)
+        if let goal = goalToEdit {
+            // Update logic handled by parent via onSave
+            // We pass the updated struct back
+            let updatedGoal = SavingGoal(
+                name: goalName,
+                currentAmount: goal.currentAmount,
+                targetAmount: targetAmount,
+                icon: selectedIcon,
+                targetDate: targetDate
+            )
+            onSave?(updatedGoal)
         } else {
             onSave?(newGoal)
         }

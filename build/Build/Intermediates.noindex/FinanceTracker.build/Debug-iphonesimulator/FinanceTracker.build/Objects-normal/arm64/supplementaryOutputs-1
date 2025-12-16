@@ -1,0 +1,30 @@
+{
+  "/Users/davidwu/Documents/FinanceTracker/FinanceTracker/AddBudgetView.swift" : {
+    "const-values" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/AddBudgetView.swiftconstvalues",
+    "dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/AddBudgetView.d",
+    "diagnostics" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/AddBudgetView.dia",
+    "object" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/AddBudgetView.o",
+    "swift-dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/AddBudgetView.swiftdeps"
+  },
+  "/Users/davidwu/Documents/FinanceTracker/FinanceTracker/AddRecurringTransactionView.swift" : {
+    "const-values" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/AddRecurringTransactionView.swiftconstvalues",
+    "dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/AddRecurringTransactionView.d",
+    "diagnostics" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/AddRecurringTransactionView.dia",
+    "object" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/AddRecurringTransactionView.o",
+    "swift-dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/AddRecurringTransactionView.swiftdeps"
+  },
+  "/Users/davidwu/Documents/FinanceTracker/FinanceTracker/AddSavingGoalView.swift" : {
+    "const-values" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/AddSavingGoalView.swiftconstvalues",
+    "dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/AddSavingGoalView.d",
+    "diagnostics" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/AddSavingGoalView.dia",
+    "object" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/AddSavingGoalView.o",
+    "swift-dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/AddSavingGoalView.swiftdeps"
+  },
+  "/Users/davidwu/Documents/FinanceTracker/FinanceTracker/AddTransactionView.swift" : {
+    "const-values" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/AddTransactionView.swiftconstvalues",
+    "dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/AddTransactionView.d",
+    "diagnostics" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/AddTransactionView.dia",
+    "object" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/AddTransactionView.o",
+    "swift-dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/AddTransactionView.swiftdeps"
+  }
+}

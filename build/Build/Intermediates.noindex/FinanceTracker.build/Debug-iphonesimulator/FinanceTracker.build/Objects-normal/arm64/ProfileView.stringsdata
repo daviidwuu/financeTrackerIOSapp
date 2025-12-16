@@ -1,0 +1,112 @@
+{
+  "source": "/Users/davidwu/Documents/FinanceTracker/FinanceTracker/ProfileView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Profile",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 80
+        }
+      },
+      {
+        "comment": "",
+        "key": "Account",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 41
+        }
+      },
+      {
+        "comment": "",
+        "key": "Support",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 57
+        }
+      },
+      {
+        "comment": "",
+        "key": "David Wu",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 28
+        }
+      },
+      {
+        "comment": "",
+        "key": "david.wu@example.com",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 32
+        }
+      },
+      {
+        "comment": "",
+        "key": "Account Settings",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 43
+        }
+      },
+      {
+        "comment": "",
+        "key": "Appearance",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 46
+        }
+      },
+      {
+        "comment": "",
+        "key": "Notifications",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 49
+        }
+      },
+      {
+        "comment": "",
+        "key": "Privacy & Security",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 52
+        }
+      },
+      {
+        "comment": "",
+        "key": "Help Center",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 59
+        }
+      },
+      {
+        "comment": "",
+        "key": "About Us",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 62
+        }
+      },
+      {
+        "comment": "",
+        "key": "Log Out",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 71
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 84
+        }
+      }
+    ]
+  },
+  "version": 1
+}

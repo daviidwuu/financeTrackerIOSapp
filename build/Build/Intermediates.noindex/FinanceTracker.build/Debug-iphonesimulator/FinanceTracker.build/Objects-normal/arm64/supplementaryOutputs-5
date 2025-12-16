@@ -1,0 +1,30 @@
+{
+  "/Users/davidwu/Documents/FinanceTracker/FinanceTracker/WelcomeView.swift" : {
+    "const-values" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/WelcomeView.swiftconstvalues",
+    "dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/WelcomeView.d",
+    "diagnostics" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/WelcomeView.dia",
+    "object" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/WelcomeView.o",
+    "swift-dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/WelcomeView.swiftdeps"
+  },
+  "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources/CoreDataGenerated/FinanceTracker/BudgetEntity+CoreDataClass.swift" : {
+    "const-values" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/BudgetEntity+CoreDataClass.swiftconstvalues",
+    "dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/BudgetEntity+CoreDataClass.d",
+    "diagnostics" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/BudgetEntity+CoreDataClass.dia",
+    "object" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/BudgetEntity+CoreDataClass.o",
+    "swift-dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/BudgetEntity+CoreDataClass.swiftdeps"
+  },
+  "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources/CoreDataGenerated/FinanceTracker/BudgetEntity+CoreDataProperties.swift" : {
+    "const-values" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/BudgetEntity+CoreDataProperties.swiftconstvalues",
+    "dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/BudgetEntity+CoreDataProperties.d",
+    "diagnostics" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/BudgetEntity+CoreDataProperties.dia",
+    "object" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/BudgetEntity+CoreDataProperties.o",
+    "swift-dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/BudgetEntity+CoreDataProperties.swiftdeps"
+  },
+  "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources/CoreDataGenerated/FinanceTracker/CategoryEntity+CoreDataClass.swift" : {
+    "const-values" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/CategoryEntity+CoreDataClass.swiftconstvalues",
+    "dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/CategoryEntity+CoreDataClass.d",
+    "diagnostics" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/CategoryEntity+CoreDataClass.dia",
+    "object" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/CategoryEntity+CoreDataClass.o",
+    "swift-dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/CategoryEntity+CoreDataClass.swiftdeps"
+  }
+}

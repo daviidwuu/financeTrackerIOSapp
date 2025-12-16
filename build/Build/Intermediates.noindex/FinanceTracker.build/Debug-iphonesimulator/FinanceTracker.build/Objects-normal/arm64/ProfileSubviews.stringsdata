@@ -1,0 +1,432 @@
+{
+  "source": "/Users/davidwu/Documents/FinanceTracker/FinanceTracker/ProfileSubviews.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Account Settings",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 34
+        }
+      },
+      {
+        "comment": "",
+        "key": "Profile Information",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 11
+        }
+      },
+      {
+        "comment": "",
+        "key": "Password",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 18
+        }
+      },
+      {
+        "comment": "",
+        "key": "Name",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 12
+        }
+      },
+      {
+        "comment": "",
+        "key": "Email",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 13
+        }
+      },
+      {
+        "comment": "",
+        "key": "Change Password",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 19
+        }
+      },
+      {
+        "comment": "",
+        "key": "Change Password Flow",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 20
+        }
+      },
+      {
+        "comment": "",
+        "key": "Change Password",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 21
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete Account",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 29
+        }
+      },
+      {
+        "comment": "",
+        "key": "Appearance",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 51
+        }
+      },
+      {
+        "comment": "",
+        "key": "Display",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 47
+        }
+      },
+      {
+        "comment": "",
+        "key": "Dark Mode",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 48
+        }
+      },
+      {
+        "comment": "",
+        "key": "Notifications",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 76
+        }
+      },
+      {
+        "comment": "",
+        "key": "General",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 67
+        }
+      },
+      {
+        "comment": "",
+        "key": "Updates",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 72
+        }
+      },
+      {
+        "comment": "",
+        "key": "Push Notifications",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 68
+        }
+      },
+      {
+        "comment": "",
+        "key": "Email Notifications",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 69
+        }
+      },
+      {
+        "comment": "",
+        "key": "Promotional Offers",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 73
+        }
+      },
+      {
+        "comment": "",
+        "key": "Privacy & Security",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 106
+        }
+      },
+      {
+        "comment": "",
+        "key": "Security",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 90
+        }
+      },
+      {
+        "comment": "",
+        "key": "Data",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 98
+        }
+      },
+      {
+        "comment": "",
+        "key": "Use Face ID",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 91
+        }
+      },
+      {
+        "comment": "",
+        "key": "Two-Factor Authentication",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 92
+        }
+      },
+      {
+        "comment": "",
+        "key": "2FA Setup",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 93
+        }
+      },
+      {
+        "comment": "",
+        "key": "2FA",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 94
+        }
+      },
+      {
+        "comment": "",
+        "key": "Share Analytics",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 99
+        }
+      },
+      {
+        "comment": "",
+        "key": "Data & Privacy Info",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 100
+        }
+      },
+      {
+        "comment": "",
+        "key": "Privacy Policy Content",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 101
+        }
+      },
+      {
+        "comment": "",
+        "key": "Privacy Policy",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 102
+        }
+      },
+      {
+        "comment": "",
+        "key": "Help Center",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 145
+        }
+      },
+      {
+        "comment": "",
+        "key": "FAQ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 118
+        }
+      },
+      {
+        "comment": "",
+        "key": "Contact",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 136
+        }
+      },
+      {
+        "comment": "",
+        "key": "How to add a transaction?",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 119
+        }
+      },
+      {
+        "comment": "",
+        "key": "How to set a budget?",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 124
+        }
+      },
+      {
+        "comment": "",
+        "key": "Exporting data",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 129
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tap the + button on the home screen.",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 120
+        }
+      },
+      {
+        "comment": "",
+        "key": "Adding Transactions",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 122
+        }
+      },
+      {
+        "comment": "",
+        "key": "Go to the Wallet tab and tap + next to Budgets.",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 125
+        }
+      },
+      {
+        "comment": "",
+        "key": "Setting Budgets",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 127
+        }
+      },
+      {
+        "comment": "",
+        "key": "Data export is coming soon.",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 130
+        }
+      },
+      {
+        "comment": "",
+        "key": "Export Data",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 132
+        }
+      },
+      {
+        "comment": "",
+        "key": "Contact Support",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 137
+        }
+      },
+      {
+        "comment": "",
+        "key": "Report a Bug",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 140
+        }
+      },
+      {
+        "comment": "",
+        "key": "About Us",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 198
+        }
+      },
+      {
+        "comment": "",
+        "key": "Finance Tracker",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 163
+        }
+      },
+      {
+        "comment": "",
+        "key": "Version 1.0.0",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 166
+        }
+      },
+      {
+        "comment": "",
+        "key": "Developer",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 174
+        }
+      },
+      {
+        "comment": "",
+        "key": "David Wu",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 176
+        }
+      },
+      {
+        "comment": "",
+        "key": "Website",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 180
+        }
+      },
+      {
+        "comment": "",
+        "key": "example.com",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 182
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rate App",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 189
+        }
+      },
+      {
+        "comment": "",
+        "key": "Terms of Service",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 190
+        }
+      },
+      {
+        "comment": "",
+        "key": "Privacy Policy",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 191
+        }
+      }
+    ]
+  },
+  "version": 1
+}

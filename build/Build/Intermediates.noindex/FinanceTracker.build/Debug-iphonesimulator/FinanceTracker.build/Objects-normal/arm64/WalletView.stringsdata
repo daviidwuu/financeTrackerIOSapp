@@ -1,0 +1,136 @@
+{
+  "source": "/Users/davidwu/Documents/FinanceTracker/FinanceTracker/WalletView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Wallet",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 276
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Balance",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 69
+        }
+      },
+      {
+        "comment": "",
+        "key": "$%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 73
+        }
+      },
+      {
+        "comment": "",
+        "key": "Saving Goals",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 90
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld%%",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 122
+        }
+      },
+      {
+        "comment": "",
+        "key": "$%lld / $%lld",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 115
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 137
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 144
+        }
+      },
+      {
+        "comment": "",
+        "key": "Recurring",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 164
+        }
+      },
+      {
+        "comment": "",
+        "key": "$%lld/%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 187
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 202
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 209
+        }
+      },
+      {
+        "comment": "",
+        "key": "Budgets",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 220
+        }
+      },
+      {
+        "comment": "",
+        "key": "$%lld left",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 243
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 258
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 265
+        }
+      }
+    ]
+  },
+  "version": 1
+}

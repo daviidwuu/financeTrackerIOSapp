@@ -2,9 +2,13 @@ import SwiftUI
 
 // MARK: - Account Settings
 struct AccountSettingsView: View {
-    @State private var name: String = "David Wu"
-    @State private var email: String = "david.wu@example.com"
+    @EnvironmentObject var appState: AppState
+    @State private var name: String = ""
+    @State private var email: String = ""
     @Environment(\.colorScheme) var colorScheme
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+    @State private var showDeleteConfirmation = false
     
     var body: some View {
         Form {
@@ -15,17 +19,33 @@ struct AccountSettingsView: View {
                     .autocapitalization(.none)
             }
             
-            Section(header: Text("Password")) {
-                NavigationLink("Change Password") {
-                    Text("Change Password Flow")
-                        .navigationTitle("Change Password")
+            if let errorMessage = errorMessage {
+                Section {
+                    Text(errorMessage)
+                        .foregroundColor(.red)
+                        .font(.caption)
                 }
             }
             
             Section {
-                Button(action: {
-                    // Delete account action
-                }) {
+                Button(action: updateProfile) {
+                    if isLoading {
+                        ProgressView()
+                    } else {
+                        Text("Update Profile")
+                    }
+                }
+                .disabled(isLoading || name.isEmpty || email.isEmpty || (name == appState.userName && email == appState.userEmail))
+            }
+            
+            Section(header: Text("Password")) {
+                Button("Reset Password") {
+                    sendPasswordReset()
+                }
+            }
+            
+            Section {
+                Button(action: { showDeleteConfirmation = true }) {
                     Text("Delete Account")
                         .foregroundColor(.red)
                 }
@@ -34,6 +54,67 @@ struct AccountSettingsView: View {
         .navigationTitle("Account Settings")
         .background(colorScheme == .dark ? Color.black : Color(UIColor.systemGroupedBackground))
         .scrollContentBackground(.hidden)
+        .onAppear {
+            name = appState.userName
+            email = appState.userEmail
+        }
+        .alert("Delete Account", isPresented: $showDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                deleteAccount()
+            }
+        } message: {
+            Text("Are you sure you want to delete your account? This action cannot be undone.")
+        }
+    }
+    
+    private func updateProfile() {
+        guard !name.isEmpty, !email.isEmpty else { return }
+        isLoading = true
+        errorMessage = nil
+        
+        Task {
+            do {
+                if name != appState.userName {
+                    try await FirebaseManager.shared.updateUserProfile(userId: appState.currentUserId, data: ["name": name])
+                    await MainActor.run { appState.userName = name }
+                }
+                
+                if email != appState.userEmail {
+                    try await FirebaseManager.shared.updateEmail(email)
+                    await MainActor.run { appState.userEmail = email }
+                }
+                
+                await MainActor.run { isLoading = false }
+            } catch {
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    isLoading = false
+                }
+            }
+        }
+    }
+    
+    private func deleteAccount() {
+        isLoading = true
+        Task {
+            do {
+                try await FirebaseManager.shared.deleteUser()
+                // AppState listener will handle logout
+            } catch {
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    isLoading = false
+                }
+            }
+        }
+    }
+    
+    private func sendPasswordReset() {
+        Task {
+            try? await FirebaseManager.shared.sendPasswordReset(email: email)
+            // Show confirmation alert if needed
+        }
     }
 }
 
@@ -57,25 +138,160 @@ struct AppearanceSettingsView: View {
 
 // MARK: - Notifications
 struct NotificationsSettingsView: View {
-    @State private var pushEnabled = true
-    @State private var emailEnabled = false
-    @State private var promoEnabled = true
+    @AppStorage("notificationsEnabled_transactions") private var transactionNotifs = false
+    @AppStorage("notificationsEnabled_budgets") private var budgetNotifs = false
+    @AppStorage("notificationsEnabled_dailySummary") private var dailySummary = false
+    @AppStorage("notificationsEnabled_weeklyReport") private var weeklyReport = false
     @Environment(\.colorScheme) var colorScheme
+    
+    @State private var permissionStatus: UNAuthorizationStatus = .notDetermined
+    @State private var showingPermissionAlert = false
     
     var body: some View {
         Form {
-            Section(header: Text("General")) {
-                Toggle("Push Notifications", isOn: $pushEnabled)
-                Toggle("Email Notifications", isOn: $emailEnabled)
+            // Permission Status Section
+            Section {
+                HStack {
+                    Image(systemName: permissionIcon)
+                        .foregroundColor(permissionColor)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Notification Permission")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        Text(permissionText)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    if permissionStatus == .notDetermined || permissionStatus == .denied {
+                        Button("Enable") {
+                            requestPermission()
+                        }
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                    }
+                }
             }
             
-            Section(header: Text("Updates")) {
-                Toggle("Promotional Offers", isOn: $promoEnabled)
+            // Transaction Alerts
+            Section(header: Text("Transaction Alerts"), footer: Text("Get notified when you add or edit transactions")) {
+                Toggle("Transaction Notifications", isOn: $transactionNotifs)
+                    .onChange(of: transactionNotifs) { newValue in
+                        if newValue {
+                            ensurePermission()
+                        }
+                    }
+            }
+            
+            // Budget Alerts
+            Section(header: Text("Budget Alerts"), footer: Text("Get warned when you reach 80% of your budget")) {
+                Toggle("Budget Warnings", isOn: $budgetNotifs)
+                    .onChange(of: budgetNotifs) { newValue in
+                        if newValue {
+                            ensurePermission()
+                        }
+                    }
+            }
+            
+            // Scheduled Reports
+            Section(header: Text("Scheduled Reports")) {
+                Toggle("Daily Summary (9 PM)", isOn: $dailySummary)
+                    .onChange(of: dailySummary) { newValue in
+                        if newValue {
+                            ensurePermission()
+                            // Schedule will happen when user adds transactions
+                        } else {
+                            NotificationManager.shared.cancelDailySummary()
+                        }
+                    }
+                
+                Toggle("Weekly Report (Sunday 8 PM)", isOn: $weeklyReport)
+                    .onChange(of: weeklyReport) { newValue in
+                        if newValue {
+                            ensurePermission()
+                            NotificationManager.shared.scheduleWeeklyReport()
+                        } else {
+                            NotificationManager.shared.cancelWeeklyReport()
+                        }
+                    }
             }
         }
         .navigationTitle("Notifications")
         .background(colorScheme == .dark ? Color.black : Color(UIColor.systemGroupedBackground))
         .scrollContentBackground(.hidden)
+        .onAppear {
+            checkPermissionStatus()
+        }
+        .alert("Open Settings", isPresented: $showingPermissionAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+        } message: {
+            Text("To enable notifications, please allow them in Settings.")
+        }
+    }
+    
+    private var permissionIcon: String {
+        switch permissionStatus {
+        case .authorized, .provisional:
+            return "checkmark.circle.fill"
+        case .denied:
+            return "xmark.circle.fill"
+        default:
+            return "questionmark.circle.fill"
+        }
+    }
+    
+    private var permissionColor: Color {
+        switch permissionStatus {
+        case .authorized, .provisional:
+            return .green
+        case .denied:
+            return .red
+        default:
+            return .orange
+        }
+    }
+    
+    private var permissionText: String {
+        switch permissionStatus {
+        case .authorized, .provisional:
+            return "Notifications allowed"
+        case .denied:
+            return "Notifications denied"
+        case .notDetermined:
+            return "Not requested yet"
+        @unknown default:
+            return "Unknown status"
+        }
+    }
+    
+    private func checkPermissionStatus() {
+        NotificationManager.shared.checkPermissionStatus { status in
+            permissionStatus = status
+        }
+    }
+    
+    private func requestPermission() {
+        NotificationManager.shared.requestPermission { granted in
+            checkPermissionStatus()
+            if !granted {
+                showingPermissionAlert = true
+            }
+        }
+    }
+    
+    private func ensurePermission() {
+        NotificationManager.shared.checkPermissionStatus { status in
+            if status == .notDetermined {
+                requestPermission()
+            } else if status == .denied {
+                showingPermissionAlert = true
+            }
+        }
     }
 }
 

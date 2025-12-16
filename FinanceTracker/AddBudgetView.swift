@@ -4,31 +4,44 @@ struct AddBudgetView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
     
-    var budgetToEdit: Budget?
+    var budgetToEdit: FirestoreModels.CategoryBudget?
     var onSave: ((Budget) -> Void)?
     
     @State private var currentStep = 1
     @State private var amount: String = ""
-    @State private var categoryName: String = ""
+    @State private var name: String = ""
     @State private var selectedIcon: String = "cart.fill"
-    @State private var selectedColor: Color = .blue
-    @State private var selectedFrequency: String = "Monthly"
+    @State private var selectedColor: Color = .orange
+    @State private var frequency: String = "Monthly"
+    @State private var type: String = "expense" // Added type
     @State private var direction: Edge = .trailing
     
-    let icons = ["cart.fill", "car.fill", "house.fill", "bolt.fill", "gamecontroller.fill", "fork.knife", "cup.and.saucer.fill", "tshirt.fill", "cross.case.fill", "airplane"]
+    let icons = [
+        "cart.fill", "car.fill", "bag.fill", "tv.fill", "doc.text.fill", "heart.fill", 
+        "house.fill", "bolt.fill", "tag.fill", "star.fill", "dollarsign.circle.fill", "briefcase.fill",
+        "fork.knife", "cup.and.saucer.fill", "takeoutbag.and.cup.and.straw.fill", "wineglass.fill",
+        "bus.fill", "airplane", "bicycle", "fuelpump.fill",
+        "tshirt.fill", "eyeglasses", "cart.badge.plus", "giftcard.fill",
+        "film.fill", "music.note", "headphones", "gamecontroller.fill",
+        "dumbbell.fill", "figure.walk", "sportscourt.fill", "soccerball",
+        "cross.case.fill", "pills.fill", "stethoscope", "heart.text.square.fill",
+        "book.fill", "graduationcap.fill", "pencil", "backpack.fill",
+        "creditcard.fill", "chart.line.uptrend.xyaxis", "banknote.fill", "percent",
+        "wrench.and.screwdriver.fill", "hammer.fill", "paintbrush.fill", "lightbulb.fill"
+    ]
+    let colors: [Color] = [.orange, .blue, .purple, .red, .green, .pink, .yellow, .gray]
     let frequencies = ["Weekly", "Bi-Weekly", "Monthly", "Yearly"]
-    let colors: [Color] = [.blue, .red, .green, .orange, .purple, .pink, .yellow, .mint, .teal, .indigo]
     
-    init(budgetToEdit: Budget? = nil, onSave: ((Budget) -> Void)? = nil) {
+    init(budgetToEdit: FirestoreModels.CategoryBudget? = nil, onSave: ((Budget) -> Void)? = nil) {
         self.budgetToEdit = budgetToEdit
         self.onSave = onSave
         
         if let budget = budgetToEdit {
             _amount = State(initialValue: String(format: "%.2f", budget.totalAmount))
-            _categoryName = State(initialValue: budget.category)
+            _name = State(initialValue: budget.category)
             _selectedIcon = State(initialValue: budget.icon)
-            _selectedColor = State(initialValue: budget.color)
-            _selectedFrequency = State(initialValue: budget.frequency)
+            _selectedColor = State(initialValue: Color(hex: budget.colorHex))
+            _frequency = State(initialValue: budget.frequency)
         }
     }
     
@@ -43,9 +56,11 @@ struct AddBudgetView: View {
                 HStack {
                     Button(action: {
                         if currentStep > 1 {
+                            HapticManager.shared.light()
                             direction = .leading
                             withAnimation { currentStep -= 1 }
                         } else {
+                            HapticManager.shared.light()
                             dismiss()
                         }
                     }) {
@@ -58,7 +73,7 @@ struct AddBudgetView: View {
                     
                     Spacer()
                     
-                    Text("Step \(currentStep) of 5")
+                    Text("Step \(currentStep) of 6") // Increased steps to 6
                         .font(.subheadline)
                         .fontWeight(.medium)
                         .foregroundColor(.secondary)
@@ -89,14 +104,16 @@ struct AddBudgetView: View {
                 
                 // Action Button
                 Button(action: {
-                    if currentStep < 5 {
+                    if currentStep < 6 { // Increased steps to 6
+                        HapticManager.shared.light()
                         direction = .trailing
                         withAnimation { currentStep += 1 }
                     } else {
+                        HapticManager.shared.success()
                         saveBudget()
                     }
                 }) {
-                    Text(currentStep < 5 ? "Next" : (budgetToEdit != nil ? "Update Budget" : "Save Budget"))
+                    Text(currentStep < 6 ? "Next" : (budgetToEdit != nil ? "Update Budget" : "Save Budget"))
                         .font(.headline)
                         .fontWeight(.bold)
                         .foregroundColor(.black)
@@ -112,23 +129,21 @@ struct AddBudgetView: View {
     }
     
     private func saveBudget() {
-        let totalAmount = Double(amount) ?? 0.0
+        guard let totalAmount = Double(amount) else { return }
+        
         let newBudget = Budget(
-            category: categoryName,
+            category: name,
             remainingAmount: totalAmount, // Start full
             totalAmount: totalAmount,
             icon: selectedIcon,
             color: selectedColor,
-            frequency: selectedFrequency
+            frequency: frequency,
+            type: type // Added type
         )
         
-        if var budget = budgetToEdit {
-            budget.category = categoryName
-            budget.totalAmount = totalAmount
-            budget.icon = selectedIcon
-            budget.color = selectedColor
-            budget.frequency = selectedFrequency
-            onSave?(budget)
+        if let _ = budgetToEdit {
+            // Update logic handled by parent
+            onSave?(newBudget)
         } else {
             onSave?(newBudget)
         }
@@ -138,17 +153,19 @@ struct AddBudgetView: View {
     private var isStepValid: Bool {
         switch currentStep {
         case 1:
+            return true // Type step always valid
+        case 2:
             if let value = Double(amount), value > 0 {
                 return true
             }
             return false
-        case 2:
-            return !categoryName.isEmpty
         case 3:
-            return true
+            return !name.isEmpty
         case 4:
             return true
         case 5:
+            return true
+        case 6:
             return true
         default:
             return false
@@ -158,21 +175,62 @@ struct AddBudgetView: View {
     @ViewBuilder
     private var currentStepView: some View {
         if currentStep == 1 {
-            limitStep
+            typeStep
         } else if currentStep == 2 {
-            nameStep
+            limitStep
         } else if currentStep == 3 {
-            iconStep
+            nameStep
         } else if currentStep == 4 {
+            iconStep
+        } else if currentStep == 5 {
             colorStep
         } else {
             periodStep
         }
     }
     
+    private var typeStep: some View {
+        VStack(spacing: 24) {
+            Text("Income or Expense?")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .foregroundColor(.secondary)
+            
+            HStack(spacing: 20) {
+                Button(action: { type = "income" }) {
+                    VStack {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(type == "income" ? .white : .green)
+                        Text("Income")
+                            .fontWeight(.bold)
+                    }
+                    .frame(width: 140, height: 140)
+                    .background(type == "income" ? Color.green : Color(UIColor.secondarySystemBackground))
+                    .foregroundColor(type == "income" ? .white : .primary)
+                    .cornerRadius(20)
+                }
+                
+                Button(action: { type = "expense" }) {
+                    VStack {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(type == "expense" ? .white : .red)
+                        Text("Expense")
+                            .fontWeight(.bold)
+                    }
+                    .frame(width: 140, height: 140)
+                    .background(type == "expense" ? Color.red : Color(UIColor.secondarySystemBackground))
+                    .foregroundColor(type == "expense" ? .white : .primary)
+                    .cornerRadius(20)
+                }
+            }
+        }
+    }
+    
     private var limitStep: some View {
         VStack(spacing: 16) {
-            Text("Budget Limit")
+            Text(type == "income" ? "Expected Income" : "Budget Limit") // Dynamic text
                 .font(.title2)
                 .fontWeight(.semibold)
                 .foregroundColor(.secondary)
@@ -192,7 +250,7 @@ struct AddBudgetView: View {
                 .fontWeight(.semibold)
                 .foregroundColor(.secondary)
             
-            TextField("e.g. Groceries", text: $categoryName)
+            TextField("e.g. Rent", text: $name) // Updated placeholder and binding to 'name'
                 .font(.title)
                 .fontWeight(.bold)
                 .multilineTextAlignment(.center)
@@ -263,7 +321,7 @@ struct AddBudgetView: View {
                 .fontWeight(.semibold)
                 .foregroundColor(.secondary)
             
-            Picker("Period", selection: $selectedFrequency) {
+            Picker("Frequency", selection: $frequency) { // Updated Picker label
                 ForEach(frequencies, id: \.self) { p in
                     Text(p).tag(p)
                 }

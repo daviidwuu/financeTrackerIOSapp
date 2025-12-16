@@ -9,6 +9,7 @@ struct Transaction: Identifiable {
     var color: Color
     var date: Date = Date()
     var notes: String = ""
+    var type: String = "expense"
 }
 
 struct SavingGoal: Identifiable {
@@ -39,4 +40,5 @@ struct Budget: Identifiable {
     var icon: String
     var color: Color
     var frequency: String
+    var type: String = "expense"
 }

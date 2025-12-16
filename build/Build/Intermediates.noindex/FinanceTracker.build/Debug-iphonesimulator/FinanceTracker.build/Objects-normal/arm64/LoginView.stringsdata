@@ -1,0 +1,56 @@
+{
+  "source": "/Users/davidwu/Documents/FinanceTracker/FinanceTracker/LoginView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Invalid email or password",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 52
+        }
+      },
+      {
+        "comment": "",
+        "key": "Welcome Back",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 23
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sign in to continue",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 27
+        }
+      },
+      {
+        "comment": "",
+        "key": "Email",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 35
+        }
+      },
+      {
+        "comment": "",
+        "key": "Password",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 43
+        }
+      },
+      {
+        "comment": "",
+        "key": "Log In",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 65
+        }
+      }
+    ]
+  },
+  "version": 1
+}

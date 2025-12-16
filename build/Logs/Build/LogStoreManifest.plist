@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>logFormatVersion</key>
+	<integer>12</integer>
+	<key>logs</key>
+	<dict>
+		<key>47D4B6A8-FC5B-444F-9693-BFD44E97D6C1</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>47D4B6A8-FC5B-444F-9693-BFD44E97D6C1.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>S</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>FinanceTracker project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>FinanceTracker</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project FinanceTracker with scheme FinanceTracker</string>
+			<key>timeStartedRecording</key>
+			<real>787517741.58922005</real>
+			<key>timeStoppedRecording</key>
+			<real>787517749.824525</real>
+			<key>title</key>
+			<string>Building project FinanceTracker with scheme FinanceTracker</string>
+			<key>uniqueIdentifier</key>
+			<string>47D4B6A8-FC5B-444F-9693-BFD44E97D6C1</string>
+		</dict>
+		<key>6691D0A9-C835-449A-B767-D31331B69334</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>6691D0A9-C835-449A-B767-D31331B69334.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>S</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>FinanceTracker project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>FinanceTracker</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Cleaning project FinanceTracker with scheme FinanceTracker</string>
+			<key>timeStartedRecording</key>
+			<real>787517741.29418504</real>
+			<key>timeStoppedRecording</key>
+			<real>787517741.58512104</real>
+			<key>title</key>
+			<string>Cleaning project FinanceTracker with scheme FinanceTracker</string>
+			<key>uniqueIdentifier</key>
+			<string>6691D0A9-C835-449A-B767-D31331B69334</string>
+		</dict>
+		<key>CF0894D6-90CB-4ABB-AD08-0DB898A21C50</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>CF0894D6-90CB-4ABB-AD08-0DB898A21C50.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>E</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>1</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>FinanceTracker project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>FinanceTracker</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project FinanceTracker with scheme FinanceTracker</string>
+			<key>timeStartedRecording</key>
+			<real>787517715.54642904</real>
+			<key>timeStoppedRecording</key>
+			<real>787517719.67215896</real>
+			<key>title</key>
+			<string>Building project FinanceTracker with scheme FinanceTracker</string>
+			<key>uniqueIdentifier</key>
+			<string>CF0894D6-90CB-4ABB-AD08-0DB898A21C50</string>
+		</dict>
+		<key>E45B43B8-E1E8-4192-B5CD-44D9EEC79AD5</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>E45B43B8-E1E8-4192-B5CD-44D9EEC79AD5.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>S</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>FinanceTracker project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>FinanceTracker</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Cleaning project FinanceTracker with scheme FinanceTracker</string>
+			<key>timeStartedRecording</key>
+			<real>787517715.18949902</real>
+			<key>timeStoppedRecording</key>
+			<real>787517715.54260898</real>
+			<key>title</key>
+			<string>Cleaning project FinanceTracker with scheme FinanceTracker</string>
+			<key>uniqueIdentifier</key>
+			<string>E45B43B8-E1E8-4192-B5CD-44D9EEC79AD5</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

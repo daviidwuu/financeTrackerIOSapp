@@ -1,0 +1,120 @@
+{
+  "source": "/Users/davidwu/Documents/FinanceTracker/FinanceTracker/AddRecurringTransactionView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Step %lld of 6",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 63
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 101
+        }
+      },
+      {
+        "comment": "",
+        "key": "Update Recurring",
+        "location": {
+          "startingColumn": 79,
+          "startingLine": 101
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save Recurring",
+        "location": {
+          "startingColumn": 100,
+          "startingLine": 101
+        }
+      },
+      {
+        "comment": "",
+        "key": "Amount",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 177
+        }
+      },
+      {
+        "comment": "",
+        "key": "0.00",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 182
+        }
+      },
+      {
+        "comment": "",
+        "key": "Category Name",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 192
+        }
+      },
+      {
+        "comment": "",
+        "key": "e.g. Rent",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 197
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Icon",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 210
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Color",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 234
+        }
+      },
+      {
+        "comment": "",
+        "key": "Frequency",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 263
+        }
+      },
+      {
+        "comment": "",
+        "key": "Frequency",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 268
+        }
+      },
+      {
+        "comment": "",
+        "key": "Notes (Optional)",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 279
+        }
+      },
+      {
+        "comment": "",
+        "key": "e.g. Monthly Rent",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 284
+        }
+      }
+    ]
+  },
+  "version": 1
+}

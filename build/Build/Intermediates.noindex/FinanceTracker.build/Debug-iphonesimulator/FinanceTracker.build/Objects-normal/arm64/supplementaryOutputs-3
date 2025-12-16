@@ -1,0 +1,30 @@
+{
+  "/Users/davidwu/Documents/FinanceTracker/FinanceTracker/HomeView.swift" : {
+    "const-values" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/HomeView.swiftconstvalues",
+    "dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/HomeView.d",
+    "diagnostics" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/HomeView.dia",
+    "object" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/HomeView.o",
+    "swift-dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/HomeView.swiftdeps"
+  },
+  "/Users/davidwu/Documents/FinanceTracker/FinanceTracker/LoginView.swift" : {
+    "const-values" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/LoginView.swiftconstvalues",
+    "dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/LoginView.d",
+    "diagnostics" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/LoginView.dia",
+    "object" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/LoginView.o",
+    "swift-dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/LoginView.swiftdeps"
+  },
+  "/Users/davidwu/Documents/FinanceTracker/FinanceTracker/Models.swift" : {
+    "const-values" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/Models.swiftconstvalues",
+    "dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/Models.d",
+    "diagnostics" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/Models.dia",
+    "object" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/Models.o",
+    "swift-dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/Models.swiftdeps"
+  },
+  "/Users/davidwu/Documents/FinanceTracker/FinanceTracker/OnboardingView.swift" : {
+    "const-values" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/OnboardingView.swiftconstvalues",
+    "dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/OnboardingView.d",
+    "diagnostics" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/OnboardingView.dia",
+    "object" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/OnboardingView.o",
+    "swift-dependencies" : "/Users/davidwu/Documents/FinanceTracker/build/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/OnboardingView.swiftdeps"
+  }
+}

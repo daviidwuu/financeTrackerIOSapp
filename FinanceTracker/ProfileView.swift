@@ -3,6 +3,7 @@ import SwiftUI
 struct ProfileView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
+    @EnvironmentObject var appState: AppState
     
     var body: some View {
         NavigationView {
@@ -24,11 +25,11 @@ struct ProfileView: View {
                                 )
                             
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("David Wu")
+                                Text(appState.userName.isEmpty ? "User" : appState.userName)
                                     .font(.title3)
                                     .fontWeight(.bold)
                                     .foregroundColor(.primary)
-                                Text("david.wu@example.com")
+                                Text(appState.userEmail.isEmpty ? "No Email" : appState.userEmail)
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                             }
@@ -40,15 +41,19 @@ struct ProfileView: View {
                     Section("Account") {
                         NavigationLink(destination: AccountSettingsView()) {
                             Label("Account Settings", systemImage: "gearshape.fill")
+                                .foregroundStyle(.white)
                         }
                         NavigationLink(destination: AppearanceSettingsView()) {
                             Label("Appearance", systemImage: "paintbrush.fill")
+                                .foregroundStyle(.white)
                         }
                         NavigationLink(destination: NotificationsSettingsView()) {
                             Label("Notifications", systemImage: "bell.fill")
+                                .foregroundStyle(.white)
                         }
                         NavigationLink(destination: PrivacySettingsView()) {
                             Label("Privacy & Security", systemImage: "lock.fill")
+                                .foregroundStyle(.white)
                         }
                     }
                     .listRowBackground(Color(UIColor.secondarySystemBackground))
@@ -56,16 +61,18 @@ struct ProfileView: View {
                     Section("Support") {
                         NavigationLink(destination: HelpCenterView()) {
                             Label("Help Center", systemImage: "questionmark.circle.fill")
+                                .foregroundStyle(.white)
                         }
                         NavigationLink(destination: AboutView()) {
                             Label("About Us", systemImage: "info.circle.fill")
+                                .foregroundStyle(.white)
                         }
                     }
                     .listRowBackground(Color(UIColor.secondarySystemBackground))
                     
                     Section {
                         Button(action: {
-                            // Log out action
+                            appState.logout()
                         }) {
                             Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
                                 .foregroundColor(.red)

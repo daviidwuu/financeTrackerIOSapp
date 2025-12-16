@@ -1,0 +1,96 @@
+{
+  "source": "/Users/davidwu/Documents/FinanceTracker/FinanceTracker/AddSavingGoalView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Step %lld of 3",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 57
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 94
+        }
+      },
+      {
+        "comment": "",
+        "key": "Update Goal",
+        "location": {
+          "startingColumn": 74,
+          "startingLine": 94
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save Goal",
+        "location": {
+          "startingColumn": 90,
+          "startingLine": 94
+        }
+      },
+      {
+        "comment": "",
+        "key": "Target Amount",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 166
+        }
+      },
+      {
+        "comment": "",
+        "key": "0.00",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 171
+        }
+      },
+      {
+        "comment": "",
+        "key": "Goal Name",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 182
+        }
+      },
+      {
+        "comment": "",
+        "key": "e.g. New Car",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 186
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Icon",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 194
+        }
+      },
+      {
+        "comment": "",
+        "key": "Target Date",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 218
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 223
+        }
+      }
+    ]
+  },
+  "version": 1
+}

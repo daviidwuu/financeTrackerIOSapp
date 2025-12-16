@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		4A6660D42EF0CBAC00917527 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 4A6660D32EF0CBAC00917527 /* FirebaseAuth */; };
+		4A6660D62EF0CBB400917527 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 4A6660D52EF0CBB400917527 /* FirebaseFirestore */; };
+		4A6660D82EF0CBD200917527 /* FirebaseFirestoreCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 4A6660D72EF0CBD200917527 /* FirebaseFirestoreCombine-Community */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		4ADB75D62EF03ED500C767DE /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -65,6 +71,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4A6660D82EF0CBD200917527 /* FirebaseFirestoreCombine-Community in Frameworks */,
+				4A6660D42EF0CBAC00917527 /* FirebaseAuth in Frameworks */,
+				4A6660D62EF0CBB400917527 /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -85,12 +94,20 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		4A6660D22EF0CBAC00917527 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		4ADB75B32EF03ED200C767DE = {
 			isa = PBXGroup;
 			children = (
 				4ADB75BE2EF03ED200C767DE /* FinanceTracker */,
 				4ADB75D82EF03ED500C767DE /* FinanceTrackerTests */,
 				4ADB75E22EF03ED500C767DE /* FinanceTrackerUITests */,
+				4A6660D22EF0CBAC00917527 /* Frameworks */,
 				4ADB75BD2EF03ED200C767DE /* Products */,
 			);
 			sourceTree = "<group>";
@@ -125,6 +142,9 @@
 			);
 			name = FinanceTracker;
 			packageProductDependencies = (
+				4A6660D32EF0CBAC00917527 /* FirebaseAuth */,
+				4A6660D52EF0CBB400917527 /* FirebaseFirestore */,
+				4A6660D72EF0CBD200917527 /* FirebaseFirestoreCombine-Community */,
 			);
 			productName = FinanceTracker;
 			productReference = 4ADB75BC2EF03ED200C767DE /* FinanceTracker.app */;
@@ -208,6 +228,9 @@
 			);
 			mainGroup = 4ADB75B32EF03ED200C767DE;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4A6660CF2EF0CA9A00917527 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4ADB75BD2EF03ED200C767DE /* Products */;
 			projectDirPath = "";
@@ -292,10 +315,13 @@
 				DEVELOPMENT_TEAM = H6U663Z4ZQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FinanceTracker/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Finance;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -323,10 +349,13 @@
 				DEVELOPMENT_TEAM = H6U663Z4ZQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FinanceTracker/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Finance;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -589,6 +618,35 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		4A6660CF2EF0CA9A00917527 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.7.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4A6660D32EF0CBAC00917527 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4A6660CF2EF0CA9A00917527 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		4A6660D52EF0CBB400917527 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4A6660CF2EF0CA9A00917527 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		4A6660D72EF0CBD200917527 /* FirebaseFirestoreCombine-Community */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4A6660CF2EF0CA9A00917527 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = "FirebaseFirestoreCombine-Community";
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 4ADB75B42EF03ED200C767DE /* Project object */;
 }

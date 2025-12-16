@@ -1,0 +1,80 @@
+{
+  "source": "/Users/davidwu/Documents/FinanceTracker/FinanceTracker/HomeView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Recent Transactions",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 118
+        }
+      },
+      {
+        "comment": "",
+        "key": "Welcome",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 42
+        }
+      },
+      {
+        "comment": "",
+        "key": "Balance",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 70
+        }
+      },
+      {
+        "comment": "",
+        "key": "$%@",
+        "location": {
+          "startingColumn": 68,
+          "startingLine": 76
+        }
+      },
+      {
+        "comment": "",
+        "key": "$%@",
+        "location": {
+          "startingColumn": 127,
+          "startingLine": 76
+        }
+      },
+      {
+        "comment": "",
+        "key": "left",
+        "location": {
+          "startingColumn": 68,
+          "startingLine": 80
+        }
+      },
+      {
+        "comment": "",
+        "key": "spent",
+        "location": {
+          "startingColumn": 77,
+          "startingLine": 80
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 131
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 138
+        }
+      }
+    ]
+  },
+  "version": 1
+}

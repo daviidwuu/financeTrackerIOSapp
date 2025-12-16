@@ -8,8 +8,13 @@ struct CalendarView: View {
     let daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     let columns = Array(repeating: GridItem(.flexible()), count: 7)
     
-    // Configurable Budget
-    let monthlyBudget: Double = 3000.0
+    @AppStorage("monthlyIncome") private var monthlyIncome = 5000.0
+    
+    var transactions: [FirestoreModels.Transaction] = []
+    
+    init(transactions: [FirestoreModels.Transaction] = []) {
+        self.transactions = transactions
+    }
     
     var body: some View {
         VStack(spacing: 20) {
@@ -50,16 +55,19 @@ struct CalendarView: View {
             LazyVGrid(columns: columns, spacing: 15) {
                 ForEach(daysInMonth(), id: \.self) { date in
                     if let date = date {
+                        let isPastOrToday = date <= Date()
                         let status = dailyStatus(for: date)
                         VStack(spacing: 2) {
                             Text("\(Calendar.current.component(.day, from: date))")
                                 .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.primary)
+                                .foregroundColor(isPastOrToday ? .primary : .secondary.opacity(0.3))
                             
-                            // Daily Balance
-                            Text("\(status.balance >= 0 ? "+" : "")\(Int(status.balance))")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(status.color)
+                            // Daily Balance - only show for past/today
+                            if isPastOrToday {
+                                Text("\(status.balance >= 0 ? "+" : "")\(Int(status.balance))")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(status.color)
+                            }
                         }
                         .frame(height: 45)
                     } else {
@@ -114,21 +122,20 @@ struct CalendarView: View {
     // Logic
     func dailyBudget() -> Double {
         let days = Calendar.current.range(of: .day, in: .month, for: currentDate)?.count ?? 30
-        return monthlyBudget / Double(days)
+        return monthlyIncome / Double(days)
     }
     
-    func mockExpense(for date: Date) -> Double {
-        // Deterministic mock data based on date hash
-        let day = Calendar.current.component(.day, from: date)
-        // Simulate some days with high expense, some low
-        if day % 5 == 0 { return 150.0 } // High expense
-        if day % 3 == 0 { return 50.0 }  // Low expense
-        return 80.0 // Average
+    func expenses(for date: Date) -> Double {
+        let calendar = Calendar.current
+        let dailyTransactions = transactions.filter { transaction in
+            return calendar.isDate(transaction.date, inSameDayAs: date)
+        }
+        return dailyTransactions.reduce(0) { $0 + $1.amount }
     }
     
     func dailyStatus(for date: Date) -> (balance: Double, color: Color) {
         let budget = dailyBudget()
-        let expense = mockExpense(for: date)
+        let expense = expenses(for: date)
         let balance = budget - expense
         
         if balance >= 0 {
@@ -158,5 +165,5 @@ struct CalendarView: View {
 }
 
 #Preview {
-    CalendarView()
+    CalendarView(transactions: [])
 }

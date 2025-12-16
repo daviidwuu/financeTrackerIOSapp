@@ -1,0 +1,24 @@
+{
+  "source": "/Users/davidwu/Documents/FinanceTracker/FinanceTracker/ContentView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Home",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 9
+        }
+      },
+      {
+        "comment": "",
+        "key": "Wallet",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 15
+        }
+      }
+    ]
+  },
+  "version": 1
+}
