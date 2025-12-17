@@ -71,8 +71,6 @@ struct AddTransactionView: View {
                 }
                 .padding()
                 
-                Spacer()
-                
                 // Content
                 ZStack(alignment: .top) {
                     currentStepView
@@ -83,6 +81,7 @@ struct AddTransactionView: View {
                     removal: .move(edge: direction == .leading ? .trailing : .leading)
                 ))
                 .padding(.horizontal)
+                .frame(maxHeight: .infinity, alignment: .top)
                 
                 Spacer()
                 
@@ -220,105 +219,84 @@ struct AddTransactionView: View {
     }
     
     private var detailsStep: some View {
-        VStack(spacing: 24) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Category")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                
-                if budgetRepo.budgets.isEmpty {
-                    VStack(spacing: 12) {
-                        Text("No budgets found.")
-                            .foregroundColor(.secondary)
-                        Text("Create a budget in the Wallet tab to see it here.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.secondary.opacity(0.1))
-                    .cornerRadius(12)
-                } else {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 24) {
-                            // Income Categories
-                            let incomeBudgets = budgetRepo.budgets.filter { ($0.type ?? "expense") == "income" }
-                            if !incomeBudgets.isEmpty {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("Income")
-                                        .font(.headline)
-                                        .foregroundColor(.secondary)
-                                    
-                                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                                        ForEach(incomeBudgets) { budget in
-                                            let category = FirestoreModels.Category(
-                                                id: budget.id ?? UUID().uuidString,
-                                                name: budget.category,
-                                                icon: budget.icon,
-                                                colorHex: budget.colorHex,
-                                                type: "income",
-                                                userId: budget.userId,
-                                                createdAt: budget.createdAt
-                                            )
-                                            // Income doesn't really have a "limit" in the same way, but we can show progress towards expected
-                                            let currentIncome = calculateSpent(for: budget.category, type: "income")
-                                            RichCategoryCard(
-                                                category: category,
-                                                budgetLimit: budget.totalAmount,
-                                                currentAmount: currentIncome,
-                                                selectedCategory: $selectedCategory
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            // Expense Categories
-                            let expenseBudgets = budgetRepo.budgets.filter { ($0.type ?? "expense") == "expense" }
-                            if !expenseBudgets.isEmpty {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("Expense")
-                                        .font(.headline)
-                                        .foregroundColor(.secondary)
-                                    
-                                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                                        ForEach(expenseBudgets) { budget in
-                                            let category = FirestoreModels.Category(
-                                                id: budget.id ?? UUID().uuidString,
-                                                name: budget.category,
-                                                icon: budget.icon,
-                                                colorHex: budget.colorHex,
-                                                type: "expense",
-                                                userId: budget.userId,
-                                                createdAt: budget.createdAt
-                                            )
-                                            let spent = calculateSpent(for: budget.category, type: "expense")
-                                            RichCategoryCard(
-                                                category: category,
-                                                budgetLimit: budget.totalAmount,
-                                                currentAmount: spent,
-                                                selectedCategory: $selectedCategory
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.bottom, 20)
-                    }
-                }
-            }
+        VStack(spacing: 8) {
+            Text("Select Category")
+                .font(.headline)
+                .fontWeight(.semibold)
+                .foregroundColor(.secondary)
             
-            if transactionToEdit != nil {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Date")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                    
-                    DatePicker("", selection: $selectedDate, displayedComponents: [.date, .hourAndMinute])
-                        .datePickerStyle(.compact)
-                        .labelsHidden()
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: 12) {
+                    ForEach(budgetRepo.budgets) { budget in
+                        let remaining = budget.remainingAmount(transactions: transactionRepo.transactions)
+                        let progress = min(max(1.0 - (remaining / budget.totalAmount), 0.0), 1.0)
+                        
+                        Button(action: {
+                            selectedCategory = FirestoreModels.Category(
+                                id: budget.id ?? UUID().uuidString,
+                                name: budget.category,
+                                icon: budget.icon,
+                                colorHex: budget.colorHex,
+                                type: budget.type ?? "expense",
+                                userId: budget.userId,
+                                createdAt: budget.createdAt
+                            )
+                            HapticManager.shared.light()
+                        }) {
+                            VStack(spacing: 0) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: budget.icon)
+                                        .font(.caption)
+                                        .foregroundColor(Color(hex: budget.colorHex))
+                                        .frame(width: 30, height: 30)
+                                        .background(Color(hex: budget.colorHex).opacity(0.2))
+                                        .clipShape(Circle())
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(budget.category)
+                                            .font(.caption)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.primary)
+                                            .lineLimit(1)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    VStack(alignment: .trailing, spacing: 2) {
+                                        Text("$\(Int(remaining))")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        
+                                        if selectedCategory?.name == budget.category {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .font(.caption)
+                                                .foregroundColor(.green)
+                                        }
+                                    }
+                                }
+                                .padding(8)
+                                
+                                // Thin progress bar at bottom
+                                GeometryReader { geometry in
+                                    ZStack(alignment: .leading) {
+                                        Color(hex: budget.colorHex).opacity(0.1)
+                                        Color(hex: budget.colorHex)
+                                            .frame(width: geometry.size.width * progress)
+                                    }
+                                }
+                                .frame(height: 3)
+                            }
+                            .background(selectedCategory?.name == budget.category ? Color(hex: budget.colorHex).opacity(0.1) : Color(UIColor.secondarySystemBackground))
+                            .cornerRadius(10)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(selectedCategory?.name == budget.category ? Color(hex: budget.colorHex) : Color.clear, lineWidth: 1)
+                            )
+                        }
+                    }
                 }
+                .padding(.horizontal, 8)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
     }
