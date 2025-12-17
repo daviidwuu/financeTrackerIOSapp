@@ -205,6 +205,8 @@ struct AddTransactionView: View {
     
     private var amountStep: some View {
         VStack(spacing: 16) {
+            Spacer()
+            
             Text("Amount")
                 .font(.title2)
                 .fontWeight(.semibold)
@@ -215,6 +217,8 @@ struct AddTransactionView: View {
                 .multilineTextAlignment(.center)
                 .keyboardType(.decimalPad)
                 .foregroundColor(.primary)
+            
+            Spacer()
         }
     }
     
