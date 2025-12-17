@@ -508,6 +508,7 @@ struct WalletView: View {
         updatedTransaction.frequency = transaction.frequency
         updatedTransaction.icon = transaction.icon
         updatedTransaction.colorHex = transaction.color.toHex() ?? "#000000"
+        updatedTransaction.note = transaction.notes
         
         Task {
             try? await recurringRepo.updateRecurringTransaction(updatedTransaction)
