@@ -253,15 +253,9 @@ struct WalletView: View {
                                 
                                 // Content
                                 VStack(alignment: .leading, spacing: 4) {
-                                    HStack {
-                                        Text(recurring.name)
-                                            .font(.headline)
-                                            .foregroundColor(.primary)
-                                        Spacer()
-                                        Text("$\(Int(recurring.amount))")
-                                            .font(.headline)
-                                            .foregroundColor(.primary)
-                                    }
+                                    Text(recurring.name)
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
                                     
                                     if let note = recurring.note, !note.isEmpty {
                                         Text(note)
@@ -277,6 +271,12 @@ struct WalletView: View {
                                         .background(Color(hex: recurring.colorHex).opacity(0.1))
                                         .cornerRadius(8)
                                 }
+                                
+                                Spacer()
+                                
+                                Text("$\(Int(recurring.amount))")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
                             }
                             .padding()
                             .background(Color(UIColor.secondarySystemBackground))
