@@ -85,7 +85,9 @@ struct AddRecurringTransactionView: View {
                     removal: .move(edge: direction == .leading ? .trailing : .leading)
                 ))
                 .padding(.horizontal)
-                .padding(.top, 10)
+                .frame(maxHeight: .infinity, alignment: .top) // Allow content to take available space
+                
+                Spacer()
                 
                 // Action Button
                 Button(action: {
@@ -109,8 +111,6 @@ struct AddRecurringTransactionView: View {
                 }
                 .disabled(!isStepValid)
                 .padding()
-                
-                Spacer()
             }
         }
         .onAppear {
