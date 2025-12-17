@@ -9,6 +9,7 @@ struct AddRecurringTransactionView: View {
     var onSave: ((RecurringTransaction) -> Void)?
     
     @StateObject private var budgetRepo = BudgetRepository()
+    @StateObject private var transactionRepo = TransactionRepository()
     
     @State private var currentStep = 1
     @State private var amount: String = ""
@@ -117,10 +118,12 @@ struct AddRecurringTransactionView: View {
                 let calendar = Calendar.current
                 let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
                 budgetRepo.startListening(userId: appState.currentUserId, monthStartDate: startOfMonth)
+                transactionRepo.startListening(userId: appState.currentUserId, monthStartDate: startOfMonth)
             }
         }
         .onDisappear {
             budgetRepo.stopListening()
+            transactionRepo.stopListening()
         }
     }
     
@@ -202,6 +205,9 @@ struct AddRecurringTransactionView: View {
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: 12) {
                     ForEach(budgetRepo.budgets) { budget in
+                        let remaining = budget.remainingAmount(transactions: transactionRepo.transactions)
+                        let progress = min(max(1.0 - (remaining / budget.totalAmount), 0.0), 1.0)
+                        
                         Button(action: {
                             selectedCategory = FirestoreModels.Category(
                                 id: nil,
@@ -214,30 +220,39 @@ struct AddRecurringTransactionView: View {
                             )
                             HapticManager.shared.light()
                         }) {
-                            HStack(spacing: 8) {
-                                Image(systemName: budget.icon)
-                                    .font(.caption)
-                                    .foregroundColor(Color(hex: budget.colorHex))
-                                    .frame(width: 30, height: 30)
-                                    .background(Color(hex: budget.colorHex).opacity(0.2))
-                                    .clipShape(Circle())
-                                
-                                Text(budget.category)
-                                    .font(.caption)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(.primary)
-                                    .lineLimit(1)
-                                
-                                Spacer()
-                                
-                                if selectedCategory?.name == budget.category {
-                                    Image(systemName: "checkmark.circle.fill")
+                            VStack(spacing: 0) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: budget.icon)
                                         .font(.caption)
-                                        .foregroundColor(.green)
+                                        .foregroundColor(Color(hex: budget.colorHex))
+                                        .frame(width: 30, height: 30)
+                                        .background(Color(hex: budget.colorHex).opacity(0.2))
+                                        .clipShape(Circle())
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(budget.category)
+                                            .font(.caption)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.primary)
+                                            .lineLimit(1)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    VStack(alignment: .trailing, spacing: 2) {
+                                        Text("$\(Int(remaining))")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        
+                                        Capsule()
+                                            .fill(Color(hex: budget.colorHex))
+                                            .frame(width: min(geometry.size.width * CGFloat(progress), geometry.size.width), height: 6)
+                                    }
                                 }
+                                .frame(height: 6)
                             }
                             .padding(8)
-                            .background(selectedCategory?.name == budget.category ? Color(hex: budget.colorHex).opacity(0.1) : Color(UIColor.secondarySystemBackground))
+                            .background(selectedCategory?.id == budget.id ? Color(hex: budget.colorHex).opacity(0.1) : Color(UIColor.secondarySystemBackground))
                             .cornerRadius(10)
                         }
                     }
