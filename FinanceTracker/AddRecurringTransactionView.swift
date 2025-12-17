@@ -118,7 +118,8 @@ struct AddRecurringTransactionView: View {
                 let calendar = Calendar.current
                 let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
                 budgetRepo.startListening(userId: appState.currentUserId, monthStartDate: startOfMonth)
-                transactionRepo.startListening(userId: appState.currentUserId, monthStartDate: startOfMonth)
+                // Also listen to transactions for calculating remaining budget
+                transactionRepo.startListening(userId: appState.currentUserId)
             }
         }
         .onDisappear {
@@ -244,16 +245,31 @@ struct AddRecurringTransactionView: View {
                                             .font(.caption2)
                                             .foregroundColor(.secondary)
                                         
-                                        Capsule()
-                                            .fill(Color(hex: budget.colorHex))
-                                            .frame(width: min(geometry.size.width * CGFloat(progress), geometry.size.width), height: 6)
+                                        if selectedCategory?.name == budget.category {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .font(.caption)
+                                                .foregroundColor(.green)
+                                        }
                                     }
                                 }
-                                .frame(height: 6)
+                                .padding(8)
+                                
+                                // Thin progress bar at bottom
+                                GeometryReader { geometry in
+                                    ZStack(alignment: .leading) {
+                                        Color(hex: budget.colorHex).opacity(0.1)
+                                        Color(hex: budget.colorHex)
+                                            .frame(width: geometry.size.width * progress)
+                                    }
+                                }
+                                .frame(height: 3)
                             }
-                            .padding(8)
-                            .background(selectedCategory?.id == budget.id ? Color(hex: budget.colorHex).opacity(0.1) : Color(UIColor.secondarySystemBackground))
+                            .background(selectedCategory?.name == budget.category ? Color(hex: budget.colorHex).opacity(0.1) : Color(UIColor.secondarySystemBackground))
                             .cornerRadius(10)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(selectedCategory?.name == budget.category ? Color(hex: budget.colorHex) : Color.clear, lineWidth: 1)
+                            )
                         }
                     }
                 }
