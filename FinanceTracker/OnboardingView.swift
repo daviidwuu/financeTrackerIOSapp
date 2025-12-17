@@ -393,7 +393,11 @@ struct CategoriesStep: View {
             .scrollContentBackground(.hidden)
             .scrollIndicators(.hidden)
             
-            Button(action: { showAddCategory = true }) {
+            Button(action: {
+                // Create a new empty category and open the sheet
+                let newCat = OnboardingView.OnboardingCategory(name: "", icon: "tag.fill", colorHex: "#808080")
+                categoryToEdit = newCat
+            }) {
                 HStack {
                     Image(systemName: "plus.circle.fill")
                     Text("Add Category")
@@ -407,8 +411,17 @@ struct CategoriesStep: View {
                 EditCategorySheet(
                     category: category,
                     onSave: { updatedCategory in
-                        if let index = categories.firstIndex(where: { $0.id == category.id }) {
+                        if let index = categories.firstIndex(where: { $0.id == updatedCategory.id }) {
                             categories[index] = updatedCategory
+                        } else {
+                            // Append new category if ID not found (newly created)
+                            // Note: ID for newCat is created on init, so it won't match any existing category unless we strictly check against the list content which holds value types.
+                            // Actually, OnboardingCategory is a struct and id is let UUID().
+                            // 'categoryToEdit' has a UUID. If that UUID is in 'categories', update. Else, append.
+                            // However, since 'categories' is [OnboardingCategory], we need to check if an item with that ID exists.
+                            // When we created 'newCat', it has a unique ID. It is NOT in 'categories' yet.
+                            // So 'firstIndex' returns nil. We append. Correct.
+                            categories.append(updatedCategory)
                         }
                         categoryToEdit = nil
                     },
@@ -422,18 +435,6 @@ struct CategoriesStep: View {
                 .presentationDetents([.fraction(0.85)]) // Increased height for custom UI
                 .presentationDragIndicator(.visible)
             }
-
-        .alert("Add Category", isPresented: $showAddCategory) {
-            TextField("Category Name", text: $newCategoryName)
-            Button("Cancel", role: .cancel) { newCategoryName = "" }
-            Button("Add") {
-                if !newCategoryName.isEmpty {
-                    let newCat = OnboardingView.OnboardingCategory(name: newCategoryName, icon: "tag.fill", colorHex: "#808080")
-                    categories.append(newCat)
-                    newCategoryName = ""
-                }
-            }
-        }
     }
 }
 
@@ -652,19 +653,23 @@ struct EditCategorySheet: View {
                 .fontWeight(.semibold)
                 .foregroundColor(.secondary)
             
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 60))], spacing: 20) {
-                ForEach(icons, id: \.self) { icon in
-                    Button(action: { selectedIcon = icon }) {
-                        Circle()
-                            .fill(selectedIcon == icon ? Color.primary : Color.secondary.opacity(0.1))
-                            .frame(width: 60, height: 60)
-                            .overlay(
-                                Image(systemName: icon)
-                                    .font(.title2)
-                                    .foregroundColor(selectedIcon == icon ? (colorScheme == .dark ? .black : .white) : .primary)
-                            )
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 60))], spacing: 20) {
+                    ForEach(icons, id: \.self) { icon in
+                        Button(action: { selectedIcon = icon }) {
+                            Circle()
+                                .fill(selectedIcon == icon ? Color.primary : Color.secondary.opacity(0.1))
+                                .frame(width: 60, height: 60)
+                                .overlay(
+                                    Image(systemName: icon)
+                                        .font(.title2)
+                                        .foregroundColor(selectedIcon == icon ? (colorScheme == .dark ? .black : .white) : .primary)
+                                )
+                        }
                     }
                 }
+                .padding(.horizontal)
+                .padding(.bottom, 20) // Add padding for bottom spacing
             }
         }
     }
@@ -676,25 +681,29 @@ struct EditCategorySheet: View {
                 .fontWeight(.semibold)
                 .foregroundColor(.secondary)
             
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 60))], spacing: 20) {
-                ForEach(colors, id: \.self) { color in
-                    let hex = color.toHex() ?? "#000000"
-                    Button(action: { selectedColorHex = hex }) {
-                        Circle()
-                            .fill(color)
-                            .frame(width: 60, height: 60)
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.primary, lineWidth: selectedColorHex == hex ? 3 : 0)
-                            )
-                            .overlay(
-                                Image(systemName: "checkmark")
-                                    .font(.title3)
-                                    .foregroundColor(.white)
-                                    .opacity(selectedColorHex == hex ? 1 : 0)
-                            )
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 60))], spacing: 20) {
+                    ForEach(colors, id: \.self) { color in
+                        let hex = color.toHex() ?? "#000000"
+                        Button(action: { selectedColorHex = hex }) {
+                            Circle()
+                                .fill(color)
+                                .frame(width: 60, height: 60)
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.primary, lineWidth: selectedColorHex == hex ? 3 : 0)
+                                )
+                                .overlay(
+                                    Image(systemName: "checkmark")
+                                        .font(.title3)
+                                        .foregroundColor(.white)
+                                        .opacity(selectedColorHex == hex ? 1 : 0)
+                                )
+                        }
                     }
                 }
+                .padding(.horizontal)
+                .padding(.bottom, 20)
             }
         }
     }
