@@ -72,7 +72,7 @@ struct AddRecurringTransactionView: View {
                 }
                 .padding()
                 
-                Spacer()
+                .padding()
                 
                 // Content
                 ZStack(alignment: .top) {
@@ -84,8 +84,7 @@ struct AddRecurringTransactionView: View {
                     removal: .move(edge: direction == .leading ? .trailing : .leading)
                 ))
                 .padding(.horizontal)
-                
-                Spacer()
+                .padding(.top, 10)
                 
                 // Action Button
                 Button(action: {
@@ -109,6 +108,8 @@ struct AddRecurringTransactionView: View {
                 }
                 .disabled(!isStepValid)
                 .padding()
+                
+                Spacer()
             }
         }
         .onAppear {
@@ -192,7 +193,7 @@ struct AddRecurringTransactionView: View {
     }
     
     private var categoryStep: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 8) {
             Text("Select Category")
                 .font(.headline)
                 .fontWeight(.semibold)
