@@ -36,7 +36,11 @@ class TransactionRepository: ObservableObject {
     
     /// Add a new transaction
     func addTransaction(_ transaction: FirestoreModels.Transaction) async throws {
-        guard let userId = userId else { return }
+        // Use repo's userId or transaction's userId
+        guard let userId = self.userId ?? Optional(transaction.userId), !userId.isEmpty else { 
+            throw NSError(domain: "TransactionRepository", code: 400, userInfo: [NSLocalizedDescriptionKey: "No User ID available"])
+        }
+        
         var newTransaction = transaction
         newTransaction.createdAt = Date()
         try db.collection("users").document(userId).collection("transactions").document().setData(from: newTransaction)

@@ -156,32 +156,8 @@ struct HomeView: View {
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
                 .scrollIndicators(.hidden)
+                // FAB removed, shifted to ContentView
                 
-                // Floating Action Button
-                Button(action: {
-                    HapticManager.shared.medium()
-                    selectedTransaction = nil
-                    showAddTransaction = true
-                }) {
-                    Circle()
-                        .fill(Color.primary)
-                        .frame(width: 56, height: 56)
-                        .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
-                        .overlay(
-                            Image(systemName: "plus")
-                                .font(.system(size: 24, weight: .semibold))
-                                .foregroundColor(colorScheme == .dark ? .black : .white)
-                        )
-                }
-                .padding(.trailing, 20)
-                .padding(.bottom, 20)
-                .sheet(isPresented: $showAddTransaction) {
-                    AddTransactionView(onSave: { transaction in
-                        addTransaction(transaction)
-                    })
-                    .presentationDetents([.fraction(0.65)])
-                    .presentationDragIndicator(.visible)
-                }
                 .sheet(item: $selectedTransaction) { transaction in
                     AddTransactionView(transactionToEdit: transaction, onSave: { updatedTransaction in
                         updateTransaction(transaction, with: updatedTransaction)
@@ -213,37 +189,6 @@ struct HomeView: View {
             .onDisappear {
                 transactionRepo.stopListening()
                 budgetRepo.stopListening()
-            }
-        }
-    }
-    
-    private func addTransaction(_ transaction: Transaction) {
-        Task {
-            do {
-                // Convert UI Transaction to Firestore Transaction
-                let amount = Double(transaction.amount) ?? 0.0
-                let firestoreTransaction = FirestoreModels.Transaction(
-                    title: transaction.title,
-                    subtitle: transaction.subtitle,
-                    amount: amount,
-                    date: transaction.date,
-                    icon: transaction.icon,
-                    colorHex: transaction.color.toHex() ?? "#000000",
-                    note: transaction.notes,
-                    type: amount < 0 ? "expense" : "income",
-                    userId: appState.currentUserId,
-                    createdAt: Date()
-                )
-                try await transactionRepo.addTransaction(firestoreTransaction)
-                
-                // Send notification after successful save
-                NotificationManager.shared.sendTransactionNotification(
-                    amount: amount,
-                    category: transaction.title,
-                    type: transaction.type
-                )
-            } catch {
-                print("Failed to add transaction: \(error)")
             }
         }
     }
