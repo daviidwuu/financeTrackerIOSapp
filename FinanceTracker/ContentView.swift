@@ -5,17 +5,20 @@ struct ContentView: View {
     @StateObject private var transactionRepo = TransactionRepository()
     @State private var showAddTransaction = false
     @Environment(\.colorScheme) var colorScheme
+    @State private var selectedTab = 0
     
     var body: some View {
-        ZStack(alignment: .bottom) {
-            TabView {
+        ZStack(alignment: .bottomTrailing) {
+            TabView(selection: $selectedTab) {
                 HomeView()
+                    .tag(0)
                     .tabItem {
                         Image(systemName: "square.grid.2x2.fill")
                         Text("Dashboard")
                     }
                 
                 WalletView()
+                    .tag(1)
                     .tabItem {
                         Image(systemName: "creditcard.fill")
                         Text("Wallet")
@@ -24,28 +27,31 @@ struct ContentView: View {
             .preferredColorScheme(.none) // Respect system setting
             
             // Floating Action Button
-            Button(action: {
-                HapticManager.shared.medium()
-                showAddTransaction = true
-            }) {
-                Circle()
-                    .fill(Color.primary)
-                    .frame(width: 56, height: 56)
-                    .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
-                    .overlay(
-                        Image(systemName: "plus")
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundColor(colorScheme == .dark ? .black : .white)
-                    )
+            if selectedTab == 0 {
+                Button(action: {
+                    HapticManager.shared.medium()
+                    showAddTransaction = true
+                }) {
+                    Circle()
+                        .fill(Color.primary)
+                        .frame(width: 56, height: 56)
+                        .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
+                        .overlay(
+                            Image(systemName: "plus")
+                                .font(.system(size: 24, weight: .semibold))
+                                .foregroundColor(colorScheme == .dark ? .black : .white)
+                        )
+                }
+                .padding(.trailing, 20)
+                .padding(.bottom, 6) // Sit nicely in the tab bar
             }
-            .padding(.bottom, 6) // Fine tune position to sit nicely in the tab bar center
-            .sheet(isPresented: $showAddTransaction) {
-                AddTransactionView(onSave: { transaction in
-                    addTransaction(transaction)
-                })
-                .presentationDetents([.fraction(0.65)])
-                .presentationDragIndicator(.visible)
-            }
+        }
+        .sheet(isPresented: $showAddTransaction) {
+            AddTransactionView(onSave: { transaction in
+                addTransaction(transaction)
+            })
+            .presentationDetents([.fraction(0.65)])
+            .presentationDragIndicator(.visible)
         }
     }
     
