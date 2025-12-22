@@ -88,7 +88,7 @@ struct WalletView: View {
                                     
                                     // Discreet Detail Toggle
                                     Button(action: {
-                                        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                                        withAnimation(.easeInOut(duration: 0.3)) {
                                             showDetails.toggle()
                                         }
                                     }) {
@@ -96,7 +96,7 @@ struct WalletView: View {
                                             .font(.system(size: 14, weight: .semibold))
                                             .foregroundColor(.secondary.opacity(0.7))
                                             .rotationEffect(.degrees(showDetails ? 180 : 0))
-                                            .animation(.spring(response: 0.5, dampingFraction: 0.7), value: showDetails)
+                                            .animation(.easeInOut(duration: 0.3), value: showDetails)
                                             .padding(4)
                                             .contentShape(Rectangle())
                                     }
@@ -162,7 +162,7 @@ struct WalletView: View {
                                         Spacer()
                                     }
                                 }
-                                .transition(.opacity.combined(with: .move(edge: .top)))
+                                .transition(.move(edge: .top).combined(with: .opacity))
                             }
                         }
                         .padding()
