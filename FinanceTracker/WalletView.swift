@@ -20,6 +20,7 @@ struct WalletView: View {
     
     @AppStorage("initialBalance") private var initialBalance = 0.0
     @AppStorage("monthlyIncome") private var monthlyIncome = 5000.0 // Changed from monthlyBudget
+    @State private var showDetails = false
     
     var totalBalance: Double {
         // Initial balance + all-time net (income - expenses)
@@ -94,52 +95,71 @@ struct WalletView: View {
                                     .foregroundColor(totalBalance >= 0 ? .primary : .red)
                             }
                             
-                            Divider()
-                            
-                            // Total Income (Actual)
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Total Income")
-                                        .font(.subheadline)
+                            // Show Details Toggle
+                            Button(action: {
+                                withAnimation { showDetails.toggle() }
+                            }) {
+                                HStack {
+                                    Text(showDetails ? "Hide Details" : "Show Breakdown")
+                                        .font(.caption)
                                         .fontWeight(.medium)
-                                        .foregroundColor(.secondary)
-                                    Text("$\(String(format: "%.2f", currentMonthIncome))")
-                                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                                        .foregroundColor(.green)
+                                        .foregroundColor(.blue)
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                        .foregroundColor(.blue)
+                                        .rotationEffect(.degrees(showDetails ? 90 : 0))
                                 }
-                                Spacer()
                             }
                             
-                            Divider()
-                            
-                            // Total Expense (All-time)
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Total Expense")
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.secondary)
-                                    Text("$\(String(format: "%.2f", totalExpense))")
-                                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                                        .foregroundColor(.red)
+                            if showDetails {
+                                Divider()
+                                
+                                // Total Income (Actual)
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Total Income")
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.secondary)
+                                        Text("$\(String(format: "%.2f", currentMonthIncome))")
+                                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                                            .foregroundColor(.green)
+                                    }
+                                    Spacer()
                                 }
-                                Spacer()
-                            }
-                            
-                            Divider()
-                            
-                            // Net Cash Flow
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Net Cash Flow")
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.secondary)
-                                    Text("$\(String(format: "%.2f", netCashFlow))")
-                                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                                        .foregroundColor(netCashFlow >= 0 ? .green : .red)
+                                
+                                Divider()
+                                
+                                // Total Expense (All-time)
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Total Expense")
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.secondary)
+                                        Text("$\(String(format: "%.2f", totalExpense))")
+                                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                                            .foregroundColor(.red)
+                                    }
+                                    Spacer()
                                 }
-                                Spacer()
+                                
+                                Divider()
+                                
+                                // Net Cash Flow
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Net Cash Flow")
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.secondary)
+                                        Text("$\(String(format: "%.2f", netCashFlow))")
+                                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                                            .foregroundColor(netCashFlow >= 0 ? .green : .red)
+                                    }
+                                    Spacer()
+                                }
                             }
                         }
                         .padding()

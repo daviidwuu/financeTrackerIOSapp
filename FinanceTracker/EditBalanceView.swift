@@ -43,6 +43,8 @@ struct EditBalanceView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.bottom, 10)
                 
+                Spacer()
+                
                 // Save Button
                 Button(action: saveBalance) {
                     Text("Save Balance")
@@ -57,8 +59,7 @@ struct EditBalanceView: View {
                 .disabled(amount.isEmpty)
                 .opacity(amount.isEmpty ? 0.6 : 1.0)
                 .padding(.horizontal)
-                
-                Spacer()
+                .padding(.bottom) // Add standard bottom padding
             }
         }
         .onAppear {
