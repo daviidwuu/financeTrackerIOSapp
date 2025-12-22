@@ -162,11 +162,12 @@ struct WalletView: View {
                                         Spacer()
                                     }
                                 }
-                                .transition(.move(edge: .top).combined(with: .opacity))
+                                .transition(.opacity)
                             }
                         }
                         .padding()
                         .background(Color(UIColor.secondarySystemBackground))
+                        .clipped() // Ensure content doesn't overflow during animation
                         .cornerRadius(20)
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(.hidden)
