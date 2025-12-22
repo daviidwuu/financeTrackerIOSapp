@@ -270,7 +270,6 @@ struct AddTransactionView: View {
                                 }
                                 .frame(height: 3)
                             }
-                            }
                             .background(selectedCategory?.name == budget.category ? Color(hex: budget.colorHex).opacity(0.1) : Color(UIColor.secondarySystemBackground))
                             .cornerRadius(AppRadius.small)
                             .overlay(
