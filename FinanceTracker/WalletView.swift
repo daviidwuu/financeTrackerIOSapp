@@ -78,21 +78,18 @@ struct WalletView: View {
                         VStack(alignment: .leading, spacing: 16) {
                             // Total Balance
                             VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text("Total Balance")
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.secondary)
-                                    
-                                    Button(action: { showEditBalance.toggle() }) {
-                                        Image(systemName: "pencil.circle.fill")
-                                            .font(.subheadline)
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
+                                Text("Total Balance")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.secondary)
+                                
                                 Text("$\(String(format: "%.2f", totalBalance))")
                                     .font(.system(size: 28, weight: .bold, design: .rounded))
                                     .foregroundColor(totalBalance >= 0 ? .primary : .red)
+                                    .onTapGesture {
+                                        HapticManager.shared.light()
+                                        showEditBalance.toggle()
+                                    }
                             }
                             
                             // Show Details Toggle
