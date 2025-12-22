@@ -72,108 +72,110 @@ struct WalletView: View {
                 Color(UIColor.systemBackground)
                     .ignoresSafeArea()
                 
-                List {
-                    // Section 1: Financial Overview
-                    Section {
-                        VStack(alignment: .leading, spacing: 16) {
-                            // Total Balance
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text("Total Balance")
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.secondary)
-                                    
-                                    Spacer()
-                                    
-                                    // Discreet Detail Toggle
-                                    Button(action: {
-                                        withAnimation(.easeInOut(duration: 0.3)) {
-                                            showDetails.toggle()
-                                        }
-                                    }) {
-                                        Image(systemName: "chevron.down")
-                                            .font(.system(size: 14, weight: .semibold))
-                                            .foregroundColor(.secondary.opacity(0.7))
-                                            .rotationEffect(.degrees(showDetails ? 180 : 0))
-                                            .animation(.easeInOut(duration: 0.3), value: showDetails)
-                                            .padding(4)
-                                            .contentShape(Rectangle())
-                                    }
-                                    .buttonStyle(.plain)
-                                }
+                VStack(spacing: 0) {
+                    // Section 1: Financial Overview (Balance Card)
+                    // Moved out of List to fix animation bouncing
+                    VStack(alignment: .leading, spacing: 16) {
+                        // Total Balance
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Total Balance")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.secondary)
                                 
-                                Text("$\(String(format: "%.2f", totalBalance))")
-                                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                                    .foregroundColor(totalBalance >= 0 ? .primary : .red)
-                                    .onTapGesture {
-                                        HapticManager.shared.light()
-                                        showEditBalance.toggle()
+                                Spacer()
+                                
+                                // Discreet Detail Toggle
+                                Button(action: {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showDetails.toggle()
                                     }
+                                }) {
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundColor(.secondary.opacity(0.7))
+                                        .rotationEffect(.degrees(showDetails ? 180 : 0))
+                                        .animation(.easeInOut(duration: 0.3), value: showDetails)
+                                        .padding(4)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
                             }
                             
-                            if showDetails {
-                                VStack(spacing: 16) {
-                                    Divider()
-                                    
-                                    // Total Income (Actual)
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text("Total Income")
-                                                .font(.subheadline)
-                                                .fontWeight(.medium)
-                                                .foregroundColor(.secondary)
-                                            Text("$\(String(format: "%.2f", currentMonthIncome))")
-                                                .font(.system(size: 28, weight: .bold, design: .rounded))
-                                                .foregroundColor(.green)
-                                        }
-                                        Spacer()
-                                    }
-                                    
-                                    Divider()
-                                    
-                                    // Total Expense (All-time)
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text("Total Expense")
-                                                .font(.subheadline)
-                                                .fontWeight(.medium)
-                                                .foregroundColor(.secondary)
-                                            Text("$\(String(format: "%.2f", totalExpense))")
-                                                .font(.system(size: 28, weight: .bold, design: .rounded))
-                                                .foregroundColor(.red)
-                                        }
-                                        Spacer()
-                                    }
-                                    
-                                    Divider()
-                                    
-                                    // Net Cash Flow
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text("Net Cash Flow")
-                                                .font(.subheadline)
-                                                .fontWeight(.medium)
-                                                .foregroundColor(.secondary)
-                                            Text("$\(String(format: "%.2f", netCashFlow))")
-                                                .font(.system(size: 28, weight: .bold, design: .rounded))
-                                                .foregroundColor(netCashFlow >= 0 ? .green : .red)
-                                        }
-                                        Spacer()
-                                    }
+                            Text("$\(String(format: "%.2f", totalBalance))")
+                                .font(.system(size: 28, weight: .bold, design: .rounded))
+                                .foregroundColor(totalBalance >= 0 ? .primary : .red)
+                                .onTapGesture {
+                                    HapticManager.shared.light()
+                                    showEditBalance.toggle()
                                 }
-                                .transition(.opacity)
-                            }
                         }
-                        .padding()
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .clipped() // Ensure content doesn't overflow during animation
-                        .cornerRadius(20)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-                        .padding(.bottom, 10)
+                        
+                        if showDetails {
+                            VStack(spacing: 16) {
+                                Divider()
+                                
+                                // Total Income (Actual)
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Total Income")
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.secondary)
+                                        Text("$\(String(format: "%.2f", currentMonthIncome))")
+                                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                                            .foregroundColor(.green)
+                                    }
+                                    Spacer()
+                                }
+                                
+                                Divider()
+                                
+                                // Total Expense (All-time)
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Total Expense")
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.secondary)
+                                        Text("$\(String(format: "%.2f", totalExpense))")
+                                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                                            .foregroundColor(.red)
+                                    }
+                                    Spacer()
+                                }
+                                
+                                Divider()
+                                
+                                // Net Cash Flow
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Net Cash Flow")
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.secondary)
+                                        Text("$\(String(format: "%.2f", netCashFlow))")
+                                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                                            .foregroundColor(netCashFlow >= 0 ? .green : .red)
+                                    }
+                                    Spacer()
+                                }
+                            }
+                            .transition(.opacity)
+                        }
                     }
+                    .padding()
+                    .background(Color(UIColor.secondarySystemBackground))
+                    .clipped() // Ensure content doesn't overflow during animation
+                    .cornerRadius(20)
+                    .padding(.horizontal, 16) // Match list padding
+                    .padding(.bottom, 10)
+                    .padding(.top, 10) // separation from top safe area
+                    
+                    List {
+                        // Section 2: Saving Goals
+                        // ... list content continues ...
                     
                     // Section 2: Saving Goals
                     Section(header: 
@@ -405,6 +407,7 @@ struct WalletView: View {
                     recurringRepo.stopListening()
                     budgetRepo.stopListening()
                     transactionRepo.stopListening()
+                }
                 }
             }
             .sheet(isPresented: $showAddSavingGoal) {
