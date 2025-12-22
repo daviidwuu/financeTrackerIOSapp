@@ -6,6 +6,7 @@ struct EditBalanceView: View {
     
     @Binding var initialBalance: Double
     @State private var amount: String = ""
+    @FocusState private var isFocused: Bool
     
     var body: some View {
         ZStack {
@@ -13,73 +14,40 @@ struct EditBalanceView: View {
             (colorScheme == .dark ? Color.black : Color.white)
                 .ignoresSafeArea()
             
-            VStack(spacing: 20) {
-                // Header
-                HStack {
-                    Button(action: {
-                        HapticManager.shared.light()
-                        dismiss()
-                    }) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
+            VStack(spacing: 24) {
+                // Drag Indicator spacer
+                Capsule()
+                    .fill(Color.secondary.opacity(0.3))
+                    .frame(width: 36, height: 5)
+                    .padding(.top, 8)
+                
+                Text("Starting Balance")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.secondary)
+                
+                // Amount Input
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("$")
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
                     
-                    Spacer()
-                    
-                    Text("Initial Balance")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundColor(.secondary)
-                    
-                    Spacer()
-                    
-                    Image(systemName: "xmark")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundColor(.clear)
-                        .frame(width: 44, height: 44)
+                    TextField("0.00", text: $amount)
+                        .keyboardType(.decimalPad)
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .focused($isFocused)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: true, vertical: false) // Allow it to perform natural width
+                        .foregroundColor(.primary)
                 }
-                .padding()
-                
-                Spacer()
-                
-                // Content
-                VStack(spacing: 24) {
-                    Text("What's your starting balance?")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                    
-                    Text("This will be used as your baseline to calculate your total balance")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                    
-                    // Amount Input
-                    HStack(spacing: 4) {
-                        Text("$")
-                            .font(.system(size: 48, weight: .bold, design: .rounded))
-                            .foregroundColor(.primary)
-                        
-                        TextField("0.00", text: $amount)
-                            .keyboardType(.decimalPad)
-                            .font(.system(size: 48, weight: .bold, design: .rounded))
-                            .multilineTextAlignment(.leading)
-                            .foregroundColor(.primary)
-                    }
-                    .padding()
-                }
-                
-                Spacer()
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, 10)
                 
                 // Save Button
                 Button(action: saveBalance) {
                     Text("Save Balance")
                         .font(.headline)
-                        .fontWeight(.semibold)
+                        .fontWeight(.bold)
                         .foregroundColor(colorScheme == .dark ? .black : .white)
                         .frame(maxWidth: .infinity)
                         .padding()
@@ -88,12 +56,18 @@ struct EditBalanceView: View {
                 }
                 .disabled(amount.isEmpty)
                 .opacity(amount.isEmpty ? 0.6 : 1.0)
-                .padding()
+                .padding(.horizontal)
+                
+                Spacer()
             }
         }
         .onAppear {
             if initialBalance > 0 {
                 amount = String(format: "%.2f", initialBalance)
+            }
+            // Delay focus slightly to ensure view is ready
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                isFocused = true
             }
         }
     }
