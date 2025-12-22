@@ -21,8 +21,6 @@ struct WalletView: View {
     @AppStorage("initialBalance") private var initialBalance = 0.0
     @AppStorage("monthlyIncome") private var monthlyIncome = 5000.0 // Changed from monthlyBudget
     @State private var showDetails = false
-    @Binding var isTabBarHidden: Bool
-    @State private var lastOffset: CGFloat = 0
     
     var totalBalance: Double {
         // Initial balance + all-time net (income - expenses)
@@ -74,354 +72,294 @@ struct WalletView: View {
                 Color(UIColor.systemBackground)
                     .ignoresSafeArea()
                 
-                VStack(spacing: 0) {
-                    // Section 1: Financial Overview (Balance Card)
-                    // Moved out of List to fix animation bouncing
-                    VStack(alignment: .leading, spacing: 16) {
-                        // Total Balance
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text("Total Balance")
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(.secondary)
-                                
-                                Spacer()
-                                
-                                // Discreet Detail Toggle
-                                Button(action: {
-                                    withAnimation(.easeInOut(duration: 0.3)) {
-                                        showDetails.toggle()
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Section 1: Financial Overview (Balance Card)
+                        VStack(alignment: .leading, spacing: 16) {
+                            // Total Balance
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Total Balance")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.secondary)
+                                    
+                                    Spacer()
+                                    
+                                    // Discreet Detail Toggle
+                                    Button(action: {
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            showDetails.toggle()
+                                        }
+                                    }) {
+                                        Image(systemName: "chevron.down")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundColor(.secondary.opacity(0.7))
+                                            .rotationEffect(.degrees(showDetails ? 180 : 0))
+                                            .animation(.easeInOut(duration: 0.3), value: showDetails)
+                                            .padding(4)
+                                            .contentShape(Rectangle())
                                     }
-                                }) {
-                                    Image(systemName: "chevron.down")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundColor(.secondary.opacity(0.7))
-                                        .rotationEffect(.degrees(showDetails ? 180 : 0))
-                                        .animation(.easeInOut(duration: 0.3), value: showDetails)
-                                        .padding(4)
-                                        .contentShape(Rectangle())
+                                    .buttonStyle(.plain)
                                 }
-                                .buttonStyle(.plain)
+                                
+                                Text("$\(String(format: "%.2f", totalBalance))")
+                                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                                    .foregroundColor(totalBalance >= 0 ? .primary : .red)
+                                    .onTapGesture {
+                                        HapticManager.shared.light()
+                                        showEditBalance.toggle()
+                                    }
                             }
                             
-                            Text("$\(String(format: "%.2f", totalBalance))")
-                                .font(.system(size: 28, weight: .bold, design: .rounded))
-                                .foregroundColor(totalBalance >= 0 ? .primary : .red)
-                                .onTapGesture {
-                                    HapticManager.shared.light()
-                                    showEditBalance.toggle()
-                                }
-                        }
-                        
-                        if showDetails {
-                            VStack(spacing: 16) {
-                                Divider()
-                                
-                                // Total Income (Actual)
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("Total Income")
-                                            .font(.subheadline)
-                                            .fontWeight(.medium)
-                                            .foregroundColor(.secondary)
-                                        Text("$\(String(format: "%.2f", currentMonthIncome))")
-                                            .font(.system(size: 28, weight: .bold, design: .rounded))
-                                            .foregroundColor(.green)
+                            if showDetails {
+                                VStack(spacing: 16) {
+                                    Divider()
+                                    
+                                    // Total Income (Actual)
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text("Total Income")
+                                                .font(.subheadline)
+                                                .fontWeight(.medium)
+                                                .foregroundColor(.secondary)
+                                            Text("$\(String(format: "%.2f", currentMonthIncome))")
+                                                .font(.system(size: 28, weight: .bold, design: .rounded))
+                                                .foregroundColor(.green)
+                                        }
+                                        Spacer()
                                     }
-                                    Spacer()
-                                }
-                                
-                                Divider()
-                                
-                                // Total Expense (All-time)
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("Total Expense")
-                                            .font(.subheadline)
-                                            .fontWeight(.medium)
-                                            .foregroundColor(.secondary)
-                                        Text("$\(String(format: "%.2f", totalExpense))")
-                                            .font(.system(size: 28, weight: .bold, design: .rounded))
-                                            .foregroundColor(.red)
+                                    
+                                    Divider()
+                                    
+                                    // Total Expense (All-time)
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text("Total Expense")
+                                                .font(.subheadline)
+                                                .fontWeight(.medium)
+                                                .foregroundColor(.secondary)
+                                            Text("$\(String(format: "%.2f", totalExpense))")
+                                                .font(.system(size: 28, weight: .bold, design: .rounded))
+                                                .foregroundColor(.red)
+                                        }
+                                        Spacer()
                                     }
-                                    Spacer()
-                                }
-                                
-                                Divider()
-                                
-                                // Net Cash Flow
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("Net Cash Flow")
-                                            .font(.subheadline)
-                                            .fontWeight(.medium)
-                                            .foregroundColor(.secondary)
-                                        Text("$\(String(format: "%.2f", netCashFlow))")
-                                            .font(.system(size: 28, weight: .bold, design: .rounded))
-                                            .foregroundColor(netCashFlow >= 0 ? .green : .red)
+                                    
+                                    Divider()
+                                    
+                                    // Net Cash Flow
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text("Net Cash Flow")
+                                                .font(.subheadline)
+                                                .fontWeight(.medium)
+                                                .foregroundColor(.secondary)
+                                            Text("$\(String(format: "%.2f", netCashFlow))")
+                                                .font(.system(size: 28, weight: .bold, design: .rounded))
+                                                .foregroundColor(netCashFlow >= 0 ? .green : .red)
+                                        }
+                                        Spacer()
                                     }
-                                    Spacer()
                                 }
+                                .transition(.opacity)
                             }
-                            .transition(.opacity)
                         }
-                    }
-                    .padding()
-                    .background(Color(UIColor.secondarySystemBackground))
-                    .clipped() // Ensure content doesn't overflow during animation
-                    .cornerRadius(20)
-                    .padding(.horizontal, 16) // Match list padding
-                    .padding(.bottom, 10)
-                    .padding(.top, 10) // separation from top safe area
-                    
-                    List {
-                        // Scroll Tracker
-                        GeometryReader { proxy in
-                            Color.clear
-                                .preference(
-                                    key: ScrollOffsetPreferenceKey.self,
-                                    value: proxy.frame(in: .global).minY
-                                )
-                        }
-                        .frame(height: 0)
-                        .listRowInsets(EdgeInsets())
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
+                        .padding()
+                        .background(Color(UIColor.secondarySystemBackground))
+                        .clipped()
+                        .cornerRadius(20)
+                        .padding(.horizontal, 16)
                         
                         // Section 2: Saving Goals
-                        // ... list content continues ...
-                    
-                    // Section 2: Saving Goals
-                    Section(header: 
-                        HStack {
-                            Text("Saving Goals").font(.title2).fontWeight(.bold).foregroundColor(.primary)
-                            Spacer()
-                            Button(action: { 
-                                goalToEdit = nil
-                                showAddSavingGoal = true 
-                            }) {
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.title2)
-                                    .foregroundColor(.primary)
+                        VStack(spacing: 12) {
+                            HStack {
+                                Text("Saving Goals").font(.title2).fontWeight(.bold).foregroundColor(.primary)
+                                Spacer()
+                                Button(action: { 
+                                    goalToEdit = nil
+                                    showAddSavingGoal = true 
+                                }) {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.title2)
+                                        .foregroundColor(.primary)
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            
+                            ForEach(savingGoalRepo.savingGoals) { goal in
+                                HStack {
+                                    Image(systemName: goal.icon)
+                                        .font(.title2)
+                                        .foregroundColor(.white)
+                                        .frame(width: 50, height: 50)
+                                        .background(Color(hex: goal.colorHex))
+                                        .clipShape(Circle())
+                                    
+                                    VStack(alignment: .leading) {
+                                        Text(goal.name)
+                                            .font(.headline)
+                                        Text("$\(Int(goal.currentAmount)) / $\(Int(goal.targetAmount))")
+                                            .font(.system(.subheadline, design: .rounded))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Text("\(Int((goal.currentAmount / goal.targetAmount) * 100))%")
+                                        .font(.system(.headline, design: .rounded))
+                                        .foregroundColor(.primary)
+                                }
+                                .padding()
+                                .background(Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(16)
+                                .padding(.horizontal, 16)
+                                .contextMenu {
+                                    Button {
+                                        goalToEdit = goal
+                                    } label: {
+                                        Label("Edit", systemImage: "pencil")
+                                    }
+                                    
+                                    Button(role: .destructive) {
+                                        deleteSavingGoal(goal)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
                             }
                         }
-                        .padding(.bottom, 8)
-                    ) {
-                        ForEach(savingGoalRepo.savingGoals) { goal in
+                        
+                        // Section 3: Calendar
+                        VStack(spacing: 8) {
+                            CalendarView(transactions: transactionRepo.transactions)
+                                .padding(.horizontal, 16)
+                        }
+                        
+                        // Section 4: Recurring Transactions
+                        VStack(spacing: 12) {
                             HStack {
-                                Image(systemName: goal.icon)
-                                    .font(.title2)
-                                    .foregroundColor(.white)
-                                    .frame(width: 50, height: 50)
-                                    .background(Color(hex: goal.colorHex))
-                                    .clipShape(Circle())
-                                
-                                VStack(alignment: .leading) {
-                                    Text(goal.name)
+                                Text("Recurring").font(.title2).fontWeight(.bold).foregroundColor(.primary)
+                                Spacer()
+                                Button(action: { 
+                                    recurringToEdit = nil
+                                    showAddRecurring = true 
+                                }) {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.title2)
+                                        .foregroundColor(.primary)
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            
+                            ForEach(recurringRepo.recurringTransactions) { recurring in
+                                HStack(spacing: 16) {
+                                    // Icon
+                                    Image(systemName: recurring.icon)
+                                        .font(.title2)
+                                        .frame(width: 50, height: 50)
+                                        .background(Color(hex: recurring.colorHex).opacity(0.2))
+                                        .foregroundColor(Color(hex: recurring.colorHex))
+                                        .clipShape(Circle())
+                                    
+                                    // Content
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(recurring.name)
+                                            .font(.headline)
+                                            .foregroundColor(.primary)
+                                        
+                                        if let note = recurring.note, !note.isEmpty {
+                                            Text(note)
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        
+                                        Text(recurring.frequency)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(Color(hex: recurring.colorHex).opacity(0.1))
+                                            .cornerRadius(8)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Text("$\(Int(recurring.amount))")
                                         .font(.headline)
-                                    Text("$\(Int(goal.currentAmount)) / $\(Int(goal.targetAmount))")
+                                        .foregroundColor(.primary)
+                                }
+                                .padding()
+                                .background(Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(16)
+                                .padding(.horizontal, 16)
+                                .contextMenu {
+                                    Button {
+                                        recurringToEdit = recurring
+                                    } label: {
+                                        Label("Edit", systemImage: "pencil")
+                                    }
+                                    
+                                    Button(role: .destructive) {
+                                        deleteRecurringTransaction(recurring)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Section 5: Budgets
+                        VStack(spacing: 12) {
+                            HStack {
+                                Text("Budgets").font(.title2).fontWeight(.bold).foregroundColor(.primary)
+                                Spacer()
+                                Button(action: { 
+                                    budgetToEdit = nil
+                                    showAddBudget = true 
+                                }) {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.title2)
+                                        .foregroundColor(.primary)
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            
+                            ForEach(budgetRepo.budgets) { budget in
+                                HStack {
+                                    Image(systemName: budget.icon)
+                                        .frame(width: 40, height: 40)
+                                        .background(Color(hex: budget.colorHex).opacity(0.2))
+                                        .foregroundColor(Color(hex: budget.colorHex))
+                                        .clipShape(Circle())
+                                    Text(budget.category)
+                                        .font(.headline)
+                                    Spacer()
+                                    Text("$\(Int(budget.remainingAmount(transactions: transactionRepo.transactions))) left")
                                         .font(.system(.subheadline, design: .rounded))
                                         .foregroundColor(.secondary)
                                 }
-                                
-                                Spacer()
-                                
-                                Text("\(Int((goal.currentAmount / goal.targetAmount) * 100))%")
-                                    .font(.system(.headline, design: .rounded))
-                                    .foregroundColor(.primary)
-                            }
-                            .padding()
-                            .background(Color(UIColor.secondarySystemBackground))
-                            .cornerRadius(16)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
-                            .padding(.bottom, 8)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    deleteSavingGoal(goal)
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
-                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                Button {
-                                    goalToEdit = goal
-                                } label: {
-                                    Label("Edit", systemImage: "pencil")
-                                }
-                                .tint(.blue)
-                            }
-                        }
-                    }
-                    .listRowBackground(Color.clear)
-                    
-                    // Section 3: Calendar
-                    Section {
-                        CalendarView(transactions: transactionRepo.transactions)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
-                            .padding(.vertical, 10)
-                    }
-                    
-                    // Section 4: Recurring Transactions
-                    Section(header: 
-                        HStack {
-                            Text("Recurring").font(.title2).fontWeight(.bold).foregroundColor(.primary)
-                            Spacer()
-                            Button(action: { 
-                                recurringToEdit = nil
-                                showAddRecurring = true 
-                            }) {
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.title2)
-                                    .foregroundColor(.primary)
-                            }
-                        }
-                        .padding(.bottom, 8)
-                    ) {
-                        ForEach(recurringRepo.recurringTransactions) { recurring in
-                            HStack(spacing: 16) {
-                                // Icon
-                                Image(systemName: recurring.icon)
-                                    .font(.title2)
-                                    .frame(width: 50, height: 50)
-                                    .background(Color(hex: recurring.colorHex).opacity(0.2))
-                                    .foregroundColor(Color(hex: recurring.colorHex))
-                                    .clipShape(Circle())
-                                
-                                // Content
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(recurring.name)
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
-                                    
-                                    if let note = recurring.note, !note.isEmpty {
-                                        Text(note)
-                                            .font(.subheadline)
-                                            .foregroundColor(.secondary)
+                                .padding()
+                                .background(Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(16)
+                                .padding(.horizontal, 16)
+                                .contextMenu {
+                                    Button {
+                                        budgetToEdit = budget
+                                    } label: {
+                                        Label("Edit", systemImage: "pencil")
                                     }
                                     
-                                    Text(recurring.frequency)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(Color(hex: recurring.colorHex).opacity(0.1))
-                                        .cornerRadius(8)
+                                    Button(role: .destructive) {
+                                        deleteBudget(budget)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
                                 }
-                                
-                                Spacer()
-                                
-                                Text("$\(Int(recurring.amount))")
-                                    .font(.headline)
-                                    .foregroundColor(.primary)
-                            }
-                            .padding()
-                            .background(Color(UIColor.secondarySystemBackground))
-                            .cornerRadius(16)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
-                            .padding(.bottom, 8)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    deleteRecurringTransaction(recurring)
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
-                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                Button {
-                                    recurringToEdit = recurring
-                                } label: {
-                                    Label("Edit", systemImage: "pencil")
-                                }
-                                .tint(.blue)
                             }
                         }
                     }
-                    .listRowBackground(Color.clear)
-                    
-                    // Section 5: Budgets
-                    Section(header: 
-                        HStack {
-                            Text("Budgets").font(.title2).fontWeight(.bold).foregroundColor(.primary)
-                            Spacer()
-                            Button(action: { 
-                                budgetToEdit = nil
-                                showAddBudget = true 
-                            }) {
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.title2)
-                                    .foregroundColor(.primary)
-                            }
-                        }
-                        .padding(.bottom, 8)
-                    ) {
-                        ForEach(budgetRepo.budgets) { budget in
-                            HStack {
-                                Image(systemName: budget.icon)
-                                    .frame(width: 40, height: 40)
-                                    .background(Color(hex: budget.colorHex).opacity(0.2))
-                                    .foregroundColor(Color(hex: budget.colorHex))
-                                    .clipShape(Circle())
-                                Text(budget.category)
-                                    .font(.headline)
-                                Spacer()
-                                Text("$\(Int(budget.remainingAmount(transactions: transactionRepo.transactions))) left")
-                                    .font(.system(.subheadline, design: .rounded))
-                                    .foregroundColor(.secondary)
-                            }
-                            .padding()
-                            .background(Color(UIColor.secondarySystemBackground))
-                            .cornerRadius(16)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
-                            .padding(.bottom, 8)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    deleteBudget(budget)
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
-                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                Button {
-                                    budgetToEdit = budget
-                                } label: {
-                                    Label("Edit", systemImage: "pencil")
-                                }
-                                .tint(.blue)
-                            }
-                        }
-                    }
-                    .listRowBackground(Color.clear)
-                }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .scrollIndicators(.hidden)
-                .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
-                    guard lastOffset != 0 else {
-                        lastOffset = offset
-                        return
-                    }
-                    
-                    let delta = offset - lastOffset
-                    
-                    if abs(delta) > 4 {
-                        withAnimation {
-                            if delta < 0 {
-                                isTabBarHidden = true
-                            } else {
-                                isTabBarHidden = false
-                            }
-                        }
-                    }
-                    lastOffset = offset
+                    .padding(.vertical)
                 }
                 .navigationTitle("Wallet")
                 .onAppear {
@@ -441,7 +379,6 @@ struct WalletView: View {
                     recurringRepo.stopListening()
                     budgetRepo.stopListening()
                     transactionRepo.stopListening()
-                }
                 }
             }
             .sheet(isPresented: $showAddSavingGoal) {
@@ -642,6 +579,6 @@ struct CircularProgressView: View {
 }
 
 #Preview {
-    WalletView(isTabBarHidden: .constant(false))
+    WalletView()
         .environmentObject(AppState.shared)
 }
