@@ -19,6 +19,9 @@ struct HomeView: View {
         transactionRepo.transactions.reduce(0) { $0 + ($1.amount < 0 ? abs($1.amount) : 0) }
     }
     
+    @Binding var isTabBarHidden: Bool
+    @State private var lastOffset: CGFloat = 0
+    
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottomTrailing) {
@@ -26,6 +29,15 @@ struct HomeView: View {
                     // Section 1: Header & Balance
                     Section {
                         VStack(spacing: 24) {
+                            // Scroll Tracker
+                            GeometryReader { proxy in
+                                Color.clear
+                                    .preference(
+                                        key: ScrollOffsetPreferenceKey.self,
+                                        value: proxy.frame(in: .global).minY
+                                    )
+                            }
+                            .frame(height: 0) // Invisible zero-height reader
                             // Custom Header
                             HStack(alignment: .center) {
                                 VStack(alignment: .leading, spacing: 4) {
@@ -156,6 +168,28 @@ struct HomeView: View {
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
                 .scrollIndicators(.hidden)
+                .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
+                    guard lastOffset != 0 else {
+                        lastOffset = offset
+                        return
+                    }
+                    
+                    let delta = offset - lastOffset
+                    
+                    // Significant scroll threshold
+                    if abs(delta) > 4 {
+                        withAnimation {
+                            if delta < 0 {
+                                // Scrolling DOWN -> Content moving UP -> Hide Tab Bar
+                                isTabBarHidden = true
+                            } else {
+                                // Scrolling UP -> Content moving DOWN -> Show Tab Bar
+                                isTabBarHidden = false
+                            }
+                        }
+                    }
+                    lastOffset = offset
+                }
                 // FAB removed, shifted to ContentView
                 
                 .sheet(item: $selectedTransaction) { transaction in
@@ -298,6 +332,6 @@ struct TransactionRow: View {
 }
 
 #Preview {
-    HomeView()
+    HomeView(isTabBarHidden: .constant(false))
         .environmentObject(AppState.shared)
 }

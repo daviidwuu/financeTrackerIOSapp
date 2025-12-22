@@ -21,6 +21,8 @@ struct WalletView: View {
     @AppStorage("initialBalance") private var initialBalance = 0.0
     @AppStorage("monthlyIncome") private var monthlyIncome = 5000.0 // Changed from monthlyBudget
     @State private var showDetails = false
+    @Binding var isTabBarHidden: Bool
+    @State private var lastOffset: CGFloat = 0
     
     var totalBalance: Double {
         // Initial balance + all-time net (income - expenses)
@@ -174,6 +176,19 @@ struct WalletView: View {
                     .padding(.top, 10) // separation from top safe area
                     
                     List {
+                        // Scroll Tracker
+                        GeometryReader { proxy in
+                            Color.clear
+                                .preference(
+                                    key: ScrollOffsetPreferenceKey.self,
+                                    value: proxy.frame(in: .global).minY
+                                )
+                        }
+                        .frame(height: 0)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        
                         // Section 2: Saving Goals
                         // ... list content continues ...
                     
@@ -389,6 +404,25 @@ struct WalletView: View {
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
                 .scrollIndicators(.hidden)
+                .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
+                    guard lastOffset != 0 else {
+                        lastOffset = offset
+                        return
+                    }
+                    
+                    let delta = offset - lastOffset
+                    
+                    if abs(delta) > 4 {
+                        withAnimation {
+                            if delta < 0 {
+                                isTabBarHidden = true
+                            } else {
+                                isTabBarHidden = false
+                            }
+                        }
+                    }
+                    lastOffset = offset
+                }
                 .navigationTitle("Wallet")
                 .onAppear {
                     if !appState.currentUserId.isEmpty {
@@ -608,6 +642,6 @@ struct CircularProgressView: View {
 }
 
 #Preview {
-    WalletView()
+    WalletView(isTabBarHidden: .constant(false))
         .environmentObject(AppState.shared)
 }
