@@ -94,6 +94,7 @@ struct WalletView: View {
                                             .font(.system(size: 14, weight: .semibold))
                                             .foregroundColor(.secondary.opacity(0.7))
                                             .rotationEffect(.degrees(showDetails ? 180 : 0))
+                                            .animation(.easeInOut, value: showDetails)
                                             .padding(4)
                                             .contentShape(Rectangle())
                                     }
