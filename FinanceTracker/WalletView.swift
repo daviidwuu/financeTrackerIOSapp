@@ -78,10 +78,27 @@ struct WalletView: View {
                         VStack(alignment: .leading, spacing: 16) {
                             // Total Balance
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Total Balance")
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(.secondary)
+                                HStack {
+                                    Text("Total Balance")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.secondary)
+                                    
+                                    Spacer()
+                                    
+                                    // Discreet Detail Toggle
+                                    Button(action: {
+                                        withAnimation { showDetails.toggle() }
+                                    }) {
+                                        Image(systemName: "chevron.down")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundColor(.secondary.opacity(0.7))
+                                            .rotationEffect(.degrees(showDetails ? 180 : 0))
+                                            .padding(4)
+                                            .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+                                }
                                 
                                 Text("$\(String(format: "%.2f", totalBalance))")
                                     .font(.system(size: 28, weight: .bold, design: .rounded))
@@ -90,23 +107,6 @@ struct WalletView: View {
                                         HapticManager.shared.light()
                                         showEditBalance.toggle()
                                     }
-                            }
-                            
-                            // Show Details Toggle
-                            Button(action: {
-                                withAnimation { showDetails.toggle() }
-                            }) {
-                                HStack {
-                                    Text(showDetails ? "Hide Details" : "Show Breakdown")
-                                        .font(.caption)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.blue)
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption)
-                                        .foregroundColor(.blue)
-                                        .rotationEffect(.degrees(showDetails ? 90 : 0))
-                                }
                             }
                             
                             if showDetails {
