@@ -19,9 +19,6 @@ struct HomeView: View {
         transactionRepo.transactions.reduce(0) { $0 + ($1.amount < 0 ? abs($1.amount) : 0) }
     }
     
-    @Binding var isTabBarHidden: Bool
-    @State private var lastOffset: CGFloat = 0
-    
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottomTrailing) {
@@ -29,15 +26,6 @@ struct HomeView: View {
                     // Section 1: Header & Balance
                     Section {
                         VStack(spacing: 24) {
-                            // Scroll Tracker
-                            GeometryReader { proxy in
-                                Color.clear
-                                    .preference(
-                                        key: ScrollOffsetPreferenceKey.self,
-                                        value: proxy.frame(in: .global).minY
-                                    )
-                            }
-                            .frame(height: 0) // Invisible zero-height reader
                             // Custom Header
                             HStack(alignment: .center) {
                                 VStack(alignment: .leading, spacing: 4) {
@@ -46,7 +34,7 @@ struct HomeView: View {
                                         .fontWeight(.medium)
                                         .foregroundColor(.secondary)
                                     Text(appState.userName.isEmpty ? "User" : appState.userName)
-                                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                                        .font(AppTypography.titleDisplay)
                                         .foregroundColor(.primary)
                                 }
                                 
@@ -76,7 +64,7 @@ struct HomeView: View {
                                     
                                     HStack(alignment: .firstTextBaseline, spacing: 4) {
                                         Text("$\(String(format: "%.2f", showRemainingBudget ? (monthlyIncome - totalSpent) : totalSpent))")
-                                            .font(.system(size: 42, weight: .bold, design: .rounded))
+                                            .font(AppTypography.prominentBalance)
                                             .foregroundColor(.primary)
                                             .contentTransition(.numericText())
                                         
@@ -109,13 +97,13 @@ struct HomeView: View {
                             }
                             .padding(24)
                             .background(Color(UIColor.secondarySystemBackground))
-                            .clipShape(RoundedRectangle(cornerRadius: 28))
+                            .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
                         }
 
-                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
-                        .padding(.bottom, 20)
+                        .padding(.bottom, AppSpacing.section)
                     }
                     
                     // Section 2: Recent Transactions
@@ -138,21 +126,34 @@ struct HomeView: View {
                         }
                         .textCase(nil)
                     ) {
-                        ForEach(transactionRepo.transactions.prefix(5)) { transaction in
-                            TransactionRow(transaction: transaction)
-                                .background(Color(uiColor: .secondarySystemBackground))
-                                .cornerRadius(16)
-                                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                                .listRowSeparator(.hidden)
-                                .listRowBackground(Color.clear)
-                                .padding(.bottom, 8)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                    Button(role: .destructive) {
-                                        deleteTransaction(transaction)
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
+                        if transactionRepo.transactions.isEmpty {
+                            EmptyStateView(
+                                icon: "tray.fill",
+                                title: "No Transactions",
+                                message: "Your recent spending will show up here.",
+                                actionTitle: "Add One",
+                                action: { showAddTransaction = true }
+                            )
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                        } else {
+                            ForEach(transactionRepo.transactions.prefix(5)) { transaction in
+                                TransactionRow(transaction: transaction)
+                                    .background(Color(uiColor: .secondarySystemBackground))
+                                    .cornerRadius(AppRadius.medium)
+                                    .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+                                    .listRowSeparator(.hidden)
+                                    .listRowBackground(Color.clear)
+                                    .padding(.bottom, AppSpacing.compact)
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                        Button(role: .destructive) {
+                                            deleteTransaction(transaction)
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
                                     }
-                                }
+                            }
+                        }
                                 .swipeActions(edge: .leading, allowsFullSwipe: true) {
                                     Button {
                                         selectedTransaction = transaction
@@ -168,28 +169,6 @@ struct HomeView: View {
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
                 .scrollIndicators(.hidden)
-                .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
-                    guard lastOffset != 0 else {
-                        lastOffset = offset
-                        return
-                    }
-                    
-                    let delta = offset - lastOffset
-                    
-                    // Significant scroll threshold
-                    if abs(delta) > 4 {
-                        withAnimation {
-                            if delta < 0 {
-                                // Scrolling DOWN -> Content moving UP -> Hide Tab Bar
-                                isTabBarHidden = true
-                            } else {
-                                // Scrolling UP -> Content moving DOWN -> Show Tab Bar
-                                isTabBarHidden = false
-                            }
-                        }
-                    }
-                    lastOffset = offset
-                }
                 // FAB removed, shifted to ContentView
                 
                 .sheet(item: $selectedTransaction) { transaction in
@@ -281,7 +260,7 @@ struct TransactionRow: View {
     }
     
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: AppSpacing.element) {
             Circle()
                 .fill(Color(hex: categoryColor).opacity(0.1))
                 .frame(width: 48, height: 48)
@@ -332,6 +311,6 @@ struct TransactionRow: View {
 }
 
 #Preview {
-    HomeView(isTabBarHidden: .constant(false))
+    HomeView()
         .environmentObject(AppState.shared)
 }

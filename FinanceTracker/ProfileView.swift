@@ -41,19 +41,15 @@ struct ProfileView: View {
                     Section("Account") {
                         NavigationLink(destination: AccountSettingsView()) {
                             Label("Account Settings", systemImage: "gearshape.fill")
-                                .foregroundStyle(.white)
                         }
                         NavigationLink(destination: AppearanceSettingsView()) {
                             Label("Appearance", systemImage: "paintbrush.fill")
-                                .foregroundStyle(.white)
                         }
                         NavigationLink(destination: NotificationsSettingsView()) {
                             Label("Notifications", systemImage: "bell.fill")
-                                .foregroundStyle(.white)
                         }
                         NavigationLink(destination: PrivacySettingsView()) {
                             Label("Privacy & Security", systemImage: "lock.fill")
-                                .foregroundStyle(.white)
                         }
                     }
                     .listRowBackground(Color(UIColor.secondarySystemBackground))
@@ -61,15 +57,12 @@ struct ProfileView: View {
                     Section("Support") {
                         NavigationLink(destination: ShortcutsView()) {
                             Label("Apple Shortcuts", systemImage: "bolt.fill")
-                                .foregroundStyle(.white)
                         }
                         NavigationLink(destination: HelpCenterView()) {
                             Label("Help Center", systemImage: "questionmark.circle.fill")
-                                .foregroundStyle(.white)
                         }
                         NavigationLink(destination: AboutView()) {
                             Label("About Us", systemImage: "info.circle.fill")
-                                .foregroundStyle(.white)
                         }
                     }
                     .listRowBackground(Color(UIColor.secondarySystemBackground))

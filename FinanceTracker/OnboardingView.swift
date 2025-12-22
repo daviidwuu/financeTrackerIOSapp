@@ -101,7 +101,7 @@ struct OnboardingView: View {
                     .frame(height: 50)
                     .background(isStepValid ? Color.white : Color.gray.opacity(0.3))
                     .foregroundColor(.black)
-                    .cornerRadius(25)
+                    .cornerRadius(AppRadius.button)
                     .disabled(!isStepValid || isLoading)
                 }
                 .padding(24)
@@ -277,7 +277,7 @@ struct ProfileStep: View {
                 .multilineTextAlignment(.center)
                 .padding()
                 .background(Color.black)
-                .cornerRadius(16)
+                .cornerRadius(AppRadius.medium)
                 .padding(.horizontal, 32)
             
             Spacer()
@@ -308,7 +308,7 @@ struct IncomeStep: View { // Renamed from BudgetStep
                 
                 TextField("5000", text: $income) // Updated binding
                     .keyboardType(.numberPad)
-                    .font(.system(size: 60, weight: .bold, design: .rounded))
+                    .font(AppTypography.heroInput)
                     .multilineTextAlignment(.leading)
                     .fixedSize()
             }

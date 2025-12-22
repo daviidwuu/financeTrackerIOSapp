@@ -52,7 +52,7 @@ struct AccountSettingsView: View {
             }
         }
         .navigationTitle("Account Settings")
-        .background(colorScheme == .dark ? Color.black : Color(UIColor.systemGroupedBackground))
+        .background(Color.listBackground)
         .scrollContentBackground(.hidden)
         .onAppear {
             name = appState.userName
@@ -130,7 +130,7 @@ struct AppearanceSettingsView: View {
             }
         }
         .navigationTitle("Appearance")
-        .background(colorScheme == .dark ? Color.black : Color(UIColor.systemGroupedBackground))
+        .background(Color.listBackground)
         .scrollContentBackground(.hidden)
     }
 }
@@ -180,12 +180,9 @@ struct NotificationsSettingsView: View {
                 }) {
                     HStack {
                         Image(systemName: "bell.badge")
-                            .foregroundColor(.white)
                         Text("Send Test Notification")
-                            .foregroundColor(.white)
                         Spacer()
                         Image(systemName: "paperplane.fill")
-                            .foregroundColor(.white)
                     }
                 }
             }
@@ -234,7 +231,7 @@ struct NotificationsSettingsView: View {
             }
         }
         .navigationTitle("Notifications")
-        .background(colorScheme == .dark ? Color.black : Color(UIColor.systemGroupedBackground))
+        .background(Color.listBackground)
         .scrollContentBackground(.hidden)
         .onAppear {
             checkPermissionStatus()
@@ -370,7 +367,7 @@ struct PrivacySettingsView: View {
             }
         }
         .navigationTitle("Privacy & Security")
-        .background(colorScheme == .dark ? Color.black : Color(UIColor.systemGroupedBackground))
+        .background(Color.listBackground)
         .scrollContentBackground(.hidden)
     }
 }
@@ -409,7 +406,7 @@ struct HelpCenterView: View {
             }
         }
         .navigationTitle("Help Center")
-        .background(colorScheme == .dark ? Color.black : Color(UIColor.systemGroupedBackground))
+        .background(Color.listBackground)
         .scrollContentBackground(.hidden)
     }
 }
@@ -460,7 +457,7 @@ struct AboutView: View {
             }
             .scrollContentBackground(.hidden)
         }
-        .background(colorScheme == .dark ? Color.black : Color(UIColor.systemGroupedBackground))
+        .background(Color.listBackground)
         .navigationTitle("About Us")
     }
 }

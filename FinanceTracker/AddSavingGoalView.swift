@@ -36,39 +36,16 @@ struct AddSavingGoalView: View {
             
             VStack(spacing: 20) {
                 // Header
-                HStack {
-                    Button(action: {
-                        if currentStep > 1 {
-                            HapticManager.shared.light()
-                            direction = .leading
-                            withAnimation { currentStep -= 1 }
-                        } else {
-                            HapticManager.shared.light()
-                            dismiss()
-                        }
-                    }) {
-                        Image(systemName: currentStep > 1 ? "chevron.left" : "xmark")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    
-                    Spacer()
-                    
-                    Text("Step \(currentStep) of 3")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundColor(.secondary)
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundColor(.clear)
-                        .frame(width: 44, height: 44)
-                }
-                .padding()
+                ModalHeader(
+                    title: currentStep < 3 ? "Add Goal" : "Confirm",
+                    currentStep: currentStep,
+                    totalSteps: 3,
+                    onBack: currentStep > 1 ? {
+                        direction = .leading
+                        withAnimation { currentStep -= 1 }
+                    } : nil,
+                    onClose: { dismiss() }
+                )
                 
                 // Content
                 ScrollView {
@@ -80,32 +57,35 @@ struct AddSavingGoalView: View {
                         insertion: .move(edge: direction),
                         removal: .move(edge: direction == .leading ? .trailing : .leading)
                     ))
-                    .padding(.horizontal)
+                    .padding(.horizontal, AppSpacing.margin)
                     .padding(.vertical, 20)
                 }
                 
-                // Action Button
-                Button(action: {
-                    if currentStep < 3 {
-                        HapticManager.shared.light()
-                        direction = .trailing
-                        withAnimation { currentStep += 1 }
-                    } else {
-                        HapticManager.shared.success()
-                        saveGoal()
+                // Sticky Action Bar
+                VStack {
+                    Button(action: {
+                        if currentStep < 3 {
+                            HapticManager.shared.light()
+                            direction = .trailing
+                            withAnimation { currentStep += 1 }
+                        } else {
+                            HapticManager.shared.success()
+                            saveGoal()
+                        }
+                    }) {
+                        Text(currentStep < 3 ? "Next" : (goalToEdit != nil ? "Update Goal" : "Save Goal"))
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(isStepValid ? Color.white : Color.white.opacity(0.3))
+                            .cornerRadius(AppRadius.button)
                     }
-                }) {
-                    Text(currentStep < 3 ? "Next" : (goalToEdit != nil ? "Update Goal" : "Save Goal"))
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(.black)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(isStepValid ? Color.white : Color.white.opacity(0.3))
-                        .cornerRadius(16)
+                    .disabled(!isStepValid)
                 }
-                .disabled(!isStepValid)
-                .padding()
+                .padding(AppSpacing.margin)
+                .background(Material.bar)
             }
         }
     }
@@ -173,7 +153,7 @@ struct AddSavingGoalView: View {
                 .foregroundColor(.secondary)
             
             TextField("0.00", text: $amount)
-                .font(.system(size: 64, weight: .bold, design: .rounded))
+                .font(AppTypography.heroInput)
                 .multilineTextAlignment(.center)
                 .keyboardType(.decimalPad)
                 .foregroundColor(.primary)
@@ -191,7 +171,7 @@ struct AddSavingGoalView: View {
                     .font(.title3)
                     .padding()
                     .background(Color(UIColor.secondarySystemBackground))
-                    .cornerRadius(12)
+                    .cornerRadius(AppRadius.medium)
             }
             
             VStack(alignment: .leading, spacing: 12) {
@@ -228,7 +208,7 @@ struct AddSavingGoalView: View {
                 .datePickerStyle(.graphical)
                 .padding()
                 .background(Color(UIColor.secondarySystemBackground))
-                .cornerRadius(16)
+                .cornerRadius(AppRadius.medium)
         }
     }
 }

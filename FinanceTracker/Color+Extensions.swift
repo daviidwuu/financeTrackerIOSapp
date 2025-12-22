@@ -81,4 +81,11 @@ extension Color {
             return traitCollection.userInterfaceStyle == .dark ? UIColor(white: 0.1, alpha: 1.0) : UIColor(white: 0.97, alpha: 1.0)
         })
     }
+    
+    /// Alias for consistent grouped list backgrounds
+    static var listBackground: Color {
+        Color(UIColor { traitCollection in
+            return traitCollection.userInterfaceStyle == .dark ? .black : UIColor.systemGroupedBackground
+        })
+    }
 }

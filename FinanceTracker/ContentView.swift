@@ -6,31 +6,28 @@ struct ContentView: View {
     @State private var showAddTransaction = false
     @Environment(\.colorScheme) var colorScheme
     @State private var selectedTab = 0
-    @State private var isTabBarHidden = false
     
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             TabView(selection: $selectedTab) {
-                HomeView(isTabBarHidden: $isTabBarHidden)
+                HomeView()
                     .tag(0)
                     .tabItem {
                         Image(systemName: "square.grid.2x2.fill")
                         Text("Dashboard")
                     }
-                    .toolbar(isTabBarHidden ? .hidden : .visible, for: .tabBar)
                 
-                WalletView(isTabBarHidden: $isTabBarHidden)
+                WalletView()
                     .tag(1)
                     .tabItem {
                         Image(systemName: "creditcard.fill")
                         Text("Wallet")
                     }
-                    .toolbar(isTabBarHidden ? .hidden : .visible, for: .tabBar)
             }
             .preferredColorScheme(.none) // Respect system setting
             
             // Floating Action Button
-            if selectedTab == 0 && !isTabBarHidden {
+            if selectedTab == 0 {
                 Button(action: {
                     HapticManager.shared.medium()
                     showAddTransaction = true
@@ -53,7 +50,7 @@ struct ContentView: View {
             AddTransactionView(onSave: { transaction in
                 addTransaction(transaction)
             })
-            .presentationDetents([.fraction(0.65)])
+            .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
     }

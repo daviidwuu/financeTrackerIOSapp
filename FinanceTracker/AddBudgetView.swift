@@ -56,39 +56,16 @@ struct AddBudgetView: View {
             
             VStack(spacing: 20) {
                 // Header
-                HStack {
-                    Button(action: {
-                        if currentStep > 1 {
-                            HapticManager.shared.light()
-                            direction = .leading
-                            withAnimation { currentStep -= 1 }
-                        } else {
-                            HapticManager.shared.light()
-                            dismiss()
-                        }
-                    }) {
-                        Image(systemName: currentStep > 1 ? "chevron.left" : "xmark")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    
-                    Spacer()
-                    
-                    Text("Step \(currentStep) of 6") // Increased steps to 6
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundColor(.secondary)
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundColor(.clear)
-                        .frame(width: 44, height: 44)
-                }
-                .padding()
+                ModalHeader(
+                    title: currentStep < 6 ? "Add Budget" : "Confirm",
+                    currentStep: currentStep,
+                    totalSteps: 6,
+                    onBack: currentStep > 1 ? {
+                        direction = .leading
+                        withAnimation { currentStep -= 1 }
+                    } : nil,
+                    onClose: { dismiss() }
+                )
                 
                 Spacer()
                 
@@ -105,28 +82,31 @@ struct AddBudgetView: View {
                 
                 Spacer()
                 
-                // Action Button
-                Button(action: {
-                    if currentStep < 6 { // Increased steps to 6
-                        HapticManager.shared.light()
-                        direction = .trailing
-                        withAnimation { currentStep += 1 }
-                    } else {
-                        HapticManager.shared.success()
-                        saveBudget()
+                // Sticky Action Bar
+                VStack {
+                    Button(action: {
+                        if currentStep < 6 { // Increased steps to 6
+                            HapticManager.shared.light()
+                            direction = .trailing
+                            withAnimation { currentStep += 1 }
+                        } else {
+                            HapticManager.shared.success()
+                            saveBudget()
+                        }
+                    }) {
+                        Text(currentStep < 6 ? "Next" : (budgetToEdit != nil ? "Update Budget" : "Save Budget"))
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(isStepValid ? Color.white : Color.white.opacity(0.3))
+                            .cornerRadius(AppRadius.button)
                     }
-                }) {
-                    Text(currentStep < 6 ? "Next" : (budgetToEdit != nil ? "Update Budget" : "Save Budget"))
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(.black)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(isStepValid ? Color.white : Color.white.opacity(0.3))
-                        .cornerRadius(16)
+                    .disabled(!isStepValid)
                 }
-                .disabled(!isStepValid)
-                .padding()
+                .padding(AppSpacing.margin)
+                .background(Material.bar)
             }
         }
     }
@@ -211,7 +191,7 @@ struct AddBudgetView: View {
                     .frame(width: 140, height: 140)
                     .background(type == "income" ? Color.green : Color(UIColor.secondarySystemBackground))
                     .foregroundColor(type == "income" ? .white : .primary)
-                    .cornerRadius(20)
+                    .cornerRadius(AppRadius.medium)
                 }
                 
                 Button(action: { type = "expense" }) {
@@ -225,7 +205,7 @@ struct AddBudgetView: View {
                     .frame(width: 140, height: 140)
                     .background(type == "expense" ? Color.red : Color(UIColor.secondarySystemBackground))
                     .foregroundColor(type == "expense" ? .white : .primary)
-                    .cornerRadius(20)
+                    .cornerRadius(AppRadius.medium)
                 }
             }
         }
@@ -239,7 +219,7 @@ struct AddBudgetView: View {
                 .foregroundColor(.secondary)
             
             TextField("0.00", text: $amount)
-                .font(.system(size: 64, weight: .bold, design: .rounded))
+                .font(AppTypography.heroInput)
                 .multilineTextAlignment(.center)
                 .keyboardType(.decimalPad)
                 .foregroundColor(.primary)
@@ -259,8 +239,8 @@ struct AddBudgetView: View {
                 .multilineTextAlignment(.center)
                 .foregroundColor(.white)
                 .padding()
-                .background(Color.black)
-                .cornerRadius(12)
+                .background(Color.backgroundPrimary)
+                .cornerRadius(AppRadius.medium)
         }
     }
     

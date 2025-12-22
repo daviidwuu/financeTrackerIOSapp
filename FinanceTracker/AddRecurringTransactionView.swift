@@ -39,39 +39,17 @@ struct AddRecurringTransactionView: View {
             
             VStack(spacing: 20) {
                 // Header
-                HStack {
-                    Button(action: {
-                        if currentStep > 1 {
-                            HapticManager.shared.light()
-                            direction = .leading
-                            withAnimation { currentStep -= 1 }
-                        } else {
-                            HapticManager.shared.light()
-                            dismiss()
-                        }
-                    }) {
-                        Image(systemName: currentStep > 1 ? "chevron.left" : "xmark")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    
-                    Spacer()
-                    
-                    Text("Step \(currentStep) of 4")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundColor(.secondary)
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundColor(.clear)
-                        .frame(width: 44, height: 44)
-                }
-                .padding()
+                ModalHeader(
+                    title: currentStep < 4 ? "Add Recurring" : "Confirm",
+                    currentStep: currentStep,
+                    totalSteps: 4,
+                    onBack: currentStep > 1 ? {
+                        direction = .leading
+                        withAnimation { currentStep -= 1 }
+                    } : nil,
+                    onClose: { dismiss() }
+                )
+
                 
                 .padding()
                 
@@ -84,33 +62,36 @@ struct AddRecurringTransactionView: View {
                     insertion: .move(edge: direction),
                     removal: .move(edge: direction == .leading ? .trailing : .leading)
                 ))
-                .padding(.horizontal)
+                .padding(.horizontal, AppSpacing.margin)
                 .frame(maxHeight: .infinity, alignment: .top) // Allow content to take available space
                 
                 Spacer()
                 
-                // Action Button
-                Button(action: {
-                    if currentStep < 4 {
-                        HapticManager.shared.light()
-                        direction = .trailing
-                        withAnimation { currentStep += 1 }
-                    } else {
-                        HapticManager.shared.success()
-                        saveRecurring()
+                // Sticky Action Bar
+                VStack {
+                    Button(action: {
+                        if currentStep < 4 {
+                            HapticManager.shared.light()
+                            direction = .trailing
+                            withAnimation { currentStep += 1 }
+                        } else {
+                            HapticManager.shared.success()
+                            saveRecurring()
+                        }
+                    }) {
+                        Text(currentStep < 4 ? "Next" : (recurringToEdit != nil ? "Update Recurring" : "Save Recurring"))
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(isStepValid ? Color.white : Color.white.opacity(0.3))
+                            .cornerRadius(AppRadius.button)
                     }
-                }) {
-                    Text(currentStep < 4 ? "Next" : (recurringToEdit != nil ? "Update Recurring" : "Save Recurring"))
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(.black)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(isStepValid ? Color.white : Color.white.opacity(0.3))
-                        .cornerRadius(16)
+                    .disabled(!isStepValid)
                 }
-                .disabled(!isStepValid)
-                .padding()
+                .padding(AppSpacing.margin)
+                .background(Material.bar)
             }
         }
         .onAppear {
@@ -189,7 +170,7 @@ struct AddRecurringTransactionView: View {
                 .foregroundColor(.secondary)
             
             TextField("0.00", text: $amount)
-                .font(.system(size: 64, weight: .bold, design: .rounded))
+                .font(AppTypography.heroInput)
                 .multilineTextAlignment(.center)
                 .keyboardType(.decimalPad)
                 .foregroundColor(.primary)
@@ -265,15 +246,15 @@ struct AddRecurringTransactionView: View {
                                 .frame(height: 3)
                             }
                             .background(selectedCategory?.name == budget.category ? Color(hex: budget.colorHex).opacity(0.1) : Color(UIColor.secondarySystemBackground))
-                            .cornerRadius(10)
+                            .cornerRadius(AppRadius.small)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 10)
+                                RoundedRectangle(cornerRadius: AppRadius.small)
                                     .stroke(selectedCategory?.name == budget.category ? Color(hex: budget.colorHex) : Color.clear, lineWidth: 1)
                             )
                         }
                     }
                 }
-                .padding(.horizontal, 8)
+                .padding(.horizontal, AppSpacing.compact)
             }
         }
     }

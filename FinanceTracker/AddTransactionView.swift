@@ -37,39 +37,16 @@ struct AddTransactionView: View {
             
             VStack(spacing: 20) {
                 // Header
-                HStack {
-                    Button(action: {
-                        if currentStep > 1 {
-                            HapticManager.shared.light()
-                            direction = .leading
-                            withAnimation { currentStep -= 1 }
-                        } else {
-                            HapticManager.shared.light()
-                            dismiss()
-                        }
-                    }) {
-                        Image(systemName: currentStep > 1 ? "chevron.left" : "xmark")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    
-                    Spacer()
-                    
-                    Text("Step \(currentStep) of 3")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundColor(.secondary)
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundColor(.clear)
-                        .frame(width: 44, height: 44)
-                }
-                .padding()
+                ModalHeader(
+                    title: currentStep < 3 ? "Add Transaction" : "Details",
+                    currentStep: currentStep,
+                    totalSteps: 3,
+                    onBack: currentStep > 1 ? {
+                        direction = .leading
+                        withAnimation { currentStep -= 1 }
+                    } : nil,
+                    onClose: { dismiss() }
+                )
                 
                 // Content
                 ZStack(alignment: .top) {
@@ -80,33 +57,36 @@ struct AddTransactionView: View {
                     insertion: .move(edge: direction),
                     removal: .move(edge: direction == .leading ? .trailing : .leading)
                 ))
-                .padding(.horizontal)
+                .padding(.horizontal, AppSpacing.margin)
                 .frame(maxHeight: .infinity, alignment: .top)
                 
                 Spacer()
                 
-                // Action Button
-                Button(action: {
-                    if currentStep < 3 {
-                        HapticManager.shared.light()
-                        direction = .trailing
-                        withAnimation { currentStep += 1 }
-                    } else {
-                        HapticManager.shared.success()
-                        saveTransaction()
+                // Sticky Action Bar
+                VStack {
+                    Button(action: {
+                        if currentStep < 3 {
+                            HapticManager.shared.light()
+                            direction = .trailing
+                            withAnimation { currentStep += 1 }
+                        } else {
+                            HapticManager.shared.success()
+                            saveTransaction()
+                        }
+                    }) {
+                        Text(currentStep < 3 ? "Next" : (transactionToEdit != nil ? "Update Transaction" : "Save Transaction"))
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(colorScheme == .dark ? .black : .white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(isStepValid ? Color.primary : Color.primary.opacity(0.3))
+                            .cornerRadius(AppRadius.button)
                     }
-                }) {
-                    Text(currentStep < 3 ? "Next" : (transactionToEdit != nil ? "Update Transaction" : "Save Transaction"))
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(colorScheme == .dark ? .black : .white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(isStepValid ? Color.primary : Color.primary.opacity(0.3))
-                        .cornerRadius(16)
+                    .disabled(!isStepValid)
                 }
-                .disabled(!isStepValid)
-                .padding()
+                .padding(AppSpacing.margin)
+                .background(Material.bar)
             }
         }
         .onAppear {
@@ -213,7 +193,7 @@ struct AddTransactionView: View {
                 .foregroundColor(.secondary)
             
             TextField("0.00", text: $amount)
-                .font(.system(size: 64, weight: .bold, design: .rounded))
+                .font(AppTypography.heroInput)
                 .multilineTextAlignment(.center)
                 .keyboardType(.decimalPad)
                 .foregroundColor(.primary)
@@ -230,7 +210,7 @@ struct AddTransactionView: View {
                 .foregroundColor(.secondary)
             
             ScrollView {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: 12) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: AppSpacing.element) {
                     ForEach(budgetRepo.budgets) { budget in
                         let remaining = budget.remainingAmount(transactions: transactionRepo.transactions)
                         let progress = min(max(1.0 - (remaining / budget.totalAmount), 0.0), 1.0)
@@ -290,10 +270,11 @@ struct AddTransactionView: View {
                                 }
                                 .frame(height: 3)
                             }
+                            }
                             .background(selectedCategory?.name == budget.category ? Color(hex: budget.colorHex).opacity(0.1) : Color(UIColor.secondarySystemBackground))
-                            .cornerRadius(10)
+                            .cornerRadius(AppRadius.small)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 10)
+                                RoundedRectangle(cornerRadius: AppRadius.small)
                                     .stroke(selectedCategory?.name == budget.category ? Color(hex: budget.colorHex) : Color.clear, lineWidth: 1)
                             )
                         }
@@ -379,9 +360,9 @@ struct AddTransactionView: View {
                 }
                 .padding(10)
                 .background(Color(UIColor.secondarySystemBackground))
-                .cornerRadius(12)
+                .cornerRadius(AppRadius.small)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12)
+                    RoundedRectangle(cornerRadius: AppRadius.small)
                         .stroke(isSelected ? Color(hex: category.colorHex) : Color.clear, lineWidth: 2)
                 )
             }

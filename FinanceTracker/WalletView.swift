@@ -73,7 +73,7 @@ struct WalletView: View {
                     .ignoresSafeArea()
                 
                 ScrollView {
-                    VStack(spacing: 24) {
+                    VStack(spacing: AppSpacing.section) {
                         // Section 1: Financial Overview (Balance Card)
                         VStack(alignment: .leading, spacing: 16) {
                             // Total Balance
@@ -88,13 +88,14 @@ struct WalletView: View {
                                     
                                     // Discreet Detail Toggle
                                     Button(action: {
+                                        HapticManager.shared.light()
                                         withAnimation(.easeInOut(duration: 0.3)) {
                                             showDetails.toggle()
                                         }
                                     }) {
-                                        Image(systemName: "chevron.down")
-                                            .font(.system(size: 14, weight: .semibold))
-                                            .foregroundColor(.secondary.opacity(0.7))
+                                        Image(systemName: "chevron.down.circle.fill")
+                                            .font(.system(size: 16, weight: .semibold))
+                                            .foregroundColor(.secondary.opacity(0.5))
                                             .rotationEffect(.degrees(showDetails ? 180 : 0))
                                             .animation(.easeInOut(duration: 0.3), value: showDetails)
                                             .padding(4)
@@ -104,7 +105,7 @@ struct WalletView: View {
                                 }
                                 
                                 Text("$\(String(format: "%.2f", totalBalance))")
-                                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                                    .font(AppTypography.sectionHeader)
                                     .foregroundColor(totalBalance >= 0 ? .primary : .red)
                                     .onTapGesture {
                                         HapticManager.shared.light()
@@ -124,7 +125,7 @@ struct WalletView: View {
                                                 .fontWeight(.medium)
                                                 .foregroundColor(.secondary)
                                             Text("$\(String(format: "%.2f", currentMonthIncome))")
-                                                .font(.system(size: 28, weight: .bold, design: .rounded))
+                                                .font(AppTypography.sectionHeader)
                                                 .foregroundColor(.green)
                                         }
                                         Spacer()
@@ -140,7 +141,7 @@ struct WalletView: View {
                                                 .fontWeight(.medium)
                                                 .foregroundColor(.secondary)
                                             Text("$\(String(format: "%.2f", totalExpense))")
-                                                .font(.system(size: 28, weight: .bold, design: .rounded))
+                                                .font(AppTypography.sectionHeader)
                                                 .foregroundColor(.red)
                                         }
                                         Spacer()
@@ -156,7 +157,7 @@ struct WalletView: View {
                                                 .fontWeight(.medium)
                                                 .foregroundColor(.secondary)
                                             Text("$\(String(format: "%.2f", netCashFlow))")
-                                                .font(.system(size: 28, weight: .bold, design: .rounded))
+                                                .font(AppTypography.sectionHeader)
                                                 .foregroundColor(netCashFlow >= 0 ? .green : .red)
                                         }
                                         Spacer()
@@ -165,11 +166,12 @@ struct WalletView: View {
                                 .transition(.opacity)
                             }
                         }
+                        .padding(.vertical, AppSpacing.compact)
                         .padding()
                         .background(Color(UIColor.secondarySystemBackground))
                         .clipped()
-                        .cornerRadius(20)
-                        .padding(.horizontal, 16)
+                        .cornerRadius(AppRadius.medium)
+                        .padding(.horizontal, AppSpacing.margin)
                         
                         // Section 2: Saving Goals
                         VStack(spacing: 12) {
@@ -185,50 +187,61 @@ struct WalletView: View {
                                         .foregroundColor(.primary)
                                 }
                             }
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, AppSpacing.margin)
                             
-                            ForEach(savingGoalRepo.savingGoals) { goal in
-                                HStack {
-                                    Image(systemName: goal.icon)
-                                        .font(.title2)
-                                        .foregroundColor(.white)
-                                        .frame(width: 50, height: 50)
-                                        .background(Color(hex: goal.colorHex))
-                                        .clipShape(Circle())
-                                    
-                                    VStack(alignment: .leading) {
-                                        Text(goal.name)
-                                            .font(.headline)
-                                        Text("$\(Int(goal.currentAmount)) / $\(Int(goal.targetAmount))")
-                                            .font(.system(.subheadline, design: .rounded))
-                                            .foregroundColor(.secondary)
+                            if savingGoalRepo.savingGoals.isEmpty {
+                                EmptyStateView(
+                                    icon: "target",
+                                    title: "No Goals",
+                                    message: "Set a saving goal to start tracking your progress!",
+                                    actionTitle: "Add Goal",
+                                    action: { showAddSavingGoal = true }
+                                )
+                            } else {
+                                ForEach(savingGoalRepo.savingGoals) { goal in
+                                    HStack {
+                                        Image(systemName: goal.icon)
+                                            .font(.title2)
+                                            .foregroundColor(.white)
+                                            .frame(width: 50, height: 50)
+                                            .background(Color(hex: goal.colorHex))
+                                            .clipShape(Circle())
+                                        
+                                        VStack(alignment: .leading) {
+                                            Text(goal.name)
+                                                .font(.headline)
+                                            Text("$\(Int(goal.currentAmount)) / $\(Int(goal.targetAmount))")
+                                                .font(.system(.subheadline, design: .rounded))
+                                                .foregroundColor(.secondary)
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        Text("\(Int((goal.currentAmount / goal.targetAmount) * 100))%")
+                                            .font(.system(.headline, design: .rounded))
+                                            .foregroundColor(.primary)
                                     }
-                                    
-                                    Spacer()
-                                    
-                                    Text("\(Int((goal.currentAmount / goal.targetAmount) * 100))%")
-                                        .font(.system(.headline, design: .rounded))
-                                        .foregroundColor(.primary)
-                                }
-                                .padding()
-                                .background(Color(UIColor.secondarySystemBackground))
-                                .cornerRadius(16)
-                                .padding(.horizontal, 16)
-                                .contextMenu {
-                                    Button {
-                                        goalToEdit = goal
-                                    } label: {
-                                        Label("Edit", systemImage: "pencil")
-                                    }
-                                    
-                                    Button(role: .destructive) {
-                                        deleteSavingGoal(goal)
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
+                                    .padding()
+                                    .background(Color(UIColor.secondarySystemBackground))
+                                    .cornerRadius(AppRadius.medium)
+                                    .padding(.horizontal, AppSpacing.margin)
+                                    .contextMenu {
+                                        Button {
+                                            goalToEdit = goal
+                                        } label: {
+                                            Label("Edit", systemImage: "pencil")
+                                        }
+                                        
+                                        Button(role: .destructive) {
+                                            deleteSavingGoal(goal)
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
                                     }
                                 }
                             }
                         }
+                        .padding(.vertical, AppSpacing.compact)
                         
                         // Section 3: Calendar
                         VStack(spacing: 8) {
@@ -250,64 +263,77 @@ struct WalletView: View {
                                         .foregroundColor(.primary)
                                 }
                             }
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, AppSpacing.margin)
                             
-                            ForEach(recurringRepo.recurringTransactions) { recurring in
-                                HStack(spacing: 16) {
-                                    // Icon
-                                    Image(systemName: recurring.icon)
-                                        .font(.title2)
-                                        .frame(width: 50, height: 50)
-                                        .background(Color(hex: recurring.colorHex).opacity(0.2))
-                                        .foregroundColor(Color(hex: recurring.colorHex))
-                                        .clipShape(Circle())
-                                    
-                                    // Content
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(recurring.name)
-                                            .font(.headline)
-                                            .foregroundColor(.primary)
+                            if recurringRepo.recurringTransactions.isEmpty {
+                                EmptyStateView(
+                                    icon: "arrow.2.squarepath",
+                                    title: "No Recurring",
+                                    message: "Add subscriptions or bills to track your future spending.",
+                                    actionTitle: "Add Recurring",
+                                    action: { showAddRecurring = true }
+                                )
+                            } else {
+                                ForEach(recurringRepo.recurringTransactions) { recurring in
+                                    HStack(spacing: AppSpacing.element) {
+                                        // Icon
+                                        Image(systemName: recurring.icon)
+                                            .font(.title2)
+                                            .frame(width: 50, height: 50)
+                                            .background(Color(hex: recurring.colorHex).opacity(0.2))
+                                            .foregroundColor(Color(hex: recurring.colorHex))
+                                            .clipShape(Circle())
                                         
-                                        if let note = recurring.note, !note.isEmpty {
-                                            Text(note)
-                                                .font(.subheadline)
-                                                .foregroundColor(.secondary)
+                                        // Content
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(recurring.name)
+                                                .font(.headline)
+                                                .foregroundColor(.primary)
+                                            
+                                            if let note = recurring.note, !note.isEmpty {
+                                                Text(note)
+                                                    .font(.subheadline)
+                                                    .foregroundColor(.secondary)
+                                            }
                                         }
                                         
-                                        Text(recurring.frequency)
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 4)
-                                            .background(Color(hex: recurring.colorHex).opacity(0.1))
-                                            .cornerRadius(8)
+                                        Spacer()
+                                        
+                                        VStack(alignment: .trailing, spacing: 4) {
+                                            Text("$\(Int(recurring.amount))")
+                                                .font(.headline)
+                                                .foregroundColor(.primary)
+                                            
+                                            Text(recurring.frequency)
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 4)
+                                                .background(Color(hex: recurring.colorHex).opacity(0.1))
+                                                .cornerRadius(8)
+                                        }
                                     }
-                                    
-                                    Spacer()
-                                    
-                                    Text("$\(Int(recurring.amount))")
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
-                                }
-                                .padding()
-                                .background(Color(UIColor.secondarySystemBackground))
-                                .cornerRadius(16)
-                                .padding(.horizontal, 16)
-                                .contextMenu {
-                                    Button {
-                                        recurringToEdit = recurring
-                                    } label: {
-                                        Label("Edit", systemImage: "pencil")
-                                    }
-                                    
-                                    Button(role: .destructive) {
-                                        deleteRecurringTransaction(recurring)
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
+                                    .padding()
+                                    .background(Color(UIColor.secondarySystemBackground))
+                                    .cornerRadius(AppRadius.medium)
+                                    .padding(.horizontal, AppSpacing.margin)
+                                    .contextMenu {
+                                        Button {
+                                            recurringToEdit = recurring
+                                        } label: {
+                                            Label("Edit", systemImage: "pencil")
+                                        }
+                                        
+                                        Button(role: .destructive) {
+                                            deleteRecurringTransaction(recurring)
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
                                     }
                                 }
                             }
                         }
+                        .padding(.vertical, AppSpacing.compact)
                         
                         // Section 5: Budgets
                         VStack(spacing: 12) {
@@ -323,41 +349,52 @@ struct WalletView: View {
                                         .foregroundColor(.primary)
                                 }
                             }
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, AppSpacing.margin)
                             
-                            ForEach(budgetRepo.budgets) { budget in
-                                HStack {
-                                    Image(systemName: budget.icon)
-                                        .frame(width: 40, height: 40)
-                                        .background(Color(hex: budget.colorHex).opacity(0.2))
-                                        .foregroundColor(Color(hex: budget.colorHex))
-                                        .clipShape(Circle())
-                                    Text(budget.category)
-                                        .font(.headline)
-                                    Spacer()
-                                    Text("$\(Int(budget.remainingAmount(transactions: transactionRepo.transactions))) left")
-                                        .font(.system(.subheadline, design: .rounded))
-                                        .foregroundColor(.secondary)
-                                }
-                                .padding()
-                                .background(Color(UIColor.secondarySystemBackground))
-                                .cornerRadius(16)
-                                .padding(.horizontal, 16)
-                                .contextMenu {
-                                    Button {
-                                        budgetToEdit = budget
-                                    } label: {
-                                        Label("Edit", systemImage: "pencil")
+                            if budgetRepo.budgets.isEmpty {
+                                EmptyStateView(
+                                    icon: "chart.pie.fill",
+                                    title: "No Budgets",
+                                    message: "Organize your spending with category budgets.",
+                                    actionTitle: "Add Budget",
+                                    action: { showAddBudget = true }
+                                )
+                            } else {
+                                ForEach(budgetRepo.budgets) { budget in
+                                    HStack(spacing: AppSpacing.element) {
+                                        Image(systemName: budget.icon)
+                                            .frame(width: 40, height: 40)
+                                            .background(Color(hex: budget.colorHex).opacity(0.2))
+                                            .foregroundColor(Color(hex: budget.colorHex))
+                                            .clipShape(Circle())
+                                        Text(budget.category)
+                                            .font(.headline)
+                                        Spacer()
+                                        Text("$\(Int(budget.remainingAmount(transactions: transactionRepo.transactions))) left")
+                                            .font(.system(.subheadline, design: .rounded))
+                                            .foregroundColor(.secondary)
                                     }
-                                    
-                                    Button(role: .destructive) {
-                                        deleteBudget(budget)
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
+                                    .padding()
+                                    .background(Color(UIColor.secondarySystemBackground))
+                                    .cornerRadius(AppRadius.medium)
+                                    .padding(.horizontal, AppSpacing.margin)
+                                    .contextMenu {
+                                        Button {
+                                            budgetToEdit = budget
+                                        } label: {
+                                            Label("Edit", systemImage: "pencil")
+                                        }
+                                        
+                                        Button(role: .destructive) {
+                                            deleteBudget(budget)
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
                                     }
                                 }
                             }
                         }
+                        .padding(.vertical, AppSpacing.compact)
                     }
                     .padding(.vertical)
                 }
@@ -385,47 +422,47 @@ struct WalletView: View {
                 AddSavingGoalView(onSave: { goal in
                     addSavingGoal(goal)
                 })
-                .presentationDetents([.fraction(0.55)])
+                .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
             .sheet(item: $goalToEdit) { goal in
                 AddSavingGoalView(goalToEdit: goal, onSave: { updatedGoal in
                     updateSavingGoal(goal, with: updatedGoal)
                 })
-                .presentationDetents([.fraction(0.55)])
+                .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $showAddRecurring) {
                 AddRecurringTransactionView(onSave: { transaction in
                     addRecurringTransaction(transaction)
                 })
-                .presentationDetents([.fraction(0.55)])
+                .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
             .sheet(item: $recurringToEdit) { transaction in
                 AddRecurringTransactionView(recurringToEdit: transaction, onSave: { updatedTransaction in
                     updateRecurringTransaction(transaction, with: updatedTransaction)
                 })
-                .presentationDetents([.fraction(0.55)])
+                .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $showAddBudget) {
                 AddBudgetView(onSave: { budget in
                     addBudget(budget)
                 })
-                .presentationDetents([.fraction(0.55)])
+                .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
             .sheet(item: $budgetToEdit) { budget in
                 AddBudgetView(budgetToEdit: budget, onSave: { updatedBudget in
                     updateBudget(budget, with: updatedBudget)
                 })
-                .presentationDetents([.fraction(0.55)])
+                .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $showEditBalance) {
                 EditBalanceView(initialBalance: $initialBalance)
-                    .presentationDetents([.fraction(0.4)])
+                    .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }
         }
