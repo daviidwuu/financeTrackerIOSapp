@@ -18,11 +18,6 @@ class FirebaseManager: ObservableObject {
         self.auth = Auth.auth()
         self.db = Firestore.firestore()
         
-        // Enable offline persistence for Firestore
-        let settings = FirestoreSettings()
-        settings.isPersistenceEnabled = true
-        db.settings = settings
-        
         // Listen to auth state changes
         auth.addStateDidChangeListener { [weak self] _, user in
             self?.currentUser = user

@@ -154,6 +154,12 @@ class BudgetRepository: ObservableObject {
         guard let userId = userId else { return }
         try await db.collection("users").document(userId).collection("budgets").document(id).delete()
     }
+    
+    func calculateSpent(for category: String, transactions: [FirestoreModels.Transaction]) -> Double {
+        return transactions
+            .filter { $0.subtitle == category && $0.type == "expense" }
+            .reduce(0) { $0 + abs($1.amount) }
+    }
 }
 
 /// Repository for managing saving goals in Firestore

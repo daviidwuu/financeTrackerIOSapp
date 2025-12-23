@@ -1,11 +1,23 @@
 import Foundation
 import UserNotifications
 import FirebaseFirestore
+import BackgroundTasks
 
-class NotificationManager {
+class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     static let shared = NotificationManager()
+    static let dailySummaryTaskID = "com.davidwu.financetracker.dailySummary"
     
-    private init() {}
+    private override init() {
+        super.init()
+        UNUserNotificationCenter.current().delegate = self
+    }
+    
+    func registerBackgroundTasks() {
+        BGTaskScheduler.shared.register(forTaskWithIdentifier: Self.dailySummaryTaskID, using: nil) { task in
+            guard let task = task as? BGAppRefreshTask else { return }
+            self.handleDailySummaryTask(task: task)
+        }
+    }
     
     // MARK: - Permission Management
     
@@ -107,31 +119,92 @@ class NotificationManager {
     
     // MARK: - Daily Summary
     
-    func scheduleDailySummary(totalSpent: Double, transactionCount: Int) {
+    func scheduleDailySummary() {
         guard UserDefaults.standard.bool(forKey: "notificationsEnabled_dailySummary") else { return }
         
-        let content = UNMutableNotificationContent()
-        content.title = "Daily Summary"
-        content.body = "Today: \(transactionCount) transactions, $\(Int(totalSpent)) spent"
-        content.sound = .default
+        let request = BGAppRefreshTaskRequest(identifier: Self.dailySummaryTaskID)
+        // Earliest begin date: Tonight at 9 PM (or tomorrow 9 PM if passed)
+        request.earliestBeginDate = getNextNinePM()
         
-        // Schedule for 9 PM
-        var dateComponents = DateComponents()
-        dateComponents.hour = 21
-        dateComponents.minute = 0
-        
-        let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
-        let request = UNNotificationRequest(identifier: "daily-summary", content: content, trigger: trigger)
-        
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error = error {
-                print("Failed to schedule daily summary: \(error)")
-            }
+        do {
+            try BGTaskScheduler.shared.submit(request)
+            print("✅ Scheduled background task for \(request.earliestBeginDate?.description ?? "unknown")")
+        } catch {
+            print("❌ Could not schedule background task: \(error)")
         }
     }
     
+    private func getNextNinePM() -> Date {
+        let calendar = Calendar.current
+        let now = Date()
+        var components = calendar.dateComponents([.year, .month, .day], from: now)
+        components.hour = 21 // 9 PM
+        components.minute = 0
+        
+        guard let ninePM = calendar.date(from: components) else { return now.addingTimeInterval(3600) }
+        
+        if ninePM < now {
+            return calendar.date(byAdding: .day, value: 1, to: ninePM)!
+        }
+        return ninePM
+    }
+    
     func cancelDailySummary() {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["daily-summary"])
+        BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: Self.dailySummaryTaskID)
+    }
+    
+    private func handleDailySummaryTask(task: BGAppRefreshTask) {
+        // Schedule the next one immediately
+        scheduleDailySummary()
+        
+        task.expirationHandler = {
+            // Cancel operations if system kills us
+        }
+        
+        let userId = AppState.shared.currentUserId
+        guard !userId.isEmpty else {
+            task.setTaskCompleted(success: false)
+            return
+        }
+        
+        // Fetch today's transactions
+        let db = Firestore.firestore()
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: Date())
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+        
+        db.collection("users").document(userId).collection("transactions")
+            .whereField("date", isGreaterThanOrEqualTo: startOfDay)
+            .whereField("date", isLessThan: endOfDay)
+            .getDocuments { snapshot, error in
+                if let error = error {
+                    print("Error fetching daily transactions: \(error)")
+                    task.setTaskCompleted(success: false)
+                    return
+                }
+                
+                let documents = snapshot?.documents ?? []
+                let expenses = documents.compactMap { doc -> Double? in
+                    let data = doc.data()
+                    let amount = data["amount"] as? Double ?? 0
+                    return amount < 0 ? abs(amount) : nil
+                }
+                
+                let totalSpent = expenses.reduce(0, +)
+                let count = expenses.count
+                
+                if count > 0 {
+                    let content = UNMutableNotificationContent()
+                    content.title = "Daily Summary"
+                    content.body = "You spent $\(Int(totalSpent)) across \(count) transactions today."
+                    content.sound = .default
+                    
+                    let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil) // Deliver immediately
+                    UNUserNotificationCenter.current().add(request)
+                }
+                
+                task.setTaskCompleted(success: true)
+            }
     }
     
     // MARK: - Weekly Report
@@ -205,5 +278,11 @@ class NotificationManager {
                     }
                 }
             }
+    }
+    // MARK: - UNUserNotificationCenterDelegate
+    
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        // Show banner and play sound even when app is in foreground
+        completionHandler([.banner, .sound, .badge])
     }
 }
