@@ -82,6 +82,7 @@ struct WalletView: View {
                             Spacer()
                         }
                         .padding(.top, 10)
+                        .padding(.bottom, 16) // Added spacing between header and card
                         .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
@@ -106,7 +107,7 @@ struct WalletView: View {
                             }
                         }
 
-                        .padding(24) // Standard card padding
+                        .padding(AppSpacing.margin) // Changed from 24 to 20 (standard margin)
                         .background(Color(UIColor.secondarySystemBackground))
                         .clipShape(RoundedRectangle(cornerRadius: AppRadius.large)) // Consistent radius
                         .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.section, trailing: AppSpacing.margin))
