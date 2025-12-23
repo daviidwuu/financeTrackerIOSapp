@@ -73,6 +73,20 @@ struct WalletView: View {
                     .ignoresSafeArea()
                 
                 List {
+                    // Header Section
+                    Section {
+                        HStack {
+                            Text("Wallet")
+                                .font(AppTypography.titleDisplay)
+                                .foregroundColor(.primary)
+                            Spacer()
+                        }
+                        .padding(.top, 10)
+                        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                    }
+
                     // Section 1: Financial Overview (Balance Card)
                     Section {
                         VStack(alignment: .leading, spacing: 16) {
@@ -83,97 +97,27 @@ struct WalletView: View {
                                         .font(.subheadline)
                                         .fontWeight(.medium)
                                         .foregroundColor(.secondary)
-                                    
                                     Spacer()
-                                    
-                                    // Discreet Detail Toggle
-                                    Button(action: {
-                                        HapticManager.shared.light()
-                                        withAnimation(.easeInOut(duration: 0.3)) {
-                                            showDetails.toggle()
-                                        }
-                                    }) {
-                                        Image(systemName: "chevron.down.circle.fill")
-                                            .font(.system(size: 16, weight: .semibold))
-                                            .foregroundColor(.secondary.opacity(0.5))
-                                            .rotationEffect(.degrees(showDetails ? 180 : 0))
-                                            .animation(.easeInOut(duration: 0.3), value: showDetails)
-                                            .padding(4)
-                                            .contentShape(Rectangle())
-                                    }
-                                    .buttonStyle(.plain)
                                 }
                                 
                                 Text("$\(String(format: "%.2f", totalBalance))")
                                     .font(AppTypography.sectionHeader)
                                     .foregroundColor(totalBalance >= 0 ? .primary : .red)
-                                    .onTapGesture {
-                                        HapticManager.shared.light()
-                                        showEditBalance.toggle()
-                                    }
-                            }
-                            
-                            if showDetails {
-                                VStack(spacing: 16) {
-                                    Divider()
-                                    
-                                    // Total Income (Actual)
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text("Total Income")
-                                                .font(.subheadline)
-                                                .fontWeight(.medium)
-                                                .foregroundColor(.secondary)
-                                            Text("$\(String(format: "%.2f", currentMonthIncome))")
-                                                .font(AppTypography.sectionHeader)
-                                                .foregroundColor(.green)
-                                        }
-                                        Spacer()
-                                    }
-                                    
-                                    Divider()
-                                    
-                                    // Total Expense (All-time)
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text("Total Expense")
-                                                .font(.subheadline)
-                                                .fontWeight(.medium)
-                                                .foregroundColor(.secondary)
-                                            Text("$\(String(format: "%.2f", totalExpense))")
-                                                .font(AppTypography.sectionHeader)
-                                                .foregroundColor(.red)
-                                        }
-                                        Spacer()
-                                    }
-                                    
-                                    Divider()
-                                    
-                                    // Net Cash Flow
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text("Net Cash Flow")
-                                                .font(.subheadline)
-                                                .fontWeight(.medium)
-                                                .foregroundColor(.secondary)
-                                            Text("$\(String(format: "%.2f", netCashFlow))")
-                                                .font(AppTypography.sectionHeader)
-                                                .foregroundColor(netCashFlow >= 0 ? .green : .red)
-                                        }
-                                        Spacer()
-                                    }
-                                }
-                                .transition(.opacity)
                             }
                         }
                         .padding(.vertical, AppSpacing.compact)
-                        .padding(AppSpacing.margin) // Improved padding for "Total Balance" card
+                        .padding(AppSpacing.margin)
                         .background(Color(UIColor.secondarySystemBackground))
                         .clipped()
                         .cornerRadius(AppRadius.medium)
                         .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.section, trailing: AppSpacing.margin))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
+                        .contentShape(Rectangle()) // Make entire area tappable
+                        .onTapGesture {
+                            HapticManager.shared.light()
+                            showEditBalance.toggle()
+                        }
                     }
                     
                     // Section 2: Saving Goals
@@ -449,6 +393,7 @@ struct WalletView: View {
                     transactionRepo.stopListening()
                 }
             }
+            .navigationBarHidden(true)
             .sheet(isPresented: $showAddSavingGoal) {
                 AddSavingGoalView(onSave: { goal in
                     addSavingGoal(goal)
@@ -492,9 +437,14 @@ struct WalletView: View {
                 .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $showEditBalance) {
-                EditBalanceView(initialBalance: $initialBalance)
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
+                WalletDetailsView(
+                    initialBalance: $initialBalance,
+                    income: currentMonthIncome,
+                    expense: totalExpense,
+                    netFlow: netCashFlow
+                )
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
             }
         }
     }
