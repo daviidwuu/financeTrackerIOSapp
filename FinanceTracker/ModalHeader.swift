@@ -59,7 +59,7 @@ struct ModalHeader: View {
             .padding(.horizontal, AppSpacing.margin)
         }
         .padding(.bottom, AppSpacing.element)
-        .background(Color(UIColor.systemBackground)) // Matches the true black background of the view
+        .background(Color.backgroundPrimary) // Matches the true black background of the view
     }
 }
 

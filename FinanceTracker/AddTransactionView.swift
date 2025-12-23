@@ -47,6 +47,7 @@ struct AddTransactionView: View {
                     } : nil,
                     onClose: { dismiss() }
                 )
+                .padding()
                 
                 // Content
                 ZStack(alignment: .top) {
@@ -86,7 +87,7 @@ struct AddTransactionView: View {
                     .disabled(!isStepValid)
                 }
                 .padding(AppSpacing.margin)
-                .background(Color(UIColor.systemBackground))
+                .background(Color.backgroundPrimary)
             }
         }
         .onAppear {

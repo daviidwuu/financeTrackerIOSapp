@@ -105,11 +105,10 @@ struct WalletView: View {
                                     .foregroundColor(totalBalance >= 0 ? .primary : .red)
                             }
                         }
-                        .padding(.vertical, AppSpacing.compact)
-                        .padding(AppSpacing.margin)
+
+                        .padding(24) // Standard card padding
                         .background(Color(UIColor.secondarySystemBackground))
-                        .clipped()
-                        .cornerRadius(AppRadius.medium)
+                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.large)) // Consistent radius
                         .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.section, trailing: AppSpacing.margin))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
@@ -400,6 +399,7 @@ struct WalletView: View {
                 })
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(Color.backgroundPrimary)
             }
             .sheet(item: $goalToEdit) { goal in
                 AddSavingGoalView(goalToEdit: goal, onSave: { updatedGoal in
@@ -407,6 +407,7 @@ struct WalletView: View {
                 })
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(Color.backgroundPrimary)
             }
             .sheet(isPresented: $showAddRecurring) {
                 AddRecurringTransactionView(onSave: { transaction in
@@ -414,6 +415,7 @@ struct WalletView: View {
                 })
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(Color.backgroundPrimary)
             }
             .sheet(item: $recurringToEdit) { transaction in
                 AddRecurringTransactionView(recurringToEdit: transaction, onSave: { updatedTransaction in
@@ -421,6 +423,7 @@ struct WalletView: View {
                 })
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(Color.backgroundPrimary)
             }
             .sheet(isPresented: $showAddBudget) {
                 AddBudgetView(onSave: { budget in
@@ -428,6 +431,7 @@ struct WalletView: View {
                 })
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(Color.backgroundPrimary)
             }
             .sheet(item: $budgetToEdit) { budget in
                 AddBudgetView(budgetToEdit: budget, onSave: { updatedBudget in
@@ -435,6 +439,7 @@ struct WalletView: View {
                 })
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(Color.backgroundPrimary)
             }
             .sheet(isPresented: $showEditBalance) {
                 WalletDetailsView(
@@ -445,6 +450,7 @@ struct WalletView: View {
                 )
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(Color.backgroundPrimary)
             }
         }
     }

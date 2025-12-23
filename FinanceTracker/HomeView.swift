@@ -176,9 +176,11 @@ struct HomeView: View {
                     })
                     .presentationDetents([.fraction(0.65)])
                     .presentationDragIndicator(.visible)
+                    .presentationBackground(Color.backgroundPrimary)
                 }
                 .sheet(isPresented: $showProfile) {
                     ProfileView()
+                        .presentationBackground(Color.backgroundPrimary)
                 }
                 .sheet(isPresented: $showAllTransactions) {
                     AllTransactionsView(
@@ -186,6 +188,16 @@ struct HomeView: View {
                         budgetRepo: budgetRepo
                     )
                     .environmentObject(appState)
+                    .presentationBackground(Color.backgroundPrimary)
+                }
+
+                .sheet(isPresented: $showAddTransaction) {
+                    AddTransactionView(onSave: { transaction in
+                        addTransaction(transaction)
+                    })
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(Color.backgroundPrimary)
                 }
             }
             .navigationBarHidden(true)
@@ -201,6 +213,37 @@ struct HomeView: View {
             .onDisappear {
                 transactionRepo.stopListening()
                 budgetRepo.stopListening()
+            }
+        }
+    }
+    
+    private func addTransaction(_ transaction: Transaction) {
+        Task {
+            do {
+                // Convert UI Transaction to Firestore Transaction
+                let amount = Double(transaction.amount) ?? 0.0
+                let firestoreTransaction = FirestoreModels.Transaction(
+                    title: transaction.title,
+                    subtitle: transaction.subtitle,
+                    amount: amount,
+                    date: transaction.date,
+                    icon: transaction.icon,
+                    colorHex: transaction.color.toHex() ?? "#000000",
+                    note: transaction.notes,
+                    type: amount < 0 ? "expense" : "income",
+                    userId: appState.currentUserId, // Use global user ID
+                    createdAt: Date()
+                )
+                try await transactionRepo.addTransaction(firestoreTransaction)
+                
+                // Send notification after successful save
+                NotificationManager.shared.sendTransactionNotification(
+                    amount: amount,
+                    category: transaction.title,
+                    type: transaction.type
+                )
+            } catch {
+                print("Failed to add transaction: \(error)")
             }
         }
     }

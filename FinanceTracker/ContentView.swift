@@ -52,6 +52,7 @@ struct ContentView: View {
             })
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
+            .presentationBackground(Color.backgroundPrimary)
         }
     }
     

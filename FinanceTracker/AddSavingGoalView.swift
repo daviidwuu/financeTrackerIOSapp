@@ -46,6 +46,7 @@ struct AddSavingGoalView: View {
                     } : nil,
                     onClose: { dismiss() }
                 )
+                .padding()
                 
                 // Content
                 ScrollView {
@@ -85,7 +86,7 @@ struct AddSavingGoalView: View {
                     .disabled(!isStepValid)
                 }
                 .padding(AppSpacing.margin)
-                .background(Color(UIColor.systemBackground))
+                .background(Color.backgroundPrimary)
             }
         }
     }

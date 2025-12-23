@@ -66,6 +66,7 @@ struct AddBudgetView: View {
                     } : nil,
                     onClose: { dismiss() }
                 )
+                .padding()
                 
                 Spacer()
                 
@@ -106,7 +107,7 @@ struct AddBudgetView: View {
                     .disabled(!isStepValid)
                 }
                 .padding(AppSpacing.margin)
-                .background(Color(UIColor.systemBackground))
+                .background(Color.backgroundPrimary)
             }
         }
     }
