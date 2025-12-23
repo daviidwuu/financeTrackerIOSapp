@@ -78,7 +78,7 @@ struct AddBudgetView: View {
                     insertion: .move(edge: direction),
                     removal: .move(edge: direction == .leading ? .trailing : .leading)
                 ))
-                .padding(.horizontal)
+                .padding(.horizontal, AppSpacing.margin)
                 
                 Spacer()
                 
@@ -106,7 +106,7 @@ struct AddBudgetView: View {
                     .disabled(!isStepValid)
                 }
                 .padding(AppSpacing.margin)
-                .background(Material.bar)
+                .background(Color(UIColor.systemBackground))
             }
         }
     }
@@ -266,7 +266,7 @@ struct AddBudgetView: View {
                         }
                     }
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, AppSpacing.margin)
             }
         }
     }

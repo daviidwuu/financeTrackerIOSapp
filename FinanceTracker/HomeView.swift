@@ -152,15 +152,16 @@ struct HomeView: View {
                                             Label("Delete", systemImage: "trash")
                                         }
                                     }
-                                    .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                        Button {
-                                            selectedTransaction = transaction
-                                        } label: {
-                                            Label("Edit", systemImage: "pencil")
-                                        }
-                                        .tint(.blue)
-                                    }
                             }
+                        }
+                                .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                    Button {
+                                        selectedTransaction = transaction
+                                    } label: {
+                                        Label("Edit", systemImage: "pencil")
+                                    }
+                                    .tint(.blue)
+                                }
                         }
                     }
                     .listRowBackground(Color.clear)

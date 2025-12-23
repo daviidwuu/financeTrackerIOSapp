@@ -91,7 +91,7 @@ struct AddRecurringTransactionView: View {
                     .disabled(!isStepValid)
                 }
                 .padding(AppSpacing.margin)
-                .background(Material.bar)
+                .background(Color(UIColor.systemBackground))
             }
         }
         .onAppear {
@@ -254,7 +254,7 @@ struct AddRecurringTransactionView: View {
                         }
                     }
                 }
-                .padding(.horizontal, AppSpacing.compact)
+                .padding(.horizontal, AppSpacing.margin)
             }
         }
     }

@@ -86,7 +86,7 @@ struct AddTransactionView: View {
                     .disabled(!isStepValid)
                 }
                 .padding(AppSpacing.margin)
-                .background(Material.bar)
+                .background(Color(UIColor.systemBackground))
             }
         }
         .onAppear {
@@ -279,7 +279,7 @@ struct AddTransactionView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 8)
+                .padding(.horizontal, AppSpacing.margin)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }

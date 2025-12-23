@@ -167,7 +167,8 @@ struct WalletView: View {
                             }
                         }
                         .padding(.vertical, AppSpacing.compact)
-                        .padding()
+
+                        .padding(AppSpacing.margin) // Improved padding for "Total Balance" card
                         .background(Color(UIColor.secondarySystemBackground))
                         .clipped()
                         .cornerRadius(AppRadius.medium)

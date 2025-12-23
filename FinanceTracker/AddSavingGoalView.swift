@@ -58,7 +58,7 @@ struct AddSavingGoalView: View {
                         removal: .move(edge: direction == .leading ? .trailing : .leading)
                     ))
                     .padding(.horizontal, AppSpacing.margin)
-                    .padding(.vertical, 20)
+                    .padding(.vertical, AppSpacing.section)
                 }
                 
                 // Sticky Action Bar
@@ -85,7 +85,7 @@ struct AddSavingGoalView: View {
                     .disabled(!isStepValid)
                 }
                 .padding(AppSpacing.margin)
-                .background(Material.bar)
+                .background(Color(UIColor.systemBackground))
             }
         }
     }
