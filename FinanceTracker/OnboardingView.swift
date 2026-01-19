@@ -123,6 +123,7 @@ struct OnboardingView: View {
     }
     
     private func nextStep() {
+        hideKeyboard()
         if currentStep < 5 {
             withAnimation { currentStep += 1 }
         } else {
@@ -131,9 +132,14 @@ struct OnboardingView: View {
     }
     
     private func prevStep() {
+        hideKeyboard()
         if currentStep > 1 {
             withAnimation { currentStep -= 1 }
         }
+    }
+    
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
     
     private func completeOnboarding() {

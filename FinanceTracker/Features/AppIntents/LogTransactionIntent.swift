@@ -61,7 +61,7 @@ struct LogTransactionIntent: AppIntent {
             id: nil,
             title: title,
             subtitle: budgetData.category,
-            amount: -abs(amount),
+            amount: (budgetData.type == "income" ? abs(amount) : -abs(amount)),
             date: Date(),
             icon: budgetData.icon,
             colorHex: budgetData.colorHex,
