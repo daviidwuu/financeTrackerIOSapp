@@ -25,6 +25,11 @@ class TransactionRepository: ObservableObject {
                 self?.transactions = documents.compactMap { document in
                     try? document.data(as: FirestoreModels.Transaction.self)
                 }
+                
+                // Update Widget Data
+                if let transactions = self?.transactions {
+                    self?.updateWidgetData(transactions: transactions)
+                }
             }
     }
     
@@ -59,6 +64,24 @@ class TransactionRepository: ObservableObject {
         guard let userId = userId else { return }
         try await db.collection("users").document(userId).collection("transactions").document(id).delete()
     }
+    
+    private func updateWidgetData(transactions: [FirestoreModels.Transaction]) {
+        let calendar = Calendar.current
+        let today = Date()
+        
+        // Calculate Daily Spend (Expense only)
+        let dailySpend = transactions
+            .filter { $0.type == "expense" && calendar.isDateInToday($0.date) }
+            .reduce(0) { $0 + $1.amount }
+        
+        // Calculate Monthly Spend (Expense only)
+        let monthlySpend = transactions
+             .filter { $0.type == "expense" && calendar.isDate($0.date, equalTo: today, toGranularity: .month) }
+             .reduce(0) { $0 + $1.amount }
+             
+        WidgetDataManager.shared.saveDailySpend(dailySpend)
+        WidgetDataManager.shared.saveMonthlySpend(monthlySpend)
+    }
 }
 
 /// Repository for managing categories in Firestore
@@ -87,6 +110,9 @@ class BudgetRepository: ObservableObject {
                     try? document.data(as: FirestoreModels.CategoryBudget.self)
                 }
                 self?.budgets = fetchedBudgets
+                
+                // Update Widget Data
+                self?.updateWidgetData(budgets: fetchedBudgets)
                 
                 // Ensure default "Income" category exists
                 if !fetchedBudgets.contains(where: { $0.category == "Income" }) {
@@ -143,6 +169,31 @@ class BudgetRepository: ObservableObject {
         return transactions
             .filter { $0.subtitle == category && $0.type == "expense" }
             .reduce(0) { $0 + abs($1.amount) }
+    }
+    
+    private func updateWidgetData(budgets: [FirestoreModels.CategoryBudget]) {
+        // Calculate Total Monthly Budget (excluding Income)
+        let totalBudget = budgets
+            .filter { $0.type == "expense" }
+            .reduce(0) { sum, budget in
+                var monthlyAmount = budget.totalAmount
+                
+                // Normalize frequency to Monthly
+                switch budget.frequency {
+                case "Weekly":
+                    monthlyAmount = budget.totalAmount * 52.0 / 12.0
+                case "Bi-Weekly":
+                    monthlyAmount = budget.totalAmount * 26.0 / 12.0
+                case "Yearly":
+                    monthlyAmount = budget.totalAmount / 12.0
+                default: // "Monthly" or others
+                    monthlyAmount = budget.totalAmount
+                }
+                
+                return sum + monthlyAmount
+            }
+            
+        WidgetDataManager.shared.saveMonthlyBudget(totalBudget)
     }
 }
 
