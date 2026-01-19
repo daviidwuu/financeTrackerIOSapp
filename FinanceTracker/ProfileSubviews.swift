@@ -213,7 +213,7 @@ struct NotificationsSettingsView: View {
                     .onChange(of: dailySummary) { newValue in
                         if newValue {
                             ensurePermission()
-                            // Schedule will happen when user adds transactions
+                            NotificationManager.shared.scheduleDailySummary()
                         } else {
                             NotificationManager.shared.cancelDailySummary()
                         }

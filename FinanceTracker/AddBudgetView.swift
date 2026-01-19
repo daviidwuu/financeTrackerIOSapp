@@ -57,9 +57,9 @@ struct AddBudgetView: View {
             VStack(spacing: 20) {
                 // Header
                 ModalHeader(
-                    title: currentStep < 6 ? "Add Budget" : "Confirm",
+                    title: currentStep < 5 ? "Add Budget" : "Confirm",
                     currentStep: currentStep,
-                    totalSteps: 6,
+                    totalSteps: 5,
                     onBack: currentStep > 1 ? {
                         direction = .leading
                         withAnimation { currentStep -= 1 }
@@ -86,7 +86,7 @@ struct AddBudgetView: View {
                 // Sticky Action Bar
                 VStack {
                     Button(action: {
-                        if currentStep < 6 { // Increased steps to 6
+                        if currentStep < 5 { // Decreased steps to 5
                             HapticManager.shared.light()
                             direction = .trailing
                             withAnimation { currentStep += 1 }
@@ -95,7 +95,7 @@ struct AddBudgetView: View {
                             saveBudget()
                         }
                     }) {
-                        Text(currentStep < 6 ? "Next" : (budgetToEdit != nil ? "Update Budget" : "Save Budget"))
+                        Text(currentStep < 5 ? "Next" : (budgetToEdit != nil ? "Update Budget" : "Save Budget"))
                             .font(.headline)
                             .fontWeight(.bold)
                             .foregroundColor(.black)
@@ -137,19 +137,17 @@ struct AddBudgetView: View {
     private var isStepValid: Bool {
         switch currentStep {
         case 1:
-            return true // Type step always valid
-        case 2:
             if let value = Double(amount), value > 0 {
                 return true
             }
             return false
-        case 3:
+        case 2:
             return !name.isEmpty
+        case 3:
+            return true
         case 4:
             return true
         case 5:
-            return true
-        case 6:
             return true
         default:
             return false
@@ -159,62 +157,23 @@ struct AddBudgetView: View {
     @ViewBuilder
     private var currentStepView: some View {
         if currentStep == 1 {
-            typeStep
-        } else if currentStep == 2 {
             limitStep
-        } else if currentStep == 3 {
+        } else if currentStep == 2 {
             nameStep
-        } else if currentStep == 4 {
+        } else if currentStep == 3 {
             iconStep
-        } else if currentStep == 5 {
+        } else if currentStep == 4 {
             colorStep
         } else {
             periodStep
         }
     }
     
-    private var typeStep: some View {
-        VStack(spacing: 24) {
-            Text("Income or Expense?")
-                .font(.title2)
-                .fontWeight(.semibold)
-                .foregroundColor(.secondary)
-            
-            HStack(spacing: 20) {
-                Button(action: { type = "income" }) {
-                    VStack {
-                        Image(systemName: "arrow.down.circle.fill")
-                            .font(.system(size: 40))
-                            .foregroundColor(type == "income" ? .white : .green)
-                        Text("Income")
-                            .fontWeight(.bold)
-                    }
-                    .frame(width: 140, height: 140)
-                    .background(type == "income" ? Color.green : Color(UIColor.secondarySystemBackground))
-                    .foregroundColor(type == "income" ? .white : .primary)
-                    .cornerRadius(AppRadius.medium)
-                }
-                
-                Button(action: { type = "expense" }) {
-                    VStack {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 40))
-                            .foregroundColor(type == "expense" ? .white : .red)
-                        Text("Expense")
-                            .fontWeight(.bold)
-                    }
-                    .frame(width: 140, height: 140)
-                    .background(type == "expense" ? Color.red : Color(UIColor.secondarySystemBackground))
-                    .foregroundColor(type == "expense" ? .white : .primary)
-                    .cornerRadius(AppRadius.medium)
-                }
-            }
-        }
-    }
+
     
     private var limitStep: some View {
         VStack(spacing: 16) {
-            Text(type == "income" ? "Expected Income" : "Budget Limit") // Dynamic text
+            Text("Budget Limit")
                 .font(.title2)
                 .fontWeight(.semibold)
                 .foregroundColor(.secondary)

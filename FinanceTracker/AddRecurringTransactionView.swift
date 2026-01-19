@@ -13,7 +13,7 @@ struct AddRecurringTransactionView: View {
     
     @State private var currentStep = 1
     @State private var amount: String = ""
-    @State private var selectedCategory: FirestoreModels.Category?
+    @State private var selectedCategory: FirestoreModels.CategoryBudget?
     @State private var frequency: String = "Monthly"
     @State private var notes: String = ""
     @State private var direction: Edge = .trailing
@@ -113,7 +113,7 @@ struct AddRecurringTransactionView: View {
         guard let amountValue = Double(amount), let category = selectedCategory else { return }
         
         let newRecurring = RecurringTransaction(
-            name: category.name,
+            name: category.category,
             amount: amountValue,
             icon: category.icon,
             color: Color(hex: category.colorHex),
@@ -160,8 +160,6 @@ struct AddRecurringTransactionView: View {
         }
     }
     
-
-    
     private var amountStep: some View {
         VStack(spacing: 16) {
             Text("Amount")
@@ -191,15 +189,7 @@ struct AddRecurringTransactionView: View {
                         let progress = min(max(1.0 - (remaining / budget.totalAmount), 0.0), 1.0)
                         
                         Button(action: {
-                            selectedCategory = FirestoreModels.Category(
-                                id: nil,
-                                name: budget.category,
-                                icon: budget.icon,
-                                colorHex: budget.colorHex,
-                                type: budget.type ?? "expense",
-                                userId: appState.currentUserId,
-                                createdAt: Date()
-                            )
+                            selectedCategory = budget
                             HapticManager.shared.light()
                         }) {
                             VStack(spacing: 0) {
@@ -226,7 +216,7 @@ struct AddRecurringTransactionView: View {
                                             .font(.caption2)
                                             .foregroundColor(.secondary)
                                         
-                                        if selectedCategory?.name == budget.category {
+                                        if selectedCategory?.category == budget.category {
                                             Image(systemName: "checkmark.circle.fill")
                                                 .font(.caption)
                                                 .foregroundColor(.green)
@@ -240,16 +230,16 @@ struct AddRecurringTransactionView: View {
                                     ZStack(alignment: .leading) {
                                         Color(hex: budget.colorHex).opacity(0.1)
                                         Color(hex: budget.colorHex)
-                                            .frame(width: geometry.size.width * progress)
+                                        .frame(width: geometry.size.width * progress)
                                     }
                                 }
                                 .frame(height: 3)
                             }
-                            .background(selectedCategory?.name == budget.category ? Color(hex: budget.colorHex).opacity(0.1) : Color(UIColor.secondarySystemBackground))
+                            .background(selectedCategory?.category == budget.category ? Color(hex: budget.colorHex).opacity(0.1) : Color(UIColor.secondarySystemBackground))
                             .cornerRadius(AppRadius.small)
                             .overlay(
                                 RoundedRectangle(cornerRadius: AppRadius.small)
-                                    .stroke(selectedCategory?.name == budget.category ? Color(hex: budget.colorHex) : Color.clear, lineWidth: 1)
+                                    .stroke(selectedCategory?.category == budget.category ? Color(hex: budget.colorHex) : Color.clear, lineWidth: 1)
                             )
                         }
                     }

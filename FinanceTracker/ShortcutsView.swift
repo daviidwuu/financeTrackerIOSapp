@@ -1,188 +1,77 @@
 import SwiftUI
+import AppIntents
 
 struct ShortcutsView: View {
-    @EnvironmentObject var appState: AppState
     @Environment(\.colorScheme) var colorScheme
-    @State private var showCopiedAlert = false
-    @State private var showShareSheet = false
+    @EnvironmentObject var appState: AppState
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Header
-                VStack(spacing: 8) {
+        List {
+            Section {
+                VStack(spacing: 16) {
                     Image(systemName: "bolt.fill")
-                        .font(.system(size: 50))
+                        .font(.system(size: 60))
                         .foregroundColor(.white)
-                    Text("Apple Shortcuts")
+                        .padding(.vertical, 10)
+                    
+                    Text("Finance Tracker Shortcuts")
                         .font(.title2)
                         .fontWeight(.bold)
-                    Text("Add transactions using Siri or Shortcuts")
-                        .font(.subheadline)
+                    
+                    Text("Log transactions instantly with Siri or the Shortcuts app.")
+                        .font(.body)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
-                }
-                .padding(.top, 20)
-                
-                // User ID Section
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Your User ID")
-                        .font(.headline)
+                        .padding(.horizontal)
                     
-                    HStack {
-                        Text(appState.currentUserId)
-                            .font(.system(.body, design: .monospaced))
+                    if #available(iOS 16.0, *) {
+                        ShortcutsLink()
+                            .shortcutsLinkStyle(.darkOutline)
+                            .padding(.top, 10)
+                    } else {
+                        Text("Please update to iOS 16 to use App Shortcuts.")
+                            .font(.caption)
                             .foregroundColor(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                        
-                        Spacer()
-                        
-                        Button(action: {
-                            UIPasteboard.general.string = appState.currentUserId
-                            showCopiedAlert = true
-                            HapticManager.shared.success()
-                        }) {
-                            Label("Copy", systemImage: "doc.on.doc")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                        }
                     }
-                    .padding()
-                    .background(Color(UIColor.secondarySystemBackground))
-                    .cornerRadius(12)
                 }
-                .padding(.horizontal)
-                
-                // Create Shortcut Button
-                VStack(spacing: 12) {
-                    Button(action: {
-                        shareShortcutURL()
-                    }) {
-                        HStack {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.title3)
-                            Text("Share Shortcut Template")
-                                .font(.headline)
-                                .fontWeight(.semibold)
-                        }
-                        .foregroundColor(colorScheme == .dark ? .black : .white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(colorScheme == .dark ? Color.white : Color.black)
-                        .cornerRadius(16)
-                    }
-                    
-                    Text("Save the shortcut template with your UID pre-configured")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .padding(.horizontal)
-                
-                Spacer()
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
+            }
+            
+            Section(header: Text("Available Voice Commands")) {
+                CommandRow(command: "Log Transaction", description: "Logs a new expense with categories from your budget.")
+                CommandRow(command: "Log Transaction with Note", description: "Adds a note to your transaction entry.")
+            }
+            
+            Section(footer: Text("You can customize these phrases in the Shortcuts app.")) {
+                // Info section
             }
         }
         .navigationTitle("Shortcuts")
-        .background(colorScheme == .dark ? Color.black : Color(UIColor.systemGroupedBackground))
-        .alert("Copied!", isPresented: $showCopiedAlert) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("User ID copied to clipboard")
-        }
-        .sheet(isPresented: $showShareSheet) {
-            ShareShortcutView(userId: appState.currentUserId)
-        }
-    }
-    
-    private func shareShortcutURL() {
-        // Create iCloud link or share sheet
-        showShareSheet = true
-        HapticManager.shared.success()
+        .background(Color.listBackground)
+        .scrollContentBackground(.hidden)
     }
 }
 
-struct ShareShortcutView: View {
-    let userId: String
-    @Environment(\.dismiss) var dismiss
-    
-    var shortcutText: String {
-        """
-        📱 Shortcut Setup Steps:
-
-        1. Open Shortcuts app
-        2. Tap + to create new shortcut
-        3. Add "Dictionary" action
-        4. Configure dictionary with these keys:
-           • UserID: Text → "\(userId)"
-           • Data: Dictionary with:
-             - Category: Ask Each Time
-             - Type: Text → "expense" or "income"
-             - Amount: Ask Each Time (Number)
-             - Notes: Ask Each Time
-        
-        5. Add "Get Contents of URL"
-           • URL: [See below - get from Firebase Console]
-           • Method: POST
-           • Request Body: JSON
-           • Body: [Dictionary from step 4]
-        
-        6. Add "Show Notification"
-           • Title: "Transaction Added"
-           • Body: "✅ Saved [Category] - $[Amount]"
-        
-        7. Name it "Add Expense"
-        
-        🔔 IMPORTANT: The notification in step 6 happens on YOUR device.
-        The app won't receive a notification from shortcuts - only when you
-        add transactions directly in the app.
-        
-        🔗 Getting Your URL:
-        1. Go to Firebase Console
-        2. Navigate to Functions
-        3. Deploy the function (see setup guide)
-        4. Copy the URL that looks like:
-           https://us-central1-YOUR-PROJECT.cloudfunctions.net/addTransaction
-        
-        💡 Your UserID is already here: \(userId)
-        """
-    }
+struct CommandRow: View {
+    let command: String
+    let description: String
     
     var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    Text(shortcutText)
-                        .font(.system(.body, design: .monospaced))
-                        .padding()
-                    
-                    Button(action: {
-                        UIPasteboard.general.string = userId
-                        HapticManager.shared.success()
-                    }) {
-                        HStack {
-                            Image(systemName: "doc.on.doc")
-                            Text("Copy User ID")
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
-                    }
-                    .padding(.horizontal)
-                }
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("Hey Siri, \(command)")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                Spacer()
             }
-            .navigationTitle("Setup Instructions")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
+            Text(description)
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
+        .padding(.vertical, 4)
     }
 }
 

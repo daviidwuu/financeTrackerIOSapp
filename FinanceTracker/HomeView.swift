@@ -301,6 +301,23 @@ struct TransactionRow: View {
         return "#808080" // Gray for "Others"
     }
     
+    private func formattedDate(_ date: Date) -> String {
+        let calendar = Calendar.current
+        let timeFormatter = DateFormatter()
+        timeFormatter.timeStyle = .short
+        let timeString = timeFormatter.string(from: date)
+        
+        if calendar.isDateInToday(date) {
+            return "Today at \(timeString)"
+        } else if calendar.isDateInYesterday(date) {
+            return "Yesterday at \(timeString)"
+        } else {
+            let dateFormatter = DateFormatter()
+            dateFormatter.setLocalizedDateFormatFromTemplate("MMMd")
+            return "\(dateFormatter.string(from: date)) at \(timeString)"
+        }
+    }
+
     var body: some View {
         HStack(spacing: AppSpacing.element) {
             Circle()
@@ -313,22 +330,38 @@ struct TransactionRow: View {
                 )
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(transaction.title)
+                // For Income, always show Category Name (subtitle) or "Income" as title
+                Text(transaction.type == "income" ? (transaction.subtitle ?? "Income") : transaction.title)
                     .font(.body)
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)
-                if let subtitle = transaction.subtitle, !subtitle.isEmpty, subtitle != transaction.title {
-                    Text(subtitle)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                
+                // Subtitle logic
+                if transaction.type != "income" {
+                    if let subtitle = transaction.subtitle, !subtitle.isEmpty, subtitle != transaction.title {
+                        Text(subtitle)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 
+                // Show note (or original title if it was hijackng description in legacy income)
                 if let note = transaction.note, !note.isEmpty {
                     Text(note)
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
+                } else if transaction.type == "income" && transaction.title != (transaction.subtitle ?? "Income") {
+                     // Fallback for legacy data where title was description
+                    Text(transaction.title)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
                 }
+                
+                Text(formattedDate(transaction.date))
+                    .font(.caption2)
+                    .foregroundColor(Color(UIColor.tertiaryLabel))
             }
             
             Spacer()

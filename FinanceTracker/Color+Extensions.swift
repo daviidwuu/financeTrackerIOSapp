@@ -88,4 +88,8 @@ extension Color {
             return traitCollection.userInterfaceStyle == .dark ? .black : UIColor.systemGroupedBackground
         })
     }
+    
+    static let selectableColors: [Color] = [
+        .red, .orange, .yellow, .green, .mint, .teal, .cyan, .blue, .indigo, .purple, .pink, .brown, .gray
+    ]
 }

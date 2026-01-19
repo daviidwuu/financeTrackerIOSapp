@@ -62,51 +62,7 @@ class TransactionRepository: ObservableObject {
 }
 
 /// Repository for managing categories in Firestore
-class CategoryRepository: ObservableObject {
-    private let db = Firestore.firestore()
-    @Published var categories: [FirestoreModels.Category] = []
-    private var userId: String?
-    
-    private var listener: ListenerRegistration?
-    
-    func startListening(userId: String) {
-        self.userId = userId
-        listener = db.collection("users").document(userId).collection("categories")
-            .order(by: "name")
-            .addSnapshotListener { [weak self] snapshot, error in
-                guard let documents = snapshot?.documents else {
-                    print("Error fetching categories: \(error?.localizedDescription ?? "Unknown error")")
-                    return
-                }
-                
-                self?.categories = documents.compactMap { document in
-                    try? document.data(as: FirestoreModels.Category.self)
-                }
-            }
-    }
-    
-    func stopListening() {
-        listener?.remove()
-        userId = nil
-    }
-    
-    func addCategory(_ category: FirestoreModels.Category) async throws {
-        guard let userId = userId else { return }
-        var newCategory = category
-        newCategory.createdAt = Date()
-        try db.collection("users").document(userId).collection("categories").document().setData(from: newCategory)
-    }
-    
-    func updateCategory(_ category: FirestoreModels.Category) async throws {
-        guard let userId = userId, let id = category.id else { throw NSError(domain: "CategoryRepository", code: 400) }
-        try db.collection("users").document(userId).collection("categories").document(id).setData(from: category)
-    }
-    
-    func deleteCategory(id: String) async throws {
-        guard let userId = userId else { return }
-        try await db.collection("users").document(userId).collection("categories").document(id).delete()
-    }
-}
+
 
 /// Repository for managing budgets in Firestore
 class BudgetRepository: ObservableObject {
@@ -127,10 +83,38 @@ class BudgetRepository: ObservableObject {
                     return
                 }
                 
-                self?.budgets = documents.compactMap { document in
+                let fetchedBudgets = documents.compactMap { document in
                     try? document.data(as: FirestoreModels.CategoryBudget.self)
                 }
+                self?.budgets = fetchedBudgets
+                
+                // Ensure default "Income" category exists
+                if !fetchedBudgets.contains(where: { $0.category == "Income" }) {
+                    Task { [weak self] in
+                        await self?.createDefaultIncomeCategory(userId: userId, monthStartDate: monthStartDate)
+                    }
+                }
             }
+    }
+    
+    private func createDefaultIncomeCategory(userId: String, monthStartDate: Date) async {
+        let incomeBudget = FirestoreModels.CategoryBudget(
+            category: "Income",
+            totalAmount: 0, // Not relevant for income usually, or maybe target income?
+            icon: "plus.circle.fill",
+            colorHex: "#34C759", // System Green
+            frequency: "Monthly",
+            type: "income",
+            userId: userId,
+            monthStartDate: monthStartDate,
+            createdAt: Date()
+        )
+        
+        do {
+            try await addBudget(incomeBudget)
+        } catch {
+            print("Failed to create default Income category: \(error)")
+        }
     }
     
     func stopListening() {

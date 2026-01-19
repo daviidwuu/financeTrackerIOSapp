@@ -13,7 +13,7 @@ struct AddTransactionView: View {
     
     @State private var currentStep = 1
     @State private var amount: String = ""
-    @State private var selectedCategory: FirestoreModels.Category?
+    @State private var selectedCategory: FirestoreModels.CategoryBudget?
     @State private var selectedDate = Date()
     @State private var transactionNotes: String = ""
     @State private var direction: Edge = .trailing
@@ -104,15 +104,7 @@ struct AddTransactionView: View {
                     // Try to find the category by name
                     if let categoryName = transaction.subtitle {
                         if let budget = budgetRepo.budgets.first(where: { $0.category == categoryName }) {
-                            selectedCategory = FirestoreModels.Category(
-                                id: budget.id ?? UUID().uuidString,
-                                name: budget.category,
-                                icon: budget.icon,
-                                colorHex: budget.colorHex,
-                                type: budget.type ?? "expense",
-                                userId: budget.userId,
-                                createdAt: budget.createdAt
-                            )
+                            selectedCategory = budget
                         }
                     }
                 }
@@ -127,15 +119,17 @@ struct AddTransactionView: View {
     private func saveTransaction() {
         guard let category = selectedCategory else { return }
         
+        // Ensure amount handles income vs expense correctly if needed
+        let type = category.type ?? "expense"
         let newTransaction = Transaction(
-            title: category.name,
-            subtitle: category.name,
-            amount: (category.type == "income" ? "" : "-") + amount, // Use category type
+            title: category.category,
+            subtitle: category.category,
+            amount: (type == "income" ? "" : "-") + amount,
             icon: category.icon,
             color: Color(hex: category.colorHex),
             date: selectedDate,
             notes: transactionNotes,
-            type: category.type // Pass category type
+            type: type
         )
         
         if let _ = transactionToEdit {
@@ -144,15 +138,7 @@ struct AddTransactionView: View {
         } else {
             onSave?(newTransaction)
             
-            // Send notification for new transaction
-            if let amountValue = Double(amount) {
-                let finalAmount = (category.type == "income") ? amountValue : -amountValue
-                NotificationManager.shared.sendTransactionNotification(
-                    amount: finalAmount,
-                    category: category.name,
-                    type: category.type
-                )
-            }
+            // Notification is handled in ContentView after successful save
         }
         dismiss()
     }
@@ -189,15 +175,15 @@ struct AddTransactionView: View {
             Spacer()
             
             Text("Amount")
-                .font(.title2)
-                .fontWeight(.semibold)
-                .foregroundColor(.secondary)
+            .font(.title2)
+            .fontWeight(.semibold)
+            .foregroundColor(.secondary)
             
             TextField("0.00", text: $amount)
-                .font(AppTypography.heroInput)
-                .multilineTextAlignment(.center)
-                .keyboardType(.decimalPad)
-                .foregroundColor(.primary)
+            .font(AppTypography.heroInput)
+            .multilineTextAlignment(.center)
+            .keyboardType(.decimalPad)
+            .foregroundColor(.primary)
             
             Spacer()
         }
@@ -206,9 +192,9 @@ struct AddTransactionView: View {
     private var detailsStep: some View {
         VStack(spacing: 8) {
             Text("Select Category")
-                .font(.headline)
-                .fontWeight(.semibold)
-                .foregroundColor(.secondary)
+            .font(.headline)
+            .fontWeight(.semibold)
+            .foregroundColor(.secondary)
             
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: AppSpacing.element) {
@@ -217,45 +203,39 @@ struct AddTransactionView: View {
                         let progress = min(max(1.0 - (remaining / budget.totalAmount), 0.0), 1.0)
                         
                         Button(action: {
-                            selectedCategory = FirestoreModels.Category(
-                                id: budget.id ?? UUID().uuidString,
-                                name: budget.category,
-                                icon: budget.icon,
-                                colorHex: budget.colorHex,
-                                type: budget.type ?? "expense",
-                                userId: budget.userId,
-                                createdAt: budget.createdAt
-                            )
+                            selectedCategory = budget
                             HapticManager.shared.light()
                         }) {
                             VStack(spacing: 0) {
                                 HStack(spacing: 8) {
                                     Image(systemName: budget.icon)
-                                        .font(.caption)
-                                        .foregroundColor(Color(hex: budget.colorHex))
-                                        .frame(width: 30, height: 30)
-                                        .background(Color(hex: budget.colorHex).opacity(0.2))
-                                        .clipShape(Circle())
+                                    .font(.caption)
+                                    .foregroundColor(Color(hex: budget.colorHex))
+                                    .frame(width: 30, height: 30)
+                                    .background(Color(hex: budget.colorHex).opacity(0.2))
+                                    .clipShape(Circle())
                                     
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(budget.category)
-                                            .font(.caption)
-                                            .fontWeight(.medium)
-                                            .foregroundColor(.primary)
-                                            .lineLimit(1)
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.primary)
+                                        .lineLimit(1)
                                     }
                                     
                                     Spacer()
                                     
                                     VStack(alignment: .trailing, spacing: 2) {
-                                        Text("$\(Int(remaining))")
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
+                                        if budget.type != "income" {
+                                            Text("$\(Int(remaining))")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
                                         
-                                        if selectedCategory?.name == budget.category {
+                                        if selectedCategory?.category == budget.category {
                                             Image(systemName: "checkmark.circle.fill")
-                                                .font(.caption)
-                                                .foregroundColor(.green)
+                                            .font(.caption)
+                                            .foregroundColor(.green)
                                         }
                                     }
                                 }
@@ -266,16 +246,16 @@ struct AddTransactionView: View {
                                     ZStack(alignment: .leading) {
                                         Color(hex: budget.colorHex).opacity(0.1)
                                         Color(hex: budget.colorHex)
-                                            .frame(width: geometry.size.width * progress)
+                                        .frame(width: geometry.size.width * progress)
                                     }
                                 }
                                 .frame(height: 3)
                             }
-                            .background(selectedCategory?.name == budget.category ? Color(hex: budget.colorHex).opacity(0.1) : Color(UIColor.secondarySystemBackground))
+                            .background(selectedCategory?.category == budget.category ? Color(hex: budget.colorHex).opacity(0.1) : Color(UIColor.secondarySystemBackground))
                             .cornerRadius(AppRadius.small)
                             .overlay(
                                 RoundedRectangle(cornerRadius: AppRadius.small)
-                                    .stroke(selectedCategory?.name == budget.category ? Color(hex: budget.colorHex) : Color.clear, lineWidth: 1)
+                                .stroke(selectedCategory?.category == budget.category ? Color(hex: budget.colorHex) : Color.clear, lineWidth: 1)
                             )
                         }
                     }
@@ -294,15 +274,15 @@ struct AddTransactionView: View {
         }
         return currentMonthTransactions.reduce(0) { $0 + abs($1.amount) }
     }
-
+    
     struct RichCategoryCard: View {
-        let category: FirestoreModels.Category
+        let category: FirestoreModels.CategoryBudget
         let budgetLimit: Double
         let currentAmount: Double
-        @Binding var selectedCategory: FirestoreModels.Category?
+        @Binding var selectedCategory: FirestoreModels.CategoryBudget?
         
         var isSelected: Bool {
-            selectedCategory?.name == category.name
+            selectedCategory?.category == category.category
         }
         
         var progress: Double {
@@ -333,7 +313,7 @@ struct AddTransactionView: View {
                     }
                     
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(category.name)
+                        Text(category.category)
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(.primary)
                             .lineLimit(1)

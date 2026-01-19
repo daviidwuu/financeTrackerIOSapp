@@ -2,26 +2,7 @@ import Foundation
 import FirebaseFirestore
 
 enum FirestoreModels {
-    // MARK: - Category Model
-    struct Category: Identifiable, Codable {
-        @DocumentID var id: String?
-        var name: String
-        var icon: String
-        var colorHex: String
-        var type: String // "expense" or "income"
-        var userId: String
-        var createdAt: Date
-        
-        enum CodingKeys: String, CodingKey {
-            case id
-            case name
-            case icon
-            case colorHex
-            case type
-            case userId
-            case createdAt
-        }
-    }
+
 
     // MARK: - Transaction Model
     struct Transaction: Identifiable, Codable {
@@ -34,6 +15,7 @@ enum FirestoreModels {
         var colorHex: String
         var note: String?
         var type: String // "expense" or "income"
+        var source: String? // "shortcuts", "manual", etc.
         var userId: String
         var createdAt: Date
         
@@ -47,6 +29,7 @@ enum FirestoreModels {
             case colorHex
             case note
             case type
+            case source
             case userId
             case createdAt
         }

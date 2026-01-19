@@ -40,29 +40,64 @@ struct ProfileView: View {
                     
                     Section("Account") {
                         NavigationLink(destination: AccountSettingsView()) {
-                            Label("Account Settings", systemImage: "gearshape.fill")
+                            HStack {
+                                Image(systemName: "gearshape.fill")
+                                    .foregroundColor(.primary)
+                                    .frame(width: 24)
+                                Text("Account Settings")
+                            }
                         }
                         NavigationLink(destination: AppearanceSettingsView()) {
-                            Label("Appearance", systemImage: "paintbrush.fill")
+                            HStack {
+                                Image(systemName: "paintbrush.fill")
+                                    .foregroundColor(.primary)
+                                    .frame(width: 24)
+                                Text("Appearance")
+                            }
                         }
                         NavigationLink(destination: NotificationsSettingsView()) {
-                            Label("Notifications", systemImage: "bell.fill")
+                            HStack {
+                                Image(systemName: "bell.fill")
+                                    .foregroundColor(.primary)
+                                    .frame(width: 24)
+                                Text("Notifications")
+                            }
                         }
                         NavigationLink(destination: PrivacySettingsView()) {
-                            Label("Privacy & Security", systemImage: "lock.fill")
+                            HStack {
+                                Image(systemName: "lock.fill")
+                                    .foregroundColor(.primary)
+                                    .frame(width: 24)
+                                Text("Privacy & Security")
+                            }
                         }
                     }
                     .listRowBackground(Color(UIColor.secondarySystemBackground))
                     
                     Section("Support") {
                         NavigationLink(destination: ShortcutsView()) {
-                            Label("Apple Shortcuts", systemImage: "bolt.fill")
+                            HStack {
+                                Image(systemName: "bolt.fill")
+                                    .foregroundColor(.primary)
+                                    .frame(width: 24)
+                                Text("Apple Shortcuts")
+                            }
                         }
                         NavigationLink(destination: HelpCenterView()) {
-                            Label("Help Center", systemImage: "questionmark.circle.fill")
+                            HStack {
+                                Image(systemName: "questionmark.circle.fill")
+                                    .foregroundColor(.primary)
+                                    .frame(width: 24)
+                                Text("Help Center")
+                            }
                         }
                         NavigationLink(destination: AboutView()) {
-                            Label("About Us", systemImage: "info.circle.fill")
+                            HStack {
+                                Image(systemName: "info.circle.fill")
+                                    .foregroundColor(.primary)
+                                    .frame(width: 24)
+                                Text("About Us")
+                            }
                         }
                     }
                     .listRowBackground(Color(UIColor.secondarySystemBackground))

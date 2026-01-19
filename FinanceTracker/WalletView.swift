@@ -258,6 +258,10 @@ struct WalletView: View {
                                                 .font(.subheadline)
                                                 .foregroundColor(.secondary)
                                         }
+                                        
+                                        Text("Started: \(recurring.startDate.formatted(date: .abbreviated, time: .omitted))")
+                                            .font(.caption2)
+                                            .foregroundColor(Color(UIColor.tertiaryLabel))
                                     }
                                     
                                     Spacer()
@@ -331,7 +335,7 @@ struct WalletView: View {
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
                         } else {
-                            ForEach(budgetRepo.budgets) { budget in
+                            ForEach(budgetRepo.budgets.filter { $0.category != "Income" }) { budget in
                                 HStack(spacing: AppSpacing.element) {
                                     Image(systemName: budget.icon)
                                         .frame(width: 40, height: 40)

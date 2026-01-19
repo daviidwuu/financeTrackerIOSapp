@@ -243,42 +243,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         UNUserNotificationCenter.current().setBadgeCount(0)
     }
     
-    // MARK: - Listen for Shortcut Transactions
-    
-    /// Start listening for new transactions added via shortcuts
-    func startListeningForShortcutTransactions(userId: String) {
-        let db = Firestore.firestore()
-        
-        // Listen for new transactions with source = "shortcuts"
-        db.collection("users").document(userId).collection("transactions")
-            .whereField("source", isEqualTo: "shortcuts")
-            .addSnapshotListener { snapshot, error in
-                guard let snapshot = snapshot else {
-                    print("Error listening for shortcut transactions: \(error?.localizedDescription ?? "Unknown")")
-                    return
-                }
-                
-                // Only process new documents (not initial load)
-                snapshot.documentChanges.forEach { change in
-                    if change.type == .added {
-                        let data = change.document.data()
-                        
-                        // Extract transaction details
-                        let amount = data["amount"] as? Double ?? 0
-                        let category = data["title"] as? String ?? "Unknown"
-                        let type = data["type"] as? String ?? "expense"
-                        
-                        // Send notification
-                        print("🔔 Detected shortcut transaction: \(category) - $\(abs(amount))")
-                        self.sendTransactionNotification(
-                            amount: amount,
-                            category: category,
-                            type: type
-                        )
-                    }
-                }
-            }
-    }
+
     // MARK: - UNUserNotificationCenterDelegate
     
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {

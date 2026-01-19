@@ -25,8 +25,7 @@ struct OnboardingView: View {
         OnboardingCategory(name: "Transport", icon: "car.fill", colorHex: "#007AFF"),
         OnboardingCategory(name: "Bills", icon: "doc.text.fill", colorHex: "#FF3B30"),
         OnboardingCategory(name: "Shopping", icon: "bag.fill", colorHex: "#AF52DE"),
-        OnboardingCategory(name: "Entertainment", icon: "tv.fill", colorHex: "#5856D6"),
-        OnboardingCategory(name: "Salary", icon: "dollarsign.circle.fill", colorHex: "#34C759", isSelected: true, budgetAmount: nil) // Added Salary
+        OnboardingCategory(name: "Entertainment", icon: "tv.fill", colorHex: "#5856D6")
     ]
     
     @AppStorage("monthlyIncome") private var monthlyIncome = 5000.0
@@ -177,39 +176,43 @@ struct OnboardingView: View {
                 let batch = db.batch()
                 
                 for cat in selectedCategories {
-                    // Create Category
-                    let newCategory = FirestoreModels.Category(
+                    // Create Budget/Category equivalent
+                    // In this new model, every category is a Budget.
+                    // If no limit is set, we can set a high number or 0.
+                    // Let's set 0 if nil, implying no specific limit or tracking only.
+                    
+                    let newBudget = FirestoreModels.CategoryBudget(
                         id: UUID().uuidString,
-                        name: cat.name,
+                        category: cat.name,
+                        totalAmount: cat.budgetAmount ?? 0.0, // Default to 0 if no limit set
                         icon: cat.icon,
                         colorHex: cat.colorHex,
+                        frequency: "Monthly", // Default to Monthly
                         type: "expense",
                         userId: userId,
+                        monthStartDate: Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date()))!,
                         createdAt: Date()
                     )
-                    
-                    let catRef = db.collection("users").document(userId).collection("categories").document(newCategory.id!)
-                    try batch.setData(from: newCategory, forDocument: catRef)
-                    
-                    // Create Budget if amount is set
-                    if let amount = cat.budgetAmount, amount > 0 {
-                        let newBudget = FirestoreModels.CategoryBudget(
-                            id: UUID().uuidString,
-                            category: cat.name, // Linking by name for now as per simple model
-                            totalAmount: amount,
-                            icon: cat.icon,
-                            colorHex: cat.colorHex,
-                            frequency: "monthly",
-                            userId: userId,
-                            monthStartDate: Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date()))!,
-                            createdAt: Date()
-                        )
-                        let budgetRef = db.collection("users").document(userId).collection("budgets").document(newBudget.id!)
-                        try batch.setData(from: newBudget, forDocument: budgetRef)
-                    }
+                    let budgetRef = db.collection("users").document(userId).collection("budgets").document(newBudget.id!)
+                    try batch.setData(from: newBudget, forDocument: budgetRef)
                 }
                 
                 try await batch.commit()
+                
+                // create Default Income Category
+                let incomeBudget = FirestoreModels.CategoryBudget(
+                    id: UUID().uuidString,
+                    category: "Income",
+                    totalAmount: 0,
+                    icon: "plus.circle.fill",
+                    colorHex: "#34C759", // System Green
+                    frequency: "Monthly",
+                    type: "income",
+                    userId: userId,
+                    monthStartDate: Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date()))!,
+                    createdAt: Date()
+                )
+                try await db.collection("users").document(userId).collection("budgets").document(incomeBudget.id!).setData(from: incomeBudget)
                 
                 // 5. Update AppState
                 await MainActor.run {
