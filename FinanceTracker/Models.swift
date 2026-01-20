@@ -29,6 +29,7 @@ struct RecurringTransaction: Identifiable {
     var icon: String
     var color: Color
     var frequency: String
+    var startDate: Date = Date()
     var notes: String = ""
 }
 

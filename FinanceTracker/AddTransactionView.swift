@@ -362,6 +362,12 @@ struct AddTransactionView: View {
                 .multilineTextAlignment(.center)
                 .foregroundColor(.primary)
                 .submitLabel(.done)
+            
+            if transactionToEdit != nil {
+                DatePicker("Date", selection: $selectedDate, displayedComponents: [.date, .hourAndMinute])
+                    .datePickerStyle(.compact)
+                    .padding(.top)
+            }
         }
     }
 }

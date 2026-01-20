@@ -15,6 +15,7 @@ struct AddRecurringTransactionView: View {
     @State private var amount: String = ""
     @State private var selectedCategory: FirestoreModels.CategoryBudget?
     @State private var frequency: String = "Monthly"
+    @State private var startDate = Date()
     @State private var notes: String = ""
     @State private var direction: Edge = .trailing
     
@@ -27,6 +28,7 @@ struct AddRecurringTransactionView: View {
         if let transaction = recurringToEdit {
             _amount = State(initialValue: String(format: "%.2f", transaction.amount))
             _frequency = State(initialValue: transaction.frequency)
+            _startDate = State(initialValue: transaction.startDate)
             _notes = State(initialValue: transaction.note ?? "")
         }
     }
@@ -118,6 +120,7 @@ struct AddRecurringTransactionView: View {
             icon: category.icon,
             color: Color(hex: category.colorHex),
             frequency: frequency,
+            startDate: startDate,
             notes: notes
         )
         
@@ -277,6 +280,12 @@ struct AddRecurringTransactionView: View {
                 .multilineTextAlignment(.center)
                 .foregroundColor(.primary)
                 .submitLabel(.done)
+            
+            if recurringToEdit != nil {
+                DatePicker("Start Date", selection: $startDate, displayedComponents: [.date])
+                    .datePickerStyle(.compact)
+                    .padding(.top)
+            }
         }
     }
 }

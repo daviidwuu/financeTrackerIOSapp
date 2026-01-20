@@ -517,7 +517,7 @@ struct WalletView: View {
                 name: transaction.name,
                 amount: transaction.amount,
                 frequency: transaction.frequency,
-                startDate: Date(), // Default to now, or add to UI model
+                startDate: transaction.startDate,
                 icon: transaction.icon,
                 colorHex: transaction.color.toHex() ?? "#000000",
                 note: transaction.notes,
@@ -536,6 +536,7 @@ struct WalletView: View {
         updatedTransaction.icon = transaction.icon
         updatedTransaction.colorHex = transaction.color.toHex() ?? "#000000"
         updatedTransaction.note = transaction.notes
+        updatedTransaction.startDate = transaction.startDate
         
         Task {
             try? await recurringRepo.updateRecurringTransaction(updatedTransaction)
