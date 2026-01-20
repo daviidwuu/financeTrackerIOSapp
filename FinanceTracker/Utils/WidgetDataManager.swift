@@ -14,6 +14,7 @@ class WidgetDataManager {
     // MARK: - Keys
     private struct Keys {
         static let dailySpend = "widget_dailySpend"
+        static let dailySpendDate = "widget_dailySpend_date" // New key
         static let monthlySpend = "widget_monthlySpend"
         static let monthlyBudget = "widget_monthlyBudget"
         static let lastUpdated = "widget_lastUpdated"
@@ -22,6 +23,7 @@ class WidgetDataManager {
     // MARK: - Save Methods
     func saveDailySpend(_ amount: Double) {
         userDefaults?.set(amount, forKey: Keys.dailySpend)
+        userDefaults?.set(Date(), forKey: Keys.dailySpendDate) // Save date
         updateTimestamp()
     }
     
@@ -46,6 +48,12 @@ class WidgetDataManager {
     
     // MARK: - Fetch Methods (For Widget)
     func getDailySpend() -> Double {
+        // Check date validity
+        if let lastDate = userDefaults?.object(forKey: Keys.dailySpendDate) as? Date {
+            if !Calendar.current.isDateInToday(lastDate) {
+                return 0.0 // Reset if not today
+            }
+        }
         return userDefaults?.double(forKey: Keys.dailySpend) ?? 0.0
     }
     

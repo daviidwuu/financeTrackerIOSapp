@@ -13,7 +13,7 @@ struct OnboardingView: View {
     
     // Step Data
     @State private var nameInput = ""
-    @State private var incomeInput = "5000" // Added incomeInput
+    @State private var incomeInput = "5000"
     @State private var emailInput = ""
     @State private var passwordInput = ""
     @State private var isLoading = false
@@ -27,8 +27,6 @@ struct OnboardingView: View {
         OnboardingCategory(name: "Shopping", icon: "bag.fill", colorHex: "#AF52DE"),
         OnboardingCategory(name: "Entertainment", icon: "tv.fill", colorHex: "#5856D6")
     ]
-    
-    @AppStorage("monthlyIncome") private var monthlyIncome = 5000.0
     
     struct OnboardingCategory: Identifiable {
         let id = UUID()
@@ -63,7 +61,7 @@ struct OnboardingView: View {
                 TabView(selection: $currentStep) {
                     IntroStep().tag(1)
                     ProfileStep(name: $nameInput).tag(2)
-                    IncomeStep(income: $incomeInput).tag(3) // Renamed from BudgetStep
+                    IncomeStep(income: $incomeInput).tag(3)
                     CategoriesStep(categories: $onboardingCategories).tag(4)
                     AccountStep(email: $emailInput, password: $passwordInput, errorMessage: $errorMessage).tag(5)
                 }
@@ -115,7 +113,7 @@ struct OnboardingView: View {
         switch currentStep {
         case 1: return true
         case 2: return !nameInput.isEmpty
-        case 3: return Double(incomeInput) != nil // Updated for incomeInput
+        case 3: return Double(incomeInput) != nil
         case 4: return !onboardingCategories.filter { $0.isSelected }.isEmpty
         case 5: return !emailInput.isEmpty && !passwordInput.isEmpty && emailInput.contains("@") && passwordInput.count >= 6
         default: return false
@@ -152,29 +150,24 @@ struct OnboardingView: View {
                 let result = try await FirebaseManager.shared.signUp(email: emailInput, password: passwordInput, name: nameInput)
                 let userId = result.uid
                 
-                // 3. Save Income & Create Recurring Transaction
-                await MainActor.run {
-                    let income = Double(incomeInput) ?? 5000.0
-                    self.monthlyIncome = income
-                }
-                
-                // Create Recurring Income Transaction
+                // 2. Create Recurring Income Transaction
                 let recurringIncome = FirestoreModels.RecurringTransaction(
                     id: UUID().uuidString,
-                    name: "Monthly Income",
+                    name: "Salary",
                     amount: Double(incomeInput) ?? 5000.0,
                     frequency: "Monthly",
                     startDate: Date(),
                     icon: "dollarsign.circle.fill",
                     colorHex: "#34C759", // Green
                     note: "Auto-generated from onboarding",
+                    type: "income",
                     userId: userId,
                     createdAt: Date()
                 )
-                let recurringRef = Firestore.firestore().collection("users").document(userId).collection("recurring").document(recurringIncome.id!)
+                let recurringRef = Firestore.firestore().collection("users").document(userId).collection("recurringTransactions").document(recurringIncome.id!)
                 try await recurringRef.setData(from: recurringIncome)
-                
-                // 4. Create Categories in Firestore
+
+                // 3. Create Categories in Firestore
                 let db = Firestore.firestore()
                 // Use all categories in the list
                 let selectedCategories = onboardingCategories
@@ -294,8 +287,8 @@ struct ProfileStep: View {
     }
 }
 
-struct IncomeStep: View { // Renamed from BudgetStep
-    @Binding var income: String // Renamed from budget
+struct IncomeStep: View {
+    @Binding var income: String
     
     var body: some View {
         VStack(spacing: 24) {
@@ -303,10 +296,10 @@ struct IncomeStep: View { // Renamed from BudgetStep
             
             Image(systemName: "dollarsign.circle.fill")
                 .font(.system(size: 80))
-                .foregroundColor(.green) // Green for income
+                .foregroundColor(.green)
                 .padding(.bottom, 20)
             
-            Text("What is your monthly income?") // Updated UI text
+            Text("What is your monthly income?")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .multilineTextAlignment(.center)
             
@@ -315,14 +308,14 @@ struct IncomeStep: View { // Renamed from BudgetStep
                     .font(.system(size: 40, weight: .bold, design: .rounded))
                     .foregroundColor(.secondary)
                 
-                TextField("5000", text: $income) // Updated binding
+                TextField("5000", text: $income)
                     .keyboardType(.numberPad)
                     .font(AppTypography.heroInput)
                     .multilineTextAlignment(.leading)
                     .fixedSize()
             }
             
-            Text("This will be set as your recurring monthly income.") // Updated UI text
+            Text("This will be set as your recurring monthly salary.")
                 .font(.caption)
                 .foregroundColor(.secondary)
             

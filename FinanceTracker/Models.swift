@@ -31,6 +31,7 @@ struct RecurringTransaction: Identifiable {
     var frequency: String
     var startDate: Date = Date()
     var notes: String = ""
+    var type: String = "expense"
 }
 
 struct Budget: Identifiable {

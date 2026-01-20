@@ -4,16 +4,43 @@ struct HomeView: View {
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var appState: AppState
     
-    @AppStorage("monthlyIncome") private var monthlyIncome = 5000.0 // Changed from monthlyBudget
+    var monthlyIncome: Double {
+        recurringRepo.recurringTransactions
+            .filter { $0.type == "income" }
+            .reduce(0) { sum, transaction in
+                switch transaction.frequency {
+                case "Weekly": return sum + (transaction.amount * 52.0 / 12.0)
+                case "Bi-Weekly": return sum + (transaction.amount * 26.0 / 12.0)
+                case "Yearly": return sum + (transaction.amount / 12.0)
+                default: return sum + transaction.amount
+                }
+            }
+    }
     
     @StateObject private var transactionRepo = TransactionRepository()
     @StateObject private var budgetRepo = BudgetRepository()
+    @StateObject private var recurringRepo = RecurringTransactionRepository()
     
     @State private var showAddTransaction = false
     @State private var showProfile = false
     @State private var showAllTransactions = false
     @State private var selectedTransaction: FirestoreModels.Transaction?
     @State private var showRemainingBudget = false
+    
+    var totalBudget: Double {
+        // Exclude income budgets
+        budgetRepo.budgets.filter { $0.type != "income" }.reduce(0) { sum, budget in
+            // Normalize to monthly
+            var monthlyAmount = budget.totalAmount
+            switch budget.frequency {
+            case "Weekly": monthlyAmount = budget.totalAmount * 52.0 / 12.0
+            case "Bi-Weekly": monthlyAmount = budget.totalAmount * 26.0 / 12.0
+            case "Yearly": monthlyAmount = budget.totalAmount / 12.0
+            default: break
+            }
+            return sum + monthlyAmount
+        }
+    }
     
     var totalSpent: Double {
         transactionRepo.transactions.reduce(0) { $0 + ($1.amount < 0 ? abs($1.amount) : 0) }
@@ -62,8 +89,9 @@ struct HomeView: View {
                                         .fontWeight(.medium)
                                         .foregroundColor(.secondary)
                                     
+                                    
                                     HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                        Text("$\(String(format: "%.2f", showRemainingBudget ? (monthlyIncome - totalSpent) : totalSpent))")
+                                        Text("$\(String(format: "%.2f", showRemainingBudget ? (totalBudget - totalSpent) : totalSpent))")
                                             .font(AppTypography.prominentBalance)
                                             .foregroundColor(.primary)
                                             .contentTransition(.numericText())
@@ -88,7 +116,7 @@ struct HomeView: View {
                                         .overlay(
                                             Capsule()
                                                 .fill(Color.white)
-                                                .frame(width: min(geometry.size.width * (totalSpent / max(monthlyIncome, 1.0)), geometry.size.width))
+                                                .frame(width: min(geometry.size.width * (totalSpent / max(totalBudget, 0.01)), geometry.size.width))
                                         , alignment: .leading)
                                         .clipShape(Capsule())
                                 }
@@ -208,11 +236,13 @@ struct HomeView: View {
                     let calendar = Calendar.current
                     let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
                     budgetRepo.startListening(userId: appState.currentUserId, monthStartDate: startOfMonth)
+                    recurringRepo.startListening(userId: appState.currentUserId)
                 }
             }
             .onDisappear {
                 transactionRepo.stopListening()
                 budgetRepo.stopListening()
+                recurringRepo.stopListening()
             }
         }
     }

@@ -105,6 +105,7 @@ enum FirestoreModels {
         var icon: String
         var colorHex: String
         var note: String?
+        var type: String? = "expense" // "expense" or "income"
         var userId: String
         var createdAt: Date
         
@@ -117,6 +118,7 @@ enum FirestoreModels {
             case icon
             case colorHex
             case note
+            case type
             case userId
             case createdAt
         }

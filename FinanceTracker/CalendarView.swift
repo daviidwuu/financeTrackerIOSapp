@@ -54,7 +54,7 @@ struct CalendarView: View {
             
             // Calendar Grid
             LazyVGrid(columns: columns, spacing: 15) {
-                ForEach(daysInMonth(), id: \.self) { date in
+                ForEach(Array(daysInMonth().enumerated()), id: \.offset) { index, date in
                     if let date = date {
                         let calendar = Calendar.current
                         let dayTransactions = transactions.filter { calendar.isDate($0.date, inSameDayAs: date) }

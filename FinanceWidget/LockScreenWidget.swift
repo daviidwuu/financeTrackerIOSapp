@@ -85,16 +85,17 @@ struct LockScreenWidgetEntryView : View {
 
         // MARK: Lock Screen - Circular (Daily Ring - "Fuel Gauge")
         case .accessoryCircular:
-            // Value: Remaining Amount
-            // Range: 0...DailyLimit
-            // Visual: Starts full (Remaining = Limit), goes to empty (Remaining = 0)
-            Gauge(value: max(entry.dailyRemaining, 0), in: 0...(entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 100)) {
-                Text("Daily")
-            } currentValueLabel: {
+            WidgetCircularProgressView(
+                value: max(entry.dailyRemaining, 0),
+                total: entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 100,
+                color: .primary // System tint on Lock Screen
+            )
+            .padding(2)
+            .overlay(
                 Text(formatShort(entry.dailyRemaining))
-            }
-            .gaugeStyle(.accessoryCircular)
-            .tint(entry.dailyRemaining < 0 ? .red : .primary) // Red if overspent (negative)
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .minimumScaleFactor(0.5)
+            )
             .containerBackground(.clear, for: .widget)
             
         // MARK: Lock Screen - Inline (Monthly Left)
@@ -103,123 +104,152 @@ struct LockScreenWidgetEntryView : View {
                 .containerBackground(.clear, for: .widget)
             
         // MARK: Home Screen - Small (Daily Focus)
+        // MARK: Home Screen - Small (Daily Focus)
+        // MARK: Home Screen - Small (Daily Focus)
         case .systemSmall:
-            VStack(alignment: .leading) {
-                Text("Daily Available") // Changed Title
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Daily Left")
                     .font(.footnote)
+                    .fontWeight(.semibold)
                     .foregroundStyle(.secondary)
-                    .fontWeight(.medium)
+                    .padding(.top, 4)
                 
                 Spacer()
                 
-                ZStack {
-                    // Daily Ring (Fuel Gauge)
-                    Gauge(value: max(entry.dailyRemaining, 0), in: 0...(entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 100)) {
-                        Text("Left")
-                    } currentValueLabel: {
-                        VStack(spacing: 0) {
-                            Text(formatMoney(entry.dailyRemaining))
-                                .fontWeight(.bold)
-                                .fontDesign(.rounded)
-                                .minimumScaleFactor(0.7)
-                                .foregroundStyle(entry.dailyRemaining < 0 ? .red : .primary)
-                        }
+                Text(formatMoney(entry.dailyRemaining))
+                    .font(.system(size: 36, weight: .bold, design: .rounded))
+                    .minimumScaleFactor(0.6)
+                    .foregroundStyle(calculateColor(remaining: entry.dailyRemaining, limit: entry.dailyBudgetLimit))
+                    .contentTransition(.numericText())
+                    .lineLimit(1)
+                
+                Spacer()
+                
+                VStack(alignment: .leading, spacing: 6) {
+                    // Progress Bar
+                    GeometryReader { geo in
+                        Capsule()
+                            .fill(Color.secondary.opacity(0.15))
+                            .overlay(
+                                Capsule()
+                                    .fill(calculateColor(remaining: entry.dailyRemaining, limit: entry.dailyBudgetLimit))
+                                    .frame(width: min(max(entry.dailyRemaining / (entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 1), 0), 1) * geo.size.width),
+                                alignment: .leading
+                            )
                     }
-                    .gaugeStyle(.accessoryCircular)
-                    .scaleEffect(1.5)
-                    .tint(entry.dailyRemaining < 0 ? .red : .blue)
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
-                
-                Spacer()
-                
-                Text("Limit: \(formatShort(entry.dailyBudgetLimit))/day")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-            }
-            .padding()
-            .containerBackground(for: .widget) {
-                ContainerRelativeShape()
-                    .fill(Color(.systemBackground))
-            }
-            
-        // MARK: Home Screen - Medium (Dashboard)
-        case .systemMedium:
-            HStack(spacing: 20) {
-                // Left Column: Daily Ring
-                VStack {
-                    Text("Today")
-                        .font(.caption)
-                        .bold()
-                        .foregroundStyle(.secondary)
+                    .frame(height: 8)
                     
-                    Gauge(value: max(entry.dailyRemaining, 0), in: 0...(entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 100)) {
-                        Text("Left")
-                    } currentValueLabel: {
-                        Text(formatShort(entry.dailyRemaining))
-                            .font(.caption)
-                            .bold()
-                            .foregroundStyle(entry.dailyRemaining < 0 ? .red : .primary)
-                    }
-                    .gaugeStyle(.accessoryCircular)
-                    .tint(entry.dailyRemaining < 0 ? .red : .blue)
-                    .scaleEffect(1.2)
-                }
-                .frame(width: 80)
-                
-                Divider()
-                
-                // Right Column: Monthly Stats (Unchanged)
-                VStack(alignment: .leading, spacing: 8) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Monthly Budget")
-                            .font(.caption)
+                    HStack {
+                        Text("Spent \(formatShort(entry.dailySpend))")
+                            .font(.caption2)
                             .foregroundStyle(.secondary)
                         
-                        HStack(alignment: .firstTextBaseline) {
-                            Text(formatMoney(entry.monthlyBudget + entry.monthlySpend))
-                                .font(.title2)
-                                .bold()
-                                .fontDesign(.rounded)
-                                .foregroundStyle((entry.monthlyBudget + entry.monthlySpend) < 0 ? .red : .primary)
-                            
-                            Text("left")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text("Spent")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Text("\(formatShort(abs(entry.monthlySpend))) / \(formatShort(entry.monthlyBudget))")
-                                .font(.caption2)
-                                .bold()
-                        }
+                        Spacer()
                         
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                Capsule()
-                                    .fill(Color.gray.opacity(0.2))
-                                    .frame(height: 8)
-                                
-                                Capsule()
-                                    .fill(abs(entry.monthlySpend) > entry.monthlyBudget ? Color.red : Color.blue)
-                                    .frame(width: min(CGFloat(abs(entry.monthlySpend) / (entry.monthlyBudget > 0 ? entry.monthlyBudget : 1)) * geo.size.width, geo.size.width), height: 8)
-                            }
-                        }
-                        .frame(height: 8)
+                        Text("of \(formatShort(entry.dailyBudgetLimit))")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                     }
                 }
+                .padding(.bottom, 4)
             }
             .padding()
             .containerBackground(for: .widget) {
                 ContainerRelativeShape()
-                    .fill(Color(.systemBackground))
+                    .fill(Color(UIColor.systemBackground))
+            }
+            
+        // MARK: Home Screen - Medium (Financial Overview)
+        case .systemMedium:
+            HStack(spacing: 0) {
+                // Left Panel: Daily Focus
+                VStack(alignment: .leading) {
+                    Text("Daily Left")
+                        .font(.caption2)
+                        .fontWeight(.bold)
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+                    
+                    Spacer()
+                    
+                    WidgetCircularProgressView(
+                        value: max(entry.dailyRemaining, 0),
+                        total: entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 100,
+                        color: calculateColor(remaining: entry.dailyRemaining, limit: entry.dailyBudgetLimit)
+                    )
+                    .frame(width: 50, height: 50)
+                    .overlay(
+                        Text("\(Int(max(entry.dailyRemaining, 0) / (entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 1) * 100))%")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(.secondary)
+                    )
+                    
+                    Spacer()
+                    
+                    Text(formatMoney(entry.dailyRemaining))
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(calculateColor(remaining: entry.dailyRemaining, limit: entry.dailyBudgetLimit))
+                        .minimumScaleFactor(0.8)
+                }
+                .frame(width: 90)
+                
+                Divider()
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                
+                // Right Panel: Monthly Breakdown
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Monthly Overview")
+                        .font(.caption2)
+                        .fontWeight(.bold)
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+                        .padding(.bottom, 12)
+                    
+                    // Budget Row
+                    HStack {
+                        Text("Budget")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(formatShort(entry.monthlyBudget))
+                            .font(.callout)
+                            .fontWeight(.semibold)
+                    }
+                    .padding(.bottom, 6)
+                    
+                    // Spent Row
+                    HStack {
+                        Text("Spent")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(formatShort(abs(entry.monthlySpend)))
+                            .font(.callout)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.red)
+                    }
+                    .padding(.bottom, 10)
+                    
+                    // Remaining Row (Prominent)
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("Remaining")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(formatMoney(entry.monthlyBudget + entry.monthlySpend))
+                            .font(.title3)
+                            .fontWeight(.bold)
+                            .fontDesign(.rounded)
+                            .foregroundStyle((entry.monthlyBudget + entry.monthlySpend) < 0 ? .red : .primary)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .padding(16)
+            .containerBackground(for: .widget) {
+                ContainerRelativeShape()
+                    .fill(Color(UIColor.systemBackground))
             }
 
         default:
@@ -240,6 +270,54 @@ struct LockScreenWidgetEntryView : View {
             return String(format: "$%.1fk", amount/1000)
         }
         return String(format: "$%.0f", amount)
+    }
+    
+    func calculateColor(remaining: Double, limit: Double) -> Color {
+        if remaining < 0 {
+            return .red
+        }
+        
+        guard limit > 0 else { return .green }
+        
+        let percentage = remaining / limit
+        
+        if percentage > 0.5 {
+            return .green
+        } else if percentage > 0.2 {
+            return .orange
+        } else {
+            return .red
+        }
+    }
+}
+
+// MARK: - Helper Views
+struct WidgetCircularProgressView: View {
+    let value: Double
+    let total: Double
+    let color: Color
+    
+    var progress: Double {
+        guard total > 0 else { return 0 }
+        return min(max(value / total, 0), 1.0)
+    }
+    
+    var body: some View {
+        ZStack {
+            // Track (Empty part)
+            Circle()
+                .stroke(Color.secondary.opacity(0.2), lineWidth: 12)
+            
+            // Fill (Active part)
+            Circle()
+                .trim(from: 0, to: progress)
+                .stroke(
+                    color,
+                    style: StrokeStyle(lineWidth: 12, lineCap: .round)
+                )
+                .rotationEffect(.degrees(-90))
+                .scaleEffect(x: -1, y: 1) // Mirror to fill Left side first (Counter-Clockwise)
+        }
     }
 }
 

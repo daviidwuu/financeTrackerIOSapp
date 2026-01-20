@@ -121,7 +121,8 @@ struct AddRecurringTransactionView: View {
             color: Color(hex: category.colorHex),
             frequency: frequency,
             startDate: startDate,
-            notes: notes
+            notes: notes,
+            type: category.type ?? "expense"
         )
         
         if let _ = recurringToEdit {

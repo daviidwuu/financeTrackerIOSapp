@@ -60,6 +60,11 @@ struct ContentView: View {
             .presentationDragIndicator(.visible)
             .presentationBackground(Color.backgroundPrimary)
         }
+        .onOpenURL { url in
+            if url.scheme == "financetracker" && url.host == "add-transaction" {
+                showAddTransaction = true
+            }
+        }
     }
     
     private func addTransaction(_ transaction: Transaction) {

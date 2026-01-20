@@ -19,7 +19,20 @@ struct WalletView: View {
     @State private var balanceInput = ""
     
     @AppStorage("initialBalance") private var initialBalance = 0.0
-    @AppStorage("monthlyIncome") private var monthlyIncome = 5000.0 // Changed from monthlyBudget
+    
+    var monthlyIncome: Double {
+        recurringRepo.recurringTransactions
+            .filter { $0.type == "income" }
+            .reduce(0) { sum, transaction in
+                switch transaction.frequency {
+                case "Weekly": return sum + (transaction.amount * 52.0 / 12.0)
+                case "Bi-Weekly": return sum + (transaction.amount * 26.0 / 12.0)
+                case "Yearly": return sum + (transaction.amount / 12.0)
+                default: return sum + transaction.amount
+                }
+            }
+    }
+    
     @State private var showDetails = false
     
     var totalBalance: Double {
@@ -39,7 +52,7 @@ struct WalletView: View {
             return calendar.isDate(transaction.date, equalTo: Date(), toGranularity: .month)
         }
         let totalSpent = currentMonthTransactions.reduce(0) { $0 + $1.amount } // amount is negative
-        return monthlyIncome + totalSpent // 5000 + (-200) = 4800
+        return monthlyIncome + totalSpent
     }
     
     var currentMonthIncome: Double {
@@ -521,6 +534,7 @@ struct WalletView: View {
                 icon: transaction.icon,
                 colorHex: transaction.color.toHex() ?? "#000000",
                 note: transaction.notes,
+                type: transaction.type,
                 userId: appState.currentUserId,
                 createdAt: Date()
             )
@@ -537,6 +551,7 @@ struct WalletView: View {
         updatedTransaction.colorHex = transaction.color.toHex() ?? "#000000"
         updatedTransaction.note = transaction.notes
         updatedTransaction.startDate = transaction.startDate
+        updatedTransaction.type = transaction.type
         
         Task {
             try? await recurringRepo.updateRecurringTransaction(updatedTransaction)
