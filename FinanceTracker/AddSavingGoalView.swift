@@ -15,7 +15,8 @@ struct AddSavingGoalView: View {
     @State private var targetDate = Date()
     @State private var direction: Edge = .trailing
     
-    let icons = ["car.fill", "house.fill", "airplane", "gift.fill", "graduationcap.fill", "display", "gamecontroller.fill", "cart.fill", "star.fill", "heart.fill"]
+    let icons = AppConstants.allIcons
+    let colors = AppConstants.allColors
     
     init(goalToEdit: FirestoreModels.SavingGoal? = nil, onSave: ((SavingGoal) -> Void)? = nil) {
         self.goalToEdit = goalToEdit
@@ -239,7 +240,7 @@ struct AddSavingGoalView: View {
         ScrollView {
             VStack(spacing: 24) {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 60))], spacing: 20) {
-                    ForEach(Color.selectableColors, id: \.self) { color in
+                    ForEach(colors, id: \.self) { color in
                         Button(action: {
                             HapticManager.shared.light()
                             selectedColor = color

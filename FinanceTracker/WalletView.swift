@@ -191,15 +191,17 @@ struct WalletView: View {
                                 .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.element, trailing: AppSpacing.margin))
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                     Button(role: .destructive) {
+                                        HapticManager.shared.heavy()
                                         deleteSavingGoal(goal)
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
                                 }
-                                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                .swipeActions(edge: .leading, allowsFullSwipe: true) {
                                     Button {
+                                        HapticManager.shared.medium()
                                         goalToEdit = goal
                                     } label: {
                                         Label("Edit", systemImage: "pencil")
@@ -299,15 +301,17 @@ struct WalletView: View {
                                 .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.element, trailing: AppSpacing.margin))
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                     Button(role: .destructive) {
+                                        HapticManager.shared.heavy()
                                         deleteRecurringTransaction(recurring)
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
                                 }
-                                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                .swipeActions(edge: .leading, allowsFullSwipe: true) {
                                     Button {
+                                        HapticManager.shared.medium()
                                         recurringToEdit = recurring
                                     } label: {
                                         Label("Edit", systemImage: "pencil")
@@ -368,15 +372,17 @@ struct WalletView: View {
                                 .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.element, trailing: AppSpacing.margin))
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                     Button(role: .destructive) {
+                                        HapticManager.shared.heavy()
                                         deleteBudget(budget)
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
                                 }
-                                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                .swipeActions(edge: .leading, allowsFullSwipe: true) {
                                     Button {
+                                        HapticManager.shared.medium()
                                         budgetToEdit = budget
                                     } label: {
                                         Label("Edit", systemImage: "pencil")

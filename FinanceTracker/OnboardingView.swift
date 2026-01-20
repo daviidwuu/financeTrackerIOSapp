@@ -458,20 +458,9 @@ struct EditCategorySheet: View {
     @State private var selectedColorHex: String = ""
     
     // Constants
-    let icons = [
-        "cart.fill", "car.fill", "bag.fill", "tv.fill", "doc.text.fill", "heart.fill", 
-        "house.fill", "bolt.fill", "tag.fill", "star.fill", "dollarsign.circle.fill", "briefcase.fill",
-        "fork.knife", "cup.and.saucer.fill", "takeoutbag.and.cup.and.straw.fill", "wineglass.fill",
-        "bus.fill", "airplane", "bicycle", "fuelpump.fill",
-        "tshirt.fill", "eyeglasses", "cart.badge.plus", "giftcard.fill",
-        "film.fill", "music.note", "headphones", "gamecontroller.fill",
-        "dumbbell.fill", "figure.walk", "sportscourt.fill", "soccerball",
-        "cross.case.fill", "pills.fill", "stethoscope", "heart.text.square.fill",
-        "book.fill", "graduationcap.fill", "pencil", "backpack.fill",
-        "creditcard.fill", "chart.line.uptrend.xyaxis", "banknote.fill", "percent",
-        "wrench.and.screwdriver.fill", "hammer.fill", "paintbrush.fill", "lightbulb.fill"
-    ]
-    let colors: [Color] = [.orange, .blue, .purple, .red, .green, .pink, .yellow, .gray, .mint, .indigo]
+    // Constants
+    let icons = AppConstants.allIcons
+    let colors = AppConstants.allColors
     
     var body: some View {
         ZStack {

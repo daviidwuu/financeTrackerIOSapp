@@ -53,32 +53,43 @@ struct CalendarView: View {
             }
             
             // Calendar Grid
-            LazyVGrid(columns: columns, spacing: 15) {
-                ForEach(Array(daysInMonth().enumerated()), id: \.offset) { index, date in
-                    if let date = date {
-                        let calendar = Calendar.current
-                        let dayTransactions = transactions.filter { calendar.isDate($0.date, inSameDayAs: date) }
-                        let totalAmount = dayTransactions.reduce(0) { $0 + $1.amount }
-                        let isBeforeSignup = isDateBeforeSignup(date)
-                        
-                        VStack(spacing: 2) {
-                            Text("\(Calendar.current.component(.day, from: date))")
-                                .font(.caption)
-                                .fontWeight(Calendar.current.isDateInToday(date) ? .bold : .regular)
-                                .foregroundColor(isBeforeSignup ? .gray.opacity(0.3) : (Calendar.current.isDateInToday(date) ? .white : .primary))
-                                .frame(width: 30, height: 30)
-                                .background(Calendar.current.isDateInToday(date) ? Color.blue : Color.clear)
-                                .clipShape(Circle())
-                            
-                            if !isBeforeSignup && totalAmount != 0 {
-                                Text(totalAmount > 0 ? "+\(Int(totalAmount))" : "\(Int(totalAmount))")
-                                    .font(.system(size: 8))
-                                    .foregroundColor(totalAmount > 0 ? .green : .red)
+            // Calendar Grid
+            VStack(spacing: 15) {
+                let days = daysInMonth()
+                let weeks = days.chunked(into: 7)
+                
+                ForEach(weeks.indices, id: \.self) { weekIndex in
+                    HStack {
+                        ForEach(weeks[weekIndex].indices, id: \.self) { dayIndex in
+                            let date = weeks[weekIndex][dayIndex]
+                            if let date = date {
+                                let calendar = Calendar.current
+                                let dayTransactions = transactions.filter { calendar.isDate($0.date, inSameDayAs: date) }
+                                let totalAmount = dayTransactions.reduce(0) { $0 + $1.amount }
+                                let isBeforeSignup = isDateBeforeSignup(date)
+                                
+                                VStack(spacing: 2) {
+                                    Text("\(Calendar.current.component(.day, from: date))")
+                                        .font(.caption)
+                                        .fontWeight(Calendar.current.isDateInToday(date) ? .bold : .regular)
+                                        .foregroundColor(isBeforeSignup ? .gray.opacity(0.3) : (Calendar.current.isDateInToday(date) ? .white : .primary))
+                                        .frame(width: 30, height: 30)
+                                        .background(Calendar.current.isDateInToday(date) ? Color.blue : Color.clear)
+                                        .clipShape(Circle())
+                                    
+                                    if !isBeforeSignup && totalAmount != 0 {
+                                        Text(totalAmount > 0 ? "+\(Int(totalAmount))" : "\(Int(totalAmount))")
+                                            .font(.system(size: 8))
+                                            .foregroundColor(totalAmount > 0 ? .green : .red)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity)
+                            } else {
+                                Text("")
+                                    .frame(width: 30, height: 30)
+                                    .frame(maxWidth: .infinity)
                             }
                         }
-                    } else {
-                        Text("")
-                            .frame(width: 30, height: 30)
                     }
                 }
             }
@@ -193,4 +204,13 @@ struct CalendarView: View {
 
 #Preview {
     CalendarView(transactions: [])
+}
+
+// Helper extension for chunking
+extension Array {
+    func chunked(into size: Int) -> [[Element]] {
+        return stride(from: 0, to: count, by: size).map {
+            Array(self[$0 ..< Swift.min($0 + size, count)])
+        }
+    }
 }
