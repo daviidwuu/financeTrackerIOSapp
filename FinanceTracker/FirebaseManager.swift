@@ -19,7 +19,7 @@ class FirebaseManager: ObservableObject {
         self.db = Firestore.firestore()
         
         // Listen to auth state changes
-        auth.addStateDidChangeListener { [weak self] _, user in
+        let _ = auth.addStateDidChangeListener { [weak self] _, user in
             self?.currentUser = user
             self?.isAuthenticated = user != nil
         }
@@ -62,7 +62,7 @@ class FirebaseManager: ObservableObject {
     /// Update email
     func updateEmail(_ email: String) async throws {
         guard let user = auth.currentUser else { return }
-        try await user.updateEmail(to: email)
+        try await user.sendEmailVerification(beforeUpdatingEmail: email)
         // Update Firestore
         try await updateUserProfile(userId: user.uid, data: ["email": email])
     }

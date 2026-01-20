@@ -278,7 +278,7 @@ struct NotificationsSettingsView: View {
             return "Notifications denied"
         case .notDetermined:
             return "Not requested yet"
-        @unknown default:
+        default:
             return "Unknown status"
         }
     }

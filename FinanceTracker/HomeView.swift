@@ -25,6 +25,7 @@ struct HomeView: View {
     @State private var showProfile = false
     @State private var showAllTransactions = false
     @State private var selectedTransaction: FirestoreModels.Transaction?
+    @State private var transactionToEdit: FirestoreModels.Transaction?
     @State private var showRemainingBudget = false
     
     var totalBudget: Double {
@@ -175,6 +176,7 @@ struct HomeView: View {
                                     .padding(.bottom, AppSpacing.compact)
                                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                         Button(role: .destructive) {
+                                            HapticManager.shared.heavy()
                                             deleteTransaction(transaction)
                                         } label: {
                                             Label("Delete", systemImage: "trash")
@@ -182,11 +184,16 @@ struct HomeView: View {
                                     }
                                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
                                         Button {
-                                            selectedTransaction = transaction
+                                            HapticManager.shared.medium()
+                                            transactionToEdit = transaction
                                         } label: {
                                             Label("Edit", systemImage: "pencil")
                                         }
                                         .tint(.blue)
+                                    }
+                                    .onTapGesture {
+                                        HapticManager.shared.light()
+                                        selectedTransaction = transaction
                                     }
                             }
                         }
@@ -199,6 +206,13 @@ struct HomeView: View {
                 // FAB removed, shifted to ContentView
                 
                 .sheet(item: $selectedTransaction) { transaction in
+                    TransactionDetailView(transaction: transaction) { original, updated in
+                        updateTransaction(original, with: updated)
+                    }
+                         .presentationDetents([.medium, .large])
+                         .presentationDragIndicator(.visible)
+                }
+                .sheet(item: $transactionToEdit) { transaction in
                     AddTransactionView(transactionToEdit: transaction, onSave: { updatedTransaction in
                         updateTransaction(transaction, with: updatedTransaction)
                     })

@@ -6,21 +6,24 @@ class HapticManager {
     private init() {}
     
     // Light impact for subtle feedback (e.g., selection changes)
+    // Upgraded to .medium for better sensitivity
     func light() {
-        let generator = UIImpactFeedbackGenerator(style: .light)
+        let generator = UIImpactFeedbackGenerator(style: .medium)
         generator.impactOccurred()
     }
     
     // Medium impact for standard feedback (e.g., button taps)
+    // Upgraded to .heavy for better sensitivity
     func medium() {
-        let generator = UIImpactFeedbackGenerator(style: .medium)
+        let generator = UIImpactFeedbackGenerator(style: .heavy)
         generator.impactOccurred()
     }
     
     // Heavy impact for important actions (e.g., deleting items)
     func heavy() {
+        // Already at max impact, but ensuring intensity
         let generator = UIImpactFeedbackGenerator(style: .heavy)
-        generator.impactOccurred()
+        generator.impactOccurred(intensity: 1.0)
     }
     
     // Success notification (e.g., form submission)

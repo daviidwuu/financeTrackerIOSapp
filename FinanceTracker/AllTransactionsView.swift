@@ -15,6 +15,8 @@ struct AllTransactionsView: View {
     @State private var sortBy: String = "Date" // "Date", "Amount", "Category"
     @State private var sortAscending: Bool = false // false = newest/highest first
     
+    @State private var selectedTransaction: FirestoreModels.Transaction?
+    
     var filteredTransactions: [FirestoreModels.Transaction] {
         transactionRepo.transactions.filter { transaction in
             // Month filter
@@ -266,6 +268,10 @@ struct AllTransactionsView: View {
                                     .listRowSeparator(.hidden)
                                     .listRowBackground(Color.clear)
                                     .padding(.bottom, 8)
+                                    .onTapGesture {
+                                        HapticManager.shared.light()
+                                        selectedTransaction = transaction
+                                    }
                             }
                         }
                         .listStyle(.plain)
@@ -283,6 +289,13 @@ struct AllTransactionsView: View {
                     .fontWeight(.semibold)
                 }
             }
+            .sheet(item: $selectedTransaction) { transaction in
+                TransactionDetailView(transaction: transaction) { original, updated in
+                    updateTransaction(original, with: updated)
+                }
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
         }
     }
     
@@ -290,6 +303,27 @@ struct AllTransactionsView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM yyyy"
         return formatter.string(from: date)
+    }
+    
+    private func updateTransaction(_ entity: FirestoreModels.Transaction, with transaction: Transaction) {
+        Task {
+            do {
+                let amount = Double(transaction.amount) ?? 0.0
+                var updatedTransaction = entity
+                updatedTransaction.title = transaction.title
+                updatedTransaction.subtitle = transaction.subtitle
+                updatedTransaction.amount = amount
+                updatedTransaction.date = transaction.date
+                updatedTransaction.icon = transaction.icon
+                updatedTransaction.colorHex = transaction.color.toHex() ?? "#000000"
+                updatedTransaction.note = transaction.notes
+                updatedTransaction.type = amount < 0 ? "expense" : "income"
+                
+                try await transactionRepo.updateTransaction(updatedTransaction)
+            } catch {
+                print("Failed to update transaction: \(error)")
+            }
+        }
     }
 }
 

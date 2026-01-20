@@ -165,7 +165,7 @@ struct OnboardingView: View {
                     createdAt: Date()
                 )
                 let recurringRef = Firestore.firestore().collection("users").document(userId).collection("recurringTransactions").document(recurringIncome.id!)
-                try await recurringRef.setData(from: recurringIncome)
+                try recurringRef.setData(from: recurringIncome)
 
                 // 3. Create Categories in Firestore
                 let db = Firestore.firestore()
@@ -211,7 +211,7 @@ struct OnboardingView: View {
                     monthStartDate: Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date()))!,
                     createdAt: Date()
                 )
-                try await db.collection("users").document(userId).collection("budgets").document(incomeBudget.id!).setData(from: incomeBudget)
+                try db.collection("users").document(userId).collection("budgets").document(incomeBudget.id!).setData(from: incomeBudget)
                 
                 // 5. Update AppState
                 await MainActor.run {

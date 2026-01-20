@@ -4,6 +4,8 @@
 <dict>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>Finance Tracker sends notifications when you add transactions and reach budget limits.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We use your location to tag where transactions occurred.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

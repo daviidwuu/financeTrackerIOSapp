@@ -34,6 +34,7 @@ struct TransactionCategoryEntity: AppEntity {
 }
 
 struct TransactionCategoryQuery: EntityQuery {
+    @MainActor
     func entities(for identifiers: [String]) async throws -> [TransactionCategoryEntity] {
         guard let userId = Auth.auth().currentUser?.uid else { return [] }
         let db = Firestore.firestore()
@@ -58,6 +59,7 @@ struct TransactionCategoryQuery: EntityQuery {
         return entities
     }
     
+    @MainActor
     func suggestedEntities() async throws -> [TransactionCategoryEntity] {
         guard let userId = Auth.auth().currentUser?.uid else { return [] }
         let db = Firestore.firestore()

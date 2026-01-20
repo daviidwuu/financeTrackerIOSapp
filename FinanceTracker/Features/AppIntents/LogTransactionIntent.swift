@@ -3,6 +3,7 @@ import FirebaseFirestore
 import FirebaseAuth
 import UserNotifications
 
+
 struct LogTransactionIntent: AppIntent {
     static var title: LocalizedStringResource = "Log Transaction"
     static var description = IntentDescription("Log a new transaction to your Finance Tracker.")
