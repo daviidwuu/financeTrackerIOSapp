@@ -142,6 +142,9 @@ struct NotificationsSettingsView: View {
     @AppStorage("notificationsEnabled_budgets") private var budgetNotifs = false
     @AppStorage("notificationsEnabled_dailySummary") private var dailySummary = false
     @AppStorage("notificationsEnabled_weeklyReport") private var weeklyReport = false
+    @AppStorage("notificationsEnabled_inactivity") private var inactivityCheck = false
+    @AppStorage("notificationsEnabled_eod") private var eodCheck = false
+    @AppStorage("notificationsEnabled_tips") private var motivationalTips = false
     @Environment(\.colorScheme) var colorScheme
     
     @State private var permissionStatus: UNAuthorizationStatus = .notDetermined
@@ -226,6 +229,39 @@ struct NotificationsSettingsView: View {
                             NotificationManager.shared.scheduleWeeklyReport()
                         } else {
                             NotificationManager.shared.cancelWeeklyReport()
+                        }
+                    }
+            }
+            
+            // Engagement & Tips
+            Section(header: Text("Engagement")) {
+                Toggle("Inactivity Reminders (Every 4h)", isOn: $inactivityCheck)
+                    .onChange(of: inactivityCheck) { newValue in
+                        if newValue {
+                            ensurePermission()
+                            NotificationManager.shared.scheduleInactivityCheck()
+                        } else {
+                            NotificationManager.shared.cancelInactivityCheck()
+                        }
+                    }
+                
+                Toggle("End of Day Check (10 PM)", isOn: $eodCheck)
+                    .onChange(of: eodCheck) { newValue in
+                        if newValue {
+                            ensurePermission()
+                            NotificationManager.shared.scheduleEODCheck()
+                        } else {
+                            NotificationManager.shared.cancelEODCheck()
+                        }
+                    }
+                
+                Toggle("Motivational Tips (Every 3h)", isOn: $motivationalTips)
+                    .onChange(of: motivationalTips) { newValue in
+                        if newValue {
+                            ensurePermission()
+                            NotificationManager.shared.scheduleMotivationalTips()
+                        } else {
+                            NotificationManager.shared.cancelMotivationalTips()
                         }
                     }
             }

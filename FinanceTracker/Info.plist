@@ -15,6 +15,7 @@
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.davidwu.financetracker.dailySummary</string>
+		<string>com.davidwu.financetracker.inactivityCheck</string>
 	</array>
 	<key>CFBundleIcons</key>
 	<dict>

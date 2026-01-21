@@ -6,6 +6,7 @@ import BackgroundTasks
 class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     static let shared = NotificationManager()
     static let dailySummaryTaskID = "com.davidwu.financetracker.dailySummary"
+    static let inactivityTaskID = "com.davidwu.financetracker.inactivityCheck"
     
     private override init() {
         super.init()
@@ -16,6 +17,11 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         BGTaskScheduler.shared.register(forTaskWithIdentifier: Self.dailySummaryTaskID, using: nil) { task in
             guard let task = task as? BGAppRefreshTask else { return }
             self.handleDailySummaryTask(task: task)
+        }
+        
+        BGTaskScheduler.shared.register(forTaskWithIdentifier: Self.inactivityTaskID, using: nil) { task in
+            guard let task = task as? BGAppRefreshTask else { return }
+            self.handleInactivityTask(task: task)
         }
     }
     
@@ -67,7 +73,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         print("🔔 Notification toggle enabled: \(isEnabled)")
         
         // Send anyway for debugging - remove this line in production
-        // guard isEnabled else { return }
+         guard isEnabled else { return }
         
         let content = UNMutableNotificationContent()
         
@@ -235,6 +241,152 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     
     func cancelWeeklyReport() {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["weekly-report"])
+    }
+    
+    // MARK: - Inactivity Check
+    
+    func scheduleInactivityCheck() {
+        guard UserDefaults.standard.bool(forKey: "notificationsEnabled_inactivity") else { return }
+        
+        let request = BGAppRefreshTaskRequest(identifier: Self.inactivityTaskID)
+        request.earliestBeginDate = Date(timeIntervalSinceNow: 4 * 3600) // 4 hours from now
+        
+        do {
+            try BGTaskScheduler.shared.submit(request)
+            print("✅ Scheduled inactivity check")
+        } catch {
+            print("❌ Could not schedule inactivity task: \(error)")
+        }
+    }
+    
+    func cancelInactivityCheck() {
+        BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: Self.inactivityTaskID)
+    }
+    
+    private func handleInactivityTask(task: BGAppRefreshTask) {
+        // Schedule next check
+        scheduleInactivityCheck()
+        
+        task.expirationHandler = {
+            // Cleanup
+        }
+        
+        // Time Window Check: 10 AM - 8 PM
+        let hour = Calendar.current.component(.hour, from: Date())
+        guard hour >= 10 && hour < 20 else {
+            task.setTaskCompleted(success: true)
+            return
+        }
+        
+        let userId = AppState.shared.currentUserId
+        guard !userId.isEmpty else {
+            task.setTaskCompleted(success: false)
+            return
+        }
+        
+        // Check for transactions in the last 4 hours
+        let db = Firestore.firestore()
+        let fourHoursAgo = Date().addingTimeInterval(-4 * 3600)
+        
+        db.collection("users").document(userId).collection("transactions")
+            .whereField("createdAt", isGreaterThan: fourHoursAgo)
+            .limit(to: 1)
+            .getDocuments { snapshot, error in
+                if let error = error {
+                    print("Error checking inactivity: \(error)")
+                    task.setTaskCompleted(success: false)
+                    return
+                }
+                
+                // If no documents found, user hasn't logged anything
+                if snapshot?.documents.isEmpty ?? true {
+                    let userName = AppState.shared.userName
+                    let message = NotificationContent.getMessage(for: .inactivity, userName: userName)
+                    
+                    let content = UNMutableNotificationContent()
+                    content.title = message.title
+                    content.body = message.body
+                    content.sound = .default
+                    
+                    let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+                    UNUserNotificationCenter.current().add(request)
+                }
+                
+                task.setTaskCompleted(success: true)
+            }
+    }
+    
+    // MARK: - End of Day Check
+    
+    func scheduleEODCheck() {
+        guard UserDefaults.standard.bool(forKey: "notificationsEnabled_eod") else { return }
+        
+        var dateComponents = DateComponents()
+        dateComponents.hour = 22 // 10 PM
+        dateComponents.minute = 0
+        
+        let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
+        
+        let userName = AppState.shared.userName
+        let message = NotificationContent.getMessage(for: .endOfDay, userName: userName)
+        
+        let content = UNMutableNotificationContent()
+        content.title = message.title
+        content.body = message.body
+        content.sound = .default
+        
+        let request = UNNotificationRequest(identifier: "eod-check", content: content, trigger: trigger)
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Failed to schedule EOD check: \(error)")
+            }
+        }
+    }
+    
+    func cancelEODCheck() {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["eod-check"])
+    }
+    
+    // MARK: - Motivational Tips
+    
+    func scheduleMotivationalTips() {
+        guard UserDefaults.standard.bool(forKey: "notificationsEnabled_tips") else { return }
+        
+        // Schedule for 7am, 10am, 1pm, 4pm, 7pm
+        let hours = [7, 10, 13, 16, 19]
+        let userName = AppState.shared.userName
+        
+        for hour in hours {
+            var components = DateComponents()
+            components.hour = hour
+            components.minute = 0
+            
+            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+            
+            // Note: In a real app, you might want to dynamically randomize this content
+            // For now, we schedule it. To make it dynamic, we'd use a background task to schedule local notifs nearby,
+            // or just rely on the static content generated at schedule time (which limits variety until app re-opens).
+            // Better approach for variety: Use Background Task to schedule the *next* tip.
+            // But simplifying here: We will just schedule them.
+            // Wait, if we schedule them now, the message is fixed.
+            // To make it dynamic, let's use the Background Task approach or just accept fixed messages until next launch.
+            // Let's accept fixed messages for MVP simplification, but re-schedule on app launch.
+            
+            let message = NotificationContent.getMessage(for: .motivational, userName: userName)
+            
+            let content = UNMutableNotificationContent()
+            content.title = message.title
+            content.body = message.body
+            content.sound = .default
+            
+            let request = UNNotificationRequest(identifier: "tip-\(hour)", content: content, trigger: trigger)
+            UNUserNotificationCenter.current().add(request)
+        }
+    }
+    
+    func cancelMotivationalTips() {
+        let identifiers = [7, 10, 13, 16, 19].map { "tip-\($0)" }
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
     }
     
     // MARK: - Clear Badges
