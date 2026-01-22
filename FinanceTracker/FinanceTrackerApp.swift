@@ -34,7 +34,7 @@ struct FinanceTrackerApp: App {
                     .preferredColorScheme(isDarkMode ? .dark : .light)
             }
         }
-        .onChange(of: scenePhase) { phase in
+        .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active:
                 // Clear badge when app is opened

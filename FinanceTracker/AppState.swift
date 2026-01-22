@@ -12,9 +12,17 @@ class AppState: ObservableObject {
     private var authStateListener: AuthStateDidChangeListenerHandle?
     private let firebaseManager = FirebaseManager.shared
     
+    @Published var streakCount = 1
+    
+    private let streakKey = "userStreakCount"
+    private let lastVisitDateKey = "lastVisitDate"
+    
     static let shared = AppState()
     
     private init() {
+        // Initialize streak
+        updateStreak()
+        
         // Listen to Firebase auth state changes
         authStateListener = Auth.auth().addStateDidChangeListener { [weak self] _,  user in
             DispatchQueue.main.async {
@@ -38,6 +46,39 @@ class AppState: ObservableObject {
         }
     }
     
+    private func updateStreak() {
+        let defaults = UserDefaults.standard
+        let calendar = Calendar.current
+        
+        let lastVisit = defaults.object(forKey: lastVisitDateKey) as? Date ?? Date.distantPast
+        let currentStreak = defaults.integer(forKey: streakKey)
+        
+        if calendar.isDateInToday(lastVisit) {
+            // Already visited today, streak remains same
+            self.streakCount = max(1, currentStreak)
+        } else if calendar.isDateInYesterday(lastVisit) {
+            // Visited yesterday, increment streak
+            let newStreak = currentStreak + 1
+            self.streakCount = newStreak
+            defaults.set(newStreak, forKey: streakKey)
+            defaults.set(Date(), forKey: lastVisitDateKey)
+        } else {
+            // Missed a day (or first time), reset to 1
+            // Check if it is the very first time launch (distantPast)
+            if lastVisit == Date.distantPast {
+                 // First launch ever
+                 self.streakCount = 1
+                 defaults.set(1, forKey: streakKey)
+                 defaults.set(Date(), forKey: lastVisitDateKey)
+            } else {
+                // Broken streak
+                self.streakCount = 1
+                defaults.set(1, forKey: streakKey)
+                defaults.set(Date(), forKey: lastVisitDateKey)
+            }
+        }
+    }
+    
     private func loadUserProfile(userId: String) async {
         do {
             let profile = try await firebaseManager.getUserProfile(userId: userId)
@@ -53,6 +94,7 @@ class AppState: ObservableObject {
         // Firebase auth state listener will handle the update
         self.userName = name
         self.userEmail = email
+        updateStreak()
     }
     
     func logout() {
@@ -68,6 +110,7 @@ class AppState: ObservableObject {
         self.hasCompletedOnboarding = true
         self.userName = name
         self.userEmail = email
+        updateStreak()
         // User is already authenticated via Firebase Auth
     }
 }

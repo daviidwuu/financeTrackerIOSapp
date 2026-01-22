@@ -193,7 +193,7 @@ struct NotificationsSettingsView: View {
             // Transaction Alerts
             Section(header: Text("Transaction Alerts"), footer: Text("Get notified when you add or edit transactions")) {
                 Toggle("Transaction Notifications", isOn: $transactionNotifs)
-                    .onChange(of: transactionNotifs) { newValue in
+                    .onChange(of: transactionNotifs) { _, newValue in
                         if newValue {
                             ensurePermission()
                         }
@@ -203,7 +203,7 @@ struct NotificationsSettingsView: View {
             // Budget Alerts
             Section(header: Text("Budget Alerts"), footer: Text("Get warned when you reach 80% of your budget")) {
                 Toggle("Budget Warnings", isOn: $budgetNotifs)
-                    .onChange(of: budgetNotifs) { newValue in
+                    .onChange(of: budgetNotifs) { _, newValue in
                         if newValue {
                             ensurePermission()
                         }
@@ -213,7 +213,7 @@ struct NotificationsSettingsView: View {
             // Scheduled Reports
             Section(header: Text("Scheduled Reports")) {
                 Toggle("Daily Summary (9 PM)", isOn: $dailySummary)
-                    .onChange(of: dailySummary) { newValue in
+                    .onChange(of: dailySummary) { _, newValue in
                         if newValue {
                             ensurePermission()
                             NotificationManager.shared.scheduleDailySummary()
@@ -223,7 +223,7 @@ struct NotificationsSettingsView: View {
                     }
                 
                 Toggle("Weekly Report (Sunday 8 PM)", isOn: $weeklyReport)
-                    .onChange(of: weeklyReport) { newValue in
+                    .onChange(of: weeklyReport) { _, newValue in
                         if newValue {
                             ensurePermission()
                             NotificationManager.shared.scheduleWeeklyReport()
@@ -236,7 +236,7 @@ struct NotificationsSettingsView: View {
             // Engagement & Tips
             Section(header: Text("Engagement")) {
                 Toggle("Inactivity Reminders (Every 4h)", isOn: $inactivityCheck)
-                    .onChange(of: inactivityCheck) { newValue in
+                    .onChange(of: inactivityCheck) { _, newValue in
                         if newValue {
                             ensurePermission()
                             NotificationManager.shared.scheduleInactivityCheck()
@@ -246,7 +246,7 @@ struct NotificationsSettingsView: View {
                     }
                 
                 Toggle("End of Day Check (10 PM)", isOn: $eodCheck)
-                    .onChange(of: eodCheck) { newValue in
+                    .onChange(of: eodCheck) { _, newValue in
                         if newValue {
                             ensurePermission()
                             NotificationManager.shared.scheduleEODCheck()
@@ -256,7 +256,7 @@ struct NotificationsSettingsView: View {
                     }
                 
                 Toggle("Motivational Tips (Every 3h)", isOn: $motivationalTips)
-                    .onChange(of: motivationalTips) { newValue in
+                    .onChange(of: motivationalTips) { _, newValue in
                         if newValue {
                             ensurePermission()
                             NotificationManager.shared.scheduleMotivationalTips()

@@ -27,6 +27,7 @@ struct HomeView: View {
     @State private var selectedTransaction: FirestoreModels.Transaction?
     @State private var transactionToEdit: FirestoreModels.Transaction?
     @State private var showRemainingBudget = false
+    @State private var isAnimating = false
     
     var totalBudget: Double {
         // Exclude income budgets
@@ -61,9 +62,37 @@ struct HomeView: View {
                                         .font(.subheadline)
                                         .fontWeight(.medium)
                                         .foregroundColor(.secondary)
-                                    Text(appState.userName.isEmpty ? "User" : appState.userName)
-                                        .font(AppTypography.titleDisplay)
-                                        .foregroundColor(.primary)
+                                    HStack(spacing: 8) {
+                                        Text(appState.userName.isEmpty ? "User" : appState.userName)
+                                            .font(AppTypography.titleDisplay)
+                                            .foregroundColor(.primary)
+                                        
+                                        // Streak Counter
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "flame.fill")
+                                                .font(.system(size: 14))
+                                                .foregroundColor(.orange)
+                                                .scaleEffect(isAnimating ? 1.2 : 1.0)
+                                                .animation(
+                                                    Animation.easeInOut(duration: 1.0)
+                                                        .repeatForever(autoreverses: true),
+                                                    value: isAnimating
+                                                )
+                                            
+                                            Text("\(appState.streakCount)")
+                                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                                .foregroundColor(.orange)
+                                        }
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(
+                                            Capsule()
+                                                .fill(Color.orange.opacity(0.15))
+                                        )
+                                        .onAppear {
+                                            isAnimating = true
+                                        }
+                                    }
                                 }
                                 
                                 Spacer()

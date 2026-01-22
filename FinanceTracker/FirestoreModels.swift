@@ -79,6 +79,7 @@ enum FirestoreModels {
         var targetDate: Date
         var icon: String
         var colorHex: String
+        var sortOrder: Int? // Added for reordering
         var userId: String
         var createdAt: Date
         
@@ -90,6 +91,7 @@ enum FirestoreModels {
             case targetDate
             case icon
             case colorHex
+            case sortOrder
             case userId
             case createdAt
         }

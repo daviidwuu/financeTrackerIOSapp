@@ -11,6 +11,7 @@ struct WalletView: View {
     @State private var showAddSavingGoal = false
     @State private var showAddRecurring = false
     @State private var showAddBudget = false
+    @State private var showAddSavings = false
     
     @State private var goalToEdit: FirestoreModels.SavingGoal?
     @State private var recurringToEdit: FirestoreModels.RecurringTransaction?
@@ -139,6 +140,13 @@ struct WalletView: View {
                             Text("Saving Goals").font(.title2).fontWeight(.bold).foregroundColor(.primary)
                             Spacer()
                             Button(action: { 
+                                showAddSavings = true 
+                            }) {
+                                Image(systemName: "banknote.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.primary)
+                            }
+                            Button(action: { 
                                 goalToEdit = nil
                                 showAddSavingGoal = true 
                             }) {
@@ -209,6 +217,7 @@ struct WalletView: View {
                                     .tint(.blue)
                                 }
                             }
+                            .onMove(perform: moveSavingGoals)
                         }
                     }
                     .listRowBackground(Color.clear) // Ensure Section background is clear
@@ -476,6 +485,19 @@ struct WalletView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(Color.backgroundPrimary)
             }
+            .sheet(isPresented: $showAddSavings) {
+                AddSavingsView(
+                    dailySurplus: calculateDailySurplus(),
+                    onSave: { amount in
+                        Task {
+                            try? await savingGoalRepo.distributeSavings(amount: amount)
+                        }
+                    }
+                )
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color.backgroundPrimary)
+            }
         }
     }
     
@@ -498,6 +520,32 @@ struct WalletView: View {
         Task {
             try? await budgetRepo.deleteBudget(id: id)
         }
+    }
+    
+    private func moveSavingGoals(from source: IndexSet, to destination: Int) {
+        var updatedGoals = savingGoalRepo.savingGoals
+        updatedGoals.move(fromOffsets: source, toOffset: destination)
+        savingGoalRepo.reorderSavingGoals(updatedGoals)
+    }
+    
+    private func calculateDailySurplus() -> Double {
+        let calendar = Calendar.current
+        let range = calendar.range(of: .day, in: .month, for: Date())
+        let daysInMonth = Double(range?.count ?? 30)
+        
+        // Avoid division by zero
+        guard daysInMonth > 0 else { return 0 }
+        
+        let dailyLimit = totalBudget / daysInMonth
+        
+        let todaySpend = transactionRepo.transactions
+            .filter { 
+                $0.type == "expense" && 
+                calendar.isDateInToday($0.date) 
+            }
+            .reduce(0) { $0 + abs($1.amount) }
+        
+        return max(0, dailyLimit - todaySpend)
     }
     
     private func addSavingGoal(_ goal: SavingGoal) {
@@ -626,6 +674,86 @@ struct CircularProgressView: View {
                 .rotationEffect(.degrees(-90))
                 .animation(.easeOut, value: progress)
         }
+    }
+}
+
+private struct AddSavingsView: View {
+    @Environment(\.dismiss) var dismiss
+    let dailySurplus: Double
+    var onSave: (Double) -> Void
+    
+    @State private var amount: String = ""
+    @State private var useSurplus = true
+    
+    init(dailySurplus: Double, onSave: @escaping (Double) -> Void) {
+        self.dailySurplus = dailySurplus
+        self.onSave = onSave
+        _amount = State(initialValue: String(format: "%.2f", dailySurplus))
+    }
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            Text("Add to Savings")
+                .font(AppTypography.titleDisplay)
+                .padding(.top)
+            
+            VStack(spacing: 8) {
+                Text("Daily Surplus Available")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                Text("$\(String(format: "%.2f", dailySurplus))")
+                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .foregroundColor(.green)
+            }
+            .padding()
+            .background(Color(UIColor.secondarySystemBackground))
+            .cornerRadius(AppRadius.medium)
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Amount to Save")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .textCase(.uppercase)
+                
+                HStack {
+                    Text("$")
+                        .font(.title2)
+                        .foregroundColor(.primary)
+                    TextField("0.00", text: $amount)
+                        .font(.title2)
+                        .keyboardType(.decimalPad)
+                }
+                .padding()
+                .background(Color(UIColor.secondarySystemBackground))
+                .cornerRadius(AppRadius.small)
+            }
+            
+            Text("Money will be distributed to your goals starting from the top.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            
+            Button(action: {
+                if let value = Double(amount) {
+                    onSave(value)
+                    HapticManager.shared.success()
+                    dismiss()
+                }
+            }) {
+                Text("Add to Savings")
+                    .font(.headline)
+                    .foregroundColor(.black) 
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.primary)
+                    .foregroundColor(Color(UIColor.systemBackground))
+                    .cornerRadius(AppRadius.button)
+            }
+            .padding(.top)
+            
+            Spacer()
+        }
+        .padding(AppSpacing.margin)
     }
 }
 
