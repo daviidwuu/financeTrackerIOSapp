@@ -8,12 +8,14 @@ struct CalendarView: View {
     let daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     let columns = Array(repeating: GridItem(.flexible()), count: 7)
     
-    @AppStorage("monthlyIncome") private var monthlyIncome = 5000.0
-    
     var transactions: [FirestoreModels.Transaction] = []
+    var totalBudget: Double = 0.0
+    var monthlyIncome: Double = 0.0
     
-    init(transactions: [FirestoreModels.Transaction] = []) {
+    init(transactions: [FirestoreModels.Transaction] = [], totalBudget: Double = 0.0, monthlyIncome: Double = 0.0) {
         self.transactions = transactions
+        self.totalBudget = totalBudget
+        self.monthlyIncome = monthlyIncome
     }
     
     var body: some View {
@@ -53,7 +55,6 @@ struct CalendarView: View {
             }
             
             // Calendar Grid
-            // Calendar Grid
             VStack(spacing: 15) {
                 let days = daysInMonth()
                 let weeks = days.chunked(into: 7)
@@ -65,7 +66,7 @@ struct CalendarView: View {
                             if let date = date {
                                 let calendar = Calendar.current
                                 let dayTransactions = transactions.filter { calendar.isDate($0.date, inSameDayAs: date) }
-                                let totalAmount = dayTransactions.reduce(0) { $0 + $1.amount }
+                                let dayExpenses = dayTransactions.filter { $0.type == "expense" }.reduce(0) { $0 + abs($1.amount) }
                                 let isBeforeSignup = isDateBeforeSignup(date)
                                 
                                 VStack(spacing: 2) {
@@ -77,10 +78,11 @@ struct CalendarView: View {
                                         .background(Calendar.current.isDateInToday(date) ? Color.blue : Color.clear)
                                         .clipShape(Circle())
                                     
-                                    if !isBeforeSignup && totalAmount != 0 {
-                                        Text(totalAmount > 0 ? "+\(Int(totalAmount))" : "\(Int(totalAmount))")
+                                    if !isBeforeSignup && !isFutureDate(date) {
+                                        let surplus = calculateSurplus(for: date)
+                                        Text(surplus >= 0 ? "+\(Int(surplus))" : "\(Int(surplus))")
                                             .font(.system(size: 8))
-                                            .foregroundColor(totalAmount > 0 ? .green : .red)
+                                            .foregroundColor(surplus >= 0 ? .green : .red)
                                     }
                                 }
                                 .frame(maxWidth: .infinity)
@@ -93,6 +95,29 @@ struct CalendarView: View {
                     }
                 }
             }
+            
+            // Monthly Summary
+            let monthlySaved = calculateMonthlySaving()
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Saved This Month")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.secondary)
+                    Text("$\(Int(monthlySaved))")
+                        .font(.system(.title3, design: .rounded))
+                        .fontWeight(.bold)
+                        .foregroundColor(monthlySaved >= 0 ? .green : .red)
+                }
+                Spacer()
+                
+                Image(systemName: monthlySaved >= 0 ? "arrow.up.right.circle.fill" : "arrow.down.right.circle.fill")
+                    .font(.title)
+                    .foregroundColor(monthlySaved >= 0 ? .green : .red)
+            }
+            .padding()
+            .background(Color.primary.opacity(0.05))
+            .cornerRadius(15)
         }
         .padding()
         .background(Color(UIColor.secondarySystemBackground))
@@ -123,11 +148,11 @@ struct CalendarView: View {
         let firstDay = interval.start
         
         let firstWeekday = calendar.component(.weekday, from: firstDay)
-        let daysInMonth = calendar.range(of: .day, in: .month, for: currentDate)!.count
+        let daysInMonthCount = calendar.range(of: .day, in: .month, for: currentDate)!.count
         
         var days: [Date?] = Array(repeating: nil, count: firstWeekday - 1)
         
-        for day in 1...daysInMonth {
+        for day in 1...daysInMonthCount {
             if let date = calendar.date(byAdding: .day, value: day - 1, to: firstDay) {
                 days.append(date)
             }
@@ -139,27 +164,75 @@ struct CalendarView: View {
     // Logic
     func dailyBudget() -> Double {
         let days = Calendar.current.range(of: .day, in: .month, for: currentDate)?.count ?? 30
-        return monthlyIncome / Double(days)
-    }
-    
-    func expenses(for date: Date) -> Double {
-        let calendar = Calendar.current
-        let dailyTransactions = transactions.filter { transaction in
-            return calendar.isDate(transaction.date, inSameDayAs: date)
-        }
-        return dailyTransactions.reduce(0) { $0 + $1.amount }
+        // Use totalBudget if provided, otherwise fallback to monthlyIncome (legacy)
+        let baseAmount = totalBudget > 0 ? totalBudget : 5000.0 
+        return baseAmount / Double(days)
     }
     
     func dailyStatus(for date: Date) -> (balance: Double, color: Color) {
-        let budget = dailyBudget()
-        let expense = expenses(for: date)
-        let balance = budget - expense
+        let surplus = calculateSurplus(for: date)
+        return (surplus, surplus >= 0 ? .green : .red)
+    }
+    
+    func calculateSurplus(for date: Date) -> Double {
+        let calendar = Calendar.current
         
-        if balance >= 0 {
-            return (balance, .green)
-        } else {
-            return (balance, .red)
+        // 1. Get the number of days in this specific month
+        guard let range = calendar.range(of: .day, in: .month, for: date) else { return 0 }
+        let daysInMonthCount = Double(range.count)
+        
+        // 2. Determine the Daily Allowance (The "Grind" Budget)
+        let dailyAllowance = totalBudget / daysInMonthCount
+        
+        // 3. Calculate "Manual" Flow for this specific day
+        let dailyTransactions = transactions.filter { 
+            calendar.isDate($0.date, inSameDayAs: date) 
         }
+        
+        let dailySpent = dailyTransactions
+            .filter { $0.type == "expense" }
+            .reduce(0) { $0 + abs($1.amount) }
+            
+        let dailyManualIncome = dailyTransactions
+            .filter { $0.type == "income" } // One-off gigs, sales
+            .reduce(0) { $0 + $1.amount }
+            
+        // 4. Base Surplus (The Simulation Result)
+        var surplus = dailyAllowance - dailySpent + dailyManualIncome
+        
+        // 5. The Reconciliation (The Vault Reveal)
+        // Check if 'date' is the last day of the month
+        if let monthInterval = calendar.dateInterval(of: .month, for: date),
+           let endOfMonth = calendar.date(byAdding: .day, value: -1, to: monthInterval.end),
+           calendar.isDate(date, inSameDayAs: endOfMonth) {
+            
+            // Add the unallocated Recurring Income
+            // (Total Salary - The Total Budget you already distributed via dailyAllowance)
+            let vaultSavings = monthlyIncome - totalBudget
+            surplus += vaultSavings
+        }
+        
+        return surplus
+    }
+    
+    func calculateMonthlySaving() -> Double {
+        let days = daysInMonth().compactMap { $0 }
+        var totalSaved = 0.0
+        
+        for date in days {
+            if !isDateBeforeSignup(date) && !isFutureDate(date) {
+                let status = dailyStatus(for: date)
+                totalSaved += status.balance
+            }
+        }
+        
+        return totalSaved
+    }
+    
+    // Check if date is in the future
+    func isFutureDate(_ date: Date) -> Bool {
+        let calendar = Calendar.current
+        return calendar.startOfDay(for: date) > calendar.startOfDay(for: Date())
     }
     
     func calculateMonthlySummary() -> (saved: Double, overspent: Double) {
@@ -195,15 +268,24 @@ struct CalendarView: View {
     
     // Check if date is before user signup
     func isDateBeforeSignup(_ date: Date) -> Bool {
-        guard let signupDate = UserDefaults.standard.object(forKey: "userSignupDate") as? Date else {
-            return false // If no signup date, show all dates
+        let calendar = Calendar.current
+        
+        // Find signup date: UserDefaults or fallback to first transaction
+        let signupDate: Date
+        if let savedDate = UserDefaults.standard.object(forKey: "userSignupDate") as? Date {
+            signupDate = savedDate
+        } else if let firstTransaction = transactions.last?.date {
+            signupDate = firstTransaction
+        } else {
+            return false // Show all if no indicator found
         }
-        return date < signupDate
+        
+        return calendar.startOfDay(for: date) < calendar.startOfDay(for: signupDate)
     }
 }
 
 #Preview {
-    CalendarView(transactions: [])
+    CalendarView(transactions: [], totalBudget: 5000.0, monthlyIncome: 6000.0)
 }
 
 // Helper extension for chunking

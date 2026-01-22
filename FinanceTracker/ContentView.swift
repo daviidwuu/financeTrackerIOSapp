@@ -7,6 +7,7 @@ struct ContentView: View {
     @State private var showAddTransaction = false
     @Environment(\.colorScheme) var colorScheme
     @State private var selectedTab = 0
+    @State private var showPostOnboardingGuide = false
     
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -64,6 +65,19 @@ struct ContentView: View {
         .onOpenURL { url in
             if url.scheme == "financetracker" && url.host == "add-transaction" {
                 showAddTransaction = true
+            }
+        }
+        .sheet(isPresented: $showPostOnboardingGuide) {
+            PostOnboardingGuideView()
+                .environmentObject(appState)
+        }
+        .onAppear {
+            // Check if user is new and hasn't seen the guide
+            if appState.hasCompletedOnboarding && !appState.hasSeenPostOnboardingGuide {
+                // Small delay to ensure view is fully loaded
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    showPostOnboardingGuide = true
+                }
             }
         }
     }

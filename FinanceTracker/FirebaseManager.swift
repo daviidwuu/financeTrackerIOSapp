@@ -93,4 +93,29 @@ class FirebaseManager: ObservableObject {
     func updateUserProfile(userId: String, data: [String: Any]) async throws {
         try await db.collection("users").document(userId).updateData(data)
     }
+    
+    // MARK: - Streak Management
+    
+    /// Get user's streak data (count and last visit date)
+    func getStreakData(userId: String) async throws -> (streakCount: Int, lastVisitDate: Date?) {
+        let document = try await db.collection("users").document(userId).getDocument()
+        guard let data = document.data() else {
+            return (1, nil) // Default for new users
+        }
+        
+        let streakCount = data["streakCount"] as? Int ?? 1
+        let lastVisitTimestamp = data["lastVisitDate"] as? Timestamp
+        let lastVisitDate = lastVisitTimestamp?.dateValue()
+        
+        return (streakCount, lastVisitDate)
+    }
+    
+    /// Update user's streak data in Firestore
+    func updateStreakData(userId: String, streakCount: Int, lastVisitDate: Date) async throws {
+        let data: [String: Any] = [
+            "streakCount": streakCount,
+            "lastVisitDate": Timestamp(date: lastVisitDate)
+        ]
+        try await db.collection("users").document(userId).setData(data, merge: true)
+    }
 }

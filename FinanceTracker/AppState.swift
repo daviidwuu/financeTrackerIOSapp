@@ -13,15 +13,12 @@ class AppState: ObservableObject {
     private let firebaseManager = FirebaseManager.shared
     
     @Published var streakCount = 1
-    
-    private let streakKey = "userStreakCount"
-    private let lastVisitDateKey = "lastVisitDate"
+    @Published var hasSeenPostOnboardingGuide = false
     
     static let shared = AppState()
     
     private init() {
-        // Initialize streak
-        updateStreak()
+        // Streak will be initialized when user logs in
         
         // Listen to Firebase auth state changes
         authStateListener = Auth.auth().addStateDidChangeListener { [weak self] _,  user in
@@ -46,36 +43,45 @@ class AppState: ObservableObject {
         }
     }
     
-    private func updateStreak() {
-        let defaults = UserDefaults.standard
+    private func updateStreak(userId: String) async {
         let calendar = Calendar.current
         
-        let lastVisit = defaults.object(forKey: lastVisitDateKey) as? Date ?? Date.distantPast
-        let currentStreak = defaults.integer(forKey: streakKey)
-        
-        if calendar.isDateInToday(lastVisit) {
-            // Already visited today, streak remains same
-            self.streakCount = max(1, currentStreak)
-        } else if calendar.isDateInYesterday(lastVisit) {
-            // Visited yesterday, increment streak
-            let newStreak = currentStreak + 1
-            self.streakCount = newStreak
-            defaults.set(newStreak, forKey: streakKey)
-            defaults.set(Date(), forKey: lastVisitDateKey)
-        } else {
-            // Missed a day (or first time), reset to 1
-            // Check if it is the very first time launch (distantPast)
-            if lastVisit == Date.distantPast {
-                 // First launch ever
-                 self.streakCount = 1
-                 defaults.set(1, forKey: streakKey)
-                 defaults.set(Date(), forKey: lastVisitDateKey)
+        do {
+            // Fetch current streak data from Firebase
+            let (currentStreak, lastVisit) = try await firebaseManager.getStreakData(userId: userId)
+            let lastVisitDate = lastVisit ?? Date.distantPast
+            
+            if calendar.isDateInToday(lastVisitDate) {
+                // Already visited today, streak remains same
+                DispatchQueue.main.async {
+                    self.streakCount = max(1, currentStreak)
+                }
+            } else if calendar.isDateInYesterday(lastVisitDate) {
+                // Visited yesterday, increment streak
+                let newStreak = currentStreak + 1
+                DispatchQueue.main.async {
+                    self.streakCount = newStreak
+                }
+                try await firebaseManager.updateStreakData(userId: userId, streakCount: newStreak, lastVisitDate: Date())
             } else {
-                // Broken streak
-                self.streakCount = 1
-                defaults.set(1, forKey: streakKey)
-                defaults.set(Date(), forKey: lastVisitDateKey)
+                // Missed a day or first time, reset to 1
+                DispatchQueue.main.async {
+                    self.streakCount = 1
+                }
+                try await firebaseManager.updateStreakData(userId: userId, streakCount: 1, lastVisitDate: Date())
             }
+        } catch {
+            print("Failed to update streak: \(error)")
+            // On error, default to 1
+            DispatchQueue.main.async {
+                self.streakCount = 1
+            }
+        }
+    }
+    
+    private func resetStreak() {
+        DispatchQueue.main.async {
+            self.streakCount = 1
         }
     }
     
@@ -84,7 +90,12 @@ class AppState: ObservableObject {
             let profile = try await firebaseManager.getUserProfile(userId: userId)
             DispatchQueue.main.async {
                 self.userName = profile["name"] as? String ?? ""
+                // Load post-onboarding guide status per user
+                let guideKey = "hasSeenPostOnboardingGuide_\(userId)"
+                self.hasSeenPostOnboardingGuide = UserDefaults.standard.bool(forKey: guideKey)
             }
+            // Load and update streak for this user
+            await updateStreak(userId: userId)
         } catch {
             print("Failed to load user profile: \(error)")
         }
@@ -94,12 +105,16 @@ class AppState: ObservableObject {
         // Firebase auth state listener will handle the update
         self.userName = name
         self.userEmail = email
-        updateStreak()
+        Task {
+            await updateStreak(userId: userId)
+        }
     }
     
     func logout() {
         do {
             try firebaseManager.signOut()
+            // Reset streak when logging out
+            resetStreak()
             // Firebase auth state listener will handle clearing state
         } catch {
             print("Logout error: \(error)")
@@ -110,7 +125,15 @@ class AppState: ObservableObject {
         self.hasCompletedOnboarding = true
         self.userName = name
         self.userEmail = email
-        updateStreak()
+        Task {
+            await updateStreak(userId: userId)
+        }
         // User is already authenticated via Firebase Auth
+    }
+    
+    func markPostOnboardingGuideAsSeen(userId: String) {
+        let guideKey = "hasSeenPostOnboardingGuide_\(userId)"
+        UserDefaults.standard.set(true, forKey: guideKey)
+        hasSeenPostOnboardingGuide = true
     }
 }

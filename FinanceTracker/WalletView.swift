@@ -11,7 +11,6 @@ struct WalletView: View {
     @State private var showAddSavingGoal = false
     @State private var showAddRecurring = false
     @State private var showAddBudget = false
-    @State private var showAddSavings = false
     
     @State private var goalToEdit: FirestoreModels.SavingGoal?
     @State private var recurringToEdit: FirestoreModels.RecurringTransaction?
@@ -140,13 +139,6 @@ struct WalletView: View {
                             Text("Saving Goals").font(.title2).fontWeight(.bold).foregroundColor(.primary)
                             Spacer()
                             Button(action: { 
-                                showAddSavings = true 
-                            }) {
-                                Image(systemName: "banknote.fill")
-                                    .font(.title2)
-                                    .foregroundColor(.primary)
-                            }
-                            Button(action: { 
                                 goalToEdit = nil
                                 showAddSavingGoal = true 
                             }) {
@@ -170,7 +162,13 @@ struct WalletView: View {
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
                         } else {
-                            ForEach(savingGoalRepo.savingGoals) { goal in
+                            let pool = calculateAllTimeSavingsPool()
+                            let sortedGoals = savingGoalRepo.savingGoals
+                            
+                            ForEach(sortedGoals.indices, id: \.self) { index in
+                                let goal = sortedGoals[index]
+                                let currentAmount = calculateGoalAllocation(for: index, in: sortedGoals, pool: pool)
+                                
                                 HStack {
                                     Image(systemName: goal.icon)
                                         .font(.title2)
@@ -182,14 +180,14 @@ struct WalletView: View {
                                     VStack(alignment: .leading) {
                                         Text(goal.name)
                                             .font(.headline)
-                                        Text("$\(Int(goal.currentAmount)) / $\(Int(goal.targetAmount))")
+                                        Text("$\(Int(currentAmount)) / $\(Int(goal.targetAmount))")
                                             .font(.system(.subheadline, design: .rounded))
                                             .foregroundColor(.secondary)
                                     }
                                     
                                     Spacer()
                                     
-                                    Text("\(Int((goal.currentAmount / goal.targetAmount) * 100))%")
+                                    Text("\(Int((currentAmount / goal.targetAmount) * 100))%")
                                         .font(.system(.headline, design: .rounded))
                                         .foregroundColor(.primary)
                                 }
@@ -225,7 +223,7 @@ struct WalletView: View {
                     // Section 3: Calendar
                     Section {
                         VStack(spacing: 8) {
-                            CalendarView(transactions: transactionRepo.transactions)
+                            CalendarView(transactions: transactionRepo.transactions, totalBudget: totalBudget, monthlyIncome: monthlyIncome)
                         }
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: AppSpacing.section, trailing: 16))
                         .listRowSeparator(.hidden)
@@ -485,20 +483,48 @@ struct WalletView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(Color.backgroundPrimary)
             }
-            .sheet(isPresented: $showAddSavings) {
-                AddSavingsView(
-                    dailySurplus: calculateDailySurplus(),
-                    onSave: { amount in
-                        Task {
-                            try? await savingGoalRepo.distributeSavings(amount: amount)
-                        }
-                    }
-                )
-                .presentationDetents([.medium])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color.backgroundPrimary)
-            }
         }
+    }
+    
+    private func calculateAllTimeSavingsPool() -> Double {
+        guard let signupDate = UserDefaults.standard.object(forKey: "userSignupDate") as? Date else {
+            return 0
+        }
+        
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let start = calendar.startOfDay(for: signupDate)
+        
+        // Days active including today
+        let daysCount = (calendar.dateComponents([.day], from: start, to: today).day ?? 0) + 1
+        
+        // Daily budget = Monthly Category Budget / 30
+        let dailyBudget = totalBudget / 30.0
+        let totalBudgetAllowance = Double(daysCount) * dailyBudget
+        
+        // Total expenses since signup
+        let totalExpenses = transactionRepo.transactions
+            .filter { $0.type == "expense" && $0.date >= start && $0.date <= Date() }
+            .reduce(0) { $0 + abs($1.amount) }
+            
+        return max(0, totalBudgetAllowance - totalExpenses)
+    }
+    
+    private func calculateGoalAllocation(for index: Int, in goals: [FirestoreModels.SavingGoal], pool: Double) -> Double {
+        var remainingPool = pool
+        for i in 0..<goals.count {
+            let goal = goals[i]
+            let needed = goal.targetAmount
+            let allocation = min(remainingPool, needed)
+            
+            if i == index {
+                return allocation
+            }
+            
+            remainingPool -= allocation
+            if remainingPool <= 0 { break }
+        }
+        return 0
     }
     
     private func deleteSavingGoal(_ goal: FirestoreModels.SavingGoal) {
@@ -677,85 +703,6 @@ struct CircularProgressView: View {
     }
 }
 
-private struct AddSavingsView: View {
-    @Environment(\.dismiss) var dismiss
-    let dailySurplus: Double
-    var onSave: (Double) -> Void
-    
-    @State private var amount: String = ""
-    @State private var useSurplus = true
-    
-    init(dailySurplus: Double, onSave: @escaping (Double) -> Void) {
-        self.dailySurplus = dailySurplus
-        self.onSave = onSave
-        _amount = State(initialValue: String(format: "%.2f", dailySurplus))
-    }
-    
-    var body: some View {
-        VStack(spacing: 24) {
-            Text("Add to Savings")
-                .font(AppTypography.titleDisplay)
-                .padding(.top)
-            
-            VStack(spacing: 8) {
-                Text("Daily Surplus Available")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                Text("$\(String(format: "%.2f", dailySurplus))")
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
-                    .foregroundColor(.green)
-            }
-            .padding()
-            .background(Color(UIColor.secondarySystemBackground))
-            .cornerRadius(AppRadius.medium)
-            
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Amount to Save")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .textCase(.uppercase)
-                
-                HStack {
-                    Text("$")
-                        .font(.title2)
-                        .foregroundColor(.primary)
-                    TextField("0.00", text: $amount)
-                        .font(.title2)
-                        .keyboardType(.decimalPad)
-                }
-                .padding()
-                .background(Color(UIColor.secondarySystemBackground))
-                .cornerRadius(AppRadius.small)
-            }
-            
-            Text("Money will be distributed to your goals starting from the top.")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-            
-            Button(action: {
-                if let value = Double(amount) {
-                    onSave(value)
-                    HapticManager.shared.success()
-                    dismiss()
-                }
-            }) {
-                Text("Add to Savings")
-                    .font(.headline)
-                    .foregroundColor(.black) 
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.primary)
-                    .foregroundColor(Color(UIColor.systemBackground))
-                    .cornerRadius(AppRadius.button)
-            }
-            .padding(.top)
-            
-            Spacer()
-        }
-        .padding(AppSpacing.margin)
-    }
-}
 
 #Preview {
     WalletView()

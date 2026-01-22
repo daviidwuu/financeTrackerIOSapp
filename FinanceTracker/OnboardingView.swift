@@ -280,6 +280,8 @@ struct OnboardingView: View {
                     appState.userEmail = emailInput
                     appState.currentUserId = userId
                     appState.isUserLoggedIn = true
+                    appState.hasCompletedOnboarding = true
+                    UserDefaults.standard.set(Date(), forKey: "userSignupDate")
                     isLoading = false
                 }
                 
