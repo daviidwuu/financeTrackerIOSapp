@@ -165,8 +165,8 @@ struct WalletView: View {
                             let pool = calculateAllTimeSavingsPool()
                             let sortedGoals = savingGoalRepo.savingGoals
                             
-                            ForEach(sortedGoals.indices, id: \.self) { index in
-                                let goal = sortedGoals[index]
+                            ForEach(sortedGoals) { goal in
+                                let index = sortedGoals.firstIndex(where: { $0.id == goal.id }) ?? 0
                                 let currentAmount = calculateGoalAllocation(for: index, in: sortedGoals, pool: pool)
                                 
                                 HStack {
@@ -177,12 +177,20 @@ struct WalletView: View {
                                         .background(Color(hex: goal.colorHex))
                                         .clipShape(Circle())
                                     
-                                    VStack(alignment: .leading) {
+                                    VStack(alignment: .leading, spacing: 4) {
                                         Text(goal.name)
                                             .font(.headline)
                                         Text("$\(Int(currentAmount)) / $\(Int(goal.targetAmount))")
                                             .font(.system(.subheadline, design: .rounded))
                                             .foregroundColor(.secondary)
+                                        
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "calendar")
+                                                .font(.caption2)
+                                            Text("Target: \(goal.targetDate.formatted(date: .abbreviated, time: .omitted))")
+                                                .font(.caption2)
+                                        }
+                                        .foregroundColor(Color(UIColor.tertiaryLabel))
                                     }
                                     
                                     Spacer()
@@ -193,7 +201,8 @@ struct WalletView: View {
                                 }
                                 .padding()
                                 .background(Color(UIColor.secondarySystemBackground))
-                                .cornerRadius(AppRadius.medium)
+                                .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
+                                .contentShape(.dragPreview, RoundedRectangle(cornerRadius: AppRadius.medium))
                                 .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.element, trailing: AppSpacing.margin))
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
@@ -487,27 +496,69 @@ struct WalletView: View {
     }
     
     private func calculateAllTimeSavingsPool() -> Double {
-        guard let signupDate = UserDefaults.standard.object(forKey: "userSignupDate") as? Date else {
+        // Find signup date: UserDefaults or fallback to first transaction
+        let signupDate: Date
+        if let savedDate = UserDefaults.standard.object(forKey: "userSignupDate") as? Date {
+            signupDate = savedDate
+        } else if let firstTransaction = transactionRepo.transactions.last?.date {
+            signupDate = firstTransaction
+        } else {
             return 0
         }
         
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
-        let start = calendar.startOfDay(for: signupDate)
+        var current = calendar.startOfDay(for: signupDate)
         
-        // Days active including today
-        let daysCount = (calendar.dateComponents([.day], from: start, to: today).day ?? 0) + 1
+        var totalPool = 0.0
         
-        // Daily budget = Monthly Category Budget / 30
-        let dailyBudget = totalBudget / 30.0
-        let totalBudgetAllowance = Double(daysCount) * dailyBudget
+        // Sum up the surplus for every day since signup
+        while current <= today {
+            totalPool += calculateSurplus(for: current)
+            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: current) else { break }
+            current = nextDay
+        }
         
-        // Total expenses since signup
-        let totalExpenses = transactionRepo.transactions
-            .filter { $0.type == "expense" && $0.date >= start && $0.date <= Date() }
+        return max(0, totalPool)
+    }
+    
+    private func calculateSurplus(for date: Date) -> Double {
+        let calendar = Calendar.current
+        
+        // 1. Get the number of days in this specific month
+        guard let range = calendar.range(of: .day, in: .month, for: date) else { return 0 }
+        let daysInMonthCount = Double(range.count)
+        
+        // 2. Determine the Daily Allowance (The "Grind" Budget)
+        let dailyAllowance = totalBudget / daysInMonthCount
+        
+        // 3. Calculate "Manual" Flow for this specific day
+        let dailyTransactions = transactionRepo.transactions.filter { 
+            calendar.isDate($0.date, inSameDayAs: date) 
+        }
+        
+        let dailySpent = dailyTransactions
+            .filter { $0.type == "expense" }
             .reduce(0) { $0 + abs($1.amount) }
             
-        return max(0, totalBudgetAllowance - totalExpenses)
+        let dailyManualIncome = dailyTransactions
+            .filter { $0.type == "income" } // One-off gigs, sales
+            .reduce(0) { $0 + $1.amount }
+            
+        // 4. Base Surplus (The Simulation Result)
+        var surplus = dailyAllowance - dailySpent + dailyManualIncome
+        
+        // 5. The Reconciliation (The Vault Reveal - Only on the last day of a month)
+        if let monthInterval = calendar.dateInterval(of: .month, for: date),
+           let endOfMonth = calendar.date(byAdding: .day, value: -1, to: monthInterval.end),
+           calendar.isDate(date, inSameDayAs: endOfMonth) {
+            
+            // Add the unallocated Recurring Income (The Vault)
+            let vaultSavings = monthlyIncome - totalBudget
+            surplus += vaultSavings
+        }
+        
+        return surplus
     }
     
     private func calculateGoalAllocation(for index: Int, in goals: [FirestoreModels.SavingGoal], pool: Double) -> Double {
@@ -551,28 +602,16 @@ struct WalletView: View {
     private func moveSavingGoals(from source: IndexSet, to destination: Int) {
         var updatedGoals = savingGoalRepo.savingGoals
         updatedGoals.move(fromOffsets: source, toOffset: destination)
+        
+        // Wrap in withAnimation for a smooth native slide effect
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            savingGoalRepo.savingGoals = updatedGoals
+        }
+        
+        // Sync to backend
         savingGoalRepo.reorderSavingGoals(updatedGoals)
     }
     
-    private func calculateDailySurplus() -> Double {
-        let calendar = Calendar.current
-        let range = calendar.range(of: .day, in: .month, for: Date())
-        let daysInMonth = Double(range?.count ?? 30)
-        
-        // Avoid division by zero
-        guard daysInMonth > 0 else { return 0 }
-        
-        let dailyLimit = totalBudget / daysInMonth
-        
-        let todaySpend = transactionRepo.transactions
-            .filter { 
-                $0.type == "expense" && 
-                calendar.isDateInToday($0.date) 
-            }
-            .reduce(0) { $0 + abs($1.amount) }
-        
-        return max(0, dailyLimit - todaySpend)
-    }
     
     private func addSavingGoal(_ goal: SavingGoal) {
         Task {
