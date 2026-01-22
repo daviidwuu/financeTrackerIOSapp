@@ -75,20 +75,20 @@ struct AppConstants {
         
         // Entertainment & Leisure
         "tv.fill", "gamecontroller.fill", "headphones", "music.note", "film.fill",
-        "theatermasks.fill", "book.fill", "photo.fill", "ticket.fill",
+        "theatermasks.fill", "book.fill", "photo.fill",
         "puzzlepiece.fill", "party.popper.fill", "balloon.2.fill",
         
         // Health & Wellness
         "heart.fill", "pills.fill", "cross.case.fill", "stethoscope", "staroflife.fill",
         "brain.head.profile", "dumbbell.fill", "figure.run", "sportscourt.fill",
-        "soccerball", "tennis.racket", "bicycle",
+        "soccerball", "tennis.racket",
         
         // Education & Self-Improvement
         "graduationcap.fill", "book.closed.fill", "pencil", "paintbrush.fill",
         "hammer.fill", "wrench.and.screwdriver.fill", "lightbulb.fill",
         
         // Tech & Digital
-        "iphone", "desktopcomputer", "keyboard", "mouse.fill", "cable.connector",
+        "iphone", "desktopcomputer", "keyboard", "magicmouse.fill", "cable.connector",
         "cloud.fill", "lock.fill", "shield.fill",
         
         // Nature & Pets
@@ -96,7 +96,7 @@ struct AppConstants {
         
         // Misc
         "star.fill", "suit.heart.fill", "hand.thumbsup.fill", "flag.fill", "bell.fill",
-        "location.fill", "calendar", "bubble.left.and.bubble.right.fill"
+        "location.fill", "calendar", "bubble.left.and.bubble.right.fill", "lifepreserver.fill"
     ]
     
     // MARK: - Colors
