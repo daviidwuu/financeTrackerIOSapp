@@ -25,7 +25,8 @@ struct ContentView: View {
                         Text("Wallet")
                     }
             }
-            .preferredColorScheme(.none) // Respect system setting
+            
+            // .preferredColorScheme(.none) removed to respect app-level setting
             
             // Floating Action Button
             if selectedTab == 0 {
