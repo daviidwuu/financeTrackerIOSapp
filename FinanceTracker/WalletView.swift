@@ -79,7 +79,7 @@ struct WalletView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 // Background
                 Color(UIColor.systemBackground)
