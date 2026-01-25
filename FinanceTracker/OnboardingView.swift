@@ -72,7 +72,7 @@ struct OnboardingView: View {
             VStack(spacing: 0) {
                 // Progress Bar
                 HStack(spacing: 4) {
-                    ForEach(1...6, id: \.self) { step in
+                    ForEach(1...8, id: \.self) { step in
                         Capsule()
                             .fill(step <= currentStep ? Color.white : Color.gray.opacity(0.2))
                             .frame(height: 4)
@@ -92,7 +92,9 @@ struct OnboardingView: View {
                         case 3: IncomeStep(income: $incomeInput)
                         case 4: CategoriesStep(categories: $onboardingCategories)
                         case 5: SavingGoalsStep(goals: $onboardingSavingGoals)
-                        case 6: AccountStep(email: $emailInput, password: $passwordInput, errorMessage: $errorMessage)
+                        case 6: BackTapStep()
+                        case 7: WidgetStep()
+                        case 8: AccountStep(email: $emailInput, password: $passwordInput, errorMessage: $errorMessage)
                         default: EmptyView()
                         }
                     }
@@ -123,7 +125,7 @@ struct OnboardingView: View {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
                         } else {
-                            Text(currentStep == 6 ? "Create Account" : "Continue")
+                            Text(currentStep == 8 ? "Create Account" : "Continue")
                                 .font(.headline)
                                 .fontWeight(.bold)
                         }
@@ -152,14 +154,16 @@ struct OnboardingView: View {
         case 3: return Double(incomeInput) != nil || incomeInput.isEmpty
         case 4: return !onboardingCategories.filter { $0.isSelected }.isEmpty
         case 5: return true // Optional to have saving goals
-        case 6: return !emailInput.isEmpty && !passwordInput.isEmpty && emailInput.contains("@") && passwordInput.count >= 6
+        case 6: return true // Back Tap tutorial
+        case 7: return true // Widget tutorial
+        case 8: return !emailInput.isEmpty && !passwordInput.isEmpty && emailInput.contains("@") && passwordInput.count >= 6
         default: return false
         }
     }
     
     private func nextStep() {
         hideKeyboard()
-        if currentStep < 6 {
+        if currentStep < 8 {
             direction = .trailing
             HapticManager.shared.light() // Navigation haptic
             withAnimation { currentStep += 1 }
@@ -1244,6 +1248,106 @@ struct EditSavingGoalSheet: View {
                 .background(Color(UIColor.secondarySystemBackground))
                 .cornerRadius(16)
                 .tint(Color(hex: selectedColorHex))
+        }
+    }
+}
+
+struct BackTapStep: View {
+    var body: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            
+            Image(systemName: "hand.tap.fill")
+                .font(.system(size: 80))
+                .foregroundColor(.blue)
+                .padding(.bottom, 20)
+            
+            Text("Quick Log with Back Tap")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .multilineTextAlignment(.center)
+            
+            VStack(spacing: 16) {
+                Text("Did you know you can log expenses without opening the app?")
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+                
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .top) {
+                        Text("1.")
+                            .bold()
+                        Text("Go to **Settings > Accessibility > Touch > Back Tap**")
+                    }
+                    HStack(alignment: .top) {
+                        Text("2.")
+                            .bold()
+                        Text("Choose **Double Tap** or **Triple Tap**")
+                    }
+                    HStack(alignment: .top) {
+                        Text("3.")
+                            .bold()
+                        Text("Scroll down to Shortcuts and select **Log Expense**")
+                    }
+                }
+                .padding()
+                .background(Color(UIColor.secondarySystemBackground))
+                .cornerRadius(16)
+                
+                Text("Now just tap the back of your phone to log a transaction instantly!")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 8)
+            }
+            .padding(.horizontal, 32)
+            
+            Spacer()
+        }
+    }
+}
+
+struct WidgetStep: View {
+    var body: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            
+            Image(systemName: "square.stack.3d.up.fill")
+                .font(.system(size: 80))
+                .foregroundColor(.purple)
+                .padding(.bottom, 20)
+            
+            Text("Track on Home Screen")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .multilineTextAlignment(.center)
+            
+            VStack(spacing: 16) {
+                Text("Keep an eye on your finances with our widgets.")
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+                
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .top) {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundColor(.secondary)
+                        Text("Long press on your Home Screen to add widgets")
+                    }
+                    HStack(alignment: .top) {
+                        Image(systemName: "chart.bar.fill")
+                            .foregroundColor(.secondary)
+                        Text("See your daily spending at a glance")
+                    }
+                    HStack(alignment: .top) {
+                        Image(systemName: "list.bullet.rectangle.portrait.fill")
+                            .foregroundColor(.secondary)
+                        Text("View recent transactions quickly")
+                    }
+                }
+                .padding()
+                .background(Color(UIColor.secondarySystemBackground))
+                .cornerRadius(16)
+            }
+            .padding(.horizontal, 32)
+            
+            Spacer()
         }
     }
 }
