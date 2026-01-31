@@ -320,6 +320,9 @@ struct SplitConfigurationView: View {
     // Temporary Selection State
     @State private var selectedFriends: Set<String> = []
     
+    // State to track manually edited (locked) splits
+    @State private var lockedSplitIds: Set<String> = []
+    
     // Mock Friends (Top 5)
     let availableFriends = ["Alice", "Bob", "Charlie", "David", "Eve"]
     
@@ -331,6 +334,11 @@ struct SplitConfigurationView: View {
         // Pre-select existing friends
         let existingNames = Set(existingSplits.map { $0.name })
         self._selectedFriends = State(initialValue: existingNames)
+        
+        // Assume existing splits from DB are effectively "locked" or intentional, 
+        // but for a new edit session we can start fresh or lock them?
+        // Let's start with empty locks so user can re-adjust freely, 
+        // unless they touch specific fields.
     }
     
     var body: some View {
@@ -411,11 +419,11 @@ struct SplitConfigurationView: View {
                     }
                 }
             }
-            .background(Color(UIColor.systemGroupedBackground)) // Ensure tap area covers background
+            .background(Color(UIColor.systemGroupedBackground))
             .onTapGesture {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             }
-            .scrollDismissesKeyboard(.interactively) // iOS 16+ Standard behavior
+            .scrollDismissesKeyboard(.interactively)
         }
     }
     
@@ -423,60 +431,67 @@ struct SplitConfigurationView: View {
         if selectedFriends.contains(name) {
             selectedFriends.remove(name)
             splits.removeAll(where: { $0.name == name })
+            // If removed friend was locked, remove from lock set
+            // Note: We can iterate to find ID if needed, but splits is already updated.
+            // Since we can't easily map name -> ID after removal, 
+            // we'll just let the ID sit in the Set (it's harmless string).
         } else {
             selectedFriends.insert(name)
-            // Add new split
-            // Default: Divide equally
-            let count = Double(selectedFriends.count + 1) // +1 for yourself
-            let equalShare = transactionAmount / count
-            
+            // Add new split - default to 0 temporarily, will be distributed
             let newSplit = FirestoreModels.Split(
                 name: name,
-                amount: equalShare,
+                amount: 0.0, 
                 isPaid: false
             )
             splits.append(newSplit)
         }
         
-        recalculateEqualShares()
-    }
-    
-    private func recalculateEqualShares() {
-        let count = Double(splits.count + 1)
-        let equalShare = transactionAmount / count
-        
-        var updatedSplits = splits
-        for i in updatedSplits.indices {
-            updatedSplits[i].amount = equalShare
-        }
-        splits = updatedSplits
+        distributeRemainder()
     }
     
     private func adjustSplits(manuallyChangedSplitId: String, newValue: Double) {
-        var updatedSplits = splits
+        // 1. Lock this split
+        lockedSplitIds.insert(manuallyChangedSplitId)
         
-        // 1. Update the manual entry first
-        guard let index = updatedSplits.firstIndex(where: { $0.id == manuallyChangedSplitId }) else { return }
-        updatedSplits[index].amount = newValue
-        
-        // 2. Distribute remainder among others
-        let otherSplitsCount = updatedSplits.filter { $0.id != manuallyChangedSplitId }.count
-        let peopleToSplitRemainder = otherSplitsCount + 1 // +1 for Yourself
-        
-        let existingSum = newValue
-        let remainder = transactionAmount - existingSum
-        
-        if peopleToSplitRemainder > 0 {
-             let newShare = max(0, remainder / Double(peopleToSplitRemainder))
-             
-             for i in updatedSplits.indices {
-                 if updatedSplits[i].id != manuallyChangedSplitId {
-                     updatedSplits[i].amount = newShare
-                 }
-             }
+        // 2. Update the value
+        if let index = splits.firstIndex(where: { $0.id == manuallyChangedSplitId }) {
+            splits[index].amount = newValue
         }
         
-        // Atomic update
-        splits = updatedSplits
+        // 3. Redistribute remainder among unlocked
+        distributeRemainder()
+    }
+    
+    private func distributeRemainder() {
+        // Calculate Total Locked Amount
+        let lockedTotal = splits
+            .filter { lockedSplitIds.contains($0.id) }
+            .reduce(0) { $0 + $1.amount }
+        
+        let remainder = transactionAmount - lockedTotal
+        
+        // Identify Unlocked Splits
+        var unlockedIndices: [Int] = []
+        for (index, split) in splits.enumerated() {
+            if !lockedSplitIds.contains(split.id) {
+                unlockedIndices.append(index)
+            }
+        }
+        
+        // Calculate Share
+        // Divisor = Unlocked Friends + Yourself (1)
+        let divisor = Double(unlockedIndices.count + 1)
+        
+        let newShare: Double
+        if remainder <= 0 {
+             newShare = 0 // Locked exceeds total
+        } else {
+             newShare = remainder / divisor
+        }
+        
+        // Update Unlocked Splits
+        for index in unlockedIndices {
+            splits[index].amount = newShare
+        }
     }
 }
