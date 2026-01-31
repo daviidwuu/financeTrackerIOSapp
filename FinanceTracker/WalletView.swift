@@ -95,7 +95,7 @@ struct WalletView: View {
                             Spacer()
                         }
                         .padding(.top, 10)
-                        .padding(.bottom, 16) // Added spacing between header and card
+                        .padding(.bottom, AppSpacing.compact) // Added spacing between header and card
                         .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
@@ -123,7 +123,7 @@ struct WalletView: View {
                         .padding(AppSpacing.margin) // Changed from 24 to 20 (standard margin)
                         .background(Color(UIColor.secondarySystemBackground))
                         .clipShape(RoundedRectangle(cornerRadius: AppRadius.large)) // Consistent radius
-                        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.section, trailing: AppSpacing.margin))
+                        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                         .contentShape(Rectangle()) // Make entire area tappable
@@ -158,7 +158,7 @@ struct WalletView: View {
                                 actionTitle: "Add Goal",
                                 action: { showAddSavingGoal = true }
                             )
-                            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.element, trailing: AppSpacing.margin))
+                            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
                         } else {
@@ -203,7 +203,7 @@ struct WalletView: View {
                                 .background(Color(UIColor.secondarySystemBackground))
                                 .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
                                 .contentShape(.dragPreview, RoundedRectangle(cornerRadius: AppRadius.medium))
-                                .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.element, trailing: AppSpacing.margin))
+                                .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -239,7 +239,7 @@ struct WalletView: View {
                                 signupDate: appState.userSignupDate
                             )
                         }
-                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: AppSpacing.section, trailing: 16))
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: AppSpacing.compact, trailing: 16))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                     }
@@ -269,7 +269,7 @@ struct WalletView: View {
                                 actionTitle: "Add Recurring",
                                 action: { showAddRecurring = true }
                             )
-                            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.element, trailing: AppSpacing.margin))
+                            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
                         } else {
@@ -319,7 +319,7 @@ struct WalletView: View {
                                 .padding()
                                 .background(Color(UIColor.secondarySystemBackground))
                                 .cornerRadius(AppRadius.medium)
-                                .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.element, trailing: AppSpacing.margin))
+                                .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -369,7 +369,7 @@ struct WalletView: View {
                                 actionTitle: "Add Budget",
                                 action: { showAddBudget = true }
                             )
-                            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.element, trailing: AppSpacing.margin))
+                            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
                         } else {
@@ -390,7 +390,7 @@ struct WalletView: View {
                                 .padding()
                                 .background(Color(UIColor.secondarySystemBackground))
                                 .cornerRadius(AppRadius.medium)
-                                .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.element, trailing: AppSpacing.margin))
+                                .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -456,49 +456,31 @@ struct WalletView: View {
                 AddSavingGoalView(onSave: { goal in
                     addSavingGoal(goal)
                 })
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color.backgroundPrimary)
             }
             .sheet(item: $goalToEdit) { goal in
                 AddSavingGoalView(goalToEdit: goal, onSave: { updatedGoal in
                     updateSavingGoal(goal, with: updatedGoal)
                 })
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color.backgroundPrimary)
             }
             .sheet(isPresented: $showAddRecurring) {
                 AddRecurringTransactionView(onSave: { transaction in
                     addRecurringTransaction(transaction)
                 })
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color.backgroundPrimary)
             }
             .sheet(item: $recurringToEdit) { transaction in
                 AddRecurringTransactionView(recurringToEdit: transaction, onSave: { updatedTransaction in
                     updateRecurringTransaction(transaction, with: updatedTransaction)
                 })
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color.backgroundPrimary)
             }
             .sheet(isPresented: $showAddBudget) {
                 AddBudgetView(onSave: { budget in
                     addBudget(budget)
                 })
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color.backgroundPrimary)
             }
             .sheet(item: $budgetToEdit) { budget in
                 AddBudgetView(budgetToEdit: budget, onSave: { updatedBudget in
                     updateBudget(budget, with: updatedBudget)
                 })
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color.backgroundPrimary)
             }
             .sheet(isPresented: $showEditBalance) {
                 WalletDetailsView(

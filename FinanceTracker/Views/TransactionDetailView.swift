@@ -180,8 +180,7 @@ struct TransactionDetailView: View {
                     // Call parent callback to persist changes
                     onSave?(transaction, updatedTransaction)
                 })
-                .presentationDetents([.fraction(0.65)])
-                .presentationDragIndicator(.visible)
+                })
             }
             .sheet(isPresented: $showSplitSheet) {
                 SplitConfigurationView(transactionAmount: abs(transaction.amount), existingSplits: transaction.splits ?? []) { newSplits in

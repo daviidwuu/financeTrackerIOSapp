@@ -375,9 +375,6 @@ struct AllTransactionsView: View {
                 AddTransactionView(transactionToEdit: transaction, onSave: { updatedTransaction in
                     updateTransaction(transaction, with: updatedTransaction)
                 })
-                .presentationDetents([.fraction(0.65)])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(UIColor.systemBackground))
             }
         }
     }

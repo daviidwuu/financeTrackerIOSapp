@@ -18,6 +18,9 @@ struct AddTransactionView: View {
     @State private var transactionNotes: String = ""
     @State private var direction: Edge = .trailing
     
+    // Sticky Modal Logic
+    @State private var presentationDetent: PresentationDetent = .medium
+    
     // Travel Currency Logic
     @ObservedObject private var currencyManager = CurrencyManager.shared
     @State private var isUsingTravelCurrency = false
@@ -51,7 +54,8 @@ struct AddTransactionView: View {
                     } : nil,
                     onClose: { dismiss() }
                 )
-                .padding()
+                .padding(.horizontal, AppSpacing.margin)
+                .padding(.top, 16)
                 
                 // Content
                 ZStack(alignment: .top) {
@@ -62,7 +66,7 @@ struct AddTransactionView: View {
                     insertion: .move(edge: direction),
                     removal: .move(edge: direction == .leading ? .trailing : .leading)
                 ))
-                .padding(.horizontal, AppSpacing.margin)
+                ))
                 .frame(maxHeight: .infinity, alignment: .top)
                 
                 Spacer()
@@ -115,6 +119,8 @@ struct AddTransactionView: View {
                 }
             }
         }
+        .presentationDetents([.medium, .large], selection: $presentationDetent)
+        .presentationDragIndicator(.visible)
         .onDisappear {
             budgetRepo.stopListening()
             transactionRepo.stopListening()
@@ -211,7 +217,7 @@ struct AddTransactionView: View {
                     Text(currencyManager.travelCurrency).tag(true)
                 }
                 .pickerStyle(.segmented)
-                .padding(.horizontal)
+                .padding(.horizontal, AppSpacing.margin)
                 
                 if isUsingTravelCurrency {
                     Text("Converting to approx \(String(format: "%.2f", currencyManager.convertToMain(amount: Double(amount) ?? 0, from: currencyManager.travelCurrency))) \(currencyManager.mainCurrency)")
@@ -228,6 +234,7 @@ struct AddTransactionView: View {
             
             Spacer()
         }
+        .padding(.horizontal, AppSpacing.margin)
     }
     
     private var detailsStep: some View {
@@ -236,6 +243,7 @@ struct AddTransactionView: View {
             .font(.headline)
             .fontWeight(.semibold)
             .foregroundColor(.secondary)
+            .padding(.horizontal, AppSpacing.margin)
             
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: AppSpacing.element) {
@@ -301,7 +309,7 @@ struct AddTransactionView: View {
                         }
                     }
                 }
-                .padding(.horizontal, AppSpacing.margin)
+                .padding(.horizontal, AppSpacing.compact)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
@@ -410,6 +418,7 @@ struct AddTransactionView: View {
                     .padding(.top)
             }
         }
+        .padding(.horizontal, AppSpacing.margin)
     }
 }
 

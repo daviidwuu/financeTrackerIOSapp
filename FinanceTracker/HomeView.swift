@@ -168,7 +168,7 @@ struct HomeView: View {
                         .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
-                        .padding(.bottom, AppSpacing.section)
+                        .padding(.bottom, AppSpacing.compact)
                     }
                     
                     // Section 2: Recent Transactions
@@ -252,9 +252,6 @@ struct HomeView: View {
                     AddTransactionView(transactionToEdit: transaction, onSave: { updatedTransaction in
                         updateTransaction(transaction, with: updatedTransaction)
                     })
-                    .presentationDetents([.fraction(0.65)])
-                    .presentationDragIndicator(.visible)
-                    .presentationBackground(Color.backgroundPrimary)
                 }
                 .sheet(isPresented: $appState.showProfile) {
                     ProfileView()
@@ -273,9 +270,6 @@ struct HomeView: View {
                     AddTransactionView(onSave: { transaction in
                         addTransaction(transaction)
                     })
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-                    .presentationBackground(Color.backgroundPrimary)
                 }
             }
             .navigationBarHidden(true)

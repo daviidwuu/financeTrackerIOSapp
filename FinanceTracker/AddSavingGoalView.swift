@@ -15,6 +15,9 @@ struct AddSavingGoalView: View {
     @State private var targetDate = Date()
     @State private var direction: Edge = .trailing
     
+    // Sticky Modal Logic
+    @State private var presentationDetent: PresentationDetent = .medium
+    
     let icons = AppConstants.allIcons
     let colors = AppConstants.allColors
     
@@ -50,7 +53,9 @@ struct AddSavingGoalView: View {
                     } : nil,
                     onClose: { dismiss() }
                 )
-                .padding()
+                )
+                .padding(.horizontal, AppSpacing.margin)
+                .padding(.top, 16)
                 
                 // Content
                 ZStack(alignment: .top) {
@@ -61,7 +66,7 @@ struct AddSavingGoalView: View {
                     insertion: .move(edge: direction),
                     removal: .move(edge: direction == .leading ? .trailing : .leading)
                 ))
-                .padding(.horizontal, AppSpacing.margin)
+                ))
                 .frame(maxHeight: .infinity, alignment: .top)
                 
                 Spacer()
@@ -93,6 +98,8 @@ struct AddSavingGoalView: View {
                 .background(Color.backgroundPrimary)
             }
         }
+        .presentationDetents([.medium, .large], selection: $presentationDetent)
+        .presentationDragIndicator(.visible)
     }
     
     private var headerTitle: String {
@@ -186,6 +193,7 @@ struct AddSavingGoalView: View {
             
             Spacer()
         }
+        .padding(.horizontal, AppSpacing.margin)
     }
     
     private var nameStep: some View {
@@ -205,6 +213,7 @@ struct AddSavingGoalView: View {
             
             Spacer()
         }
+        .padding(.horizontal, AppSpacing.margin)
     }
     
     private var iconStep: some View {
@@ -233,6 +242,7 @@ struct AddSavingGoalView: View {
                 }
             }
             .padding(.bottom, 100)
+            .padding(.horizontal, AppSpacing.compact)
         }
     }
     
@@ -263,6 +273,7 @@ struct AddSavingGoalView: View {
                 }
             }
             .padding(.bottom, 100)
+            .padding(.horizontal, AppSpacing.compact)
         }
     }
     
@@ -280,6 +291,7 @@ struct AddSavingGoalView: View {
                 .cornerRadius(AppRadius.medium)
                 .tint(selectedColor)
         }
+        .padding(.horizontal, AppSpacing.margin)
     }
 }
 

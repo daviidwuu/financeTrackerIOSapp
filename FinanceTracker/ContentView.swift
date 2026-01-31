@@ -68,8 +68,6 @@ struct ContentView: View {
             AddTransactionView(onSave: { transaction in
                 addTransaction(transaction)
             })
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
             .presentationBackground(Color.backgroundPrimary)
         }
         .onOpenURL { url in

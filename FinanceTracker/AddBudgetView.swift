@@ -16,6 +16,9 @@ struct AddBudgetView: View {
     @State private var type: String = "expense" // Added type
     @State private var direction: Edge = .trailing
     
+    // Sticky Modal Logic
+    @State private var presentationDetent: PresentationDetent = .medium
+    
     let icons = AppConstants.allIcons
     let colors = AppConstants.allColors
     let frequencies = ["Weekly", "Bi-Weekly", "Monthly", "Yearly"]
@@ -51,7 +54,8 @@ struct AddBudgetView: View {
                     } : nil,
                     onClose: { dismiss() }
                 )
-                .padding()
+                .padding(.horizontal, AppSpacing.margin)
+                .padding(.top, 16)
                 
                 Spacer()
                 
@@ -64,7 +68,7 @@ struct AddBudgetView: View {
                     insertion: .move(edge: direction),
                     removal: .move(edge: direction == .leading ? .trailing : .leading)
                 ))
-                .padding(.horizontal, AppSpacing.margin)
+                ))
                 
                 Spacer()
                 
@@ -95,6 +99,8 @@ struct AddBudgetView: View {
                 .background(Color.backgroundPrimary)
             }
         }
+        .presentationDetents([.medium, .large], selection: $presentationDetent)
+        .presentationDragIndicator(.visible)
     }
     
     private func saveBudget() {
@@ -169,6 +175,7 @@ struct AddBudgetView: View {
                 .keyboardType(.decimalPad)
                 .foregroundColor(.primary)
         }
+        .padding(.horizontal, AppSpacing.margin)
     }
     
     private var nameStep: some View {
@@ -187,6 +194,7 @@ struct AddBudgetView: View {
                 .background(Color.backgroundPrimary)
                 .cornerRadius(AppRadius.medium)
         }
+        .padding(.horizontal, AppSpacing.margin)
     }
     
     private var iconStep: some View {
@@ -211,7 +219,7 @@ struct AddBudgetView: View {
                         }
                     }
                 }
-                .padding(.horizontal, AppSpacing.margin)
+                .padding(.horizontal, AppSpacing.compact)
             }
         }
     }
@@ -259,6 +267,7 @@ struct AddBudgetView: View {
             }
             .pickerStyle(.wheel)
         }
+        .padding(.horizontal, AppSpacing.margin)
     }
 }
 

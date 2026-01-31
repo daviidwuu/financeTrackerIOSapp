@@ -73,7 +73,7 @@ struct OnboardingView: View {
             VStack(spacing: 0) {
                 // Progress Bar
                 HStack(spacing: 4) {
-                    ForEach(1...9, id: \.self) { step in
+                    ForEach(1...11, id: \.self) { step in
                         Capsule()
                             .fill(step <= currentStep ? Color.white : Color.gray.opacity(0.2))
                             .frame(height: 4)
@@ -90,13 +90,15 @@ struct OnboardingView: View {
                         switch currentStep {
                         case 1: IntroStep()
                         case 2: ProfileStep(name: $nameInput)
-                        case 3: UsernameStep(username: $usernameInput)
-                        case 4: IncomeStep(income: $incomeInput)
-                        case 5: CategoriesStep(categories: $onboardingCategories)
-                        case 6: SavingGoalsStep(goals: $onboardingSavingGoals)
-                        case 7: BackTapStep()
-                        case 8: WidgetStep()
-                        case 9: AccountStep(email: $emailInput, password: $passwordInput, errorMessage: $errorMessage)
+                        case 3: SocialFeaturesStep()
+                        case 4: UsernameStep(username: $usernameInput)
+                        case 5: IncomeStep(income: $incomeInput)
+                        case 6: CategoriesStep(categories: $onboardingCategories)
+                        case 7: SavingGoalsStep(goals: $onboardingSavingGoals)
+                        case 8: BackTapStep()
+                        case 9: TravelModeStep()
+                        case 10: WidgetStep()
+                        case 11: AccountStep(email: $emailInput, password: $passwordInput, errorMessage: $errorMessage)
                         default: EmptyView()
                         }
                     }
@@ -127,8 +129,8 @@ struct OnboardingView: View {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
                         } else {
-                            Text(currentStep == 9 ? "Create Account" : "Continue")
-                                .font(.headline)
+                            Text(currentStep == 11 ? "Create Account" : "Continue")
+                                .font(.headline) (
                                 .fontWeight(.bold)
                         }
                     }
@@ -153,20 +155,22 @@ struct OnboardingView: View {
         switch currentStep {
         case 1: return true
         case 2: return !nameInput.isEmpty
-        case 3: return !usernameInput.isEmpty && usernameInput.count >= 3 // Basic length check
-        case 4: return Double(incomeInput) != nil || incomeInput.isEmpty
-        case 5: return !onboardingCategories.filter { $0.isSelected }.isEmpty
-        case 6: return true // Optional to have saving goals
-        case 7: return true // Back Tap tutorial
-        case 8: return true // Widget tutorial
-        case 9: return !emailInput.isEmpty && !passwordInput.isEmpty && emailInput.contains("@") && passwordInput.count >= 6
+        case 3: return true // Social Features intro
+        case 4: return !usernameInput.isEmpty && usernameInput.count >= 3
+        case 5: return Double(incomeInput) != nil || incomeInput.isEmpty
+        case 6: return !onboardingCategories.filter { $0.isSelected }.isEmpty
+        case 7: return true // Saving Goals
+        case 8: return true // Back Tap
+        case 9: return true // Travel Mode
+        case 10: return true // Widget
+        case 11: return !emailInput.isEmpty && !passwordInput.isEmpty && emailInput.contains("@") && passwordInput.count >= 6
         default: return false
         }
     }
     
     private func nextStep() {
         hideKeyboard()
-        if currentStep < 9 {
+        if currentStep < 11 {
             direction = .trailing
             HapticManager.shared.light() // Navigation haptic
             withAnimation { currentStep += 1 }
@@ -625,8 +629,6 @@ struct CategoriesStep: View {
                         categoryToEdit = nil
                     }
                 )
-                .presentationDetents([.fraction(0.85)]) // Increased height for custom UI
-                .presentationDragIndicator(.visible)
             }
     }
 }
@@ -642,6 +644,7 @@ struct EditCategorySheet: View {
     // Wizard State
     @State private var currentStep = 1
     @State private var direction: Edge = .trailing
+    @State private var presentationDetent: PresentationDetent = .medium
     
     // Form Data
     @State private var name: String = ""
@@ -742,7 +745,8 @@ struct EditCategorySheet: View {
                 .padding()
             }
         }
-
+        .presentationDetents([.medium, .large], selection: $presentationDetent)
+        .presentationDragIndicator(.visible)
         .onAppear {
             // Initialize state
             currentStep = initialStep
@@ -1437,7 +1441,82 @@ struct WidgetStep: View {
         }
     }
 }
+struct SocialFeaturesStep: View {
+    var body: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            
+            // Icon Stack
+            ZStack {
+                Circle()
+                    .fill(Color.blue.opacity(0.1))
+                    .frame(width: 160, height: 160)
+                
+                HStack(spacing: -20) {
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.blue.opacity(0.6))
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 70))
+                        .foregroundColor(.blue)
+                        .zIndex(1)
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.blue.opacity(0.6))
+                }
+            }
+            .padding(.bottom, 20)
+            
+            VStack(spacing: 12) {
+                Text("Split Bills with Friends")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .multilineTextAlignment(.center)
+                
+                Text("Easily track shared expenses and settle debts.\nCreate your unique username next so friends can find you!")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+            }
+            
+            Spacer()
+        }
+    }
+}
 
+struct TravelModeStep: View {
+    var body: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            
+            // Icon
+            ZStack {
+                Circle()
+                    .fill(Color.purple.opacity(0.1))
+                    .frame(width: 160, height: 160)
+                
+                Image(systemName: "airplane.circle.fill")
+                    .font(.system(size: 100))
+                    .foregroundColor(.purple)
+            }
+            .padding(.bottom, 20)
+            
+            VStack(spacing: 12) {
+                Text("Travel Mode")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .multilineTextAlignment(.center)
+                
+                Text("Going abroad? Turn on Travel Mode to automatically handle foreign currencies and exchange rates based on your location.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+            }
+            
+            Spacer()
+        }
+    }
+}
 #Preview {
     OnboardingView()
 }

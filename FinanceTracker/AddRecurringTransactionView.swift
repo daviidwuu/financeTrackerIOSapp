@@ -19,6 +19,9 @@ struct AddRecurringTransactionView: View {
     @State private var notes: String = ""
     @State private var direction: Edge = .trailing
     
+    // Sticky Modal Logic
+    @State private var presentationDetent: PresentationDetent = .medium
+    
     let frequencies = ["Weekly", "Bi-Weekly", "Monthly", "Yearly"]
     
     init(recurringToEdit: FirestoreModels.RecurringTransaction? = nil, onSave: ((RecurringTransaction) -> Void)? = nil) {
@@ -53,7 +56,9 @@ struct AddRecurringTransactionView: View {
                 )
 
                 
-                .padding()
+                )
+                .padding(.horizontal, AppSpacing.margin)
+                .padding(.top, 16)
                 
                 // Content
                 ZStack(alignment: .top) {
@@ -64,7 +69,7 @@ struct AddRecurringTransactionView: View {
                     insertion: .move(edge: direction),
                     removal: .move(edge: direction == .leading ? .trailing : .leading)
                 ))
-                .padding(.horizontal, AppSpacing.margin)
+                ))
                 .frame(maxHeight: .infinity, alignment: .top) // Allow content to take available space
                 
                 Spacer()
@@ -96,6 +101,8 @@ struct AddRecurringTransactionView: View {
                 .background(Color.backgroundPrimary)
             }
         }
+        .presentationDetents([.medium, .large], selection: $presentationDetent)
+        .presentationDragIndicator(.visible)
         .onAppear {
             if !appState.currentUserId.isEmpty {
                 budgetRepo.startListening(userId: appState.currentUserId)
@@ -175,6 +182,7 @@ struct AddRecurringTransactionView: View {
                 .keyboardType(.decimalPad)
                 .foregroundColor(.primary)
         }
+        .padding(.horizontal, AppSpacing.margin)
     }
     
     private var categoryStep: some View {
@@ -246,7 +254,7 @@ struct AddRecurringTransactionView: View {
                         }
                     }
                 }
-                .padding(.horizontal, AppSpacing.margin)
+                .padding(.horizontal, AppSpacing.compact)
             }
         }
     }
@@ -265,6 +273,7 @@ struct AddRecurringTransactionView: View {
             }
             .pickerStyle(.wheel)
         }
+        .padding(.horizontal, AppSpacing.margin)
     }
     
     private var notesStep: some View {
@@ -286,6 +295,7 @@ struct AddRecurringTransactionView: View {
                     .padding(.top)
             }
         }
+        .padding(.horizontal, AppSpacing.margin)
     }
 }
 
