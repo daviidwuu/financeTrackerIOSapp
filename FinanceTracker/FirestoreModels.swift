@@ -24,6 +24,9 @@ enum FirestoreModels {
         var exchangeRate: Double? = nil // e.g., 100.0 (1 Main = 100 Travel) or 0.01
         var originalAmount: Double? = nil // Amount in original currency
         
+        // Splitwise Support
+        var splits: [Split]? = nil
+        
         enum CodingKeys: String, CodingKey {
             case id
             case title
@@ -40,7 +43,18 @@ enum FirestoreModels {
             case currencyCode
             case exchangeRate
             case originalAmount
+            case splits
         }
+    }
+    
+    // MARK: - Split Model
+    struct Split: Identifiable, Codable {
+        var id: String = UUID().uuidString
+        var name: String // Friend's name
+        var amount: Double
+        var isPaid: Bool
+        var paidDate: Date? // When they paid back
+        var incomeTransactionId: String? // Linked ID to the "Income" transaction created when they pay
     }
 
     // MARK: - CategoryBudget Model

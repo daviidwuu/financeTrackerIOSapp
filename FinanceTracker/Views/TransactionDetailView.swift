@@ -4,10 +4,14 @@ import FirebaseFirestore
 struct TransactionDetailView: View {
     @State private var transaction: FirestoreModels.Transaction
     @State private var showEditSheet = false
+    @State private var showSplitSheet = false
     @Environment(\.dismiss) var dismiss
     
     // Callback for saving changes
     var onSave: ((FirestoreModels.Transaction, Transaction) -> Void)?
+    
+    // Repository for creating/deleting income transactions
+    @StateObject private var transactionRepo = TransactionRepository()
     
     init(transaction: FirestoreModels.Transaction, onSave: ((FirestoreModels.Transaction, Transaction) -> Void)? = nil) {
         _transaction = State(initialValue: transaction)
@@ -35,6 +39,85 @@ struct TransactionDetailView: View {
                             .cornerRadius(12)
                     }
                     .padding(.top, 20)
+                    
+                    // Split Section
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Text("Split with Friends")
+                                .font(.headline)
+                            Spacer()
+                            Button(action: { showSplitSheet = true }) {
+                                Image(systemName: "plus.circle.fill") // Using standard SF Symbol
+                                    .font(.title2)
+                            }
+                        }
+                        .padding(.horizontal)
+                        
+                        if let splits = transaction.splits, !splits.isEmpty {
+                            VStack(spacing: 0) {
+                                ForEach(splits) { split in
+                                    HStack {
+                                        Text(split.name)
+                                            .font(.body)
+                                        Spacer()
+                                        
+                                        Text(String(format: "$%.2f", split.amount))
+                                            .foregroundColor(.secondary)
+                                        
+                                        Button(action: {
+                                            toggleSplitPayment(split)
+                                        }) {
+                                            Image(systemName: split.isPaid ? "checkmark.circle.fill" : "circle")
+                                                .foregroundColor(split.isPaid ? .green : .gray)
+                                                .font(.title2)
+                                        }
+                                    }
+                                    .padding(.vertical, 12)
+                                    .padding(.horizontal, 16)
+                                    
+                                    if split.id != splits.last?.id {
+                                        Divider().padding(.leading, 16)
+                                    }
+                                }
+                            }
+                            .background(Color(UIColor.secondarySystemBackground))
+                            .cornerRadius(16)
+                            .padding(.horizontal)
+                            
+                            // Summary
+                             HStack {
+                                 VStack(alignment: .leading) {
+                                     Text("Total Bill")
+                                         .font(.caption)
+                                         .foregroundColor(.secondary)
+                                     Text(String(format: "$%.2f", abs(transaction.amount)))
+                                         .font(.headline)
+                                 }
+                                 Spacer()
+                                 VStack(alignment: .trailing) {
+                                     Text("Your Net Cost")
+                                         .font(.caption)
+                                         .foregroundColor(.secondary)
+                                     let reimbursed = splits.filter { $0.isPaid }.reduce(0) { $0 + $1.amount }
+                                     Text(String(format: "$%.2f", abs(transaction.amount) - reimbursed))
+                                         .font(.headline)
+                                 }
+                             }
+                             .padding(.horizontal)
+                        } else {
+                             Button(action: { showSplitSheet = true }) {
+                                 HStack {
+                                     Image(systemName: "person.2.fill")
+                                     Text("Split this bill")
+                                 }
+                                 .frame(maxWidth: .infinity)
+                                 .padding()
+                                 .background(Color(UIColor.secondarySystemBackground))
+                                 .cornerRadius(12)
+                             }
+                             .padding(.horizontal)
+                        }
+                    }
                     
                     // Details Section
                     VStack(spacing: 0) {
@@ -100,6 +183,15 @@ struct TransactionDetailView: View {
                 .presentationDetents([.fraction(0.65)])
                 .presentationDragIndicator(.visible)
             }
+            .sheet(isPresented: $showSplitSheet) {
+                SplitConfigurationView(transactionAmount: abs(transaction.amount), existingSplits: transaction.splits ?? []) { newSplits in
+                    updateSplits(newSplits)
+                }
+                .presentationDetents([.medium, .large])
+            }
+            .onAppear {
+                transactionRepo.startListening(userId: transaction.userId)
+            }
         }
     }
     
@@ -114,7 +206,81 @@ struct TransactionDetailView: View {
         formatter.timeStyle = .short
         return formatter.string(from: date)
     }
+    
+    // MARK: - Logic
+    
+    private func updateSplits(_ newSplits: [FirestoreModels.Split]) {
+        var updatedTransaction = transaction
+        updatedTransaction.splits = newSplits
+        self.transaction = updatedTransaction
+        
+        // Persist to Firestore
+        Task {
+            try? await transactionRepo.updateTransaction(updatedTransaction)
+        }
+    }
+    
+    private func toggleSplitPayment(_ split: FirestoreModels.Split) {
+        guard var splits = transaction.splits,
+              let index = splits.firstIndex(where: { $0.id == split.id }) else { return }
+        
+        var updatedSplit = split
+        updatedSplit.isPaid.toggle()
+        
+        Task {
+            if updatedSplit.isPaid {
+                // MARK: Case 1: Paid -> Create Income Transaction
+                updatedSplit.paidDate = Date()
+                
+                // Create a reference first to get the ID
+                let db = Firestore.firestore()
+                let ref = db.collection("users").document(transaction.userId).collection("transactions").document()
+                
+                let incomeTransaction = FirestoreModels.Transaction(
+                    id: ref.documentID,
+                    title: "Split: \(split.name)",
+                    subtitle: "Income", // Set Category to "Income" so it's not Unknown
+                    amount: split.amount,
+                    date: Date(),
+                    icon: "dollarsign.circle.fill",
+                    colorHex: "#34C759", // Green
+                    note: "Reimbursement for \(transaction.title)",
+                    type: "income",
+                    source: "splitwise",
+                    userId: transaction.userId,
+                    createdAt: Date()
+                )
+                
+                // Only save ONCE using the reference
+                try? ref.setData(from: incomeTransaction)
+                
+                updatedSplit.incomeTransactionId = ref.documentID
+                
+            } else {
+                // MARK: Case 2: Unpaid -> Delete Income Transaction
+                if let incomeId = split.incomeTransactionId {
+                    try? await transactionRepo.deleteTransaction(id: incomeId)
+                }
+                updatedSplit.incomeTransactionId = nil
+                updatedSplit.paidDate = nil
+            }
+            
+            // Update Local State
+            splits[index] = updatedSplit
+            var updatedTransaction = transaction
+            updatedTransaction.splits = splits
+            
+            await MainActor.run {
+                self.transaction = updatedTransaction
+            }
+            
+            // Persist Update to Original Transaction
+            try? await transactionRepo.updateTransaction(updatedTransaction)
+        }
+    }
 }
+
+// MARK: - Subviews
 
 struct TransactionDetailRow: View {
     let icon: String
@@ -141,5 +307,176 @@ struct TransactionDetailRow: View {
             Spacer()
         }
         .padding(16)
+    }
+}
+
+// MARK: - Split Configuration View
+struct SplitConfigurationView: View {
+    let transactionAmount: Double
+    @State var splits: [FirestoreModels.Split]
+    var onSave: ([FirestoreModels.Split]) -> Void
+    @Environment(\.dismiss) var dismiss
+    
+    // Temporary Selection State
+    @State private var selectedFriends: Set<String> = []
+    
+    // Mock Friends (Top 5)
+    let availableFriends = ["Alice", "Bob", "Charlie", "David", "Eve"]
+    
+    init(transactionAmount: Double, existingSplits: [FirestoreModels.Split], onSave: @escaping ([FirestoreModels.Split]) -> Void) {
+        self.transactionAmount = transactionAmount
+        self._splits = State(initialValue: existingSplits)
+        self.onSave = onSave
+        
+        // Pre-select existing friends
+        let existingNames = Set(existingSplits.map { $0.name })
+        self._selectedFriends = State(initialValue: existingNames)
+    }
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section(header: Text("Select Friends")) {
+                    ForEach(availableFriends, id: \.self) { friend in
+                        HStack {
+                            Text(friend)
+                            Spacer()
+                            if selectedFriends.contains(friend) {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            toggleFriendSelection(friend)
+                        }
+                    }
+                }
+                
+                if !splits.isEmpty {
+                    Section(header: Text("Distribution")) {
+                        ForEach(splits) { split in
+                            HStack {
+                                Text(split.name)
+                                Spacer()
+                                Text("$").foregroundColor(.secondary)
+                                TextField("Amount", value: Binding(
+                                    get: {
+                                        if let index = splits.firstIndex(where: { $0.id == split.id }) {
+                                            return splits[index].amount
+                                        }
+                                        return 0.0
+                                    },
+                                    set: { newValue in
+                                        adjustSplits(manuallyChangedSplitId: split.id, newValue: newValue)
+                                    }
+                                ), format: .number.precision(.fractionLength(2)))
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .frame(width: 100)
+                            }
+                        }
+                    }
+                    
+                    Section {
+                         HStack {
+                             Text("Total Distributed")
+                             Spacer()
+                             let total = splits.reduce(0) { $0 + $1.amount }
+                             Text(String(format: "$%.2f / $%.2f", total, transactionAmount))
+                                 .foregroundColor(abs(total - transactionAmount) < 0.01 ? .green : .red)
+                         }
+                         
+                         // Yourself
+                         HStack {
+                             Text("Your Share")
+                             Spacer()
+                             let total = splits.reduce(0) { $0 + $1.amount }
+                             Text(String(format: "$%.2f", max(0, transactionAmount - total)))
+                                 .fontWeight(.bold)
+                         }
+                    }
+                }
+            }
+            .navigationTitle("Split Bill")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        onSave(splits)
+                        dismiss()
+                    }
+                }
+            }
+            .background(Color(UIColor.systemGroupedBackground)) // Ensure tap area covers background
+            .onTapGesture {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
+            .scrollDismissesKeyboard(.interactively) // iOS 16+ Standard behavior
+        }
+    }
+    
+    private func toggleFriendSelection(_ name: String) {
+        if selectedFriends.contains(name) {
+            selectedFriends.remove(name)
+            splits.removeAll(where: { $0.name == name })
+        } else {
+            selectedFriends.insert(name)
+            // Add new split
+            // Default: Divide equally
+            let count = Double(selectedFriends.count + 1) // +1 for yourself
+            let equalShare = transactionAmount / count
+            
+            let newSplit = FirestoreModels.Split(
+                name: name,
+                amount: equalShare,
+                isPaid: false
+            )
+            splits.append(newSplit)
+        }
+        
+        recalculateEqualShares()
+    }
+    
+    private func recalculateEqualShares() {
+        let count = Double(splits.count + 1)
+        let equalShare = transactionAmount / count
+        
+        var updatedSplits = splits
+        for i in updatedSplits.indices {
+            updatedSplits[i].amount = equalShare
+        }
+        splits = updatedSplits
+    }
+    
+    private func adjustSplits(manuallyChangedSplitId: String, newValue: Double) {
+        var updatedSplits = splits
+        
+        // 1. Update the manual entry first
+        guard let index = updatedSplits.firstIndex(where: { $0.id == manuallyChangedSplitId }) else { return }
+        updatedSplits[index].amount = newValue
+        
+        // 2. Distribute remainder among others
+        let otherSplitsCount = updatedSplits.filter { $0.id != manuallyChangedSplitId }.count
+        let peopleToSplitRemainder = otherSplitsCount + 1 // +1 for Yourself
+        
+        let existingSum = newValue
+        let remainder = transactionAmount - existingSum
+        
+        if peopleToSplitRemainder > 0 {
+             let newShare = max(0, remainder / Double(peopleToSplitRemainder))
+             
+             for i in updatedSplits.indices {
+                 if updatedSplits[i].id != manuallyChangedSplitId {
+                     updatedSplits[i].amount = newShare
+                 }
+             }
+        }
+        
+        // Atomic update
+        splits = updatedSplits
     }
 }
