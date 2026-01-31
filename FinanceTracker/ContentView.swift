@@ -4,6 +4,7 @@ struct ContentView: View {
     @EnvironmentObject var appState: AppState
     @StateObject private var transactionRepo = TransactionRepository()
     @StateObject private var budgetRepo = BudgetRepository()
+    @StateObject private var recurringRepo = RecurringTransactionRepository()
     @State private var showAddTransaction = false
     @Environment(\.colorScheme) var colorScheme
     @State private var selectedTab = 0
@@ -35,19 +36,19 @@ struct ContentView: View {
                     HapticManager.shared.medium()
                     // Refresh budgets when opening add
                     if !appState.currentUserId.isEmpty {
-                        budgetRepo.startListening(userId: appState.currentUserId, monthStartDate: Date().startOfMonth())
+                        budgetRepo.startListening(userId: appState.currentUserId)
                     }
                     showAddTransaction = true
                 }) {
                     Circle()
-                        .fill(Color.primary)
-                        .frame(width: 56, height: 56)
-                        .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
-                        .overlay(
-                            Image(systemName: "plus")
-                                .font(.system(size: 24, weight: .semibold))
-                                .foregroundColor(colorScheme == .dark ? .black : .white)
-                        )
+                    .fill(Color.primary)
+                    .frame(width: 56, height: 56)
+                    .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
+                    .overlay(
+                        Image(systemName: "plus")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundColor(colorScheme == .dark ? .black : .white)
+                    )
                 }
                 .padding(.trailing, 24)
                 .padding(.bottom, 24)
@@ -86,6 +87,20 @@ struct ContentView: View {
                 // Small delay to ensure view is fully loaded
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     showPostOnboardingGuide = true
+                }
+            }
+            
+            // Process recurring transactions if logged in
+            if !appState.currentUserId.isEmpty {
+                Task {
+                    await recurringRepo.processDueTransactions(userId: appState.currentUserId)
+                }
+            }
+        }
+        .onChange(of: appState.currentUserId) { newUserId in
+            if !newUserId.isEmpty {
+                Task {
+                    await recurringRepo.processDueTransactions(userId: newUserId)
                 }
             }
         }

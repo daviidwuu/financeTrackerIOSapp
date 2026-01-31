@@ -11,11 +11,13 @@ struct CalendarView: View {
     var transactions: [FirestoreModels.Transaction] = []
     var totalBudget: Double = 0.0
     var monthlyIncome: Double = 0.0
+    var signupDate: Date?
     
-    init(transactions: [FirestoreModels.Transaction] = [], totalBudget: Double = 0.0, monthlyIncome: Double = 0.0) {
+    init(transactions: [FirestoreModels.Transaction] = [], totalBudget: Double = 0.0, monthlyIncome: Double = 0.0, signupDate: Date? = nil) {
         self.transactions = transactions
         self.totalBudget = totalBudget
         self.monthlyIncome = monthlyIncome
+        self.signupDate = signupDate
     }
     
     var body: some View {
@@ -24,9 +26,13 @@ struct CalendarView: View {
             HStack {
                 Button(action: { changeMonth(by: -1) }) {
                     Image(systemName: "chevron.left")
+                        .font(.title3)
                         .foregroundColor(canGoToPreviousMonth() ? .primary : .gray.opacity(0.3))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
                 .disabled(!canGoToPreviousMonth())
+                .buttonStyle(.borderless)
                 
                 Spacer()
                 
@@ -38,8 +44,12 @@ struct CalendarView: View {
                 
                 Button(action: { changeMonth(by: 1) }) {
                     Image(systemName: "chevron.right")
+                        .font(.title3)
                         .foregroundColor(.primary)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.borderless)
             }
             .padding(.horizontal)
             
@@ -66,7 +76,6 @@ struct CalendarView: View {
                             if let date = date {
                                 let calendar = Calendar.current
                                 let dayTransactions = transactions.filter { calendar.isDate($0.date, inSameDayAs: date) }
-                                let dayExpenses = dayTransactions.filter { $0.type == "expense" }.reduce(0) { $0 + abs($1.amount) }
                                 let isBeforeSignup = isDateBeforeSignup(date)
                                 
                                 VStack(spacing: 2) {
@@ -194,7 +203,13 @@ struct CalendarView: View {
             .reduce(0) { $0 + abs($1.amount) }
             
         let dailyManualIncome = dailyTransactions
-            .filter { $0.type == "income" } // One-off gigs, sales
+            .filter { transaction in
+                guard transaction.type == "income" else { return false }
+                // Exclude auto-generated recurring income to prevent double counting with "Vault" logic
+                if transaction.source == "recurring" { return false }
+                if let note = transaction.note, note.contains("Recurring:") { return false }
+                return true
+            }
             .reduce(0) { $0 + $1.amount }
             
         // 4. Base Surplus (The Simulation Result)
@@ -254,33 +269,44 @@ struct CalendarView: View {
     }
     
     // Check if can navigate to previous month based on signup date
+    // Check if can navigate to previous month based on signup date
     func canGoToPreviousMonth() -> Bool {
-        guard let signupDate = UserDefaults.standard.object(forKey: "userSignupDate") as? Date else {
-            return true // If no signup date, allow navigation
+        let targetSignupDate: Date
+        
+        if let propDate = self.signupDate {
+            targetSignupDate = propDate
+        } else if let savedDate = UserDefaults.standard.object(forKey: "userSignupDate") as? Date {
+            targetSignupDate = savedDate
+        } else {
+            return true // Fallback to allowing navigation
         }
         
         let calendar = Calendar.current
         let currentMonth = calendar.date(from: DateComponents(year: selectedYear, month: selectedMonth))!
-        let signupMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: signupDate))!
+        let signupMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: targetSignupDate))!
         
         return currentMonth > signupMonth
     }
     
     // Check if date is before user signup
+    // Check if date is before user signup
     func isDateBeforeSignup(_ date: Date) -> Bool {
         let calendar = Calendar.current
         
-        // Find signup date: UserDefaults or fallback to first transaction
-        let signupDate: Date
-        if let savedDate = UserDefaults.standard.object(forKey: "userSignupDate") as? Date {
-            signupDate = savedDate
+        // Find signup date: Passed prop -> UserDefaults -> Fallback to first transaction
+        let targetSignupDate: Date
+        
+        if let propDate = self.signupDate {
+            targetSignupDate = propDate
+        } else if let savedDate = UserDefaults.standard.object(forKey: "userSignupDate") as? Date {
+            targetSignupDate = savedDate
         } else if let firstTransaction = transactions.last?.date {
-            signupDate = firstTransaction
+            targetSignupDate = firstTransaction
         } else {
             return false // Show all if no indicator found
         }
         
-        return calendar.startOfDay(for: date) < calendar.startOfDay(for: signupDate)
+        return calendar.startOfDay(for: date) < calendar.startOfDay(for: targetSignupDate)
     }
 }
 

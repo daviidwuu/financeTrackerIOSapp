@@ -2,6 +2,8 @@ import SwiftUI
 import Combine
 import FirebaseAuth
 
+import FirebaseFirestore
+
 class AppState: ObservableObject {
     @Published var isUserLoggedIn = false
     @Published var currentUserId = ""
@@ -19,6 +21,7 @@ class AppState: ObservableObject {
     // Deep Link State
     @Published var showDailySummary = false
     @Published var dailySummaryDate: Date?
+    @Published var userSignupDate: Date?
     
     static let shared = AppState()
     
@@ -77,10 +80,9 @@ class AppState: ObservableObject {
             }
         } catch {
             print("Failed to update streak: \(error)")
-            // On error, default to 1
-            DispatchQueue.main.async {
-                self.streakCount = 1
-            }
+        } catch {
+            print("Failed to update streak: \(error)")
+            // On error, keep existing streak
         }
     }
     
@@ -95,6 +97,14 @@ class AppState: ObservableObject {
             let profile = try await firebaseManager.getUserProfile(userId: userId)
             DispatchQueue.main.async {
                 self.userName = profile["name"] as? String ?? ""
+                
+                // Parse signup date
+                if let timestamp = profile["createdAt"] as? Timestamp {
+                    self.userSignupDate = timestamp.dateValue()
+                    // Cache to UserDefaults for offline/fallback use
+                    UserDefaults.standard.set(self.userSignupDate, forKey: "userSignupDate")
+                }
+                
                 // Load post-onboarding guide status per user
                 let guideKey = "hasSeenPostOnboardingGuide_\(userId)"
                 self.hasSeenPostOnboardingGuide = UserDefaults.standard.bool(forKey: guideKey)

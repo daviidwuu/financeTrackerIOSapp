@@ -93,8 +93,7 @@ struct AddTransactionView: View {
         .onAppear {
             if !appState.currentUserId.isEmpty {
                 let calendar = Calendar.current
-                let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
-                budgetRepo.startListening(userId: appState.currentUserId, monthStartDate: startOfMonth)
+                budgetRepo.startListening(userId: appState.currentUserId)
                 transactionRepo.startListening(userId: appState.currentUserId)
             }
             

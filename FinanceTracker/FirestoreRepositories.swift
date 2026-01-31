@@ -95,10 +95,10 @@ class BudgetRepository: ObservableObject {
     
     private var listener: ListenerRegistration?
     
-    func startListening(userId: String, monthStartDate: Date) {
+    func startListening(userId: String) {
         self.userId = userId
+        // Listen to ALL budgets for this user (Permanent Budget Model)
         listener = db.collection("users").document(userId).collection("budgets")
-            .whereField("monthStartDate", isEqualTo: monthStartDate)
             .order(by: "category")
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let documents = snapshot?.documents else {
@@ -106,18 +106,34 @@ class BudgetRepository: ObservableObject {
                     return
                 }
                 
-                let fetchedBudgets = documents.compactMap { document in
+                let allBudgets = documents.compactMap { document in
                     try? document.data(as: FirestoreModels.CategoryBudget.self)
                 }
-                self?.budgets = fetchedBudgets
+                
+                // Deduplicate: Keep only the latest budget per category
+                // Group by category
+                let grouped = Dictionary(grouping: allBudgets, by: { $0.category })
+                
+                let uniqueBudgets = grouped.values.compactMap { budgets -> FirestoreModels.CategoryBudget? in
+                    // Sort by createdAt descending (or monthStartDate if created same time)
+                    return budgets.sorted { (b1, b2) in
+                         if b1.createdAt == b2.createdAt {
+                             return b1.monthStartDate > b2.monthStartDate
+                         }
+                         return b1.createdAt > b2.createdAt
+                    }.first
+                }
+                
+                self?.budgets = uniqueBudgets.sorted(by: { $0.category < $1.category })
                 
                 // Update Widget Data
-                self?.updateWidgetData(budgets: fetchedBudgets)
+                self?.updateWidgetData(budgets: uniqueBudgets)
                 
-                // Ensure default "Income" category exists
-                if !fetchedBudgets.contains(where: { $0.category == "Income" }) {
+                // Ensure default "Income" category exists (if not present in unique list)
+                if !uniqueBudgets.contains(where: { $0.category == "Income" }) {
                     Task { [weak self] in
-                        await self?.createDefaultIncomeCategory(userId: userId, monthStartDate: monthStartDate)
+                         // Use a generic start date
+                        await self?.createDefaultIncomeCategory(userId: userId, monthStartDate: Date())
                     }
                 }
             }
@@ -126,7 +142,7 @@ class BudgetRepository: ObservableObject {
     private func createDefaultIncomeCategory(userId: String, monthStartDate: Date) async {
         let incomeBudget = FirestoreModels.CategoryBudget(
             category: "Income",
-            totalAmount: 0, // Not relevant for income usually, or maybe target income?
+            totalAmount: 0, 
             icon: "plus.circle.fill",
             colorHex: "#34C759", // System Green
             frequency: "Monthly",
@@ -160,9 +176,20 @@ class BudgetRepository: ObservableObject {
         try db.collection("users").document(userId).collection("budgets").document(id).setData(from: budget)
     }
     
-    func deleteBudget(id: String) async throws {
+    // Delete all budgets with the same category name to prevent "zombies"
+    func deleteBudget(_ budget: FirestoreModels.CategoryBudget) async throws {
         guard let userId = userId else { return }
-        try await db.collection("users").document(userId).collection("budgets").document(id).delete()
+        
+        // Find all docs with this category
+        let snapshot = try await db.collection("users").document(userId).collection("budgets")
+            .whereField("category", isEqualTo: budget.category)
+            .getDocuments()
+            
+        let batch = db.batch()
+        for doc in snapshot.documents {
+            batch.deleteDocument(doc.reference)
+        }
+        try await batch.commit()
     }
     
     func calculateSpent(for category: String, transactions: [FirestoreModels.Transaction]) -> Double {
@@ -194,6 +221,66 @@ class BudgetRepository: ObservableObject {
             }
             
         WidgetDataManager.shared.saveMonthlyBudget(totalBudget)
+    }
+    func checkAndCopyBudgets(userId: String) async {
+        let calendar = Calendar.current
+        let currentMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
+        
+        let db = Firestore.firestore()
+        let collection = db.collection("users").document(userId).collection("budgets")
+        
+        do {
+            // 1. Check if budgets exist for current month
+            let currentSnapshot = try await collection
+                .whereField("monthStartDate", isEqualTo: currentMonthStart)
+                .limit(to: 1)
+                .getDocuments()
+            
+            if !currentSnapshot.documents.isEmpty {
+                return // Budgets already exist for this month
+            }
+            
+            // 2. Find the most recent previous month with budgets
+            let lastBudgetSnapshot = try await collection
+                .order(by: "monthStartDate", descending: true)
+                .limit(to: 1)
+                .getDocuments()
+            
+            guard let lastBudgetDoc = lastBudgetSnapshot.documents.first,
+                  let lastBudget = try? lastBudgetDoc.data(as: FirestoreModels.CategoryBudget.self) else {
+                return // No previous data to copy
+            }
+            
+            let previousMonthStart = lastBudget.monthStartDate
+            
+            // 3. Fetch all budgets from that previous month
+            let previousBudgetsSnapshot = try await collection
+                .whereField("monthStartDate", isEqualTo: previousMonthStart)
+                .getDocuments()
+            
+            let previousBudgets = previousBudgetsSnapshot.documents.compactMap {
+                try? $0.data(as: FirestoreModels.CategoryBudget.self)
+            }
+            
+            // 4. Batch copy them to current month
+            let batch = db.batch()
+            
+            for budget in previousBudgets {
+                var newBudget = budget
+                newBudget.id = nil // New ID
+                newBudget.monthStartDate = currentMonthStart
+                newBudget.createdAt = Date()
+                
+                let ref = collection.document()
+                try batch.setData(from: newBudget, forDocument: ref)
+            }
+            
+            try await batch.commit()
+            print("Successfully copied \(previousBudgets.count) budgets to new month")
+            
+        } catch {
+            print("Error copying budgets: \(error)")
+        }
     }
 }
 
@@ -338,5 +425,93 @@ class RecurringTransactionRepository: ObservableObject {
     func deleteRecurringTransaction(id: String) async throws {
         guard let userId = userId else { return }
         try await db.collection("users").document(userId).collection("recurringTransactions").document(id).delete()
+    }
+    
+    // Check and process any due recurring transactions
+    func processDueTransactions(userId: String) async {
+        let db = Firestore.firestore()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        
+        do {
+            // Fetch all recurring transactions for this user
+            let snapshot = try await db.collection("users").document(userId).collection("recurringTransactions").getDocuments()
+            let recurringItems = snapshot.documents.compactMap { try? $0.data(as: FirestoreModels.RecurringTransaction.self) }
+            
+            for item in recurringItems {
+                guard let itemId = item.id else { continue }
+                
+                // Determine the next due date
+                // If never processed, use startDate. If processed, calculate next from lastProcessed.
+                var nextDueDate: Date
+                
+                if let lastProcessed = item.lastProcessedDate {
+                    // Calculate next based on frequency
+                    switch item.frequency {
+                    case "Daily":
+                        nextDueDate = calendar.date(byAdding: .day, value: 1, to: lastProcessed)!
+                    case "Weekly":
+                        nextDueDate = calendar.date(byAdding: .day, value: 7, to: lastProcessed)!
+                    case "Bi-Weekly":
+                        nextDueDate = calendar.date(byAdding: .day, value: 14, to: lastProcessed)!
+                    case "Yearly":
+                        nextDueDate = calendar.date(byAdding: .year, value: 1, to: lastProcessed)!
+                    default: // "Monthly"
+                        nextDueDate = calendar.date(byAdding: .month, value: 1, to: lastProcessed)!
+                    }
+                } else {
+                    // First time: use startDate
+                    nextDueDate = calendar.startOfDay(for: item.startDate)
+                }
+                
+                // Check if it's due (nextDueDate <= today)
+                // Use startOfDay to ignore time components
+                if calendar.startOfDay(for: nextDueDate) <= today {
+                    print("Processing recurring transaction: \(item.name) due on \(nextDueDate)")
+                    
+                    // Force time to 00:00:00
+                    let transactionDate = calendar.startOfDay(for: nextDueDate)
+                    
+                    // 1. Create the Transaction
+                    let newTransaction = FirestoreModels.Transaction(
+                        title: item.name,
+                        subtitle: item.name, // Or category if we had it
+                        amount: item.type == "income" ? item.amount : -abs(item.amount),
+                        date: transactionDate, // FORCE 00:00
+                        icon: item.icon,
+                        colorHex: item.colorHex,
+                        note: "Recurring: \(item.frequency)" + (item.note.map { " - \($0)" } ?? ""),
+                        type: item.type ?? "expense",
+                        source: "recurring", // Mark as recurring for filtering
+                        userId: userId,
+                        createdAt: Date()
+                    )
+                    
+                    // 2. Update the RecurringTransaction
+                    var updatedItem = item
+                    updatedItem.lastProcessedDate = transactionDate // Track strictly by date
+                    
+                    // Batch write for atomicity
+                    let batch = db.batch()
+                    
+                    let transactionRef = db.collection("users").document(userId).collection("transactions").document()
+                    try batch.setData(from: newTransaction, forDocument: transactionRef)
+                    
+                    let recurringRef = db.collection("users").document(userId).collection("recurringTransactions").document(itemId)
+                    try batch.setData(from: updatedItem, forDocument: recurringRef)
+                    
+                    try await batch.commit()
+                    
+                    // Send Notification
+                    NotificationManager.shared.sendTransactionNotification(
+                        amount: newTransaction.amount,
+                        category: newTransaction.title,
+                        type: newTransaction.type
+                    )
+                }
+            }
+        } catch {
+            print("Error processing recurring transactions: \(error)")
+        }
     }
 }

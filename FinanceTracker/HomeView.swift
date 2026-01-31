@@ -45,7 +45,14 @@ struct HomeView: View {
     }
     
     var totalSpent: Double {
-        transactionRepo.transactions.reduce(0) { $0 + ($1.amount < 0 ? abs($1.amount) : 0) }
+        let calendar = Calendar.current
+        let currentMonthTransactions = transactionRepo.transactions.filter { transaction in
+            // Only count expenses
+            guard transaction.amount < 0 else { return false }
+            // Filter by current month
+            return calendar.isDate(transaction.date, equalTo: Date(), toGranularity: .month)
+        }
+        return currentMonthTransactions.reduce(0) { $0 + abs($1.amount) }
     }
     
     var body: some View {
@@ -277,8 +284,7 @@ struct HomeView: View {
                 if !appState.currentUserId.isEmpty {
                     transactionRepo.startListening(userId: appState.currentUserId)
                     let calendar = Calendar.current
-                    let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
-                    budgetRepo.startListening(userId: appState.currentUserId, monthStartDate: startOfMonth)
+                    budgetRepo.startListening(userId: appState.currentUserId)
                     recurringRepo.startListening(userId: appState.currentUserId)
                 }
             }
@@ -448,8 +454,7 @@ struct TransactionRow: View {
         .onAppear {
             if !appState.currentUserId.isEmpty {
                 let calendar = Calendar.current
-                let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
-                budgetRepo.startListening(userId: appState.currentUserId, monthStartDate: startOfMonth)
+                budgetRepo.startListening(userId: appState.currentUserId)
             }
         }
         .onDisappear {

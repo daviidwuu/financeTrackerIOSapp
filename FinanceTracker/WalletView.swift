@@ -232,7 +232,12 @@ struct WalletView: View {
                     // Section 3: Calendar
                     Section {
                         VStack(spacing: 8) {
-                            CalendarView(transactions: transactionRepo.transactions, totalBudget: totalBudget, monthlyIncome: monthlyIncome)
+                            CalendarView(
+                                transactions: transactionRepo.transactions,
+                                totalBudget: totalBudget, 
+                                monthlyIncome: monthlyIncome,
+                                signupDate: appState.userSignupDate
+                            )
                         }
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: AppSpacing.section, trailing: 16))
                         .listRowSeparator(.hidden)
@@ -418,10 +423,7 @@ struct WalletView: View {
                         savingGoalRepo.startListening(userId: appState.currentUserId)
                         recurringRepo.startListening(userId: appState.currentUserId)
                         transactionRepo.startListening(userId: appState.currentUserId)
-                        
-                        let calendar = Calendar.current
-                        let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
-                        budgetRepo.startListening(userId: appState.currentUserId, monthStartDate: startOfMonth)
+                        budgetRepo.startListening(userId: appState.currentUserId)
                     }
                     checkForNewMonth()
                 }
@@ -430,6 +432,23 @@ struct WalletView: View {
                     recurringRepo.stopListening()
                     budgetRepo.stopListening()
                     transactionRepo.stopListening()
+                }
+                .onChange(of: appState.currentUserId) { newUserId in
+                    if !newUserId.isEmpty {
+                        // Restart listeners
+                        savingGoalRepo.startListening(userId: newUserId)
+                        recurringRepo.startListening(userId: newUserId)
+                        transactionRepo.startListening(userId: newUserId)
+                        budgetRepo.startListening(userId: newUserId)
+                        
+                        checkForNewMonth()
+                    } else {
+                        // Stop listeners
+                        savingGoalRepo.stopListening()
+                        recurringRepo.stopListening()
+                        budgetRepo.stopListening()
+                        transactionRepo.stopListening()
+                    }
                 }
             }
             .navigationBarHidden(true)
@@ -542,7 +561,13 @@ struct WalletView: View {
             .reduce(0) { $0 + abs($1.amount) }
             
         let dailyManualIncome = dailyTransactions
-            .filter { $0.type == "income" } // One-off gigs, sales
+            .filter { transaction in
+                guard transaction.type == "income" else { return false }
+                // Exclude auto-generated recurring income to prevent double counting with "Vault" logic
+                if transaction.source == "recurring" { return false }
+                if let note = transaction.note, note.contains("Recurring:") { return false }
+                return true
+            }
             .reduce(0) { $0 + $1.amount }
             
         // 4. Base Surplus (The Simulation Result)
@@ -593,9 +618,8 @@ struct WalletView: View {
     }
     
     private func deleteBudget(_ budget: FirestoreModels.CategoryBudget) {
-        guard let id = budget.id else { return }
         Task {
-            try? await budgetRepo.deleteBudget(id: id)
+            try? await budgetRepo.deleteBudget(budget)
         }
     }
     
@@ -712,7 +736,7 @@ struct WalletView: View {
     }
     
     private func checkForNewMonth() {
-        // TODO: Implement Firestore-based month rollover logic
+        // Legacy: Budgets are now permanent and reset based on frequency
     }
 }
 

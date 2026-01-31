@@ -115,144 +115,155 @@ struct AllTransactionsView: View {
                     .padding(.horizontal)
                     
                     // Category & Month Filters
-                    HStack(spacing: 12) {
-                        // Category Filter
-                        Menu {
-                            Button("All Categories") {
-                                selectedCategory = nil
-                            }
-                            
-                            Divider()
-                            
-                            ForEach(budgetRepo.budgets.sorted(by: { $0.category < $1.category })) { budget in
-                                Button(action: {
-                                    selectedCategory = budget.category
-                                }) {
-                                    HStack {
-                                        Image(systemName: budget.icon)
-                                        Text(budget.category)
-                                        if selectedCategory == budget.category {
-                                            Spacer()
-                                            Image(systemName: "checkmark")
-                                        }
-                                    }
-                                }
-                            }
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "folder")
-                                    .font(.system(size: 14))
-                                Text(selectedCategory ?? "Category")
-                                    .font(.subheadline)
-                                    .lineLimit(1)
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 10))
-                            }
-                            .foregroundColor(.primary)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
-                            .background(Color(UIColor.secondarySystemBackground))
-                            .cornerRadius(10)
-                        }
-                        
-                        // Month Filter
-                        Menu {
-                            ForEach(0..<12, id: \.self) { offset in
-                                let date = Calendar.current.date(byAdding: .month, value: -offset, to: Date())!
-                                Button(action: {
-                                    selectedMonth = date
-                                }) {
-                                    HStack {
-                                        Text(monthYearString(from: date))
-                                        if Calendar.current.isDate(selectedMonth, equalTo: date, toGranularity: .month) {
-                                            Spacer()
-                                            Image(systemName: "checkmark")
-                                        }
-                                    }
-                                }
-                            }
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "calendar")
-                                    .font(.system(size: 14))
-                                Text(monthYearString(from: selectedMonth))
-                                    .font(.subheadline)
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 10))
-                            }
-                            .foregroundColor(.primary)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
-                            .background(Color(UIColor.secondarySystemBackground))
-                            .cornerRadius(10)
-                            .cornerRadius(10)
-                        }
-                        
-                        // Date Filter (Specific Day)
-                        if selectedDate == nil {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            // Category Filter
                             Menu {
-                                Button("Today") {
-                                    selectedDate = Date()
+                                Button("All Categories") {
+                                    selectedCategory = nil
                                 }
-                                Button("Yesterday") {
-                                    selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: Date())
-                                }
+                                
                                 Divider()
-                                // Pick from current month
-                                ForEach(0..<31, id: \.self) { offset in
-                                    if let date = Calendar.current.date(byAdding: .day, value: -offset, to: Date()),
-                                       Calendar.current.isDate(date, equalTo: selectedMonth, toGranularity: .month) {
-                                        Button(action: {
-                                            selectedDate = date
-                                        }) {
-                                            Text(date.formatted(date: .abbreviated, time: .omitted))
+                                
+                                ForEach(budgetRepo.budgets.sorted(by: { $0.category < $1.category })) { budget in
+                                    Button(action: {
+                                        selectedCategory = budget.category
+                                    }) {
+                                        HStack {
+                                            Image(systemName: budget.icon)
+                                            Text(budget.category)
+                                            if selectedCategory == budget.category {
+                                                Spacer()
+                                                Image(systemName: "checkmark")
+                                            }
                                         }
                                     }
                                 }
                             } label: {
-                                Image(systemName: "calendar.day.timeline.left")
+                                HStack(spacing: 6) {
+                                    Image(systemName: "folder")
+                                        .font(.system(size: 14))
+                                    Text(selectedCategory ?? "Category")
+                                        .font(.subheadline)
+                                        .lineLimit(1)
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 10))
+                                }
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 12)
+                                .frame(height: 36)
+                                .background(Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(10)
+                            }
+                            
+                            // Month Filter
+                            Menu {
+                                ForEach(0..<12, id: \.self) { offset in
+                                    let date = Calendar.current.date(byAdding: .month, value: -offset, to: Date())!
+                                    Button(action: {
+                                        selectedMonth = date
+                                    }) {
+                                        HStack {
+                                            Text(monthYearString(from: date))
+                                            if Calendar.current.isDate(selectedMonth, equalTo: date, toGranularity: .month) {
+                                                Spacer()
+                                                Image(systemName: "checkmark")
+                                            }
+                                        }
+                                    }
+                                }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "calendar")
+                                        .font(.system(size: 14))
+                                    Text(monthYearString(from: selectedMonth))
+                                        .font(.subheadline)
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 10))
+                                }
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 12)
+                                .frame(height: 36)
+                                .background(Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(10)
+                            }
+                            
+                            // Date Filter (Specific Day)
+                            if selectedDate == nil {
+                                Menu {
+                                    Button("Today") {
+                                        selectedDate = Date()
+                                    }
+                                    Button("Yesterday") {
+                                        selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: Date())
+                                    }
+                                    Divider()
+                                    // Pick from current month
+                                    ForEach(0..<31, id: \.self) { offset in
+                                        if let date = Calendar.current.date(byAdding: .day, value: -offset, to: Date()),
+                                           Calendar.current.isDate(date, equalTo: selectedMonth, toGranularity: .month) {
+                                            Button(action: {
+                                                selectedDate = date
+                                            }) {
+                                                Text(date.formatted(date: .abbreviated, time: .omitted))
+                                            }
+                                        }
+                                    }
+                                } label: {
+                                    Image(systemName: "calendar.day.timeline.left")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(.primary)
+                                        .frame(width: 36, height: 36)
+                                        .background(Color(UIColor.secondarySystemBackground))
+                                        .cornerRadius(10)
+                                }
+                            }
+                            
+                            // Export Button
+                            if !filteredTransactions.isEmpty {
+                                ShareLink(item: generateCSV(), preview: SharePreview("Transactions Export", image: Image(systemName: "doc.text"))) {
+                                    Image(systemName: "square.and.arrow.up")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(.primary)
+                                        .frame(width: 36, height: 36)
+                                        .background(Color(UIColor.secondarySystemBackground))
+                                        .cornerRadius(10)
+                                }
+                            }
+                            
+                            // Sort Menu
+                            Menu {
+                                Button(action: { sortBy = "Date"; sortAscending = false }) {
+                                    Label("Newest First", systemImage: sortBy == "Date" && !sortAscending ? "checkmark" : "")
+                                }
+                                Button(action: { sortBy = "Date"; sortAscending = true }) {
+                                    Label("Oldest First", systemImage: sortBy == "Date" && sortAscending ? "checkmark" : "")
+                                }
+                                Divider()
+                                Button(action: { sortBy = "Amount"; sortAscending = false }) {
+                                    Label("Highest Amount", systemImage: sortBy == "Amount" && !sortAscending ? "checkmark" : "")
+                                }
+                                Button(action: { sortBy = "Amount"; sortAscending = true }) {
+                                    Label("Lowest Amount", systemImage: sortBy == "Amount" && sortAscending ? "checkmark" : "")
+                                }
+                                Divider()
+                                Button(action: { sortBy = "Category"; sortAscending = true }) {
+                                    Label("Category A-Z", systemImage: sortBy == "Category" && sortAscending ? "checkmark" : "")
+                                }
+                                Button(action: { sortBy = "Category"; sortAscending = false }) {
+                                    Label("Category Z-A", systemImage: sortBy == "Category" && !sortAscending ? "checkmark" : "")
+                                }
+                            } label: {
+                                Image(systemName: "arrow.up.arrow.down")
                                     .font(.system(size: 16))
                                     .foregroundColor(.primary)
-                                    .padding(10)
+                                    .frame(width: 36, height: 36)
                                     .background(Color(UIColor.secondarySystemBackground))
                                     .cornerRadius(10)
                             }
                         }
-                        
-                        Spacer()
-                        
-                        // Sort Menu
-                        Menu {
-                            Button(action: { sortBy = "Date"; sortAscending = false }) {
-                                Label("Newest First", systemImage: sortBy == "Date" && !sortAscending ? "checkmark" : "")
-                            }
-                            Button(action: { sortBy = "Date"; sortAscending = true }) {
-                                Label("Oldest First", systemImage: sortBy == "Date" && sortAscending ? "checkmark" : "")
-                            }
-                            Divider()
-                            Button(action: { sortBy = "Amount"; sortAscending = false }) {
-                                Label("Highest Amount", systemImage: sortBy == "Amount" && !sortAscending ? "checkmark" : "")
-                            }
-                            Button(action: { sortBy = "Amount"; sortAscending = true }) {
-                                Label("Lowest Amount", systemImage: sortBy == "Amount" && sortAscending ? "checkmark" : "")
-                            }
-                            Divider()
-                            Button(action: { sortBy = "Category"; sortAscending = true }) {
-                                Label("Category A-Z", systemImage: sortBy == "Category" && sortAscending ? "checkmark" : "")
-                            }
-                            Button(action: { sortBy = "Category"; sortAscending = false }) {
-                                Label("Category Z-A", systemImage: sortBy == "Category" && !sortAscending ? "checkmark" : "")
-                            }
-                        } label: {
-                            Image(systemName: "arrow.up.arrow.down")
-                                .font(.system(size: 16))
-                                .foregroundColor(.primary)
-                                .padding(10)
-                                .background(Color(UIColor.secondarySystemBackground))
-                                .cornerRadius(10)
-                        }
+                        .padding(.horizontal)
                     }
-                    .padding(.horizontal)
                     
                     // Active Filter Chips
                     if hasActiveFilters {
@@ -407,6 +418,25 @@ struct AllTransactionsView: View {
                 print("Failed to delete transaction: \(error)")
             }
         }
+    }
+    
+    private func generateCSV() -> String {
+        var csv = "Date,Title,Category,Amount,Type,Note\n"
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        
+        for transaction in sortedTransactions {
+            let date = formatter.string(from: transaction.date)
+            // Escape commas and newlines
+            let title = "\"" + transaction.title.replacingOccurrences(of: "\"", with: "\"\"") + "\""
+            let category = "\"" + (transaction.subtitle ?? "Uncategorized").replacingOccurrences(of: "\"", with: "\"\"") + "\""
+            let amount = String(format: "%.2f", transaction.amount)
+            let type = transaction.type ?? "expense"
+            let note = "\"" + (transaction.note ?? "").replacingOccurrences(of: "\"", with: "\"\"") + "\""
+            
+            csv += "\(date),\(title),\(category),\(amount),\(type),\(note)\n"
+        }
+        return csv
     }
 }
 

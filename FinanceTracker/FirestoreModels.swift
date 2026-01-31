@@ -63,9 +63,56 @@ enum FirestoreModels {
         
         // Computed property for remaining amount (calculated from transactions)
         func remainingAmount(transactions: [Transaction]) -> Double {
+            let calendar = Calendar.current
+            let now = Date()
+            
+            // 1. Identify valid date range based on frequency
+            let startDate: Date
+            let endDate: Date
+            
+            switch frequency {
+            case "Weekly":
+                // Start of current week (assuming Sunday start)
+                startDate = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now))!
+                endDate = calendar.date(byAdding: .day, value: 7, to: startDate)!
+            case "Bi-Weekly":
+                // Start of current 2-week period (Naive implementation: Assume aligned with weeks)
+                // A better approach would be to calculate from a fixed epoch, but for now we'll match weekly start
+                // and check parity, or just look at last 14 days? 
+                // Let's stick to: Current Week + Previous Week? No, that shifts.
+                // Standard approach: Start of year -> chunk by 2 weeks.
+                let weekOfYear = calendar.component(.weekOfYear, from: now)
+                let startOfWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now))!
+                
+                if weekOfYear % 2 == 0 {
+                   // Even week: This + Next is a pair? Or Prev + This? 
+                   // Let's align with: Week 1-2, 3-4, etc.
+                   // If current is 4 (even), start is week 3.
+                   startDate = calendar.date(byAdding: .weekOfYear, value: -1, to: startOfWeek)!
+                } else {
+                   // Odd week: This + Next
+                   startDate = startOfWeek
+                }
+                endDate = calendar.date(byAdding: .day, value: 14, to: startDate)!
+                
+            case "Yearly":
+                startDate = calendar.date(from: calendar.dateComponents([.year], from: now))!
+                endDate = calendar.date(byAdding: .year, value: 1, to: startDate)!
+                
+            default: // "Monthly"
+                // Dynamically calculate the current month's range
+                startDate = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
+                endDate = calendar.date(byAdding: .month, value: 1, to: startDate)!
+            }
+            
+            // 2. Filter transactions
             let spent = transactions
-                .filter { $0.subtitle == category && $0.type == "expense" }
+                .filter { transaction in
+                    guard transaction.subtitle == category && transaction.type == "expense" else { return false }
+                    return transaction.date >= startDate && transaction.date < endDate
+                }
                 .reduce(0) { $0 + abs($1.amount) }
+                
             return totalAmount - spent
         }
     }
@@ -110,6 +157,7 @@ enum FirestoreModels {
         var type: String? = "expense" // "expense" or "income"
         var userId: String
         var createdAt: Date
+        var lastProcessedDate: Date? // For tracking auto-execution
         
         enum CodingKeys: String, CodingKey {
             case id
@@ -123,6 +171,7 @@ enum FirestoreModels {
             case type
             case userId
             case createdAt
+            case lastProcessedDate
         }
     }
 }
