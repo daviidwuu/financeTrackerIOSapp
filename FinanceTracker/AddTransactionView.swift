@@ -18,6 +18,10 @@ struct AddTransactionView: View {
     @State private var transactionNotes: String = ""
     @State private var direction: Edge = .trailing
     
+    // Travel Currency Logic
+    @ObservedObject private var currencyManager = CurrencyManager.shared
+    @State private var isUsingTravelCurrency = false
+    
     init(transactionToEdit: FirestoreModels.Transaction? = nil, onSave: ((Transaction) -> Void)? = nil) {
         self.transactionToEdit = transactionToEdit
         self.onSave = onSave
@@ -91,8 +95,10 @@ struct AddTransactionView: View {
             }
         }
         .onAppear {
+            if currencyManager.isTravelModeEnabled && currencyManager.mainCurrency != currencyManager.travelCurrency && transactionToEdit == nil {
+                isUsingTravelCurrency = true
+            }
             if !appState.currentUserId.isEmpty {
-                let calendar = Calendar.current
                 budgetRepo.startListening(userId: appState.currentUserId)
                 transactionRepo.startListening(userId: appState.currentUserId)
             }
@@ -120,7 +126,7 @@ struct AddTransactionView: View {
         
         // Ensure amount handles income vs expense correctly if needed
         let type = category.type ?? "expense"
-        let newTransaction = Transaction(
+        var newTransaction = Transaction(
             title: category.category,
             subtitle: category.category,
             amount: (type == "income" ? "" : "-") + amount,
@@ -130,6 +136,27 @@ struct AddTransactionView: View {
             notes: transactionNotes,
             type: type
         )
+        
+        if isUsingTravelCurrency {
+            let rawAmount = Double(amount) ?? 0
+            let mainAmount = currencyManager.convertToMain(amount: rawAmount, from: currencyManager.travelCurrency)
+            
+            // Re-assign amount in MAIN currency
+            newTransaction.amount = String(format: "%.2f", (type == "income" ? 1 : -1) * mainAmount)
+            
+            // Store original details
+            newTransaction.currencyCode = currencyManager.travelCurrency
+            newTransaction.exchangeRate = currencyManager.exchangeRate
+            newTransaction.originalAmount = rawAmount
+            
+            // Append note about currency
+            let validationNote = "(Converted from \(String(format: "%.2f", rawAmount)) \(currencyManager.travelCurrency))"
+            if !newTransaction.notes.isEmpty {
+                 newTransaction.notes = newTransaction.notes + " " + validationNote
+            } else {
+                 newTransaction.notes = validationNote
+            }
+        }
         
         if let _ = transactionToEdit {
             let updatedTransaction = newTransaction
@@ -177,6 +204,21 @@ struct AddTransactionView: View {
             .font(.title2)
             .fontWeight(.semibold)
             .foregroundColor(.secondary)
+            
+            if currencyManager.isTravelModeEnabled && currencyManager.mainCurrency != currencyManager.travelCurrency {
+                Picker("Currency", selection: $isUsingTravelCurrency) {
+                    Text(currencyManager.mainCurrency).tag(false)
+                    Text(currencyManager.travelCurrency).tag(true)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                
+                if isUsingTravelCurrency {
+                    Text("Converting to approx \(String(format: "%.2f", currencyManager.convertToMain(amount: Double(amount) ?? 0, from: currencyManager.travelCurrency))) \(currencyManager.mainCurrency)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
             
             TextField("0.00", text: $amount)
             .font(AppTypography.heroInput)

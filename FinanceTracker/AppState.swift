@@ -23,6 +23,10 @@ class AppState: ObservableObject {
     @Published var dailySummaryDate: Date?
     @Published var userSignupDate: Date?
     
+    // Navigation State
+    @Published var showProfile = false
+    @Published var shouldOpenCurrencySettings = false
+    
     static let shared = AppState()
     
     private init() {

@@ -10,6 +10,11 @@ struct Transaction: Identifiable {
     var date: Date = Date()
     var notes: String = ""
     var type: String = "expense"
+    
+    // Currency Support
+    var currencyCode: String?
+    var exchangeRate: Double?
+    var originalAmount: Double?
 }
 
 struct SavingGoal: Identifiable {

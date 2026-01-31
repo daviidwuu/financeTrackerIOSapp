@@ -40,6 +40,22 @@ struct ProfileView: View {
                     .listRowBackground(Color(UIColor.secondarySystemBackground))
                     
                     Section("Account") {
+                        // Manual Nav Link
+                        NavigationLink(destination: CurrencySettingsView()) {
+                             HStack {
+                                 Image(systemName: "banknote.fill")
+                                     .foregroundColor(.primary)
+                                     .frame(width: 24)
+                                 Text("Currency Settings")
+                             }
+                        }
+                        // Programmatic Link (Hidden)
+                        .background(
+                            NavigationLink(destination: CurrencySettingsView(), isActive: $appState.shouldOpenCurrencySettings) {
+                                EmptyView()
+                            }
+                            .hidden()
+                        )
                         NavigationLink(destination: AccountSettingsView()) {
                             HStack {
                                 Image(systemName: "gearshape.fill")

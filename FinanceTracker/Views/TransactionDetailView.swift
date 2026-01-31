@@ -41,6 +41,17 @@ struct TransactionDetailView: View {
                         TransactionDetailRow(icon: "tag.fill", title: "Category", value: transaction.subtitle ?? "Uncategorized")
                         Divider().padding(.leading, 56)
                         
+                        if let originalAmount = transaction.originalAmount,
+                           let currencyCode = transaction.currencyCode {
+                             TransactionDetailRow(icon: "banknote", title: "Original Amount", value: String(format: "%.2f %@", originalAmount, currencyCode))
+                             Divider().padding(.leading, 56)
+                             
+                             if let rate = transaction.exchangeRate {
+                                 TransactionDetailRow(icon: "arrow.triangle.2.circlepath", title: "Rate", value: "1 \(CurrencyManager.shared.mainCurrency) ≈ \(String(format: "%.2f", rate)) \(currencyCode)")
+                                 Divider().padding(.leading, 56)
+                             }
+                        }
+                        
                         if let note = transaction.note, !note.isEmpty {
                             TransactionDetailRow(icon: "text.alignleft", title: "Note", value: note)
                             Divider().padding(.leading, 56)

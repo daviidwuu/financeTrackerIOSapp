@@ -408,6 +408,18 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         let userInfo = response.notification.request.content.userInfo
         
+        // Handle Travel Notification
+        if let type = userInfo["type"] as? String, type == "travel_update" {
+             DispatchQueue.main.async {
+                 AppState.shared.showProfile = true
+                 
+                 // Delay slightly to ensure Profile View is mounted before triggering navigation
+                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                     AppState.shared.shouldOpenCurrencySettings = true
+                 }
+             }
+        }
+        
         // Handle Daily Summary Deep Link
         if let timestamp = userInfo["date"] as? TimeInterval {
             let date = Date(timeIntervalSince1970: timestamp)

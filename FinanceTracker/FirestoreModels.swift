@@ -19,6 +19,11 @@ enum FirestoreModels {
         var userId: String
         var createdAt: Date
         
+        // Travel / Currency Support
+        var currencyCode: String? = nil // e.g., "USD", "JPY"
+        var exchangeRate: Double? = nil // e.g., 100.0 (1 Main = 100 Travel) or 0.01
+        var originalAmount: Double? = nil // Amount in original currency
+        
         enum CodingKeys: String, CodingKey {
             case id
             case title
@@ -32,6 +37,9 @@ enum FirestoreModels {
             case source
             case userId
             case createdAt
+            case currencyCode
+            case exchangeRate
+            case originalAmount
         }
     }
 

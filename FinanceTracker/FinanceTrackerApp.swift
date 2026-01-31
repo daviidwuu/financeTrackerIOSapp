@@ -39,6 +39,8 @@ struct FinanceTrackerApp: App {
             case .active:
                 // Clear badge when app is opened
                 NotificationManager.shared.clearBadge()
+                // Check location for Travel Mode
+                LocationManager.shared.checkLocation()
             case .background:
                 // Schedule background refresh if enabled
                 NotificationManager.shared.scheduleDailySummary()

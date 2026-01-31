@@ -22,7 +22,7 @@ struct HomeView: View {
     @StateObject private var recurringRepo = RecurringTransactionRepository()
     
     @State private var showAddTransaction = false
-    @State private var showProfile = false
+    // showProfile moved to AppState
     @State private var showAllTransactions = false
     @State private var selectedTransaction: FirestoreModels.Transaction?
     @State private var transactionToEdit: FirestoreModels.Transaction?
@@ -104,7 +104,7 @@ struct HomeView: View {
                                 
                                 Spacer()
                                 
-                                Button(action: { showProfile = true }) {
+                                Button(action: { appState.showProfile = true }) {
                                     Circle()
                                         .fill(Color.secondary.opacity(0.15))
                                         .frame(width: 44, height: 44)
@@ -256,7 +256,7 @@ struct HomeView: View {
                     .presentationDragIndicator(.visible)
                     .presentationBackground(Color.backgroundPrimary)
                 }
-                .sheet(isPresented: $showProfile) {
+                .sheet(isPresented: $appState.showProfile) {
                     ProfileView()
                         .presentationBackground(Color.backgroundPrimary)
                 }

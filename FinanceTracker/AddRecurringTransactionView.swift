@@ -98,7 +98,6 @@ struct AddRecurringTransactionView: View {
         }
         .onAppear {
             if !appState.currentUserId.isEmpty {
-                let calendar = Calendar.current
                 budgetRepo.startListening(userId: appState.currentUserId)
                 // Also listen to transactions for calculating remaining budget
                 transactionRepo.startListening(userId: appState.currentUserId)
