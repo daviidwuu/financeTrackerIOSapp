@@ -317,46 +317,143 @@ struct SplitConfigurationView: View {
     var onSave: ([FirestoreModels.Split]) -> Void
     @Environment(\.dismiss) var dismiss
     
+    // Friend Data
+    @StateObject private var friendRepo = FriendRepository()
+    @EnvironmentObject var appState: AppState
+    
     // Temporary Selection State
-    @State private var selectedFriends: Set<String> = []
+    @State private var selectedFriendIds: Set<String> = []
     
     // State to track manually edited (locked) splits
     @State private var lockedSplitIds: Set<String> = []
     
-    // Mock Friends (Top 5)
-    let availableFriends = ["Alice", "Bob", "Charlie", "David", "Eve"]
+    // Search State
+    @State private var usernameQuery = ""
+    @State private var isSearching = false
+    @State private var searchResults: [FriendRepository.UserSearchResult] = []
+    @State private var message: String?
     
     init(transactionAmount: Double, existingSplits: [FirestoreModels.Split], onSave: @escaping ([FirestoreModels.Split]) -> Void) {
         self.transactionAmount = transactionAmount
         self._splits = State(initialValue: existingSplits)
         self.onSave = onSave
         
-        // Pre-select existing friends
-        let existingNames = Set(existingSplits.map { $0.name })
-        self._selectedFriends = State(initialValue: existingNames)
-        
-        // Assume existing splits from DB are effectively "locked" or intentional, 
-        // but for a new edit session we can start fresh or lock them?
-        // Let's start with empty locks so user can re-adjust freely, 
-        // unless they touch specific fields.
+        // Pre-select existing friends based on ID or Name
+        // We prefer ID, but fallback to name for old text-based splits
+        var initialSelection: Set<String> = []
+        for split in existingSplits {
+            if let fid = split.friendId {
+                initialSelection.insert(fid)
+            } else {
+                // For legacy name-only splits, we can't easily map to ID without the repo loaded.
+                // We'll handle this by showing them as "Legacy" or "Manual" if functionality needed.
+                // For now, let's just ignore or maybe try to match when view appears? 
+                // Let's assume new system forward.
+            }
+        }
+        self._selectedFriendIds = State(initialValue: initialSelection)
     }
     
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("Select Friends")) {
-                    ForEach(availableFriends, id: \.self) { friend in
+                // Section 1: Search and Add Friends
+                Section(header: Text("Add People")) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        // Search Bar
                         HStack {
-                            Text(friend)
-                            Spacer()
-                            if selectedFriends.contains(friend) {
-                                Image(systemName: "checkmark")
-                                    .foregroundColor(.blue)
+                            Image(systemName: "magnifyingglass")
+                                .foregroundColor(.secondary)
+                            TextField("Search by username", text: $usernameQuery)
+                                .autocapitalization(.none)
+                                .disableAutocorrection(true)
+                                .submitLabel(.search)
+                                .onSubmit {
+                                    performSearch()
+                                }
+                            
+                            if !usernameQuery.isEmpty {
+                                Button(action: { 
+                                    usernameQuery = "" 
+                                    isSearching = false
+                                    searchResults = []
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(.secondary)
+                                }
                             }
                         }
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            toggleFriendSelection(friend)
+                        
+                        if isSearching {
+                            ProgressView().padding(.vertical, 8)
+                        } else if let msg = message {
+                            Text(msg)
+                                .font(.caption)
+                                .foregroundColor(msg.contains("Added") ? .green : .secondary)
+                                .padding(.vertical, 4)
+                        } else if searchResults.isEmpty && !usernameQuery.isEmpty {
+                             // "Invite" logic
+                            ShareLink(item: "Join me on FinanceTracker! My username is @\(appState.currentUserUsername).") {
+                                Label("Invite '\(usernameQuery)' to App", systemImage: "square.and.arrow.up")
+                                    .font(.subheadline)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.vertical, 4)
+                            }
+                        }
+                        
+                        // Search Results List
+                        if !searchResults.isEmpty {
+                            ForEach(searchResults) { user in
+                                HStack {
+                                    VStack(alignment: .leading) {
+                                        Text(user.name).font(.subheadline)
+                                        Text("@\(user.username)").font(.caption).foregroundColor(.secondary)
+                                    }
+                                    Spacer()
+                                    Button("Add") {
+                                        addFriend(user: user)
+                                    }
+                                    .font(.caption)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(Color.blue)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(12)
+                                }
+                                .padding(.vertical, 4)
+                                Divider()
+                            }
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+
+                if friendRepo.friends.isEmpty {
+                     Section {
+                         Text("No friends found. Search above to add them!")
+                             .foregroundColor(.secondary)
+                     }
+                } else {
+                    Section(header: Text("Select Friends")) {
+                        ForEach(friendRepo.friends) { friend in
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text(friend.name)
+                                        .font(.body)
+                                    Text("@\(friend.username)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                if let fid = friend.id, selectedFriendIds.contains(fid) {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                toggleFriendSelection(friend)
+                            }
                         }
                     }
                 }
@@ -365,7 +462,15 @@ struct SplitConfigurationView: View {
                     Section(header: Text("Distribution")) {
                         ForEach(splits) { split in
                             HStack {
-                                Text(split.name)
+                                VStack(alignment: .leading) {
+                                    Text(split.name)
+                                        .font(.body)
+                                    if let username = split.username {
+                                        Text("@\(username)")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
                                 Spacer()
                                 Text("$").foregroundColor(.secondary)
                                 TextField("Amount", value: Binding(
@@ -424,22 +529,73 @@ struct SplitConfigurationView: View {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             }
             .scrollDismissesKeyboard(.interactively)
+            .onAppear {
+                if !appState.currentUserId.isEmpty {
+                    friendRepo.startListening(userId: appState.currentUserId)
+                }
+            }
         }
     }
     
-    private func toggleFriendSelection(_ name: String) {
-        if selectedFriends.contains(name) {
-            selectedFriends.remove(name)
-            splits.removeAll(where: { $0.name == name })
-            // If removed friend was locked, remove from lock set
-            // Note: We can iterate to find ID if needed, but splits is already updated.
-            // Since we can't easily map name -> ID after removal, 
-            // we'll just let the ID sit in the Set (it's harmless string).
+    private func performSearch() {
+         guard !usernameQuery.isEmpty else { return }
+         isSearching = true
+         message = nil
+         Task {
+             do {
+                 let results = try await friendRepo.searchUsers(username: usernameQuery)
+                 await MainActor.run {
+                     self.searchResults = results
+                     self.isSearching = false
+                     if results.isEmpty {
+                         // We don't set message here so the UI can fallback to "Invite" logic
+                     }
+                 }
+             } catch {
+                 await MainActor.run {
+                     self.isSearching = false
+                     self.message = "Error searching"
+                 }
+             }
+         }
+     }
+     
+     private func addFriend(user: FriendRepository.UserSearchResult) {
+         guard !appState.currentUserId.isEmpty else { return }
+         
+         Task {
+             do {
+                 try await friendRepo.addFriend(
+                 currentUserId: appState.currentUserId,
+                 currentUserInfo: (username: appState.currentUserUsername, name: appState.userName, email: appState.userEmail),
+                     targetUser: user
+                 )
+                 await MainActor.run {
+                     self.message = "Added \(user.name)!"
+                     self.searchResults = []
+                     self.usernameQuery = ""
+                 }
+             } catch {
+                 await MainActor.run {
+                     self.message = "Failed to add friend: \(error.localizedDescription)"
+                 }
+             }
+         }
+     }
+    
+    private func toggleFriendSelection(_ friend: FirestoreModels.Friend) {
+        guard let friendId = friend.id else { return }
+        
+        if selectedFriendIds.contains(friendId) {
+            selectedFriendIds.remove(friendId)
+            splits.removeAll(where: { $0.friendId == friendId })
         } else {
-            selectedFriends.insert(name)
-            // Add new split - default to 0 temporarily, will be distributed
+            selectedFriendIds.insert(friendId)
+            // Add new split
             let newSplit = FirestoreModels.Split(
-                name: name,
+                name: friend.name,
+                friendId: friendId,
+                username: friend.username,
                 amount: 0.0, 
                 isPaid: false
             )

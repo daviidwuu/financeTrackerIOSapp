@@ -283,7 +283,6 @@ struct HomeView: View {
                 // Start listening to transactions when view appears
                 if !appState.currentUserId.isEmpty {
                     transactionRepo.startListening(userId: appState.currentUserId)
-                    let calendar = Calendar.current
                     budgetRepo.startListening(userId: appState.currentUserId)
                     recurringRepo.startListening(userId: appState.currentUserId)
                 }
@@ -453,7 +452,6 @@ struct TransactionRow: View {
         .padding(16)
         .onAppear {
             if !appState.currentUserId.isEmpty {
-                let calendar = Calendar.current
                 budgetRepo.startListening(userId: appState.currentUserId)
             }
         }

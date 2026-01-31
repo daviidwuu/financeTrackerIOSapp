@@ -51,6 +51,8 @@ enum FirestoreModels {
     struct Split: Identifiable, Codable {
         var id: String = UUID().uuidString
         var name: String // Friend's name
+        var friendId: String? // Linked Friend User ID
+        var username: String? // Friend's Username
         var amount: Double
         var isPaid: Bool
         var paidDate: Date? // When they paid back
@@ -194,6 +196,22 @@ enum FirestoreModels {
             case userId
             case createdAt
             case lastProcessedDate
+        }
+    }
+    // MARK: - Friend Model
+    struct Friend: Identifiable, Codable {
+        @DocumentID var id: String? // The Friend's User ID
+        var username: String
+        var name: String // Display Name
+        var email: String? // Optional
+        var addedAt: Date
+        
+        enum CodingKeys: String, CodingKey {
+            case id
+            case username
+            case name
+            case email
+            case addedAt
         }
     }
 }

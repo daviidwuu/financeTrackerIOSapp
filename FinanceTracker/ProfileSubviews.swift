@@ -4,16 +4,43 @@ import SwiftUI
 struct AccountSettingsView: View {
     @EnvironmentObject var appState: AppState
     @State private var name: String = ""
+    @State private var username: String = ""
     @State private var email: String = ""
     @Environment(\.colorScheme) var colorScheme
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var showDeleteConfirmation = false
     
+    // Username Check State
+    @State private var isCheckingUsername = false
+    @State private var usernameAvailable = true
+    @State private var usernameMessage: String?
+    @State private var initialUsername: String = ""
+    
     var body: some View {
         Form {
             Section(header: Text("Profile Information")) {
                 TextField("Name", text: $name)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    TextField("Username", text: $username)
+                        .autocapitalization(.none)
+                        .disableAutocorrection(true)
+                        .onChange(of: username) { _, newValue in
+                            checkUsername(newValue)
+                        }
+                    
+                    if isCheckingUsername {
+                        Text("Checking availability...")
+                             .font(.caption)
+                             .foregroundColor(.secondary)
+                    } else if let msg = usernameMessage {
+                        Text(msg)
+                            .font(.caption)
+                            .foregroundColor(usernameAvailable ? .green : .red)
+                    }
+                }
+                
                 TextField("Email", text: $email)
                     .keyboardType(.emailAddress)
                     .autocapitalization(.none)
@@ -35,7 +62,7 @@ struct AccountSettingsView: View {
                         Text("Update Profile")
                     }
                 }
-                .disabled(isLoading || name.isEmpty || email.isEmpty || (name == appState.userName && email == appState.userEmail))
+                .disabled(isLoading || name.isEmpty || email.isEmpty || username.isEmpty || !usernameAvailable || (name == appState.userName && email == appState.userEmail && username == initialUsername))
             }
             
             Section(header: Text("Password")) {
@@ -57,6 +84,8 @@ struct AccountSettingsView: View {
         .onAppear {
             name = appState.userName
             email = appState.userEmail
+            username = appState.currentUserUsername
+            initialUsername = appState.currentUserUsername
         }
         .alert("Delete Account", isPresented: $showDeleteConfirmation) {
             Button("Cancel", role: .cancel) { }
@@ -68,8 +97,49 @@ struct AccountSettingsView: View {
         }
     }
     
+    private func checkUsername(_ input: String) {
+        // Reset if empty or same as initial
+        if input.isEmpty {
+            usernameAvailable = false
+            usernameMessage = "Username cannot be empty"
+            return
+        }
+        
+        if input == initialUsername {
+            usernameAvailable = true
+            usernameMessage = nil
+            return
+        }
+        
+        if input.count < 3 {
+            usernameAvailable = false
+            usernameMessage = "Min 3 characters"
+            return
+        }
+        
+        isCheckingUsername = true
+        usernameMessage = nil
+        
+        // Debounce could be good, but for now direct check
+        Task {
+            do {
+                let isAvailable = try await FirebaseManager.shared.checkUsernameAvailability(input)
+                await MainActor.run {
+                    self.isCheckingUsername = false
+                    self.usernameAvailable = isAvailable
+                    self.usernameMessage = isAvailable ? "Username available" : "Username taken"
+                }
+            } catch {
+                await MainActor.run {
+                    self.isCheckingUsername = false
+                    self.usernameMessage = "Error checking"
+                }
+            }
+        }
+    }
+    
     private func updateProfile() {
-        guard !name.isEmpty, !email.isEmpty else { return }
+        guard !name.isEmpty, !email.isEmpty, !username.isEmpty, usernameAvailable else { return }
         isLoading = true
         errorMessage = nil
         
@@ -78,6 +148,14 @@ struct AccountSettingsView: View {
                 if name != appState.userName {
                     try await FirebaseManager.shared.updateUserProfile(userId: appState.currentUserId, data: ["name": name])
                     await MainActor.run { appState.userName = name }
+                }
+                
+                if username != initialUsername {
+                    try await FirebaseManager.shared.updateUserProfile(userId: appState.currentUserId, data: ["username": username])
+                    await MainActor.run { 
+                        appState.currentUserUsername = username 
+                        initialUsername = username
+                    }
                 }
                 
                 if email != appState.userEmail {

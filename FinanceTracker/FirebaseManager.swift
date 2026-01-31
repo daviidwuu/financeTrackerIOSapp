@@ -13,6 +13,9 @@ class FirebaseManager: ObservableObject {
     
     @Published var currentUser: User?
     @Published var isAuthenticated = false
+    @Published var currentUserName: String?
+    @Published var currentUserEmail: String?
+    @Published var currentUserUsername: String?
     
     private init() {
         self.auth = Auth.auth()
@@ -22,18 +25,42 @@ class FirebaseManager: ObservableObject {
         let _ = auth.addStateDidChangeListener { [weak self] _, user in
             self?.currentUser = user
             self?.isAuthenticated = user != nil
+            
+            if let user = user {
+                Task {
+                    // Fetch extended profile data (username)
+                    try? await self?.fetchUserProfile(userId: user.uid)
+                }
+            }
         }
     }
     
     // MARK: - Authentication
     
-    /// Sign up a new user with email and password
-    func signUp(email: String, password: String, name: String) async throws -> User {
+    /// Check if a username is available
+    func checkUsernameAvailability(_ username: String) async throws -> Bool {
+        let snapshot = try await db.collection("users")
+            .whereField("username", isEqualTo: username)
+            .limit(to: 1)
+            .getDocuments()
+        
+        return snapshot.documents.isEmpty
+    }
+    
+    /// Sign up a new user with email, password, and username
+    func signUp(email: String, password: String, name: String, username: String) async throws -> User {
+        // 1. Final check on username availability
+        let isAvailable = try await checkUsernameAvailability(username)
+        guard isAvailable else {
+            throw NSError(domain: "Auth", code: 409, userInfo: [NSLocalizedDescriptionKey: "Username is already taken"])
+        }
+        
+        // 2. Create Auth User
         let result = try await auth.createUser(withEmail: email, password: password)
         let user = result.user
         
-        // Create user profile in Firestore
-        try await createUserProfile(userId: user.uid, name: name, email: email)
+        // 3. Create user profile in Firestore
+        try await createUserProfile(userId: user.uid, name: name, email: email, username: username)
         
         return user
     }
@@ -70,14 +97,21 @@ class FirebaseManager: ObservableObject {
     // MARK: - User Profile
     
     /// Create user profile document in Firestore
-    private func createUserProfile(userId: String, name: String, email: String) async throws {
+    private func createUserProfile(userId: String, name: String, email: String, username: String) async throws {
         let profileData: [String: Any] = [
             "name": name,
             "email": email,
+            "username": username,
             "createdAt": FieldValue.serverTimestamp()
         ]
         
         try await db.collection("users").document(userId).setData(profileData)
+        
+        await MainActor.run {
+            self.currentUserName = name
+            self.currentUserEmail = email
+            self.currentUserUsername = username
+        }
     }
     
     /// Get user profile from Firestore
@@ -89,9 +123,26 @@ class FirebaseManager: ObservableObject {
         return data
     }
     
+    /// Fetch and cache current user profile
+    func fetchUserProfile(userId: String) async throws {
+        let data = try await getUserProfile(userId: userId)
+        await MainActor.run {
+            self.currentUserName = data["name"] as? String
+            self.currentUserEmail = data["email"] as? String
+            self.currentUserUsername = data["username"] as? String
+        }
+    }
+    
     /// Update user profile
     func updateUserProfile(userId: String, data: [String: Any]) async throws {
         try await db.collection("users").document(userId).updateData(data)
+        // Refresh local cache if needed
+        if let newName = data["name"] as? String {
+            await MainActor.run { self.currentUserName = newName }
+        }
+        if let newUsername = data["username"] as? String {
+            await MainActor.run { self.currentUserUsername = newUsername }
+        }
     }
     
     // MARK: - Streak Management

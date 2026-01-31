@@ -431,7 +431,7 @@ struct AllTransactionsView: View {
             let title = "\"" + transaction.title.replacingOccurrences(of: "\"", with: "\"\"") + "\""
             let category = "\"" + (transaction.subtitle ?? "Uncategorized").replacingOccurrences(of: "\"", with: "\"\"") + "\""
             let amount = String(format: "%.2f", transaction.amount)
-            let type = transaction.type ?? "expense"
+            let type = transaction.type
             let note = "\"" + (transaction.note ?? "").replacingOccurrences(of: "\"", with: "\"\"") + "\""
             
             csv += "\(date),\(title),\(category),\(amount),\(type),\(note)\n"

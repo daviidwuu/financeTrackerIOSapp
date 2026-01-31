@@ -433,7 +433,7 @@ struct WalletView: View {
                     budgetRepo.stopListening()
                     transactionRepo.stopListening()
                 }
-                .onChange(of: appState.currentUserId) { newUserId in
+                .onChange(of: appState.currentUserId) { _, newUserId in
                     if !newUserId.isEmpty {
                         // Restart listeners
                         savingGoalRepo.startListening(userId: newUserId)

@@ -75,7 +75,6 @@ struct CalendarView: View {
                             let date = weeks[weekIndex][dayIndex]
                             if let date = date {
                                 let calendar = Calendar.current
-                                let dayTransactions = transactions.filter { calendar.isDate($0.date, inSameDayAs: date) }
                                 let isBeforeSignup = isDateBeforeSignup(date)
                                 
                                 VStack(spacing: 2) {

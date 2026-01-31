@@ -97,7 +97,7 @@ struct ContentView: View {
                 }
             }
         }
-        .onChange(of: appState.currentUserId) { newUserId in
+        .onChange(of: appState.currentUserId) { _, newUserId in
             if !newUserId.isEmpty {
                 Task {
                     await recurringRepo.processDueTransactions(userId: newUserId)

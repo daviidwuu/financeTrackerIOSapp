@@ -10,6 +10,7 @@ class AppState: ObservableObject {
     @Published var hasCompletedOnboarding = false
     @Published var userName = ""
     @Published var userEmail = ""
+    @Published var currentUserUsername = ""
     
     private var authStateListener: AuthStateDidChangeListenerHandle?
     private let firebaseManager = FirebaseManager.shared
@@ -84,9 +85,6 @@ class AppState: ObservableObject {
             }
         } catch {
             print("Failed to update streak: \(error)")
-        } catch {
-            print("Failed to update streak: \(error)")
-            // On error, keep existing streak
         }
     }
     
@@ -101,6 +99,7 @@ class AppState: ObservableObject {
             let profile = try await firebaseManager.getUserProfile(userId: userId)
             DispatchQueue.main.async {
                 self.userName = profile["name"] as? String ?? ""
+                self.currentUserUsername = profile["username"] as? String ?? ""
                 
                 // Parse signup date
                 if let timestamp = profile["createdAt"] as? Timestamp {

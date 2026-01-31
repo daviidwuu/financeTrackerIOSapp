@@ -148,7 +148,7 @@ class CurrencyManager: ObservableObject {
     }
 }
 
-struct ExchangeRateResponse: Codable, Sendable {
+struct ExchangeRateResponse: Codable {
     let result: String
     let rates: [String: Double]
 }

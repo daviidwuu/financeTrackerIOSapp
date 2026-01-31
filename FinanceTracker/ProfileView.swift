@@ -7,7 +7,7 @@ struct ProfileView: View {
     @AppStorage("isDarkMode") private var isDarkMode = false
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 // Background
                 (colorScheme == .dark ? Color.black : Color.white)
@@ -30,6 +30,17 @@ struct ProfileView: View {
                                     .font(.title3)
                                     .fontWeight(.bold)
                                     .foregroundColor(.primary)
+                                if !appState.currentUserUsername.isEmpty {
+                                    Text("@\(appState.currentUserUsername)")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    Button("Set Username") {
+                                        // TODO: Open set username sheet
+                                    }
+                                    .font(.caption)
+                                    .foregroundColor(.blue)
+                                }
                                 Text(appState.userEmail.isEmpty ? "No Email" : appState.userEmail)
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
@@ -49,13 +60,6 @@ struct ProfileView: View {
                                  Text("Currency Settings")
                              }
                         }
-                        // Programmatic Link (Hidden)
-                        .background(
-                            NavigationLink(destination: CurrencySettingsView(), isActive: $appState.shouldOpenCurrencySettings) {
-                                EmptyView()
-                            }
-                            .hidden()
-                        )
                         NavigationLink(destination: AccountSettingsView()) {
                             HStack {
                                 Image(systemName: "gearshape.fill")
@@ -131,6 +135,9 @@ struct ProfileView: View {
                 }
                 .scrollContentBackground(.hidden)
                 .background(colorScheme == .dark ? Color.black : Color.white)
+                .navigationDestination(isPresented: $appState.shouldOpenCurrencySettings) {
+                    CurrencySettingsView()
+                }
             }
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.inline)

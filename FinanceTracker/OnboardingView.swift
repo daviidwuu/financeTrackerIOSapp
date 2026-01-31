@@ -13,6 +13,7 @@ struct OnboardingView: View {
     
     // Step Data
     @State private var nameInput = ""
+    @State private var usernameInput = ""
     @State private var incomeInput = ""
     @State private var emailInput = ""
     @State private var passwordInput = ""
@@ -72,7 +73,7 @@ struct OnboardingView: View {
             VStack(spacing: 0) {
                 // Progress Bar
                 HStack(spacing: 4) {
-                    ForEach(1...8, id: \.self) { step in
+                    ForEach(1...9, id: \.self) { step in
                         Capsule()
                             .fill(step <= currentStep ? Color.white : Color.gray.opacity(0.2))
                             .frame(height: 4)
@@ -89,12 +90,13 @@ struct OnboardingView: View {
                         switch currentStep {
                         case 1: IntroStep()
                         case 2: ProfileStep(name: $nameInput)
-                        case 3: IncomeStep(income: $incomeInput)
-                        case 4: CategoriesStep(categories: $onboardingCategories)
-                        case 5: SavingGoalsStep(goals: $onboardingSavingGoals)
-                        case 6: BackTapStep()
-                        case 7: WidgetStep()
-                        case 8: AccountStep(email: $emailInput, password: $passwordInput, errorMessage: $errorMessage)
+                        case 3: UsernameStep(username: $usernameInput)
+                        case 4: IncomeStep(income: $incomeInput)
+                        case 5: CategoriesStep(categories: $onboardingCategories)
+                        case 6: SavingGoalsStep(goals: $onboardingSavingGoals)
+                        case 7: BackTapStep()
+                        case 8: WidgetStep()
+                        case 9: AccountStep(email: $emailInput, password: $passwordInput, errorMessage: $errorMessage)
                         default: EmptyView()
                         }
                     }
@@ -125,7 +127,7 @@ struct OnboardingView: View {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
                         } else {
-                            Text(currentStep == 8 ? "Create Account" : "Continue")
+                            Text(currentStep == 9 ? "Create Account" : "Continue")
                                 .font(.headline)
                                 .fontWeight(.bold)
                         }
@@ -151,19 +153,20 @@ struct OnboardingView: View {
         switch currentStep {
         case 1: return true
         case 2: return !nameInput.isEmpty
-        case 3: return Double(incomeInput) != nil || incomeInput.isEmpty
-        case 4: return !onboardingCategories.filter { $0.isSelected }.isEmpty
-        case 5: return true // Optional to have saving goals
-        case 6: return true // Back Tap tutorial
-        case 7: return true // Widget tutorial
-        case 8: return !emailInput.isEmpty && !passwordInput.isEmpty && emailInput.contains("@") && passwordInput.count >= 6
+        case 3: return !usernameInput.isEmpty && usernameInput.count >= 3 // Basic length check
+        case 4: return Double(incomeInput) != nil || incomeInput.isEmpty
+        case 5: return !onboardingCategories.filter { $0.isSelected }.isEmpty
+        case 6: return true // Optional to have saving goals
+        case 7: return true // Back Tap tutorial
+        case 8: return true // Widget tutorial
+        case 9: return !emailInput.isEmpty && !passwordInput.isEmpty && emailInput.contains("@") && passwordInput.count >= 6
         default: return false
         }
     }
     
     private func nextStep() {
         hideKeyboard()
-        if currentStep < 8 {
+        if currentStep < 9 {
             direction = .trailing
             HapticManager.shared.light() // Navigation haptic
             withAnimation { currentStep += 1 }
@@ -193,7 +196,7 @@ struct OnboardingView: View {
         Task {
             do {
                 // 1. Create Account
-                let result = try await FirebaseManager.shared.signUp(email: emailInput, password: passwordInput, name: nameInput)
+                let result = try await FirebaseManager.shared.signUp(email: emailInput, password: passwordInput, name: nameInput, username: usernameInput)
                 let userId = result.uid
                 
                 // 2. Create Recurring Income Transaction
@@ -281,6 +284,7 @@ struct OnboardingView: View {
                 // 5. Update AppState
                 await MainActor.run {
                     appState.userName = nameInput
+                    appState.currentUserUsername = usernameInput
                     appState.userEmail = emailInput
                     appState.currentUserId = userId
                     appState.isUserLoggedIn = true
@@ -349,6 +353,88 @@ struct ProfileStep: View {
                 .padding(.horizontal, 32)
             
             Spacer()
+        }
+    }
+}
+
+struct UsernameStep: View {
+    @Binding var username: String
+    @State private var isChecking = false
+    @State private var availabilityMessage = ""
+    @State private var isAvailable = false
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            Text("Pick a Username")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .multilineTextAlignment(.center)
+            
+            Text("Friends can use this to find you.")
+                .font(.body)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            
+            VStack(spacing: 8) {
+                TextField("username", text: $username)
+                    .font(AppTypography.heroInput)
+                    .multilineTextAlignment(.center)
+                    .autocapitalization(.none)
+                    .disableAutocorrection(true)
+                    .padding()
+                    .background(Color.clear)
+                    .padding(.horizontal, 32)
+                    .onChange(of: username) { _, newValue in
+                        checkAvailability(newValue)
+                    }
+                
+                if !username.isEmpty {
+                    HStack {
+                        if isChecking {
+                            ProgressView()
+                                .font(.caption)
+                        } else {
+                            Image(systemName: isAvailable ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                .foregroundColor(isAvailable ? .green : .red)
+                            Text(availabilityMessage)
+                                .font(.caption)
+                                .foregroundColor(isAvailable ? .green : .red)
+                        }
+                    }
+                }
+            }
+            
+            Spacer()
+        }
+    }
+    
+    private func checkAvailability(_ name: String) {
+        guard name.count >= 3 else {
+            isAvailable = false
+            availabilityMessage = "Too short"
+            return
+        }
+        
+        isChecking = true
+        // Simple debounce by delaying task
+        Task {
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s
+            if Task.isCancelled { return }
+            
+            do {
+                let available = try await FirebaseManager.shared.checkUsernameAvailability(name)
+                await MainActor.run {
+                    isChecking = false
+                    isAvailable = available
+                    availabilityMessage = available ? "Available" : "Taken"
+                }
+            } catch {
+                await MainActor.run {
+                    isChecking = false
+                    isAvailable = false
+                    availabilityMessage = "Error checking"
+                }
+            }
         }
     }
 }
