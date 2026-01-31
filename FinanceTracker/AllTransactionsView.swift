@@ -16,6 +16,7 @@ struct AllTransactionsView: View {
     @State private var sortAscending: Bool = false // false = newest/highest first
     
     @State private var selectedTransaction: FirestoreModels.Transaction?
+    @State private var transactionToEdit: FirestoreModels.Transaction?
     
     var filteredTransactions: [FirestoreModels.Transaction] {
         transactionRepo.transactions.filter { transaction in
@@ -268,6 +269,23 @@ struct AllTransactionsView: View {
                                     .listRowSeparator(.hidden)
                                     .listRowBackground(Color.clear)
                                     .padding(.bottom, 8)
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                        Button(role: .destructive) {
+                                            HapticManager.shared.heavy()
+                                            deleteTransaction(transaction)
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                    }
+                                    .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                        Button {
+                                            HapticManager.shared.medium()
+                                            transactionToEdit = transaction
+                                        } label: {
+                                            Label("Edit", systemImage: "pencil")
+                                        }
+                                        .tint(.blue)
+                                    }
                                     .onTapGesture {
                                         HapticManager.shared.light()
                                         selectedTransaction = transaction
@@ -296,6 +314,14 @@ struct AllTransactionsView: View {
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }
+            .sheet(item: $transactionToEdit) { transaction in
+                AddTransactionView(transactionToEdit: transaction, onSave: { updatedTransaction in
+                    updateTransaction(transaction, with: updatedTransaction)
+                })
+                .presentationDetents([.fraction(0.65)])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(UIColor.systemBackground))
+            }
         }
     }
     
@@ -322,6 +348,17 @@ struct AllTransactionsView: View {
                 try await transactionRepo.updateTransaction(updatedTransaction)
             } catch {
                 print("Failed to update transaction: \(error)")
+            }
+        }
+    }
+    
+    private func deleteTransaction(_ transaction: FirestoreModels.Transaction) {
+        guard let id = transaction.id else { return }
+        Task {
+            do {
+                try await transactionRepo.deleteTransaction(id: id)
+            } catch {
+                print("Failed to delete transaction: \(error)")
             }
         }
     }

@@ -14,6 +14,7 @@ class AppState: ObservableObject {
     
     @Published var streakCount = 1
     @Published var hasSeenPostOnboardingGuide = false
+    @Published var showWeeklyReport = false
     
     static let shared = AppState()
     
