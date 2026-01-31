@@ -11,6 +11,7 @@ struct AllTransactionsView: View {
     @State private var searchText: String = ""
     @State private var selectedCategory: String? = nil
     @State private var selectedMonth: Date = Date()
+    @State private var selectedDate: Date? = nil // Specific day filter
     @State private var selectedType: String = "All" // "All", "Income", "Expense"
     @State private var sortBy: String = "Date" // "Date", "Amount", "Category"
     @State private var sortAscending: Bool = false // false = newest/highest first
@@ -18,14 +19,22 @@ struct AllTransactionsView: View {
     @State private var selectedTransaction: FirestoreModels.Transaction?
     @State private var transactionToEdit: FirestoreModels.Transaction?
     
+    init(transactionRepo: TransactionRepository, budgetRepo: BudgetRepository, initialDate: Date? = nil) {
+        self.transactionRepo = transactionRepo
+        self.budgetRepo = budgetRepo
+        _selectedDate = State(initialValue: initialDate)
+    }
+    
     var filteredTransactions: [FirestoreModels.Transaction] {
         transactionRepo.transactions.filter { transaction in
             // Month filter
-            let matchesMonth = Calendar.current.isDate(
-                transaction.date,
-                equalTo: selectedMonth,
-                toGranularity: .month
-            )
+            // Month filter (only if no specific date is selected)
+            let matchesMonth: Bool
+            if let date = selectedDate {
+                matchesMonth = Calendar.current.isDate(transaction.date, inSameDayAs: date)
+            } else {
+                matchesMonth = Calendar.current.isDate(transaction.date, equalTo: selectedMonth, toGranularity: .month)
+            }
             
             // Category filter
             let matchesCategory = selectedCategory == nil || 
@@ -59,7 +68,7 @@ struct AllTransactionsView: View {
     }
     
     var hasActiveFilters: Bool {
-        selectedCategory != nil || selectedType != "All" || !searchText.isEmpty
+        selectedCategory != nil || selectedType != "All" || !searchText.isEmpty || selectedDate != nil
     }
     
     var transactionStats: (count: Int, total: Double, average: Double) {
@@ -176,6 +185,38 @@ struct AllTransactionsView: View {
                             .padding(.vertical, 10)
                             .background(Color(UIColor.secondarySystemBackground))
                             .cornerRadius(10)
+                            .cornerRadius(10)
+                        }
+                        
+                        // Date Filter (Specific Day)
+                        if selectedDate == nil {
+                            Menu {
+                                Button("Today") {
+                                    selectedDate = Date()
+                                }
+                                Button("Yesterday") {
+                                    selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: Date())
+                                }
+                                Divider()
+                                // Pick from current month
+                                ForEach(0..<31, id: \.self) { offset in
+                                    if let date = Calendar.current.date(byAdding: .day, value: -offset, to: Date()),
+                                       Calendar.current.isDate(date, equalTo: selectedMonth, toGranularity: .month) {
+                                        Button(action: {
+                                            selectedDate = date
+                                        }) {
+                                            Text(date.formatted(date: .abbreviated, time: .omitted))
+                                        }
+                                    }
+                                }
+                            } label: {
+                                Image(systemName: "calendar.day.timeline.left")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.primary)
+                                    .padding(10)
+                                    .background(Color(UIColor.secondarySystemBackground))
+                                    .cornerRadius(10)
+                            }
                         }
                         
                         Spacer()
@@ -230,6 +271,11 @@ struct AllTransactionsView: View {
                                 if !searchText.isEmpty {
                                     FilterChip(title: "Search: \(searchText)", icon: "magnifyingglass") {
                                         searchText = ""
+                                    }
+                                }
+                                if let date = selectedDate {
+                                    FilterChip(title: date.formatted(date: .abbreviated, time: .omitted), icon: "calendar") {
+                                        selectedDate = nil
                                     }
                                 }
                             }

@@ -204,6 +204,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
                     content.title = "Daily Summary"
                     content.body = "You spent $\(Int(totalSpent)) across \(count) transactions today."
                     content.sound = .default
+                    content.userInfo = ["date": Date().timeIntervalSince1970]
                     
                     let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil) // Deliver immediately
                     UNUserNotificationCenter.current().add(request)
@@ -400,6 +401,22 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         // Show banner and play sound even when app is in foreground
+        // Show banner and play sound even when app is in foreground
         completionHandler([.banner, .sound, .badge])
+    }
+    
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        let userInfo = response.notification.request.content.userInfo
+        
+        // Handle Daily Summary Deep Link
+        if let timestamp = userInfo["date"] as? TimeInterval {
+            let date = Date(timeIntervalSince1970: timestamp)
+            DispatchQueue.main.async {
+                AppState.shared.dailySummaryDate = date
+                AppState.shared.showDailySummary = true
+            }
+        }
+        
+        completionHandler()
     }
 }

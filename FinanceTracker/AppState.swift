@@ -16,6 +16,10 @@ class AppState: ObservableObject {
     @Published var hasSeenPostOnboardingGuide = false
     @Published var showWeeklyReport = false
     
+    // Deep Link State
+    @Published var showDailySummary = false
+    @Published var dailySummaryDate: Date?
+    
     static let shared = AppState()
     
     private init() {

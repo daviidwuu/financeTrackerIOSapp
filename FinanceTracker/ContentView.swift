@@ -54,6 +54,15 @@ struct ContentView: View {
             }
         }
         .ignoresSafeArea(.container, edges: .bottom)
+        .sheet(isPresented: $appState.showDailySummary) {
+            AllTransactionsView(
+                transactionRepo: transactionRepo,
+                budgetRepo: budgetRepo,
+                initialDate: appState.dailySummaryDate
+            )
+            .environmentObject(appState)
+            .presentationBackground(Color.backgroundPrimary)
+        }
         .sheet(isPresented: $showAddTransaction) {
             AddTransactionView(onSave: { transaction in
                 addTransaction(transaction)
