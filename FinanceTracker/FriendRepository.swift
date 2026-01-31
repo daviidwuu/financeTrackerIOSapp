@@ -23,7 +23,7 @@ class FriendRepository: ObservableObject {
             .order(by: "name")
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let documents = snapshot?.documents else {
-                    print("Error fetching friends: \(error?.localizedDescription ?? "Unknown error")")
+                    DebugLogger.log("Error fetching friends: \(error?.localizedDescription ?? "Unknown error")")
                     return
                 }
                 

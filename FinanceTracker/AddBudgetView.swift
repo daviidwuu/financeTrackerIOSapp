@@ -68,7 +68,6 @@ struct AddBudgetView: View {
                     insertion: .move(edge: direction),
                     removal: .move(edge: direction == .leading ? .trailing : .leading)
                 ))
-                ))
                 
                 Spacer()
                 

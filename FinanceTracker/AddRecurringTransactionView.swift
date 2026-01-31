@@ -54,9 +54,6 @@ struct AddRecurringTransactionView: View {
                     } : nil,
                     onClose: { dismiss() }
                 )
-
-                
-                )
                 .padding(.horizontal, AppSpacing.margin)
                 .padding(.top, 16)
                 
@@ -68,7 +65,6 @@ struct AddRecurringTransactionView: View {
                 .transition(.asymmetric(
                     insertion: .move(edge: direction),
                     removal: .move(edge: direction == .leading ? .trailing : .leading)
-                ))
                 ))
                 .frame(maxHeight: .infinity, alignment: .top) // Allow content to take available space
                 

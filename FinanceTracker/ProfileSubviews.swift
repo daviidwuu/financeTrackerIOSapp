@@ -425,7 +425,7 @@ struct NotificationsSettingsView: View {
     private func testNotification() {
         // Check permission first
         NotificationManager.shared.checkPermissionStatus { status in
-            print("📱 Permission Status: \(status.rawValue)")
+            DebugLogger.log("📱 Permission Status: \(status.rawValue)")
             
             if status == .authorized || status == .provisional {
                 NotificationManager.shared.sendTransactionNotification(
@@ -434,7 +434,7 @@ struct NotificationsSettingsView: View {
                     type: "expense"
                 )
                 HapticManager.shared.success()
-                print("✅ Test notification sent! Background the app to see it.")
+                DebugLogger.log("✅ Test notification sent! Background the app to see it.")
             } else if status == .notDetermined {
                 NotificationManager.shared.requestPermission { granted in
                     if granted {
@@ -444,13 +444,13 @@ struct NotificationsSettingsView: View {
                             type: "expense"
                         )
                         HapticManager.shared.success()
-                        print("✅ Permission granted and notification sent!")
+                        DebugLogger.log("✅ Permission granted and notification sent!")
                     } else {
-                        print("❌ Permission denied!")
+                        DebugLogger.log("❌ Permission denied!")
                     }
                 }
             } else {
-                print("❌ Notifications are DENIED. Go to Settings → FinanceTracker → Notifications")
+                DebugLogger.log("❌ Notifications are DENIED. Go to Settings → FinanceTracker → Notifications")
             }
         }
     }
@@ -537,7 +537,7 @@ struct AboutView: View {
                 .padding(.top, 40)
             
             VStack(spacing: 8) {
-                Text("Finance Tracker")
+                Text("spendie")
                     .font(.title)
                     .fontWeight(.bold)
                 Text("Version 1.0.0")

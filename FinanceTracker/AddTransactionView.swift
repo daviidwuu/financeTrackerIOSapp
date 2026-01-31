@@ -66,7 +66,6 @@ struct AddTransactionView: View {
                     insertion: .move(edge: direction),
                     removal: .move(edge: direction == .leading ? .trailing : .leading)
                 ))
-                ))
                 .frame(maxHeight: .infinity, alignment: .top)
                 
                 Spacer()

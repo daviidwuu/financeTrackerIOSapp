@@ -53,7 +53,6 @@ struct AddSavingGoalView: View {
                     } : nil,
                     onClose: { dismiss() }
                 )
-                )
                 .padding(.horizontal, AppSpacing.margin)
                 .padding(.top, 16)
                 
@@ -65,7 +64,6 @@ struct AddSavingGoalView: View {
                 .transition(.asymmetric(
                     insertion: .move(edge: direction),
                     removal: .move(edge: direction == .leading ? .trailing : .leading)
-                ))
                 ))
                 .frame(maxHeight: .infinity, alignment: .top)
                 

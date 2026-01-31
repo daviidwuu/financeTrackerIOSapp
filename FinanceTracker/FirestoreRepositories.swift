@@ -18,7 +18,7 @@ class TransactionRepository: ObservableObject {
             .order(by: "date", descending: true)
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let documents = snapshot?.documents else {
-                    print("Error fetching transactions: \(error?.localizedDescription ?? "Unknown error")")
+                    DebugLogger.log("Error fetching transactions: \(error?.localizedDescription ?? "Unknown error")")
                     return
                 }
                 
@@ -102,7 +102,7 @@ class BudgetRepository: ObservableObject {
             .order(by: "category")
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let documents = snapshot?.documents else {
-                    print("Error fetching budgets: \(error?.localizedDescription ?? "Unknown error")")
+                    DebugLogger.log("Error fetching budgets: \(error?.localizedDescription ?? "Unknown error")")
                     return
                 }
                 
@@ -155,7 +155,7 @@ class BudgetRepository: ObservableObject {
         do {
             try await addBudget(incomeBudget)
         } catch {
-            print("Failed to create default Income category: \(error)")
+            DebugLogger.log("Failed to create default Income category: \(error)")
         }
     }
     
@@ -276,10 +276,10 @@ class BudgetRepository: ObservableObject {
             }
             
             try await batch.commit()
-            print("Successfully copied \(previousBudgets.count) budgets to new month")
+            DebugLogger.log("Successfully copied \(previousBudgets.count) budgets to new month")
             
         } catch {
-            print("Error copying budgets: \(error)")
+            DebugLogger.log("Error copying budgets: \(error)")
         }
     }
 }
@@ -299,7 +299,7 @@ class SavingGoalRepository: ObservableObject {
             .order(by: "targetDate")
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let documents = snapshot?.documents else {
-                    print("Error fetching saving goals: \(error?.localizedDescription ?? "Unknown error")")
+                    DebugLogger.log("Error fetching saving goals: \(error?.localizedDescription ?? "Unknown error")")
                     return
                 }
                 
@@ -344,7 +344,7 @@ class SavingGoalRepository: ObservableObject {
         
         batch.commit { error in
             if let error = error {
-                print("Error reordering goals: \(error)")
+                DebugLogger.log("Error reordering goals: \(error)")
             }
         }
     }
@@ -395,7 +395,7 @@ class RecurringTransactionRepository: ObservableObject {
             .order(by: "startDate")
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let documents = snapshot?.documents else {
-                    print("Error fetching recurring transactions: \(error?.localizedDescription ?? "Unknown error")")
+                    DebugLogger.log("Error fetching recurring transactions: \(error?.localizedDescription ?? "Unknown error")")
                     return
                 }
                 
@@ -467,7 +467,7 @@ class RecurringTransactionRepository: ObservableObject {
                 // Check if it's due (nextDueDate <= today)
                 // Use startOfDay to ignore time components
                 if calendar.startOfDay(for: nextDueDate) <= today {
-                    print("Processing recurring transaction: \(item.name) due on \(nextDueDate)")
+                    DebugLogger.log("Processing recurring transaction: \(item.name) due on \(nextDueDate)")
                     
                     // Force time to 00:00:00
                     let transactionDate = calendar.startOfDay(for: nextDueDate)
@@ -511,7 +511,7 @@ class RecurringTransactionRepository: ObservableObject {
                 }
             }
         } catch {
-            print("Error processing recurring transactions: \(error)")
+            DebugLogger.log("Error processing recurring transactions: \(error)")
         }
     }
 }

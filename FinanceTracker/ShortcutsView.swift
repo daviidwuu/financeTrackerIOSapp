@@ -14,7 +14,7 @@ struct ShortcutsView: View {
                         .foregroundColor(.white)
                         .padding(.vertical, 10)
                     
-                    Text("Finance Tracker Shortcuts")
+                    Text("spendie Shortcuts")
                         .font(.title2)
                         .fontWeight(.bold)
                     

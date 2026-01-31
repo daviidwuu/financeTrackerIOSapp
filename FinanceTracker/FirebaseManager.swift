@@ -39,12 +39,25 @@ class FirebaseManager: ObservableObject {
     
     /// Check if a username is available
     func checkUsernameAvailability(_ username: String) async throws -> Bool {
-        let snapshot = try await db.collection("users")
-            .whereField("username", isEqualTo: username)
-            .limit(to: 1)
-            .getDocuments()
-        
-        return snapshot.documents.isEmpty
+        do {
+            let snapshot = try await db.collection("users")
+                .whereField("username", isEqualTo: username)
+                .limit(to: 1)
+                .getDocuments()
+            
+            return snapshot.documents.isEmpty
+        } catch {
+            DebugLogger.log("Error checking username availability: \(error.localizedDescription)")
+            throw error
+        }
+    }
+    
+    /// Sign in anonymously to allow unauthenticated queries
+    func signInAnonymously() async throws {
+        if auth.currentUser == nil {
+            try await auth.signInAnonymously()
+            DebugLogger.log("Signed in anonymously for onboarding")
+        }
     }
     
     /// Sign up a new user with email, password, and username

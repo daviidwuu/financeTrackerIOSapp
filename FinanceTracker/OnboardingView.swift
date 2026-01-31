@@ -102,10 +102,6 @@ struct OnboardingView: View {
                         default: EmptyView()
                         }
                     }
-                    .transition(.asymmetric(
-                        insertion: .move(edge: direction),
-                        removal: .move(edge: direction == .leading ? .trailing : .leading)
-                    ))
                 }
                 .frame(maxHeight: .infinity, alignment: .top)
                 
@@ -125,20 +121,23 @@ struct OnboardingView: View {
                     }
                     
                     Button(action: nextStep) {
-                        if isLoading {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        } else {
-                            Text(currentStep == 11 ? "Create Account" : "Continue")
-                                .font(.headline) (
-                                .fontWeight(.bold)
+                        HStack {
+                            if isLoading {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            } else {
+                                Text(currentStep == 11 ? "Create Account" : "Continue")
+                                    .font(.headline)
+                                    .fontWeight(.bold)
+                            }
                         }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(isStepValid ? Color.white : Color.gray.opacity(0.3))
+                        .foregroundColor(.black)
+                        .cornerRadius(AppRadius.button)
                     }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(isStepValid ? Color.white : Color.gray.opacity(0.3))
-                    .foregroundColor(.black)
-                    .cornerRadius(AppRadius.button)
+                    .animation(nil, value: isStepValid) // Remove button color change animation
                     .disabled(!isStepValid || isLoading)
                 }
                 .padding(24)
@@ -147,6 +146,7 @@ struct OnboardingView: View {
             }
         }
         .navigationBarHidden(true)
+        .onAppear { onAppearAction() }
     }
     
     // MARK: - Logic
@@ -173,7 +173,7 @@ struct OnboardingView: View {
         if currentStep < 11 {
             direction = .trailing
             HapticManager.shared.light() // Navigation haptic
-            withAnimation { currentStep += 1 }
+            currentStep += 1
         } else {
             HapticManager.shared.success() // Completion haptic
             completeOnboarding()
@@ -185,7 +185,7 @@ struct OnboardingView: View {
         if currentStep > 1 {
             direction = .leading
             HapticManager.shared.light() // Navigation haptic
-            withAnimation { currentStep -= 1 }
+            currentStep -= 1
         }
     }
     
@@ -324,7 +324,7 @@ struct IntroStep: View {
                 )
             
             VStack(spacing: 12) {
-                Text("Welcome to Finance Tracker")
+                Text("Welcome to spendie")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .multilineTextAlignment(.center)
                 
@@ -586,10 +586,8 @@ struct CategoriesStep: View {
             .overlay {
                 if showSwipeGuide {
                     SwipeGuideView(onDismiss: {
-                        withAnimation {
-                            showSwipeGuide = false
-                            hasShownGuide = true
-                        }
+                        showSwipeGuide = false
+                        hasShownGuide = true
                     })
                 }
             }
@@ -597,9 +595,7 @@ struct CategoriesStep: View {
                 if !hasShownGuide {
                     // Slight delay to allow view to appear fully
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        withAnimation {
-                            showSwipeGuide = true
-                        }
+                        showSwipeGuide = true
                     }
                 }
             }
@@ -670,7 +666,7 @@ struct EditCategorySheet: View {
                         if currentStep > 1 {
                             HapticManager.shared.light()
                             direction = .leading
-                            withAnimation { currentStep -= 1 }
+                            currentStep -= 1
                         } else {
                             HapticManager.shared.light()
                             dismiss()
@@ -726,7 +722,7 @@ struct EditCategorySheet: View {
                     if currentStep < 4 {
                         HapticManager.shared.light()
                         direction = .trailing
-                        withAnimation { currentStep += 1 }
+                        currentStep += 1
                     } else {
                         HapticManager.shared.success()
                         saveChanges()
@@ -737,12 +733,14 @@ struct EditCategorySheet: View {
                         .fontWeight(.bold)
                         .foregroundColor(.black)
                         .frame(maxWidth: .infinity)
-                        .padding()
+                        .frame(height: 50) // Standardize height
                         .background(isStepValid ? Color.white : Color.white.opacity(0.3))
-                        .cornerRadius(16)
+                        .cornerRadius(AppRadius.button) // Use standard radius
+                        .contentShape(Rectangle()) // Explicitly define hit area
                 }
                 .disabled(!isStepValid)
-                .padding()
+                .padding(.horizontal, 24)
+                .padding(.bottom, 24)
             }
         }
         .presentationDetents([.medium, .large], selection: $presentationDetent)
@@ -977,9 +975,7 @@ struct SavingGoalsStep: View {
                             .onTapGesture {
                                 if let index = goals.firstIndex(where: { $0.id == goal.id }) {
                                     HapticManager.shared.selection() // Selection haptic
-                                    withAnimation {
-                                        goals[index].isSelected.toggle()
-                                    }
+                                    goals[index].isSelected.toggle()
                                 }
                             }
                     }
@@ -1096,7 +1092,7 @@ struct EditSavingGoalSheet: View {
                         if currentStep > 1 {
                             HapticManager.shared.light()
                             direction = .leading
-                            withAnimation { currentStep -= 1 }
+                            currentStep -= 1
                         } else {
                             HapticManager.shared.light()
                             dismiss()
@@ -1152,7 +1148,7 @@ struct EditSavingGoalSheet: View {
                     if currentStep < 5 {
                         HapticManager.shared.light()
                         direction = .trailing
-                        withAnimation { currentStep += 1 }
+                        currentStep += 1
                     } else {
                         HapticManager.shared.success()
                         saveChanges()
@@ -1162,10 +1158,9 @@ struct EditSavingGoalSheet: View {
                         .font(.headline)
                         .fontWeight(.bold)
                         .foregroundColor(.black)
-                        .frame(maxWidth: .infinity)
-                        .padding()
+                        .frame(height: 50)
                         .background(isStepValid ? Color.white : Color.white.opacity(0.3))
-                        .cornerRadius(16)
+                        .cornerRadius(AppRadius.button)
                 }
                 .disabled(!isStepValid)
                 .padding()
@@ -1519,4 +1514,12 @@ struct TravelModeStep: View {
 }
 #Preview {
     OnboardingView()
+}
+
+extension OnboardingView {
+    func onAppearAction() {
+        Task {
+            try? await FirebaseManager.shared.signInAnonymously()
+        }
+    }
 }

@@ -47,7 +47,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("Location Manager Error: \(error)")
+        DebugLogger.log("Location Manager Error: \(error)")
     }
     
     private func handleCountryUpdate(code: String, name: String) {

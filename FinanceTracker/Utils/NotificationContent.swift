@@ -77,7 +77,7 @@ struct NotificationContent {
             "Make tomorrow easier by finalizing today's accounts, \(name).",
             "Did you hit your daily budget goals today, \(name)?",
             "A clear mind needs clear finances. Review your day, \(name).",
-            "Before you drift off, is your Finance Tracker up to date, \(name)?"
+            "Before you drift off, is your spendie up to date, \(name)?"
         ]
         return (title, messages.randomElement() ?? messages[0])
     }

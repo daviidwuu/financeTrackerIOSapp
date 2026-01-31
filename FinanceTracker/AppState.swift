@@ -36,12 +36,16 @@ class AppState: ObservableObject {
         // Listen to Firebase auth state changes
         authStateListener = Auth.auth().addStateDidChangeListener { [weak self] _,  user in
             DispatchQueue.main.async {
-                self?.isUserLoggedIn = user != nil
+                let isAnonymous = user?.isAnonymous ?? false
+                let hasUser = user != nil
+                
+                // Only consider the user "logged in" for UI purposes if they are not anonymous
+                self?.isUserLoggedIn = hasUser && !isAnonymous
                 self?.currentUserId = user?.uid ?? ""
                 self?.userEmail = user?.email ?? ""
                 
-                // Load user profile if authenticated
-                if let userId = user?.uid {
+                // Load user profile if authenticated and NOT anonymous
+                if let userId = user?.uid, !isAnonymous {
                     Task {
                         await self?.loadUserProfile(userId: userId)
                     }
@@ -84,7 +88,7 @@ class AppState: ObservableObject {
                 try await firebaseManager.updateStreakData(userId: userId, streakCount: 1, lastVisitDate: Date())
             }
         } catch {
-            print("Failed to update streak: \(error)")
+            DebugLogger.log("Failed to update streak: \(error)")
         }
     }
     
@@ -115,7 +119,7 @@ class AppState: ObservableObject {
             // Load and update streak for this user
             await updateStreak(userId: userId)
         } catch {
-            print("Failed to load user profile: \(error)")
+            DebugLogger.log("Failed to load user profile: \(error)")
         }
     }
     
@@ -135,7 +139,7 @@ class AppState: ObservableObject {
             resetStreak()
             // Firebase auth state listener will handle clearing state
         } catch {
-            print("Logout error: \(error)")
+            DebugLogger.log("Logout error: \(error)")
         }
     }
     

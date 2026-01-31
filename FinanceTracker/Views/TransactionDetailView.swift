@@ -180,7 +180,6 @@ struct TransactionDetailView: View {
                     // Call parent callback to persist changes
                     onSave?(transaction, updatedTransaction)
                 })
-                })
             }
             .sheet(isPresented: $showSplitSheet) {
                 SplitConfigurationView(transactionAmount: abs(transaction.amount), existingSplits: transaction.splits ?? []) { newSplits in
@@ -524,9 +523,6 @@ struct SplitConfigurationView: View {
                 }
             }
             .background(Color(UIColor.systemGroupedBackground))
-            .onTapGesture {
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            }
             .scrollDismissesKeyboard(.interactively)
             .onAppear {
                 if !appState.currentUserId.isEmpty {
@@ -543,40 +539,64 @@ struct SplitConfigurationView: View {
          Task {
              do {
                  let results = try await friendRepo.searchUsers(username: usernameQuery)
-                 await MainActor.run {
-                     self.searchResults = results
-                     self.isSearching = false
-                     if results.isEmpty {
-                         // We don't set message here so the UI can fallback to "Invite" logic
+                 
+                 // Auto-Add Logic
+                 if let foundUser = results.first, results.count == 1 {
+                     await MainActor.run {
+                         self.isSearching = false
+                         // Haptic Feedback for "Found & Added"
+                         HapticManager.shared.success()
+                     }
+                     // Automatically add the friend
+                     addFriend(user: foundUser)
+                 } else {
+                     // No user found
+                     await MainActor.run {
+                         self.isSearching = false
+                         self.searchResults = [] 
+                         // Check if empty
+                         if results.isEmpty {
+                             // Fallback to invite UI (handled by view state)
+                         }
                      }
                  }
              } catch {
                  await MainActor.run {
                      self.isSearching = false
-                     self.message = "Error searching"
+                     self.message = "Error searching: \(error.localizedDescription)"
                  }
              }
          }
      }
      
      private func addFriend(user: FriendRepository.UserSearchResult) {
-         guard !appState.currentUserId.isEmpty else { return }
+         print("addFriend called for: \(user.name)")
+         guard !appState.currentUserId.isEmpty else {
+             print("ERROR: currentUserId is empty!")
+             return
+         }
          
          Task {
              do {
+                 print("Attempting to add friend: \(user.name) (ID: \(user.id ?? "nil"))")
                  try await friendRepo.addFriend(
                  currentUserId: appState.currentUserId,
                  currentUserInfo: (username: appState.currentUserUsername, name: appState.userName, email: appState.userEmail),
                      targetUser: user
                  )
                  await MainActor.run {
-                     self.message = "Added \(user.name)!"
+                     print("Friend added successfully!")
+                     self.message = "Successfully added \(user.name)!"
                      self.searchResults = []
                      self.usernameQuery = ""
                  }
              } catch {
+                 let errorMsg = "Failed to add friend: \(error.localizedDescription)"
+                 print(errorMsg)
+                 // Also log the full error to see if it's permission related
+                 print("Full Error: \(error)")
                  await MainActor.run {
-                     self.message = "Failed to add friend: \(error.localizedDescription)"
+                     self.message = errorMsg
                  }
              }
          }

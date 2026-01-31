@@ -74,7 +74,7 @@ struct CalendarView: View {
                         ForEach(weeks[weekIndex].indices, id: \.self) { dayIndex in
                             let date = weeks[weekIndex][dayIndex]
                             if let date = date {
-                                let calendar = Calendar.current
+                                
                                 let isBeforeSignup = isDateBeforeSignup(date)
                                 
                                 VStack(spacing: 2) {

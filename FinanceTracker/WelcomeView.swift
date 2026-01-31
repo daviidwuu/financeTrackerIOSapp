@@ -34,7 +34,7 @@ struct WelcomeView: View {
                         }
                         
                         VStack(spacing: 12) {
-                            Text("Finance Tracker")
+                            Text("spendie")
                                 .font(.system(size: 36, weight: .bold, design: .rounded))
                                 .foregroundColor(.primary)
                             

@@ -133,7 +133,7 @@ struct ContentView: View {
                 // Check budget warnings
                 checkBudgetStatus(for: transaction.title, amount: amount)
             } catch {
-                print("Failed to add transaction: \(error)")
+                DebugLogger.log("Failed to add transaction: \(error)")
             }
         }
     }
@@ -147,8 +147,14 @@ struct ContentView: View {
             let spent = budgetRepo.calculateSpent(for: category, transactions: transactionRepo.transactions)
             let totalLimit = budget.totalAmount
             
+            // Validate totalLimit to avoid division by zero crash
+            guard totalLimit > 0 else { return }
+            
             // Calculate percentage used
-            let percentUsed = Int((spent / totalLimit) * 100)
+            let percent = (spent / totalLimit) * 100
+            guard !percent.isNaN && !percent.isInfinite else { return }
+            
+            let percentUsed = Int(percent)
             
             // Warn if over 80%
             if percentUsed >= 80 {

@@ -5,6 +5,7 @@ struct ProfileView: View {
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var appState: AppState
     @AppStorage("isDarkMode") private var isDarkMode = false
+    @State private var showSetUsername = false
     
     var body: some View {
         NavigationStack {
@@ -36,7 +37,7 @@ struct ProfileView: View {
                                         .foregroundColor(.secondary)
                                 } else {
                                     Button("Set Username") {
-                                        // TODO: Open set username sheet
+                                        showSetUsername = true
                                     }
                                     .font(.caption)
                                     .foregroundColor(.blue)
@@ -52,6 +53,14 @@ struct ProfileView: View {
                     
                     Section("Account") {
                         // Manual Nav Link
+                        NavigationLink(destination: FriendsListView()) {
+                            HStack {
+                                Image(systemName: "person.2.fill")
+                                    .foregroundColor(.primary)
+                                    .frame(width: 24)
+                                Text("Friends")
+                            }
+                        }
                         NavigationLink(destination: CurrencySettingsView()) {
                              HStack {
                                  Image(systemName: "banknote.fill")
@@ -137,6 +146,9 @@ struct ProfileView: View {
                 .background(colorScheme == .dark ? Color.black : Color.white)
                 .navigationDestination(isPresented: $appState.shouldOpenCurrencySettings) {
                     CurrencySettingsView()
+                }
+                .sheet(isPresented: $showSetUsername) {
+                    SetUsernameView()
                 }
             }
             .navigationTitle("Profile")

@@ -83,29 +83,26 @@ class CurrencyManager: ObservableObject {
             return
         }
         
-        // Use a free API. "open.er-api.com" is reliable and free.
         let urlString = "https://open.er-api.com/v6/latest/\(mainCurrency)"
         guard let url = URL(string: urlString) else { return }
         
-        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
-            guard let self = self, let data = data, error == nil else {
-                print("Error fetching rates: \(error?.localizedDescription ?? "Unknown")")
-                return
-            }
-            
+        // Use Task for async context
+        Task {
             do {
+                let (data, _) = try await URLSession.shared.data(from: url)
                 let result = try JSONDecoder().decode(ExchangeRateResponse.self, from: data)
+                
                 if let rate = result.rates[self.travelCurrency] {
-                    DispatchQueue.main.async {
+                    await MainActor.run {
                         self.exchangeRate = rate
                         self.lastUpdated = Date()
                         self.saveRate(rate: rate)
                     }
                 }
             } catch {
-                print("Decoding error: \(error)")
+                DebugLogger.log("Error fetching rates: \(error)")
             }
-        }.resume()
+        }
     }
     
     private func saveRate(rate: Double) {
@@ -148,7 +145,7 @@ class CurrencyManager: ObservableObject {
     }
 }
 
-struct ExchangeRateResponse: Codable {
+struct ExchangeRateResponse: Codable, Sendable {
     let result: String
     let rates: [String: Double]
 }

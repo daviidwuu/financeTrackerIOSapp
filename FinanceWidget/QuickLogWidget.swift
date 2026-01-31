@@ -75,7 +75,7 @@ struct QuickLogWidget: Widget {
         StaticConfiguration(kind: kind, provider: QuickLogProvider()) { entry in
             QuickLogWidgetEntryView(entry: entry)
         }
-        .configurationDisplayName("Quick Log")
+        .configurationDisplayName("spendie Quick Log")
         .description("Instantly open the add transaction screen.")
         .supportedFamilies([.systemSmall, .accessoryCircular])
         .contentMarginsDisabled()

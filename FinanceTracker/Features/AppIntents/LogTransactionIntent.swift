@@ -6,7 +6,7 @@ import UserNotifications
 
 struct LogTransactionIntent: AppIntent {
     static var title: LocalizedStringResource = "Log Transaction"
-    static var description = IntentDescription("Log a new transaction to your Finance Tracker.")
+    static var description = IntentDescription("Log a new transaction to your spendie.")
     
     // We want this to run in the background without opening the app if possible
     static var openAppWhenRun: Bool = false
@@ -93,7 +93,7 @@ struct LogTransactionIntent: AppIntent {
         
         var localizedStringResource: LocalizedStringResource {
             switch self {
-            case .notLoggedIn: return "You need to be logged into Finance Tracker."
+            case .notLoggedIn: return "You need to be logged into spendie."
             case .categoryNotFound: return "Category not found."
             case .categoryMismatch: return "This category belongs to a different user account."
             }

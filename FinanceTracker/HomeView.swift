@@ -315,7 +315,7 @@ struct HomeView: View {
                     type: transaction.type
                 )
             } catch {
-                print("Failed to add transaction: \(error)")
+                DebugLogger.log("Failed to add transaction: \(error)")
             }
         }
     }
@@ -336,7 +336,7 @@ struct HomeView: View {
                 
                 try await transactionRepo.updateTransaction(updatedTransaction)
             } catch {
-                print("Failed to update transaction: \(error)")
+                DebugLogger.log("Failed to update transaction: \(error)")
             }
         }
     }
@@ -347,7 +347,7 @@ struct HomeView: View {
             do {
                 try await transactionRepo.deleteTransaction(id: id)
             } catch {
-                print("Failed to delete transaction: \(error)")
+                DebugLogger.log("Failed to delete transaction: \(error)")
             }
         }
     }

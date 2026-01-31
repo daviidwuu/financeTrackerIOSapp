@@ -156,7 +156,7 @@ struct WelcomeGuideStep: View {
                 Text("🎉 All Set!")
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                 
-                Text("Your account is ready. Let's show you some powerful features to get the most out of Finance Tracker.")
+                Text("Your account is ready. Let's show you some powerful features to get the most out of spendie.")
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -256,7 +256,7 @@ struct WidgetsGuideStep: View {
                     VStack(alignment: .leading, spacing: 12) {
                         InstructionRow(number: 1, text: "Long press on home screen")
                         InstructionRow(number: 2, text: "Tap the \"+\" button")
-                        InstructionRow(number: 3, text: "Search \"Finance Tracker\"")
+                        InstructionRow(number: 3, text: "Search \"spendie\"")
                         InstructionRow(number: 4, text: "Choose your widget size")
                     }
                 }

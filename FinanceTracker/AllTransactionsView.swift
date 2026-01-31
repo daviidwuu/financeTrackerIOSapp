@@ -401,7 +401,7 @@ struct AllTransactionsView: View {
                 
                 try await transactionRepo.updateTransaction(updatedTransaction)
             } catch {
-                print("Failed to update transaction: \(error)")
+                DebugLogger.log("Failed to update transaction: \(error)")
             }
         }
     }
@@ -412,7 +412,7 @@ struct AllTransactionsView: View {
             do {
                 try await transactionRepo.deleteTransaction(id: id)
             } catch {
-                print("Failed to delete transaction: \(error)")
+                DebugLogger.log("Failed to delete transaction: \(error)")
             }
         }
     }

@@ -31,7 +31,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    print("Notification permission error: \(error)")
+                    DebugLogger.log("Notification permission error: \(error)")
                 }
                 completion(granted)
             }
@@ -56,13 +56,13 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
                     if granted {
                         self.sendNotification(amount: amount, category: category, type: type)
                     } else {
-                        print("❌ Notification permission denied")
+                        DebugLogger.log("❌ Notification permission denied")
                     }
                 }
             } else if status == .authorized || status == .provisional {
                 self.sendNotification(amount: amount, category: category, type: type)
             } else {
-                print("❌ Notifications not authorized. Status: \(status.rawValue)")
+                DebugLogger.log("❌ Notifications not authorized. Status: \(status.rawValue)")
             }
         }
     }
@@ -70,7 +70,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     private func sendNotification(amount: Double, category: String, type: String) {
         // Check if transaction notifications are enabled (optional for now)
         let isEnabled = UserDefaults.standard.bool(forKey: "notificationsEnabled_transactions")
-        print("🔔 Notification toggle enabled: \(isEnabled)")
+        DebugLogger.log("🔔 Notification toggle enabled: \(isEnabled)")
         
         // Send anyway for debugging - remove this line in production
          guard isEnabled else { return }
@@ -88,7 +88,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         content.sound = .default
         content.badge = 1
         
-        print("🔔 Scheduling notification: \(content.title) - \(content.body)")
+        DebugLogger.log("🔔 Scheduling notification: \(content.title) - \(content.body)")
         
         // Trigger immediately
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
@@ -96,9 +96,9 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
-                print("❌ Failed to send transaction notification: \(error)")
+                DebugLogger.log("❌ Failed to send transaction notification: \(error)")
             } else {
-                print("✅ Notification scheduled successfully!")
+                DebugLogger.log("✅ Notification scheduled successfully!")
             }
         }
     }
@@ -118,7 +118,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
-                print("Failed to send budget warning: \(error)")
+                DebugLogger.log("Failed to send budget warning: \(error)")
             }
         }
     }
@@ -134,9 +134,9 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         
         do {
             try BGTaskScheduler.shared.submit(request)
-            print("✅ Scheduled background task for \(request.earliestBeginDate?.description ?? "unknown")")
+            DebugLogger.log("✅ Scheduled background task for \(request.earliestBeginDate?.description ?? "unknown")")
         } catch {
-            print("❌ Could not schedule background task: \(error)")
+            DebugLogger.log("❌ Could not schedule background task: \(error)")
         }
     }
     
@@ -184,7 +184,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             .whereField("date", isLessThan: endOfDay)
             .getDocuments { snapshot, error in
                 if let error = error {
-                    print("Error fetching daily transactions: \(error)")
+                    DebugLogger.log("Error fetching daily transactions: \(error)")
                     task.setTaskCompleted(success: false)
                     return
                 }
@@ -235,7 +235,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
-                print("Failed to schedule weekly report: \(error)")
+                DebugLogger.log("Failed to schedule weekly report: \(error)")
             }
         }
     }
@@ -254,9 +254,9 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         
         do {
             try BGTaskScheduler.shared.submit(request)
-            print("✅ Scheduled inactivity check")
+            DebugLogger.log("✅ Scheduled inactivity check")
         } catch {
-            print("❌ Could not schedule inactivity task: \(error)")
+            DebugLogger.log("❌ Could not schedule inactivity task: \(error)")
         }
     }
     
@@ -294,7 +294,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             .limit(to: 1)
             .getDocuments { snapshot, error in
                 if let error = error {
-                    print("Error checking inactivity: \(error)")
+                    DebugLogger.log("Error checking inactivity: \(error)")
                     task.setTaskCompleted(success: false)
                     return
                 }
@@ -339,7 +339,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         let request = UNNotificationRequest(identifier: "eod-check", content: content, trigger: trigger)
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
-                print("Failed to schedule EOD check: \(error)")
+                DebugLogger.log("Failed to schedule EOD check: \(error)")
             }
         }
     }
