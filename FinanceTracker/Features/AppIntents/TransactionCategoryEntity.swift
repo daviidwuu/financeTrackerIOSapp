@@ -64,21 +64,43 @@ struct TransactionCategoryQuery: EntityQuery {
         guard let userId = Auth.auth().currentUser?.uid else { return [] }
         let db = Firestore.firestore()
         
-        // Calculate start of current month
-        let calendar = Calendar.current
-        let components = calendar.dateComponents([.year, .month], from: Date())
-        guard let startOfMonth = calendar.date(from: components) else { return [] }
+        // Calculate search window (last 3 months to be safe)
+        // This ensures we find categories even if they haven't been rolled over to the strictly current month yet.
+        let sixtyDaysAgo = Date().addingTimeInterval(-90 * 24 * 3600)
+        
+        // We'll fetch by 'createdAt' or 'monthStartDate' to be broad.
+        // Let's use 'monthStartDate' >= 3 months ago.
         
         let snapshot = try await db.collection("users").document(userId).collection("budgets")
-            .whereField("monthStartDate", isEqualTo: startOfMonth)
-            .order(by: "category")
+            .whereField("monthStartDate", isGreaterThanOrEqualTo: sixtyDaysAgo)
+            .order(by: "monthStartDate", descending: true) // Get newest first
             .getDocuments()
             
-        return snapshot.documents
-            .compactMap { try? $0.data(as: FirestoreModels.CategoryBudget.self) }
+        // Fetch and map documents step-by-step to help type inference
+        let documents = snapshot.documents
+        let budgets = documents.compactMap { try? $0.data(as: FirestoreModels.CategoryBudget.self) }
+        
+        let allBudgets = budgets.filter { 
             // Filter optional: The prompt said "only for expenses", usually budgets are expenses but check type if needed
             // AddBudgetView allows "income" type budgets.
-            .filter { $0.type == "expense" || $0.type == "income" || $0.type == nil } // Allow both expense and income
+            $0.type == "expense" || $0.type == "income" || $0.type == nil 
+        }
+        
+        // Deduplicate: Keep only the latest budget per category (same logic as BudgetRepository)
+        let grouped = Dictionary(grouping: allBudgets, by: { $0.category })
+        
+        let uniqueBudgets = grouped.values.compactMap { budgets -> FirestoreModels.CategoryBudget? in
+            // Sort by createdAt descending (or monthStartDate if created same time)
+            return budgets.sorted { (b1, b2) in
+                if b1.createdAt == b2.createdAt {
+                    return b1.monthStartDate > b2.monthStartDate
+                }
+                return b1.createdAt > b2.createdAt
+            }.first
+        }
+            
+        return uniqueBudgets
+            .sorted(by: { $0.category < $1.category })
             .map { TransactionCategoryEntity(from: $0) }
     }
 }

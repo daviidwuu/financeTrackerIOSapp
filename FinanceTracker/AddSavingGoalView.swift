@@ -26,7 +26,9 @@ struct AddSavingGoalView: View {
         self.onSave = onSave
         
         if let goal = goalToEdit {
-            _amount = State(initialValue: String(format: "%.2f", goal.targetAmount))
+            if goal.targetAmount != 0 {
+                _amount = State(initialValue: String(format: "%.2f", goal.targetAmount))
+            }
             _goalName = State(initialValue: goal.name)
             _selectedIcon = State(initialValue: goal.icon)
             _selectedColor = State(initialValue: Color(hex: goal.colorHex))

@@ -132,8 +132,10 @@ class BudgetRepository: ObservableObject {
                 // Ensure default "Income" category exists (if not present in unique list)
                 if !uniqueBudgets.contains(where: { $0.category == "Income" }) {
                     Task { [weak self] in
-                         // Use a generic start date
-                        await self?.createDefaultIncomeCategory(userId: userId, monthStartDate: Date())
+                        // Use start of current month
+                        let calendar = Calendar.current
+                        let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
+                        await self?.createDefaultIncomeCategory(userId: userId, monthStartDate: startOfMonth)
                     }
                 }
             }

@@ -113,7 +113,9 @@ struct WalletDetailsView: View {
             }
         }
         .onAppear {
-            amount = String(format: "%.2f", initialBalance)
+            if initialBalance != 0 {
+                amount = String(format: "%.2f", initialBalance)
+            }
         }
     }
     

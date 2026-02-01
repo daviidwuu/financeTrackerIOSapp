@@ -656,7 +656,7 @@ struct WalletView: View {
         updatedBudget.colorHex = budget.color.toHex() ?? "#000000"
         updatedBudget.frequency = budget.frequency
         updatedBudget.type = budget.type // Pass type
-        
+            
         Task {
             try? await budgetRepo.updateBudget(updatedBudget)
         }

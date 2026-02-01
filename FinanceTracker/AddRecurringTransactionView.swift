@@ -29,7 +29,9 @@ struct AddRecurringTransactionView: View {
         self.onSave = onSave
         
         if let transaction = recurringToEdit {
-            _amount = State(initialValue: String(format: "%.2f", transaction.amount))
+            if transaction.amount != 0 {
+                _amount = State(initialValue: String(format: "%.2f", transaction.amount))
+            }
             _frequency = State(initialValue: transaction.frequency)
             _startDate = State(initialValue: transaction.startDate)
             _notes = State(initialValue: transaction.note ?? "")

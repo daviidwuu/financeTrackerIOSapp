@@ -166,6 +166,12 @@ struct CalendarView: View {
             }
         }
         
+        // Pad the array to ensure the last row is full (multiple of 7)
+        // This prevents the HStack from centering or distributing the items in the last row
+        while days.count % 7 != 0 {
+            days.append(nil)
+        }
+        
         return days
     }
     

@@ -198,6 +198,23 @@ enum FirestoreModels {
             case lastProcessedDate
         }
     }
+    // MARK: - Group Model
+    struct Group: Identifiable, Codable {
+        @DocumentID var id: String?
+        var name: String
+        var memberIds: [String] // List of Friend User IDs
+        var icon: String
+        var createdAt: Date
+        
+        enum CodingKeys: String, CodingKey {
+            case id
+            case name
+            case memberIds
+            case icon
+            case createdAt
+        }
+    }
+
     // MARK: - Friend Model
     struct Friend: Identifiable, Codable {
         @DocumentID var id: String? // The Friend's User ID

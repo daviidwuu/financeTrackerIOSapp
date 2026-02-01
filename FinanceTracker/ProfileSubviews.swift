@@ -198,13 +198,20 @@ struct AccountSettingsView: View {
 
 // MARK: - Appearance
 struct AppearanceSettingsView: View {
-    @AppStorage("isDarkMode") private var isDarkMode = false
+    @AppStorage("userTheme") private var userTheme: String = "system"
     @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         Form {
             Section(header: Text("Display")) {
-                Toggle("Dark Mode", isOn: $isDarkMode)
+            Section(header: Text("Display")) {
+                Picker("Theme", selection: $userTheme) {
+                    Text("System").tag("system")
+                    Text("Light").tag("light")
+                    Text("Dark").tag("dark")
+                }
+                .pickerStyle(.menu)
+            }
             }
         }
         .navigationTitle("Appearance")
@@ -223,6 +230,7 @@ struct NotificationsSettingsView: View {
     @AppStorage("notificationsEnabled_inactivity") private var inactivityCheck = false
     @AppStorage("notificationsEnabled_eod") private var eodCheck = false
     @AppStorage("notificationsEnabled_tips") private var motivationalTips = false
+    @AppStorage("notificationsEnabled_unpaidSplits") private var unpaidSplitReminders = false
     @Environment(\.colorScheme) var colorScheme
     
     @State private var permissionStatus: UNAuthorizationStatus = .notDetermined
@@ -286,6 +294,20 @@ struct NotificationsSettingsView: View {
                             ensurePermission()
                         }
                     }
+            }
+            
+            // Split Bill Reminders
+            Section(header: Text("Split Reminders"), footer: Text("Get reminded about unpaid splits >24h old, every 2 days")) {
+               Toggle("Unpaid Split Reminders", isOn: $unpaidSplitReminders)
+                   .onChange(of: unpaidSplitReminders) { _, newValue in
+                       if newValue {
+                           ensurePermission()
+                           // Logic is handled in daily summary check usually, 
+                           // but we could schedule a specific check if needed.
+                           // For now, we piggyback or trigger an immediate check? 
+                           // No, just ensure permission.
+                       }
+                   }
             }
             
             // Scheduled Reports

@@ -137,8 +137,8 @@ struct OnboardingView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
-                        .background(isStepValid ? Color.white : Color.gray.opacity(0.3))
-                        .foregroundColor(.black)
+                        .background(isStepValid ? Color.primary : Color.gray.opacity(0.3))
+                        .foregroundColor(colorScheme == .dark ? .black : .white)
                         .cornerRadius(AppRadius.button)
                     }
                     .animation(nil, value: isStepValid) // Remove button color change animation
@@ -323,21 +323,23 @@ struct OnboardingView: View {
 // MARK: - Steps
 
 struct IntroStep: View {
+    @ViewBuilder
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
+            // Using a standard color directly to avoid closure type issues if Environment isn't cooperating in this specific context context
             Image(systemName: "sparkles")
                 .font(.system(size: 80))
-                .foregroundColor(.white)
+                .foregroundColor(.yellow) 
                 .padding()
                 .background(
                     Circle()
-                        .fill(Color.white.opacity(0.1))
+                        .fill(Color.primary.opacity(0.1))
                         .frame(width: 160, height: 160)
                 )
             
             VStack(spacing: 12) {
-                Text("Welcome to spendie")
+                Text("Welcome to spendi")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .multilineTextAlignment(.center)
                 
@@ -593,6 +595,10 @@ struct CategoriesStep: View {
                 .font(.headline)
                 .foregroundColor(.white)
                 .padding()
+                .frame(maxWidth: .infinity)
+                .background(Color.blue)
+                .cornerRadius(12)
+                .padding(.horizontal)
             }
 
         }
@@ -744,10 +750,10 @@ struct EditCategorySheet: View {
                     Text(currentStep < 4 ? "Next" : "Save Changes")
                         .font(.headline)
                         .fontWeight(.bold)
-                        .foregroundColor(.black)
+                        .foregroundColor(colorScheme == .dark ? .black : .white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50) // Standardize height
-                        .background(isStepValid ? Color.white : Color.white.opacity(0.3))
+                        .background(isStepValid ? Color.primary : Color.primary.opacity(0.3))
                         .cornerRadius(AppRadius.button) // Use standard radius
                         .contentShape(Rectangle()) // Explicitly define hit area
                 }
@@ -764,7 +770,7 @@ struct EditCategorySheet: View {
             name = category.name
             selectedIcon = category.icon
             selectedColorHex = category.colorHex
-            if let amount = category.budgetAmount {
+            if let amount = category.budgetAmount, amount != 0 {
                 amountString = String(format: "%.0f", amount)
             }
         }
@@ -1041,6 +1047,10 @@ struct SavingGoalsStep: View {
                 .font(.headline)
                 .foregroundColor(.white)
                 .padding()
+                .frame(maxWidth: .infinity)
+                .background(Color.blue)
+                .cornerRadius(12)
+                .padding(.horizontal)
             }
         }
         .sheet(item: $goalToEdit) { goal in
@@ -1170,9 +1180,9 @@ struct EditSavingGoalSheet: View {
                     Text(currentStep < 5 ? "Next" : "Save Changes")
                         .font(.headline)
                         .fontWeight(.bold)
-                        .foregroundColor(.black)
+                        .foregroundColor(colorScheme == .dark ? .black : .white)
                         .frame(height: 50)
-                        .background(isStepValid ? Color.white : Color.white.opacity(0.3))
+                        .background(isStepValid ? Color.primary : Color.primary.opacity(0.3))
                         .cornerRadius(AppRadius.button)
                 }
                 .disabled(!isStepValid)
@@ -1604,6 +1614,10 @@ struct RecurringTransactionsStep: View {
                 .font(.headline)
                 .foregroundColor(.white)
                 .padding()
+                .frame(maxWidth: .infinity)
+                .background(Color.blue)
+                .cornerRadius(12)
+                .padding(.horizontal)
             }
         }
         .sheet(isPresented: $showAddSheet) {

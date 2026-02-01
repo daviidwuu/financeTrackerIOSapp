@@ -210,8 +210,92 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
                     UNUserNotificationCenter.current().add(request)
                 }
                 
-                task.setTaskCompleted(success: true)
+                // Check for Split Reminders before completing the task
+                self.checkSplitBillReminders {
+                    task.setTaskCompleted(success: true)
+                }
             }
+    }
+    
+    // MARK: - Split Reminders
+    
+    func checkSplitBillReminders(completion: @escaping () -> Void = {}) {
+         guard UserDefaults.standard.bool(forKey: "notificationsEnabled_unpaidSplits") else {
+             completion()
+             return
+         }
+         
+         let userId = AppState.shared.currentUserId
+         guard !userId.isEmpty else {
+             completion()
+             return
+         }
+         
+         let db = Firestore.firestore()
+         let sixtyDaysAgo = Date().addingTimeInterval(-60 * 24 * 3600)
+         
+         db.collection("users").document(userId).collection("transactions")
+             .whereField("date", isGreaterThan: sixtyDaysAgo)
+             .getDocuments { [weak self] snapshot, error in
+                 guard let self = self else { 
+                     completion()
+                     return 
+                 }
+                 
+                 if let error = error {
+                     DebugLogger.log("Error checking splits: \(error.localizedDescription)")
+                     completion()
+                     return
+                 }
+                 
+                 guard let snapshot = snapshot else {
+                     completion()
+                     return
+                 }
+                 
+                 let documents = snapshot.documents
+                 
+                 Task { @MainActor in
+                     var unpaidCount = 0
+                     var totalOwed = 0.0
+                     
+                     for doc in documents {
+                         do {
+                            let transaction = try doc.data(as: FirestoreModels.Transaction.self)
+                            if let splits = transaction.splits, !splits.isEmpty {
+                                let unpaidSplits = splits.filter { !$0.isPaid }
+                                if !unpaidSplits.isEmpty {
+                                    let timeDiff = Date().timeIntervalSince(transaction.date)
+                                    let daysDiff = Int(timeDiff / (24 * 3600))
+                                    
+                                    if daysDiff >= 1 && daysDiff % 2 != 0 {
+                                        unpaidCount += unpaidSplits.count
+                                        totalOwed += unpaidSplits.reduce(0.0) { $0 + $1.amount }
+                                    }
+                                }
+                            }
+                         } catch {
+                            continue
+                         }
+                     }
+                     
+                     if unpaidCount > 0 {
+                         self.sendSplitReminder(count: unpaidCount, total: totalOwed)
+                     }
+                     
+                     completion()
+                 }
+             }
+    }
+    
+    private func sendSplitReminder(count: Int, total: Double) {
+        let content = UNMutableNotificationContent()
+        content.title = "Unpaid Splits Reminder"
+        content.body = "You have \(count) unpaid split\(count > 1 ? "s" : "") totaling $\(Int(total)). Check if friends have paid you back!"
+        content.sound = .default
+        
+        let request = UNNotificationRequest(identifier: "split-reminder-\(Date().timeIntervalSince1970)", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request)
     }
     
     // MARK: - Weekly Report

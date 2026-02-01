@@ -20,6 +20,7 @@ struct AddTransactionView: View {
     
     // Sticky Modal Logic
     @State private var presentationDetent: PresentationDetent = .medium
+    @State private var availableDetents: Set<PresentationDetent> = [.medium, .large]
     
     // Travel Currency Logic
     @ObservedObject private var currencyManager = CurrencyManager.shared
@@ -30,7 +31,9 @@ struct AddTransactionView: View {
         self.onSave = onSave
         
         if let transaction = transactionToEdit {
-            _amount = State(initialValue: String(format: "%.2f", abs(transaction.amount)))
+            if abs(transaction.amount) != 0 {
+                _amount = State(initialValue: String(format: "%.2f", abs(transaction.amount)))
+            }
             _selectedDate = State(initialValue: transaction.date)
             _transactionNotes = State(initialValue: transaction.note ?? "")
         }
@@ -118,8 +121,14 @@ struct AddTransactionView: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large], selection: $presentationDetent)
+        .presentationDetents(availableDetents, selection: $presentationDetent)
         .presentationDragIndicator(.visible)
+        .onChange(of: presentationDetent) { _, newValue in
+            // Sticky Logic: Once expanded to large, lock it there.
+            if newValue == .large {
+                availableDetents = [.large]
+            }
+        }
         .onDisappear {
             budgetRepo.stopListening()
             transactionRepo.stopListening()

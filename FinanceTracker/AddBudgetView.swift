@@ -18,6 +18,7 @@ struct AddBudgetView: View {
     
     // Sticky Modal Logic
     @State private var presentationDetent: PresentationDetent = .medium
+    @State private var availableDetents: Set<PresentationDetent> = [.medium, .large]
     
     let icons = AppConstants.allIcons
     let colors = AppConstants.allColors
@@ -28,7 +29,9 @@ struct AddBudgetView: View {
         self.onSave = onSave
         
         if let budget = budgetToEdit {
-            _amount = State(initialValue: String(format: "%.2f", budget.totalAmount))
+            if budget.totalAmount != 0 {
+                _amount = State(initialValue: String(format: "%.2f", budget.totalAmount))
+            }
             _name = State(initialValue: budget.category)
             _selectedIcon = State(initialValue: budget.icon)
             _selectedColor = State(initialValue: Color(hex: budget.colorHex))
@@ -98,8 +101,14 @@ struct AddBudgetView: View {
                 .background(Color.backgroundPrimary)
             }
         }
-        .presentationDetents([.medium, .large], selection: $presentationDetent)
+        .presentationDetents(availableDetents, selection: $presentationDetent)
         .presentationDragIndicator(.visible)
+        .onChange(of: presentationDetent) { _, newValue in
+            // Sticky Logic: Once expanded to large, lock it there.
+            if newValue == .large {
+                availableDetents = [.large]
+            }
+        }
     }
     
     private func saveBudget() {
@@ -230,24 +239,27 @@ struct AddBudgetView: View {
                 .fontWeight(.semibold)
                 .foregroundColor(.secondary)
             
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 60))], spacing: 20) {
-                ForEach(colors, id: \.self) { color in
-                    Button(action: { selectedColor = color }) {
-                        Circle()
-                            .fill(color)
-                            .frame(width: 60, height: 60)
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.primary, lineWidth: selectedColor == color ? 3 : 0)
-                            )
-                            .overlay(
-                                Image(systemName: "checkmark")
-                                    .font(.title3)
-                                    .foregroundColor(.white)
-                                    .opacity(selectedColor == color ? 1 : 0)
-                            )
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 60))], spacing: 20) {
+                    ForEach(colors, id: \.self) { color in
+                        Button(action: { selectedColor = color }) {
+                            Circle()
+                                .fill(color)
+                                .frame(width: 60, height: 60)
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.primary, lineWidth: selectedColor == color ? 3 : 0)
+                                )
+                                .overlay(
+                                    Image(systemName: "checkmark")
+                                        .font(.title3)
+                                        .foregroundColor(.white)
+                                        .opacity(selectedColor == color ? 1 : 0)
+                                )
+                        }
                     }
                 }
+                .padding(.horizontal, AppSpacing.margin)
             }
         }
     }

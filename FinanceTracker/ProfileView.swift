@@ -4,7 +4,7 @@ struct ProfileView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var appState: AppState
-    @AppStorage("isDarkMode") private var isDarkMode = false
+    @AppStorage("userTheme") private var userTheme: String = "system"
     @State private var showSetUsername = false
     
     var body: some View {
@@ -141,6 +141,7 @@ struct ProfileView: View {
                         }
                     }
                     .listRowBackground(Color(UIColor.secondarySystemBackground))
+                    
                 }
                 .scrollContentBackground(.hidden)
                 .background(colorScheme == .dark ? Color.black : Color.white)
@@ -162,7 +163,7 @@ struct ProfileView: View {
                 }
             }
         }
-        .preferredColorScheme(isDarkMode ? .dark : .light)
+        .preferredColorScheme(userTheme == "system" ? nil : (userTheme == "dark" ? .dark : .light))
     }
 }
 

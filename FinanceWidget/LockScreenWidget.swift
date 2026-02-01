@@ -391,7 +391,7 @@ struct LockScreenWidget: Widget {
         StaticConfiguration(kind: kind, provider: Provider()) { entry in
             LockScreenWidgetEntryView(entry: entry)
         }
-        .configurationDisplayName("spendie Status")
+        .configurationDisplayName("spendi")
         .description("Track daily habits and monthly budget.")
         .supportedFamilies([.accessoryRectangular, .accessoryCircular, .accessoryInline, .systemSmall, .systemMedium])
         .contentMarginsDisabled() // Modern look for system widgets

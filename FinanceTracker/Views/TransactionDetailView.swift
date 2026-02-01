@@ -242,7 +242,7 @@ struct TransactionDetailView: View {
                     date: Date(),
                     icon: "dollarsign.circle.fill",
                     colorHex: "#34C759", // Green
-                    note: "Reimbursement for \(transaction.title)",
+                    note: "Payment Received: \(transaction.title)",
                     type: "income",
                     source: "splitwise",
                     userId: transaction.userId,
@@ -317,6 +317,7 @@ struct SplitConfigurationView: View {
     
     // Friend Data
     @StateObject private var friendRepo = FriendRepository()
+    @StateObject private var groupRepo = GroupRepository()
     @EnvironmentObject var appState: AppState
     
     // Temporary Selection State
@@ -330,6 +331,8 @@ struct SplitConfigurationView: View {
     @State private var isSearching = false
     @State private var searchResults: [FriendRepository.UserSearchResult] = []
     @State private var message: String?
+    
+    @State private var showCreateGroup = false
     
     init(transactionAmount: Double, existingSplits: [FirestoreModels.Split], onSave: @escaping ([FirestoreModels.Split]) -> Void) {
         self.transactionAmount = transactionAmount
@@ -432,6 +435,44 @@ struct SplitConfigurationView: View {
                              .foregroundColor(.secondary)
                      }
                 } else {
+                    Section(header: 
+                        HStack {
+                            Text("Groups")
+                            Spacer()
+                            Button("New Group") {
+                                showCreateGroup = true
+                            }
+                            .font(.caption)
+                        }
+                    ) {
+                        if groupRepo.groups.isEmpty {
+                            Text("No groups created.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 12) {
+                                    ForEach(groupRepo.groups) { group in
+                                        VStack {
+                                            Image(systemName: group.icon)
+                                                .font(.title2)
+                                                .frame(width: 50, height: 50)
+                                                .background(Color.blue.opacity(0.1))
+                                                .clipShape(Circle())
+                                            Text(group.name)
+                                                .font(.caption)
+                                                .lineLimit(1)
+                                        }
+                                        .onTapGesture {
+                                            selectGroup(group)
+                                        }
+                                    }
+                                }
+                                .padding(.vertical, 8)
+                            }
+                        }
+                    }
+                    
                     Section(header: Text("Select Friends")) {
                         ForEach(friendRepo.friends) { friend in
                             HStack {
@@ -527,6 +568,19 @@ struct SplitConfigurationView: View {
             .onAppear {
                 if !appState.currentUserId.isEmpty {
                     friendRepo.startListening(userId: appState.currentUserId)
+                    groupRepo.startListening(userId: appState.currentUserId)
+                }
+            }
+            .sheet(isPresented: $showCreateGroup) {
+                CreateGroupView { newGroup in
+                    // 1. Auto-select the newly created group
+                    selectGroup(newGroup)
+                    
+                    // 2. Optimistically add to the list so it appears immediately
+                    // The snapshot listener will eventually confirm this, but this bridges the gap
+                    if !groupRepo.groups.contains(where: { $0.id == newGroup.id }) {
+                        groupRepo.groups.insert(newGroup, at: 0)
+                    }
                 }
             }
         }
@@ -601,6 +655,36 @@ struct SplitConfigurationView: View {
              }
          }
      }
+    
+    private func selectGroup(_ group: FirestoreModels.Group) {
+         // Add all members of the group to the selection
+         
+         // 1. Find friends that match the IDs
+         let friendsToAdd = friendRepo.friends.filter { friend in
+             guard let fid = friend.id else { return false }
+             return group.memberIds.contains(fid)
+         }
+         
+         // 2. Select them if not already selected
+         for friend in friendsToAdd {
+             guard let fid = friend.id else { continue }
+             if !selectedFriendIds.contains(fid) {
+                 selectedFriendIds.insert(fid)
+                 // Add new split
+                 let newSplit = FirestoreModels.Split(
+                     name: friend.name,
+                     friendId: fid,
+                     username: friend.username,
+                     amount: 0.0,
+                     isPaid: false
+                 )
+                 splits.append(newSplit)
+             }
+         }
+         
+         HapticManager.shared.light()
+         distributeRemainder()
+    }
     
     private func toggleFriendSelection(_ friend: FirestoreModels.Friend) {
         guard let friendId = friend.id else { return }
