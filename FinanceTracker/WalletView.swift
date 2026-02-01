@@ -274,72 +274,15 @@ struct WalletView: View {
                             .listRowBackground(Color.clear)
                         } else {
                             ForEach(recurringRepo.recurringTransactions) { recurring in
-                                HStack(spacing: AppSpacing.element) {
-                                    // Icon
-                                    Image(systemName: recurring.icon)
-                                        .font(.title2)
-                                        .frame(width: 50, height: 50)
-                                        .background(Color(hex: recurring.colorHex).opacity(0.2))
-                                        .foregroundColor(Color(hex: recurring.colorHex))
-                                        .clipShape(Circle())
-                                    
-                                    // Content
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(recurring.name)
-                                            .font(.headline)
-                                            .foregroundColor(.primary)
-                                        
-                                        if let note = recurring.note, !note.isEmpty {
-                                            Text(note)
-                                                .font(.subheadline)
-                                                .foregroundColor(.secondary)
-                                        }
-                                        
-                                        Text("Started: \(recurring.startDate.formatted(date: .abbreviated, time: .omitted))")
-                                            .font(.caption2)
-                                            .foregroundColor(Color(UIColor.tertiaryLabel))
-                                    }
-                                    
-                                    Spacer()
-                                    
-                                    VStack(alignment: .trailing, spacing: 4) {
-                                        Text("$\(Int(recurring.amount))")
-                                            .font(.headline)
-                                            .foregroundColor(.primary)
-                                        
-                                        Text(recurring.frequency)
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 4)
-                                            .background(Color(hex: recurring.colorHex).opacity(0.1))
-                                            .cornerRadius(8)
-                                    }
-                                }
-                                .padding()
-                                .background(Color(UIColor.secondarySystemBackground))
-                                .cornerRadius(AppRadius.medium)
+                                RecurringTransactionCard(
+                                    transaction: recurring,
+                                    onDelete: { deleteRecurringTransaction(recurring) },
+                                    onEdit: { recurringToEdit = recurring }
+                                )
                                 .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                    Button(role: .destructive) {
-                                        HapticManager.shared.heavy()
-                                        deleteRecurringTransaction(recurring)
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
-                                }
-                                .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                    Button {
-                                        HapticManager.shared.medium()
-                                        recurringToEdit = recurring
-                                    } label: {
-                                        Label("Edit", systemImage: "pencil")
-                                    }
-                                    .tint(.blue)
-                                }
-                            }
+                            } 
                         }
                     }
                     .listRowBackground(Color.clear)
@@ -495,6 +438,8 @@ struct WalletView: View {
             }
         }
     }
+
+    
     
     private func calculateAllTimeSavingsPool() -> Double {
         // Find signup date: UserDefaults or fallback to first transaction
@@ -720,7 +665,10 @@ struct WalletView: View {
     private func checkForNewMonth() {
         // Legacy: Budgets are now permanent and reset based on frequency
     }
+
 }
+
+
 
 struct CircularProgressView: View {
     let progress: Double

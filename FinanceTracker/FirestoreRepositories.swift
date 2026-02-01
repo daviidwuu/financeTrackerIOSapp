@@ -428,90 +428,11 @@ class RecurringTransactionRepository: ObservableObject {
     }
     
     // Check and process any due recurring transactions
+    // DEPRECATED: Logic moved to Backend Cloud Function (scheduled)
+    // Only keeping empty function signature to avoid breaking call sites immediately
     func processDueTransactions(userId: String) async {
-        let db = Firestore.firestore()
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        
-        do {
-            // Fetch all recurring transactions for this user
-            let snapshot = try await db.collection("users").document(userId).collection("recurringTransactions").getDocuments()
-            let recurringItems = snapshot.documents.compactMap { try? $0.data(as: FirestoreModels.RecurringTransaction.self) }
-            
-            for item in recurringItems {
-                guard let itemId = item.id else { continue }
-                
-                // Determine the next due date
-                // If never processed, use startDate. If processed, calculate next from lastProcessed.
-                var nextDueDate: Date
-                
-                if let lastProcessed = item.lastProcessedDate {
-                    // Calculate next based on frequency
-                    switch item.frequency {
-                    case "Daily":
-                        nextDueDate = calendar.date(byAdding: .day, value: 1, to: lastProcessed)!
-                    case "Weekly":
-                        nextDueDate = calendar.date(byAdding: .day, value: 7, to: lastProcessed)!
-                    case "Bi-Weekly":
-                        nextDueDate = calendar.date(byAdding: .day, value: 14, to: lastProcessed)!
-                    case "Yearly":
-                        nextDueDate = calendar.date(byAdding: .year, value: 1, to: lastProcessed)!
-                    default: // "Monthly"
-                        nextDueDate = calendar.date(byAdding: .month, value: 1, to: lastProcessed)!
-                    }
-                } else {
-                    // First time: use startDate
-                    nextDueDate = calendar.startOfDay(for: item.startDate)
-                }
-                
-                // Check if it's due (nextDueDate <= today)
-                // Use startOfDay to ignore time components
-                if calendar.startOfDay(for: nextDueDate) <= today {
-                    DebugLogger.log("Processing recurring transaction: \(item.name) due on \(nextDueDate)")
-                    
-                    // Force time to 00:00:00
-                    let transactionDate = calendar.startOfDay(for: nextDueDate)
-                    
-                    // 1. Create the Transaction
-                    let newTransaction = FirestoreModels.Transaction(
-                        title: item.name,
-                        subtitle: item.name, // Or category if we had it
-                        amount: item.type == "income" ? item.amount : -abs(item.amount),
-                        date: transactionDate, // FORCE 00:00
-                        icon: item.icon,
-                        colorHex: item.colorHex,
-                        note: "Recurring: \(item.frequency)" + (item.note.map { " - \($0)" } ?? ""),
-                        type: item.type ?? "expense",
-                        source: "recurring", // Mark as recurring for filtering
-                        userId: userId,
-                        createdAt: Date()
-                    )
-                    
-                    // 2. Update the RecurringTransaction
-                    var updatedItem = item
-                    updatedItem.lastProcessedDate = transactionDate // Track strictly by date
-                    
-                    // Batch write for atomicity
-                    let batch = db.batch()
-                    
-                    let transactionRef = db.collection("users").document(userId).collection("transactions").document()
-                    try batch.setData(from: newTransaction, forDocument: transactionRef)
-                    
-                    let recurringRef = db.collection("users").document(userId).collection("recurringTransactions").document(itemId)
-                    try batch.setData(from: updatedItem, forDocument: recurringRef)
-                    
-                    try await batch.commit()
-                    
-                    // Send Notification
-                    NotificationManager.shared.sendTransactionNotification(
-                        amount: newTransaction.amount,
-                        category: newTransaction.title,
-                        type: newTransaction.type
-                    )
-                }
-            }
-        } catch {
-            DebugLogger.log("Error processing recurring transactions: \(error)")
-        }
+        DebugLogger.log("Recurring transactions are now handled by the backend.")
+        return
     }
 }
+

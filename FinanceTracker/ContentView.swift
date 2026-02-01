@@ -88,20 +88,9 @@ struct ContentView: View {
                 }
             }
             
-            // Process recurring transactions if logged in
-            if !appState.currentUserId.isEmpty {
-                Task {
-                    await recurringRepo.processDueTransactions(userId: appState.currentUserId)
-                }
-            }
+
         }
-        .onChange(of: appState.currentUserId) { _, newUserId in
-            if !newUserId.isEmpty {
-                Task {
-                    await recurringRepo.processDueTransactions(userId: newUserId)
-                }
-            }
-        }
+
     }
     
     private func addTransaction(_ transaction: Transaction) {

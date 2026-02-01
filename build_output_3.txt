@@ -1,0 +1,594 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project FinanceTracker.xcodeproj -scheme FinanceTracker -destination "platform=iOS Simulator,name=iPhone 17" build
+
+Resolve Package Graph
+
+
+Resolved source packages:
+  InteropForGoogle: https://github.com/google/interop-ios-for-google-sdks.git @ 101.0.0
+  GoogleUtilities: https://github.com/google/GoogleUtilities.git @ 8.1.0
+  Firebase: https://github.com/firebase/firebase-ios-sdk @ 12.7.0
+  AppCheck: https://github.com/google/app-check.git @ 11.2.0
+  GoogleAppMeasurement: https://github.com/google/GoogleAppMeasurement.git @ 12.5.0
+  leveldb: https://github.com/firebase/leveldb.git @ 1.22.5
+  GoogleAdsOnDeviceConversion: https://github.com/googleads/google-ads-on-device-conversion-ios-sdk @ 3.2.0
+  abseil: https://github.com/google/abseil-cpp-binary.git @ 1.2024072200.0
+  Promises: https://github.com/google/promises.git @ 2.4.0
+  GoogleDataTransport: https://github.com/google/GoogleDataTransport.git @ 10.1.0
+  GTMSessionFetcher: https://github.com/google/gtm-session-fetcher.git @ 5.0.0
+  nanopb: https://github.com/firebase/nanopb.git @ 2.30910.0
+  gRPC: https://github.com/google/grpc-binary.git @ 1.69.1
+  SwiftProtobuf: https://github.com/apple/swift-protobuf.git @ 1.33.3
+
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (61 targets)
+    Target 'FinanceTracker' in project 'FinanceTracker'
+        ➜ Explicit dependency on target 'FinanceWidgetExtension' in project 'FinanceTracker'
+        ➜ Explicit dependency on target 'FirebaseFirestoreCombine-Community' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseAuth' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseFirestore' in project 'Firebase'
+    Target 'FirebaseFirestore' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseFirestoreTarget' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseFirestoreInternalWrapper' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseAppCheckInterop' in project 'Firebase'
+        ➜ Explicit dependency on target 'Firebase' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseCoreInternal' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseCore' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseCoreExtension' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseSharedSwift' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseFirestore' in project 'Firebase'
+        ➜ Explicit dependency on target 'GULNSData' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GULEnvironment' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GULLogger' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'abseil' in project 'abseil'
+        ➜ Explicit dependency on target 'gRPC-C++' in project 'gRPC'
+        ➜ Explicit dependency on target 'nanopb' in project 'nanopb'
+        ➜ Explicit dependency on target 'leveldb' in project 'leveldb'
+    Target 'FirebaseAuth' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseAuth' in project 'Firebase'
+        ➜ Explicit dependency on target 'Firebase_FirebaseAuth' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseAppCheckInterop' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseAuthInterop' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseAuthInternal' in project 'Firebase'
+        ➜ Explicit dependency on target 'Firebase' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseCoreInternal' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseCore' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseCoreExtension' in project 'Firebase'
+        ➜ Explicit dependency on target 'RecaptchaInterop' in project 'InteropForGoogle'
+        ➜ Explicit dependency on target 'GULNSData' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GULEnvironment' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GULLogger' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GULAppDelegateSwizzler' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GTMSessionFetcherCore' in project 'GTMSessionFetcher'
+    Target 'FirebaseAuth' in project 'Firebase'
+        ➜ Explicit dependency on target 'Firebase_FirebaseAuth' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseAppCheckInterop' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseAuthInterop' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseAuthInternal' in project 'Firebase'
+        ➜ Explicit dependency on target 'Firebase' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseCoreInternal' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseCore' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseCoreExtension' in project 'Firebase'
+        ➜ Explicit dependency on target 'RecaptchaInterop' in project 'InteropForGoogle'
+        ➜ Explicit dependency on target 'GULNSData' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GULEnvironment' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GULLogger' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GULAppDelegateSwizzler' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GTMSessionFetcherCore' in project 'GTMSessionFetcher'
+    Target 'GTMSessionFetcherCore' in project 'GTMSessionFetcher'
+        ➜ Explicit dependency on target 'GTMSessionFetcherCore' in project 'GTMSessionFetcher'
+        ➜ Explicit dependency on target 'GTMSessionFetcher_GTMSessionFetcherCore' in project 'GTMSessionFetcher'
+    Target 'GTMSessionFetcherCore' in project 'GTMSessionFetcher'
+        ➜ Explicit dependency on target 'GTMSessionFetcher_GTMSessionFetcherCore' in project 'GTMSessionFetcher'
+    Target 'GTMSessionFetcher_GTMSessionFetcherCore' in project 'GTMSessionFetcher' (no dependencies)
+    Target 'GULAppDelegateSwizzler' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities-AppDelegateSwizzler' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities_GoogleUtilities-AppDelegateSwizzler' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'third-party-IsAppEncrypted' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities-Environment' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities-Logger' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities-NSData' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities-Reachability' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities-Network' in project 'GoogleUtilities'
+    Target 'GoogleUtilities-AppDelegateSwizzler' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities_GoogleUtilities-AppDelegateSwizzler' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'third-party-IsAppEncrypted' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities-Environment' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities-Logger' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities-NSData' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities-Reachability' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities-Network' in project 'GoogleUtilities'
+    Target 'GoogleUtilities-Network' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities_GoogleUtilities-Network' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'third-party-IsAppEncrypted' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities-Environment' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities-Logger' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities-NSData' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities-Reachability' in project 'GoogleUtilities'
+    Target 'GoogleUtilities_GoogleUtilities-Network' in project 'GoogleUtilities' (no dependencies)
+    Target 'GoogleUtilities-Reachability' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities_GoogleUtilities-Reachability' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'third-party-IsAppEncrypted' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities-Environment' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities-Logger' in project 'GoogleUtilities'
+    Target 'GoogleUtilities_GoogleUtilities-Reachability' in project 'GoogleUtilities' (no dependencies)
+    Target 'GoogleUtilities_GoogleUtilities-AppDelegateSwizzler' in project 'GoogleUtilities' (no dependencies)
+    Target 'FirebaseAuthInternal' in project 'Firebase'
+        ➜ Explicit dependency on target 'RecaptchaInterop' in project 'InteropForGoogle'
+    Target 'RecaptchaInterop' in project 'InteropForGoogle'
+        ➜ Explicit dependency on target 'RecaptchaInterop' in project 'InteropForGoogle'
+    Target 'RecaptchaInterop' in project 'InteropForGoogle' (no dependencies)
+    Target 'FirebaseAuthInterop' in project 'Firebase' (no dependencies)
+    Target 'Firebase_FirebaseAuth' in project 'Firebase' (no dependencies)
+    Target 'FirebaseFirestoreCombine-Community' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseFirestoreCombineSwift' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseFirestoreInternalWrapper' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseAppCheckInterop' in project 'Firebase'
+        ➜ Explicit dependency on target 'Firebase' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseCoreInternal' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseCore' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseCoreExtension' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseSharedSwift' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseFirestore' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseFirestoreTarget' in project 'Firebase'
+        ➜ Explicit dependency on target 'GULNSData' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GULEnvironment' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GULLogger' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'abseil' in project 'abseil'
+        ➜ Explicit dependency on target 'gRPC-C++' in project 'gRPC'
+        ➜ Explicit dependency on target 'nanopb' in project 'nanopb'
+        ➜ Explicit dependency on target 'leveldb' in project 'leveldb'
+    Target 'FirebaseFirestoreCombineSwift' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseFirestoreInternalWrapper' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseAppCheckInterop' in project 'Firebase'
+        ➜ Explicit dependency on target 'Firebase' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseCoreInternal' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseCore' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseCoreExtension' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseSharedSwift' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseFirestore' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseFirestoreTarget' in project 'Firebase'
+        ➜ Explicit dependency on target 'GULNSData' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GULEnvironment' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GULLogger' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'abseil' in project 'abseil'
+        ➜ Explicit dependency on target 'gRPC-C++' in project 'gRPC'
+        ➜ Explicit dependency on target 'nanopb' in project 'nanopb'
+        ➜ Explicit dependency on target 'leveldb' in project 'leveldb'
+    Target 'FirebaseFirestoreTarget' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseFirestoreInternalWrapper' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseAppCheckInterop' in project 'Firebase'
+        ➜ Explicit dependency on target 'Firebase' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseCoreInternal' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseCore' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseCoreExtension' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseSharedSwift' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseFirestore' in project 'Firebase'
+        ➜ Explicit dependency on target 'GULNSData' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GULEnvironment' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GULLogger' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'abseil' in project 'abseil'
+        ➜ Explicit dependency on target 'gRPC-C++' in project 'gRPC'
+        ➜ Explicit dependency on target 'nanopb' in project 'nanopb'
+        ➜ Explicit dependency on target 'leveldb' in project 'leveldb'
+    Target 'FirebaseFirestore' in project 'Firebase'
+        ➜ Explicit dependency on target 'Firebase_FirebaseFirestore' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseFirestoreInternalWrapper' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseAppCheckInterop' in project 'Firebase'
+        ➜ Explicit dependency on target 'Firebase' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseCoreInternal' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseCore' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseCoreExtension' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseSharedSwift' in project 'Firebase'
+        ➜ Explicit dependency on target 'GULNSData' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GULEnvironment' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GULLogger' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'abseil' in project 'abseil'
+        ➜ Explicit dependency on target 'gRPC-C++' in project 'gRPC'
+        ➜ Explicit dependency on target 'nanopb' in project 'nanopb'
+        ➜ Explicit dependency on target 'leveldb' in project 'leveldb'
+    Target 'leveldb' in project 'leveldb'
+        ➜ Explicit dependency on target 'leveldb' in project 'leveldb'
+        ➜ Explicit dependency on target 'leveldb_leveldb' in project 'leveldb'
+    Target 'leveldb' in project 'leveldb'
+        ➜ Explicit dependency on target 'leveldb_leveldb' in project 'leveldb'
+    Target 'leveldb_leveldb' in project 'leveldb' (no dependencies)
+    Target 'nanopb' in project 'nanopb'
+        ➜ Explicit dependency on target 'nanopb' in project 'nanopb'
+        ➜ Explicit dependency on target 'nanopb_nanopb' in project 'nanopb'
+    Target 'nanopb' in project 'nanopb'
+        ➜ Explicit dependency on target 'nanopb_nanopb' in project 'nanopb'
+    Target 'nanopb_nanopb' in project 'nanopb' (no dependencies)
+    Target 'gRPC-C++' in project 'gRPC'
+        ➜ Explicit dependency on target 'grpcppWrapper' in project 'gRPC'
+        ➜ Explicit dependency on target 'gRPC_grpcppWrapper' in project 'gRPC'
+        ➜ Explicit dependency on target 'grpcWrapper' in project 'gRPC'
+        ➜ Explicit dependency on target 'opensslWrapper' in project 'gRPC'
+        ➜ Explicit dependency on target 'abseil' in project 'abseil'
+    Target 'grpcppWrapper' in project 'gRPC'
+        ➜ Explicit dependency on target 'gRPC_grpcppWrapper' in project 'gRPC'
+        ➜ Explicit dependency on target 'grpcWrapper' in project 'gRPC'
+        ➜ Explicit dependency on target 'opensslWrapper' in project 'gRPC'
+        ➜ Explicit dependency on target 'abseil' in project 'abseil'
+    Target 'opensslWrapper' in project 'gRPC'
+        ➜ Explicit dependency on target 'gRPC_opensslWrapper' in project 'gRPC'
+    Target 'gRPC_opensslWrapper' in project 'gRPC' (no dependencies)
+    Target 'grpcWrapper' in project 'gRPC'
+        ➜ Explicit dependency on target 'gRPC_grpcWrapper' in project 'gRPC'
+    Target 'gRPC_grpcWrapper' in project 'gRPC' (no dependencies)
+    Target 'gRPC_grpcppWrapper' in project 'gRPC' (no dependencies)
+    Target 'abseil' in project 'abseil'
+        ➜ Explicit dependency on target 'abslWrapper' in project 'abseil'
+        ➜ Explicit dependency on target 'abseil_abslWrapper' in project 'abseil'
+    Target 'abslWrapper' in project 'abseil'
+        ➜ Explicit dependency on target 'abseil_abslWrapper' in project 'abseil'
+    Target 'abseil_abslWrapper' in project 'abseil' (no dependencies)
+    Target 'Firebase_FirebaseFirestore' in project 'Firebase' (no dependencies)
+    Target 'FirebaseSharedSwift' in project 'Firebase' (no dependencies)
+    Target 'FirebaseCoreExtension' in project 'Firebase'
+        ➜ Explicit dependency on target 'Firebase_FirebaseCoreExtension' in project 'Firebase'
+    Target 'Firebase_FirebaseCoreExtension' in project 'Firebase' (no dependencies)
+    Target 'FirebaseCore' in project 'Firebase'
+        ➜ Explicit dependency on target 'Firebase_FirebaseCore' in project 'Firebase'
+        ➜ Explicit dependency on target 'Firebase' in project 'Firebase'
+        ➜ Explicit dependency on target 'FirebaseCoreInternal' in project 'Firebase'
+        ➜ Explicit dependency on target 'GULNSData' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GULEnvironment' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GULLogger' in project 'GoogleUtilities'
+    Target 'GULLogger' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities-Logger' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities_GoogleUtilities-Logger' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'third-party-IsAppEncrypted' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities-Environment' in project 'GoogleUtilities'
+    Target 'GoogleUtilities-Logger' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities_GoogleUtilities-Logger' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'third-party-IsAppEncrypted' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities-Environment' in project 'GoogleUtilities'
+    Target 'GoogleUtilities_GoogleUtilities-Logger' in project 'GoogleUtilities' (no dependencies)
+    Target 'GULEnvironment' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities-Environment' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities_GoogleUtilities-Environment' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'third-party-IsAppEncrypted' in project 'GoogleUtilities'
+    Target 'GoogleUtilities-Environment' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities_GoogleUtilities-Environment' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'third-party-IsAppEncrypted' in project 'GoogleUtilities'
+    Target 'third-party-IsAppEncrypted' in project 'GoogleUtilities' (no dependencies)
+    Target 'GoogleUtilities_GoogleUtilities-Environment' in project 'GoogleUtilities' (no dependencies)
+    Target 'Firebase_FirebaseCore' in project 'Firebase' (no dependencies)
+    Target 'FirebaseCoreInternal' in project 'Firebase'
+        ➜ Explicit dependency on target 'Firebase_FirebaseCoreInternal' in project 'Firebase'
+        ➜ Explicit dependency on target 'GULNSData' in project 'GoogleUtilities'
+    Target 'GULNSData' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities-NSData' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities_GoogleUtilities-NSData' in project 'GoogleUtilities'
+    Target 'GoogleUtilities-NSData' in project 'GoogleUtilities'
+        ➜ Explicit dependency on target 'GoogleUtilities_GoogleUtilities-NSData' in project 'GoogleUtilities'
+    Target 'GoogleUtilities_GoogleUtilities-NSData' in project 'GoogleUtilities' (no dependencies)
+    Target 'Firebase_FirebaseCoreInternal' in project 'Firebase' (no dependencies)
+    Target 'Firebase' in project 'Firebase' (no dependencies)
+    Target 'FirebaseAppCheckInterop' in project 'Firebase' (no dependencies)
+    Target 'FirebaseFirestoreInternalWrapper' in project 'Firebase' (no dependencies)
+    Target 'FinanceWidgetExtension' in project 'FinanceTracker' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -x objective-c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/ibtool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --print-asset-tag-combinations --output-format xml1 /Users/davidwu/Documents/FinanceTracker/FinanceTracker/Assets.xcassets
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -x c++ -c /dev/null
+
+Build description signature: 5bb518e4b5b59cc18fb5a1be822e5ba3
+Build description path: /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/XCBuildData/5bb518e4b5b59cc18fb5a1be822e5ba3.xcbuilddata
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk /Users/davidwu/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache
+    cd /Users/davidwu/Documents/FinanceTracker/FinanceTracker.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -o /Users/davidwu/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache
+
+ProcessInfoPlistFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/nanopb_nanopb.bundle/Info.plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/nanopb.build/Debug-iphonesimulator/nanopb_nanopb.build/empty-nanopb_nanopb.plist (in target 'nanopb_nanopb' from project 'nanopb')
+    cd /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/nanopb
+    builtin-infoPlistUtility /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/nanopb.build/Debug-iphonesimulator/nanopb_nanopb.build/empty-nanopb_nanopb.plist -producttype com.apple.product-type.bundle -expandbuildsettings -format binary -platform iphonesimulator -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/nanopb_nanopb.bundle/Info.plist
+
+ProcessInfoPlistFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/leveldb_leveldb.bundle/Info.plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/leveldb.build/Debug-iphonesimulator/leveldb_leveldb.build/empty-leveldb_leveldb.plist (in target 'leveldb_leveldb' from project 'leveldb')
+    cd /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/leveldb
+    builtin-infoPlistUtility /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/leveldb.build/Debug-iphonesimulator/leveldb_leveldb.build/empty-leveldb_leveldb.plist -producttype com.apple.product-type.bundle -expandbuildsettings -format binary -platform iphonesimulator -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/leveldb_leveldb.bundle/Info.plist
+
+ProcessInfoPlistFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/gRPC_grpcppWrapper.bundle/Info.plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/gRPC.build/Debug-iphonesimulator/gRPC_grpcppWrapper.build/empty-gRPC_grpcppWrapper.plist (in target 'gRPC_grpcppWrapper' from project 'gRPC')
+    cd /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/grpc-binary
+    builtin-infoPlistUtility /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/gRPC.build/Debug-iphonesimulator/gRPC_grpcppWrapper.build/empty-gRPC_grpcppWrapper.plist -producttype com.apple.product-type.bundle -expandbuildsettings -format binary -platform iphonesimulator -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/gRPC_grpcppWrapper.bundle/Info.plist
+
+ProcessInfoPlistFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-NSData.bundle/Info.plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GoogleUtilities.build/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-NSData.build/empty-GoogleUtilities_GoogleUtilities-NSData.plist (in target 'GoogleUtilities_GoogleUtilities-NSData' from project 'GoogleUtilities')
+    cd /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/GoogleUtilities
+    builtin-infoPlistUtility /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GoogleUtilities.build/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-NSData.build/empty-GoogleUtilities_GoogleUtilities-NSData.plist -producttype com.apple.product-type.bundle -expandbuildsettings -format binary -platform iphonesimulator -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-NSData.bundle/Info.plist
+
+ProcessInfoPlistFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/abseil_abslWrapper.bundle/Info.plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/abseil.build/Debug-iphonesimulator/abseil_abslWrapper.build/empty-abseil_abslWrapper.plist (in target 'abseil_abslWrapper' from project 'abseil')
+    cd /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/abseil-cpp-binary
+    builtin-infoPlistUtility /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/abseil.build/Debug-iphonesimulator/abseil_abslWrapper.build/empty-abseil_abslWrapper.plist -producttype com.apple.product-type.bundle -expandbuildsettings -format binary -platform iphonesimulator -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/abseil_abslWrapper.bundle/Info.plist
+
+ProcessInfoPlistFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/gRPC_opensslWrapper.bundle/Info.plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/gRPC.build/Debug-iphonesimulator/gRPC_opensslWrapper.build/empty-gRPC_opensslWrapper.plist (in target 'gRPC_opensslWrapper' from project 'gRPC')
+    cd /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/grpc-binary
+    builtin-infoPlistUtility /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/gRPC.build/Debug-iphonesimulator/gRPC_opensslWrapper.build/empty-gRPC_opensslWrapper.plist -producttype com.apple.product-type.bundle -expandbuildsettings -format binary -platform iphonesimulator -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/gRPC_opensslWrapper.bundle/Info.plist
+
+ProcessInfoPlistFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Logger.bundle/Info.plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GoogleUtilities.build/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Logger.build/empty-GoogleUtilities_GoogleUtilities-Logger.plist (in target 'GoogleUtilities_GoogleUtilities-Logger' from project 'GoogleUtilities')
+    cd /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/GoogleUtilities
+    builtin-infoPlistUtility /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GoogleUtilities.build/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Logger.build/empty-GoogleUtilities_GoogleUtilities-Logger.plist -producttype com.apple.product-type.bundle -expandbuildsettings -format binary -platform iphonesimulator -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Logger.bundle/Info.plist
+
+ProcessInfoPlistFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/gRPC_grpcWrapper.bundle/Info.plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/gRPC.build/Debug-iphonesimulator/gRPC_grpcWrapper.build/empty-gRPC_grpcWrapper.plist (in target 'gRPC_grpcWrapper' from project 'gRPC')
+    cd /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/grpc-binary
+    builtin-infoPlistUtility /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/gRPC.build/Debug-iphonesimulator/gRPC_grpcWrapper.build/empty-gRPC_grpcWrapper.plist -producttype com.apple.product-type.bundle -expandbuildsettings -format binary -platform iphonesimulator -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/gRPC_grpcWrapper.bundle/Info.plist
+
+ProcessInfoPlistFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Environment.bundle/Info.plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GoogleUtilities.build/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Environment.build/empty-GoogleUtilities_GoogleUtilities-Environment.plist (in target 'GoogleUtilities_GoogleUtilities-Environment' from project 'GoogleUtilities')
+    cd /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/GoogleUtilities
+    builtin-infoPlistUtility /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GoogleUtilities.build/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Environment.build/empty-GoogleUtilities_GoogleUtilities-Environment.plist -producttype com.apple.product-type.bundle -expandbuildsettings -format binary -platform iphonesimulator -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Environment.bundle/Info.plist
+
+ProcessInfoPlistFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-AppDelegateSwizzler.bundle/Info.plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GoogleUtilities.build/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-AppDelegateSwizzler.build/empty-GoogleUtilities_GoogleUtilities-AppDelegateSwizzler.plist (in target 'GoogleUtilities_GoogleUtilities-AppDelegateSwizzler' from project 'GoogleUtilities')
+    cd /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/GoogleUtilities
+    builtin-infoPlistUtility /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GoogleUtilities.build/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-AppDelegateSwizzler.build/empty-GoogleUtilities_GoogleUtilities-AppDelegateSwizzler.plist -producttype com.apple.product-type.bundle -expandbuildsettings -format binary -platform iphonesimulator -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-AppDelegateSwizzler.bundle/Info.plist
+
+ProcessInfoPlistFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GTMSessionFetcher_GTMSessionFetcherCore.bundle/Info.plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GTMSessionFetcher.build/Debug-iphonesimulator/GTMSessionFetcher_GTMSessionFetcherCore.build/empty-GTMSessionFetcher_GTMSessionFetcherCore.plist (in target 'GTMSessionFetcher_GTMSessionFetcherCore' from project 'GTMSessionFetcher')
+    cd /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/gtm-session-fetcher
+    builtin-infoPlistUtility /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GTMSessionFetcher.build/Debug-iphonesimulator/GTMSessionFetcher_GTMSessionFetcherCore.build/empty-GTMSessionFetcher_GTMSessionFetcherCore.plist -producttype com.apple.product-type.bundle -expandbuildsettings -format binary -platform iphonesimulator -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GTMSessionFetcher_GTMSessionFetcherCore.bundle/Info.plist
+
+ProcessInfoPlistFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/Firebase_FirebaseCoreExtension.bundle/Info.plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/Firebase_FirebaseCoreExtension.build/empty-Firebase_FirebaseCoreExtension.plist (in target 'Firebase_FirebaseCoreExtension' from project 'Firebase')
+    cd /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/firebase-ios-sdk
+    builtin-infoPlistUtility /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/Firebase_FirebaseCoreExtension.build/empty-Firebase_FirebaseCoreExtension.plist -producttype com.apple.product-type.bundle -expandbuildsettings -format binary -platform iphonesimulator -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/Firebase_FirebaseCoreExtension.bundle/Info.plist
+
+ProcessInfoPlistFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/Firebase_FirebaseAuth.bundle/Info.plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/Firebase_FirebaseAuth.build/empty-Firebase_FirebaseAuth.plist (in target 'Firebase_FirebaseAuth' from project 'Firebase')
+    cd /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/firebase-ios-sdk
+    builtin-infoPlistUtility /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/Firebase_FirebaseAuth.build/empty-Firebase_FirebaseAuth.plist -producttype com.apple.product-type.bundle -expandbuildsettings -format binary -platform iphonesimulator -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/Firebase_FirebaseAuth.bundle/Info.plist
+
+ProcessInfoPlistFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Reachability.bundle/Info.plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GoogleUtilities.build/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Reachability.build/empty-GoogleUtilities_GoogleUtilities-Reachability.plist (in target 'GoogleUtilities_GoogleUtilities-Reachability' from project 'GoogleUtilities')
+    cd /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/GoogleUtilities
+    builtin-infoPlistUtility /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GoogleUtilities.build/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Reachability.build/empty-GoogleUtilities_GoogleUtilities-Reachability.plist -producttype com.apple.product-type.bundle -expandbuildsettings -format binary -platform iphonesimulator -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Reachability.bundle/Info.plist
+
+ProcessInfoPlistFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/Firebase_FirebaseFirestore.bundle/Info.plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/Firebase_FirebaseFirestore.build/empty-Firebase_FirebaseFirestore.plist (in target 'Firebase_FirebaseFirestore' from project 'Firebase')
+    cd /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/firebase-ios-sdk
+    builtin-infoPlistUtility /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/Firebase_FirebaseFirestore.build/empty-Firebase_FirebaseFirestore.plist -producttype com.apple.product-type.bundle -expandbuildsettings -format binary -platform iphonesimulator -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/Firebase_FirebaseFirestore.bundle/Info.plist
+
+ProcessInfoPlistFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/Firebase_FirebaseCoreInternal.bundle/Info.plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/Firebase_FirebaseCoreInternal.build/empty-Firebase_FirebaseCoreInternal.plist (in target 'Firebase_FirebaseCoreInternal' from project 'Firebase')
+    cd /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/firebase-ios-sdk
+    builtin-infoPlistUtility /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/Firebase_FirebaseCoreInternal.build/empty-Firebase_FirebaseCoreInternal.plist -producttype com.apple.product-type.bundle -expandbuildsettings -format binary -platform iphonesimulator -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/Firebase_FirebaseCoreInternal.bundle/Info.plist
+
+ProcessInfoPlistFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Network.bundle/Info.plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GoogleUtilities.build/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Network.build/empty-GoogleUtilities_GoogleUtilities-Network.plist (in target 'GoogleUtilities_GoogleUtilities-Network' from project 'GoogleUtilities')
+    cd /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/GoogleUtilities
+    builtin-infoPlistUtility /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GoogleUtilities.build/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Network.build/empty-GoogleUtilities_GoogleUtilities-Network.plist -producttype com.apple.product-type.bundle -expandbuildsettings -format binary -platform iphonesimulator -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Network.bundle/Info.plist
+
+ProcessInfoPlistFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/Firebase_FirebaseCore.bundle/Info.plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/Firebase_FirebaseCore.build/empty-Firebase_FirebaseCore.plist (in target 'Firebase_FirebaseCore' from project 'Firebase')
+    cd /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/firebase-ios-sdk
+    builtin-infoPlistUtility /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/Firebase_FirebaseCore.build/empty-Firebase_FirebaseCore.plist -producttype com.apple.product-type.bundle -expandbuildsettings -format binary -platform iphonesimulator -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/Firebase_FirebaseCore.bundle/Info.plist
+
+ExtractAppIntentsMetadata (in target 'FirebaseAuth' from project 'Firebase')
+    cd /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/firebase-ios-sdk
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name FirebaseAuth --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk --xcode-version 17C52 --platform-family iOS --deployment-target 15.0 --bundle-identifier firebase-ios-sdk.FirebaseAuth --output /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FirebaseAuth.appintents --target-triple arm64-apple-ios15.0-simulator --binary-file /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FirebaseAuth.o --dependency-file /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseAuth.build/Objects-normal/arm64/FirebaseAuth_dependency_info.dat --stringsdata-file /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseAuth.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseAuth.build/Objects-normal/arm64/FirebaseAuth.SwiftFileList --metadata-file-list /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseAuth.build/FirebaseAuth.DependencyMetadataFileList --static-metadata-file-list /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseAuth.build/FirebaseAuth.DependencyStaticMetadataFileList --swift-const-vals-list /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseAuth.build/Objects-normal/arm64/FirebaseAuth.SwiftConstValuesFileList --force --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-02-01 04:56:56.055 appintentsmetadataprocessor[22252:7251229] Starting appintentsmetadataprocessor export
+2026-02-01 04:56:56.263 appintentsmetadataprocessor[22252:7251229] Extracted no relevant App Intents symbols, skipping writing output
+
+CompileAssetCatalogVariant thinned /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app /Users/davidwu/Documents/FinanceTracker/FinanceTracker/Assets.xcassets (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    /Applications/Xcode.app/Contents/Developer/usr/bin/actool /Users/davidwu/Documents/FinanceTracker/FinanceTracker/Assets.xcassets --compile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/assetcatalog_output/thinned --output-format human-readable-text --notices --warnings --export-dependency-info /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/assetcatalog_dependencies_thinned --output-partial-info-plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/assetcatalog_generated_info.plist_thinned --app-icon AppIcon --include-all-app-icons --accent-color AccentColor --compress-pngs --enable-on-demand-resources YES --filter-for-thinning-device-configuration iPhone18,3 --filter-for-device-os-version 26.2 --development-region en --target-device iphone --target-device ipad --minimum-deployment-target 18.0 --platform iphonesimulator
+/Users/davidwu/Documents/FinanceTracker/FinanceTracker/AddBudgetView.swift:71:17: error: expected expression
+                ))
+                ^
+/Users/davidwu/Documents/FinanceTracker/FinanceTracker/AddRecurringTransactionView.swift:59:17: error: expected expression
+                )
+                ^
+/Users/davidwu/Documents/FinanceTracker/FinanceTracker/AddSavingGoalView.swift:56:17: error: expected expression
+                )
+                ^
+
+SwiftDriver FinanceTracker normal arm64 com.apple.xcode.tools.swift.compiler (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name FinanceTracker -Onone -enforce-exclusivity\=checked @/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker.SwiftFileList -DDEBUG -Xcc -fmodule-map-file\=/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/RecaptchaInterop.modulemap -Xcc -fmodule-map-file\=/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/GoogleUtilities-Network.modulemap -Xcc -fmodule-map-file\=/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/GoogleUtilities-Reachability.modulemap -Xcc -fmodule-map-file\=/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/GoogleUtilities-AppDelegateSwizzler.modulemap -Xcc -fmodule-map-file\=/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/GTMSessionFetcherCore.modulemap -Xcc -fmodule-map-file\=/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/FirebaseAuthInternal.modulemap -Xcc -fmodule-map-file\=/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/FirebaseAuthInterop.modulemap -Xcc -fmodule-map-file\=/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/GoogleUtilities-NSData.modulemap -Xcc -fmodule-map-file\=/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/GoogleUtilities-Environment.modulemap -Xcc -fmodule-map-file\=/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/third-party-IsAppEncrypted.modulemap -Xcc -fmodule-map-file\=/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/GoogleUtilities-Logger.modulemap -Xcc -fmodule-map-file\=/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/abslWrapper.modulemap -Xcc -fmodule-map-file\=/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/opensslWrapper.modulemap -Xcc -fmodule-map-file\=/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/grpcWrapper.modulemap -Xcc -fmodule-map-file\=/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/grpcppWrapper.modulemap -Xcc -fmodule-map-file\=/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/nanopb.modulemap -Xcc -fmodule-map-file\=/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/leveldb.modulemap -Xcc -fmodule-map-file\=/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/FirebaseCoreExtension.modulemap -Xcc -fmodule-map-file\=/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/FirebaseCore.modulemap -Xcc -fmodule-map-file\=/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/FirebaseAppCheckInterop.modulemap -Xcc -fmodule-map-file\=/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/FirebaseFirestoreInternalWrapper.modulemap -Xcc -fmodule-map-file\=/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/FirebaseFirestoreTarget.modulemap -default-isolation\=MainActor -enable-bare-slash-regex -enable-upcoming-feature DisableOutwardActorInference -enable-upcoming-feature InferSendableFromCaptures -enable-upcoming-feature GlobalActorIsolatedTypesUsability -enable-upcoming-feature MemberImportVisibility -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature NonisolatedNonsendingByDefault -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -target arm64-apple-ios18.0-simulator -g -module-cache-path /Users/davidwu/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator -emit-localized-strings -emit-localized-strings-path /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64 -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/davidwu/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache -output-file-map /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/davidwu/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/davidwu/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/davidwu/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker_const_extract_protocols.json -Xcc -iquote -Xcc /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-generated-files.hmap -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-own-target-headers.hmap -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker-9851b28ff07f43a2131dd5e470caf966-VFS-iphonesimulator/all-product-headers.yaml -Xcc -iquote -Xcc /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker-project-headers.hmap -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/interop-ios-for-google-sdks/RecaptchaEnterprise/RecaptchaInterop/Public -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/GoogleUtilities/GoogleUtilities/Network/Public -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/GoogleUtilities/GoogleUtilities/Reachability/Public -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/GoogleUtilities/GoogleUtilities/AppDelegateSwizzler/Public -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/gtm-session-fetcher/Sources/Core/Public -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/firebase-ios-sdk/FirebaseAuth/Sources/Public -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/firebase-ios-sdk/FirebaseAuth/Interop/Public -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/GoogleUtilities/GoogleUtilities/NSData+zlib/Public -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/GoogleUtilities/GoogleUtilities/Environment/Public -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/GoogleUtilities/third_party/IsAppEncrypted/Public -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/GoogleUtilities/GoogleUtilities/Logger/Public -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/abseil-cpp-binary/absl-Wrapper/include -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/grpc-binary/openssl-grpc-Wrapper/include -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/grpc-binary/grpc-Wrapper/include -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/grpc-binary/grpcpp-Wrapper/include -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/nanopb/spm_headers -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/leveldb/include -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Extension -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Sources/Public -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/firebase-ios-sdk/CoreOnly/Sources -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/firebase-ios-sdk/FirebaseAppCheck/Interop/Public -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/firebase-ios-sdk/FirebaseFirestoreInternal -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/firebase-ios-sdk/SwiftPM-PlatformExclude/FirebaseFirestoreWrap/include -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources-normal/arm64 -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources/arm64 -Xcc -I/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker-Swift.h -working-directory /Users/davidwu/Documents/FinanceTracker -experimental-emit-module-separately -disable-cmo
+/Users/davidwu/Documents/FinanceTracker/FinanceTracker/AddBudgetView.swift:71:17: error: Expected expression
+                ))
+                ^ (in target 'FinanceTracker' from project 'FinanceTracker')
+/Users/davidwu/Documents/FinanceTracker/FinanceTracker/AddRecurringTransactionView.swift:59:17: error: Expected expression
+                )
+                ^ (in target 'FinanceTracker' from project 'FinanceTracker')
+/Users/davidwu/Documents/FinanceTracker/FinanceTracker/AddSavingGoalView.swift:56:17: error: Expected expression
+                )
+                ^ (in target 'FinanceTracker' from project 'FinanceTracker')
+
+ProcessInfoPlistFile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceWidgetExtension.appex/Info.plist /Users/davidwu/Documents/FinanceTracker/FinanceWidget/Info.plist (in target 'FinanceWidgetExtension' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-infoPlistUtility /Users/davidwu/Documents/FinanceTracker/FinanceWidget/Info.plist -producttype com.apple.product-type.app-extension -expandbuildsettings -format binary -platform iphonesimulator -additionalcontentfile /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceWidgetExtension.build/assetcatalog_generated_info.plist -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceWidgetExtension.appex/Info.plist
+
+RegisterExecutionPolicyException /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FirebaseAuth.o (in target 'FirebaseAuth' from project 'Firebase')
+    cd /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/firebase-ios-sdk
+    builtin-RegisterExecutionPolicyException /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FirebaseAuth.o
+
+Ld /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/__preview.dylib normal (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios18.0-simulator -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -O0 -L/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator -install_name @rpath/FinanceTracker.debug.dylib -dead_strip -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Objects-normal/arm64/FinanceTracker_dependency_info.dat -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __entitlements -Xlinker /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker.app-Simulated.xcent -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __ents_der -Xlinker /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/FinanceTracker.app-Simulated.xcent.der -Xlinker -no_adhoc_codesign -o /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/__preview.dylib
+
+CpResource /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/PrivacyInfo.xcprivacy /Users/davidwu/Documents/FinanceTracker/FinanceTracker/PrivacyInfo.xcprivacy (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/davidwu/Documents/FinanceTracker/FinanceTracker/PrivacyInfo.xcprivacy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/nanopb_nanopb.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/nanopb_nanopb.bundle (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/nanopb_nanopb.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/leveldb_leveldb.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/leveldb_leveldb.bundle (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/leveldb_leveldb.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/gRPC_opensslWrapper.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/gRPC_opensslWrapper.bundle (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/gRPC_opensslWrapper.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/gRPC_grpcppWrapper.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/gRPC_grpcppWrapper.bundle (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/gRPC_grpcppWrapper.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/gRPC_grpcWrapper.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/gRPC_grpcWrapper.bundle (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/gRPC_grpcWrapper.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/abseil_abslWrapper.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/abseil_abslWrapper.bundle (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/abseil_abslWrapper.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/GoogleUtilities_GoogleUtilities-Reachability.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Reachability.bundle (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Reachability.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/GoogleUtilities_GoogleUtilities-Network.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Network.bundle (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Network.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/GoogleUtilities_GoogleUtilities-NSData.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-NSData.bundle (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-NSData.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/GoogleUtilities_GoogleUtilities-Logger.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Logger.bundle (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Logger.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/GoogleUtilities_GoogleUtilities-Environment.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Environment.bundle (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-Environment.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/GoogleUtilities_GoogleUtilities-AppDelegateSwizzler.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-AppDelegateSwizzler.bundle (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GoogleUtilities_GoogleUtilities-AppDelegateSwizzler.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/GTMSessionFetcher_GTMSessionFetcherCore.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GTMSessionFetcher_GTMSessionFetcherCore.bundle (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/GTMSessionFetcher_GTMSessionFetcherCore.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/openssl_grpc.framework /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/artifacts/grpc-binary/openssl_grpc/openssl_grpc.xcframework/ios-arm64_x86_64-simulator/openssl_grpc.framework (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks -remove-static-executable /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/artifacts/grpc-binary/openssl_grpc/openssl_grpc.xcframework/ios-arm64_x86_64-simulator/openssl_grpc.framework /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks
+note: Injecting stub binary into codeless framework (in target 'FinanceTracker' from project 'FinanceTracker')
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -x c -c /dev/null -target arm64-apple-ios100.0-simulator -o /private/var/folders/gz/_t1hsvqs69vgn60dtfrlvgq40000gn/T/swbuild.tmp.A6P0cCIf/Data.noindex/arm64-apple.o
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -dynamiclib -Xlinker -adhoc_codesign -target arm64-apple-ios100.0-simulator -o /private/var/folders/gz/_t1hsvqs69vgn60dtfrlvgq40000gn/T/swbuild.tmp.A6P0cCIf/Data.noindex/arm64-apple /private/var/folders/gz/_t1hsvqs69vgn60dtfrlvgq40000gn/T/swbuild.tmp.A6P0cCIf/Data.noindex/arm64-apple.o
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/lipo -create -output /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/openssl_grpc.framework/openssl_grpc /private/var/folders/gz/_t1hsvqs69vgn60dtfrlvgq40000gn/T/swbuild.tmp.A6P0cCIf/Data.noindex/arm64-apple
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/grpcpp.framework /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/artifacts/grpc-binary/grpcpp/grpcpp.xcframework/ios-arm64_x86_64-simulator/grpcpp.framework (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks -remove-static-executable /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/artifacts/grpc-binary/grpcpp/grpcpp.xcframework/ios-arm64_x86_64-simulator/grpcpp.framework /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks
+note: Injecting stub binary into codeless framework (in target 'FinanceTracker' from project 'FinanceTracker')
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -x c -c /dev/null -target arm64-apple-ios100.0-simulator -o /private/var/folders/gz/_t1hsvqs69vgn60dtfrlvgq40000gn/T/swbuild.tmp.ekmeoxT7/Data.noindex/arm64-apple.o
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -dynamiclib -Xlinker -adhoc_codesign -target arm64-apple-ios100.0-simulator -o /private/var/folders/gz/_t1hsvqs69vgn60dtfrlvgq40000gn/T/swbuild.tmp.ekmeoxT7/Data.noindex/arm64-apple /private/var/folders/gz/_t1hsvqs69vgn60dtfrlvgq40000gn/T/swbuild.tmp.ekmeoxT7/Data.noindex/arm64-apple.o
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/lipo -create -output /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/grpcpp.framework/grpcpp /private/var/folders/gz/_t1hsvqs69vgn60dtfrlvgq40000gn/T/swbuild.tmp.ekmeoxT7/Data.noindex/arm64-apple
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/grpc.framework /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/artifacts/grpc-binary/grpc/grpc.xcframework/ios-arm64_x86_64-simulator/grpc.framework (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks -remove-static-executable /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/artifacts/grpc-binary/grpc/grpc.xcframework/ios-arm64_x86_64-simulator/grpc.framework /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks
+note: Injecting stub binary into codeless framework (in target 'FinanceTracker' from project 'FinanceTracker')
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -x c -c /dev/null -target arm64-apple-ios100.0-simulator -o /private/var/folders/gz/_t1hsvqs69vgn60dtfrlvgq40000gn/T/swbuild.tmp.kYxrusXc/Data.noindex/arm64-apple.o
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -dynamiclib -Xlinker -adhoc_codesign -target arm64-apple-ios100.0-simulator -o /private/var/folders/gz/_t1hsvqs69vgn60dtfrlvgq40000gn/T/swbuild.tmp.kYxrusXc/Data.noindex/arm64-apple /private/var/folders/gz/_t1hsvqs69vgn60dtfrlvgq40000gn/T/swbuild.tmp.kYxrusXc/Data.noindex/arm64-apple.o
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/lipo -create -output /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/grpc.framework/grpc /private/var/folders/gz/_t1hsvqs69vgn60dtfrlvgq40000gn/T/swbuild.tmp.kYxrusXc/Data.noindex/arm64-apple
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/absl.framework /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/artifacts/abseil-cpp-binary/absl/absl.xcframework/ios-arm64_x86_64-simulator/absl.framework (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks -remove-static-executable /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/artifacts/abseil-cpp-binary/absl/absl.xcframework/ios-arm64_x86_64-simulator/absl.framework /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks
+note: Injecting stub binary into codeless framework (in target 'FinanceTracker' from project 'FinanceTracker')
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -x c -c /dev/null -target arm64-apple-ios100.0-simulator -o /private/var/folders/gz/_t1hsvqs69vgn60dtfrlvgq40000gn/T/swbuild.tmp.pGRSpp44/Data.noindex/arm64-apple.o
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -dynamiclib -Xlinker -adhoc_codesign -target arm64-apple-ios100.0-simulator -o /private/var/folders/gz/_t1hsvqs69vgn60dtfrlvgq40000gn/T/swbuild.tmp.pGRSpp44/Data.noindex/arm64-apple /private/var/folders/gz/_t1hsvqs69vgn60dtfrlvgq40000gn/T/swbuild.tmp.pGRSpp44/Data.noindex/arm64-apple.o
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/lipo -create -output /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/absl.framework/absl /private/var/folders/gz/_t1hsvqs69vgn60dtfrlvgq40000gn/T/swbuild.tmp.pGRSpp44/Data.noindex/arm64-apple
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/FirebaseFirestoreInternal.framework /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/artifacts/firebase-ios-sdk/FirebaseFirestoreInternal/FirebaseFirestoreInternal.xcframework/ios-arm64_x86_64-simulator/FirebaseFirestoreInternal.framework (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks -remove-static-executable /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/artifacts/firebase-ios-sdk/FirebaseFirestoreInternal/FirebaseFirestoreInternal.xcframework/ios-arm64_x86_64-simulator/FirebaseFirestoreInternal.framework /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks
+note: Injecting stub binary into codeless framework (in target 'FinanceTracker' from project 'FinanceTracker')
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -x c -c /dev/null -target arm64-apple-ios100.0-simulator -o /private/var/folders/gz/_t1hsvqs69vgn60dtfrlvgq40000gn/T/swbuild.tmp.iRZXRCda/Data.noindex/arm64-apple.o
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -dynamiclib -Xlinker -adhoc_codesign -target arm64-apple-ios100.0-simulator -o /private/var/folders/gz/_t1hsvqs69vgn60dtfrlvgq40000gn/T/swbuild.tmp.iRZXRCda/Data.noindex/arm64-apple /private/var/folders/gz/_t1hsvqs69vgn60dtfrlvgq40000gn/T/swbuild.tmp.iRZXRCda/Data.noindex/arm64-apple.o
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/lipo -create -output /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/FirebaseFirestoreInternal.framework/FirebaseFirestoreInternal /private/var/folders/gz/_t1hsvqs69vgn60dtfrlvgq40000gn/T/swbuild.tmp.iRZXRCda/Data.noindex/arm64-apple
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Firebase_FirebaseFirestore.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/Firebase_FirebaseFirestore.bundle (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/Firebase_FirebaseFirestore.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Firebase_FirebaseCoreInternal.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/Firebase_FirebaseCoreInternal.bundle (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/Firebase_FirebaseCoreInternal.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Firebase_FirebaseCoreExtension.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/Firebase_FirebaseCoreExtension.bundle (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/Firebase_FirebaseCoreExtension.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Firebase_FirebaseCore.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/Firebase_FirebaseCore.bundle (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/Firebase_FirebaseCore.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app
+
+Copy /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Firebase_FirebaseAuth.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/Firebase_FirebaseAuth.bundle (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/Firebase_FirebaseAuth.bundle /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app
+
+CompileStoryboard /Users/davidwu/Documents/FinanceTracker/FinanceTracker/Base.lproj/LaunchScreen.storyboard (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    /Applications/Xcode.app/Contents/Developer/usr/bin/ibtool --errors --warnings --notices --module FinanceTracker --output-partial-info-plist /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Base.lproj/LaunchScreen-SBPartialInfo.plist --auto-activate-custom-fonts --target-device iphone --target-device ipad --minimum-deployment-target 18.0 --output-format human-readable-text /Users/davidwu/Documents/FinanceTracker/FinanceTracker/Base.lproj/LaunchScreen.storyboard --compilation-directory /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Intermediates.noindex/FinanceTracker.build/Debug-iphonesimulator/FinanceTracker.build/Base.lproj
+
+CodeSign /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/openssl_grpc.framework (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/openssl_grpc.framework
+/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/openssl_grpc.framework: replacing existing signature
+
+CodeSign /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/grpcpp.framework (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/grpcpp.framework
+/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/grpcpp.framework: replacing existing signature
+
+CodeSign /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/grpc.framework (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/grpc.framework
+/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/grpc.framework: replacing existing signature
+
+CodeSign /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/absl.framework (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/absl.framework
+/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/absl.framework: replacing existing signature
+
+CodeSign /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/FirebaseFirestoreInternal.framework (in target 'FinanceTracker' from project 'FinanceTracker')
+    cd /Users/davidwu/Documents/FinanceTracker
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/FirebaseFirestoreInternal.framework
+/Users/davidwu/Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/Build/Products/Debug-iphonesimulator/FinanceTracker.app/Frameworks/FirebaseFirestoreInternal.framework: replacing existing signature
+
+** BUILD FAILED **
+
+
+The following build commands failed:
+	SwiftDriver FinanceTracker normal arm64 com.apple.xcode.tools.swift.compiler (in target 'FinanceTracker' from project 'FinanceTracker')
+	Building project FinanceTracker with scheme FinanceTracker
+(2 failures)

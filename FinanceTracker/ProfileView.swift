@@ -105,12 +105,12 @@ struct ProfileView: View {
                     .listRowBackground(Color(UIColor.secondarySystemBackground))
                     
                     Section("Support") {
-                        NavigationLink(destination: ShortcutsView()) {
+                        NavigationLink(destination: GuidesListView()) {
                             HStack {
-                                Image(systemName: "bolt.fill")
+                                Image(systemName: "book.fill")
                                     .foregroundColor(.primary)
                                     .frame(width: 24)
-                                Text("Apple Shortcuts")
+                                Text("Guides")
                             }
                         }
                         NavigationLink(destination: HelpCenterView()) {

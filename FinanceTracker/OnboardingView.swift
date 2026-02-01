@@ -63,6 +63,9 @@ struct OnboardingView: View {
         var isSelected: Bool = true
     }
     
+    // Recurring Transactions
+    @State private var onboardingRecurringTransactions: [FirestoreModels.RecurringTransaction] = []
+    
     
     var body: some View {
         ZStack {
@@ -73,7 +76,7 @@ struct OnboardingView: View {
             VStack(spacing: 0) {
                 // Progress Bar
                 HStack(spacing: 4) {
-                    ForEach(1...11, id: \.self) { step in
+                    ForEach(1...12, id: \.self) { step in
                         Capsule()
                             .fill(step <= currentStep ? Color.white : Color.gray.opacity(0.2))
                             .frame(height: 4)
@@ -94,11 +97,12 @@ struct OnboardingView: View {
                         case 4: UsernameStep(username: $usernameInput)
                         case 5: IncomeStep(income: $incomeInput)
                         case 6: CategoriesStep(categories: $onboardingCategories)
-                        case 7: SavingGoalsStep(goals: $onboardingSavingGoals)
-                        case 8: BackTapStep()
-                        case 9: TravelModeStep()
-                        case 10: WidgetStep()
-                        case 11: AccountStep(email: $emailInput, password: $passwordInput, errorMessage: $errorMessage)
+                        case 7: RecurringTransactionsStep(transactions: $onboardingRecurringTransactions, categories: onboardingCategories)
+                        case 8: SavingGoalsStep(goals: $onboardingSavingGoals)
+                        case 9: BackTapStep()
+                        case 10: TravelModeStep()
+                        case 11: WidgetStep()
+                        case 12: AccountStep(email: $emailInput, password: $passwordInput, errorMessage: $errorMessage)
                         default: EmptyView()
                         }
                     }
@@ -126,7 +130,7 @@ struct OnboardingView: View {
                                 ProgressView()
                                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             } else {
-                                Text(currentStep == 11 ? "Create Account" : "Continue")
+                                Text(currentStep == 12 ? "Create Account" : "Continue")
                                     .font(.headline)
                                     .fontWeight(.bold)
                             }
@@ -159,18 +163,19 @@ struct OnboardingView: View {
         case 4: return !usernameInput.isEmpty && usernameInput.count >= 3
         case 5: return Double(incomeInput) != nil || incomeInput.isEmpty
         case 6: return !onboardingCategories.filter { $0.isSelected }.isEmpty
-        case 7: return true // Saving Goals
-        case 8: return true // Back Tap
-        case 9: return true // Travel Mode
-        case 10: return true // Widget
-        case 11: return !emailInput.isEmpty && !passwordInput.isEmpty && emailInput.contains("@") && passwordInput.count >= 6
+        case 7: return true // Recurring Transactions (Optional)
+        case 8: return true // Saving Goals
+        case 9: return true // Back Tap
+        case 10: return true // Travel Mode
+        case 11: return true // Widget
+        case 12: return !emailInput.isEmpty && !passwordInput.isEmpty && emailInput.contains("@") && passwordInput.count >= 6
         default: return false
         }
     }
     
     private func nextStep() {
         hideKeyboard()
-        if currentStep < 11 {
+        if currentStep < 12 {
             direction = .trailing
             HapticManager.shared.light() // Navigation haptic
             currentStep += 1
@@ -219,6 +224,14 @@ struct OnboardingView: View {
                 )
                 let recurringRef = Firestore.firestore().collection("users").document(userId).collection("recurringTransactions").document(recurringIncome.id!)
                 try recurringRef.setData(from: recurringIncome)
+
+                // 2b. Create Additional Recurring Transactions
+                for recurring in onboardingRecurringTransactions {
+                    var newRecurring = recurring
+                    newRecurring.userId = userId // Assign User ID
+                    let ref = Firestore.firestore().collection("users").document(userId).collection("recurringTransactions").document(newRecurring.id ?? UUID().uuidString)
+                    try ref.setData(from: newRecurring)
+                }
 
                 // 3. Create Categories in Firestore
                 let db = Firestore.firestore()
@@ -1523,3 +1536,328 @@ extension OnboardingView {
         }
     }
 }
+
+struct RecurringTransactionsStep: View {
+    @Binding var transactions: [FirestoreModels.RecurringTransaction]
+    var categories: [OnboardingView.OnboardingCategory]
+    @State private var showAddSheet = false
+    @State private var transactionToEdit: FirestoreModels.RecurringTransaction?
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            Text("Recurring Expenses")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .multilineTextAlignment(.center)
+                .padding(.top, 40)
+            
+            Text("Add your subscriptions, bills, or rent.")
+                .font(.body)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            
+            if transactions.isEmpty {
+                VStack(spacing: 16) {
+                    Spacer()
+                    Image(systemName: "arrow.2.squarepath")
+                        .font(.system(size: 60))
+                        .foregroundColor(.gray.opacity(0.3))
+                    Text("No recurring transactions added yet")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+                .background(Color(UIColor.secondarySystemBackground).opacity(0.5))
+                .cornerRadius(16)
+                .padding(.horizontal)
+            } else {
+                List {
+                    ForEach(transactions) { transaction in
+                        RecurringTransactionCard(
+                            transaction: transaction,
+                            onDelete: {
+                                if let index = transactions.firstIndex(where: { $0.id == transaction.id }) {
+                                    transactions.remove(at: index)
+                                }
+                            },
+                            onEdit: {
+                                transactionToEdit = transaction
+                            }
+                        )
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                    }
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .scrollIndicators(.hidden)
+            }
+            
+            Button(action: {
+                showAddSheet = true
+            }) {
+                HStack {
+                    Image(systemName: "plus.circle.fill")
+                    Text("Add Recurring")
+                }
+                .font(.headline)
+                .foregroundColor(.white)
+                .padding()
+            }
+        }
+        .sheet(isPresented: $showAddSheet) {
+            OnboardingAddRecurringSheet(
+                categories: categories,
+                onSave: { transaction in
+                    transactions.append(transaction)
+                }
+            )
+        }
+        .sheet(item: $transactionToEdit) { transaction in
+            OnboardingAddRecurringSheet(
+                transactionToEdit: transaction,
+                categories: categories,
+                onSave: { updatedTransaction in
+                    if let index = transactions.firstIndex(where: { $0.id == updatedTransaction.id }) {
+                        transactions[index] = updatedTransaction
+                    }
+                }
+            )
+        }
+    }
+}
+
+struct OnboardingAddRecurringSheet: View {
+    var transactionToEdit: FirestoreModels.RecurringTransaction?
+    var categories: [OnboardingView.OnboardingCategory]
+    var onSave: (FirestoreModels.RecurringTransaction) -> Void
+    
+    @Environment(\.dismiss) var dismiss
+    @Environment(\.colorScheme) var colorScheme
+    
+    @State private var currentStep = 1
+    @State private var amount: String = ""
+    @State private var selectedCategory: OnboardingView.OnboardingCategory?
+    @State private var frequency: String = "Monthly"
+    @State private var startDate = Date()
+    @State private var notes: String = ""
+    @State private var direction: Edge = .trailing
+    @State private var presentationDetent: PresentationDetent = .medium
+    
+    let frequencies = ["Weekly", "Bi-Weekly", "Monthly", "Yearly"]
+    
+    init(transactionToEdit: FirestoreModels.RecurringTransaction? = nil, categories: [OnboardingView.OnboardingCategory], onSave: @escaping (FirestoreModels.RecurringTransaction) -> Void) {
+        self.transactionToEdit = transactionToEdit
+        self.categories = categories
+        self.onSave = onSave
+        
+        if let transaction = transactionToEdit {
+            _amount = State(initialValue: String(format: "%.2f", transaction.amount))
+            _frequency = State(initialValue: transaction.frequency)
+            _startDate = State(initialValue: transaction.startDate)
+            _notes = State(initialValue: transaction.note ?? "")
+            // Category matching might be approximate since we only have names/icons in local state
+            // Logic to find category by name or icon ideally
+        }
+    }
+    
+    // We try to match pre-selected category in onAppear
+    
+    var body: some View {
+        ZStack {
+            (colorScheme == .dark ? Color.black : Color.white).ignoresSafeArea()
+            
+            VStack(spacing: 20) {
+                // Header
+                HStack {
+                    Button(action: {
+                        if currentStep > 1 {
+                            HapticManager.shared.light()
+                            direction = .leading
+                            currentStep -= 1
+                        } else {
+                            dismiss()
+                        }
+                    }) {
+                        Image(systemName: currentStep > 1 ? "chevron.left" : "xmark")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundColor(.primary)
+                    }
+                    Spacer()
+                    Text(currentStep < 4 ? "Add Recurring" : "Confirm")
+                        .font(.headline)
+                    Spacer()
+                    Color.clear.frame(width: 22)
+                }
+                .padding()
+                
+                // Content
+                ZStack(alignment: .top) {
+                    currentStepView
+                }
+                .id(currentStep)
+                .transition(.asymmetric(
+                    insertion: .move(edge: direction),
+                    removal: .move(edge: direction == .leading ? .trailing : .leading)
+                ))
+                .frame(maxHeight: .infinity, alignment: .top)
+                
+                Spacer()
+                
+                // Button
+                Button(action: {
+                    if currentStep < 4 {
+                        HapticManager.shared.light()
+                        direction = .trailing
+                        currentStep += 1
+                    } else {
+                        HapticManager.shared.success()
+                        save()
+                    }
+                }) {
+                    Text(currentStep < 4 ? "Next" : (transactionToEdit != nil ? "Update" : "Save"))
+                        .font(.headline)
+                        .bold()
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(isStepValid ? Color.white : Color.white.opacity(0.3))
+                        .cornerRadius(AppRadius.button)
+                }
+                .disabled(!isStepValid)
+                .padding()
+            }
+        }
+        .presentationDetents([.medium, .large], selection: $presentationDetent)
+        .onAppear {
+            if let transaction = transactionToEdit {
+                // Try to find matching category by name/icon/color
+                // This is a best-effort match for the UI selection state
+                selectedCategory = categories.first(where: { $0.name == transaction.name })
+                                  ?? categories.first(where: { $0.icon == transaction.icon })
+            }
+        }
+    }
+    
+    private func save() {
+        guard let amountValue = Double(amount), let category = selectedCategory else { return }
+        
+        let newTransaction = FirestoreModels.RecurringTransaction(
+            id: transactionToEdit?.id ?? UUID().uuidString,
+            name: category.name,
+            amount: amountValue,
+            frequency: frequency,
+            startDate: startDate,
+            icon: category.icon,
+            colorHex: category.colorHex,
+            note: notes,
+            type: "expense", // Assuming Expense for now as Income is handled separately
+            userId: "", // Will be set on save
+            createdAt: Date()
+        )
+        onSave(newTransaction)
+        dismiss()
+    }
+    
+    private var isStepValid: Bool {
+        switch currentStep {
+        case 1: return Double(amount) != nil
+        case 2: return selectedCategory != nil
+        case 3: return true
+        case 4: return true
+        default: return false
+        }
+    }
+    
+    @ViewBuilder
+    private var currentStepView: some View {
+        if currentStep == 1 { amountStep }
+        else if currentStep == 2 { categoryStep }
+        else if currentStep == 3 { frequencyStep }
+        else { notesStep }
+    }
+    
+    private var amountStep: some View {
+        VStack(spacing: 16) {
+            Text("Amount")
+                .font(.title2).foregroundColor(.secondary)
+            TextField("0.00", text: $amount)
+                .font(AppTypography.heroInput)
+                .multilineTextAlignment(.center)
+                .keyboardType(.decimalPad)
+                .foregroundColor(.primary)
+        }
+        .padding(.horizontal)
+    }
+    
+    private var categoryStep: some View {
+        VStack(spacing: 8) {
+            Text("Select Category")
+                .font(.headline).foregroundColor(.secondary)
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: 12) {
+                    ForEach(categories) { category in
+                        Button(action: {
+                            selectedCategory = category
+                            HapticManager.shared.light()
+                        }) {
+                            VStack {
+                                HStack {
+                                    Image(systemName: category.icon)
+                                        .frame(width: 30, height: 30)
+                                        .background(Color(hex: category.colorHex).opacity(0.2))
+                                        .foregroundColor(Color(hex: category.colorHex))
+                                        .clipShape(Circle())
+                                    Text(category.name)
+                                        .font(.caption)
+                                        .foregroundColor(.primary)
+                                        .lineLimit(1)
+                                    Spacer()
+                                    if selectedCategory?.id == category.id {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.green)
+                                    }
+                                }
+                                .padding()
+                            }
+                            .background(Color(UIColor.secondarySystemBackground))
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(selectedCategory?.id == category.id ? Color(hex: category.colorHex) : Color.clear, lineWidth: 2)
+                            )
+                        }
+                    }
+                }
+                .padding()
+            }
+        }
+    }
+    
+    private var frequencyStep: some View {
+        VStack(spacing: 16) {
+            Text("Frequency")
+                .font(.title2).foregroundColor(.secondary)
+            Picker("Frequency", selection: $frequency) {
+                ForEach(frequencies, id: \.self) { Text($0).tag($0) }
+            }
+            .pickerStyle(.wheel)
+        }
+    }
+    
+    private var notesStep: some View {
+        VStack(spacing: 16) {
+            Text("Notes (Optional)")
+                .font(.title2).foregroundColor(.secondary)
+            TextField("e.g. Monthly Rent", text: $notes)
+                .font(.title)
+                .multilineTextAlignment(.center)
+            
+            DatePicker("Start Date", selection: $startDate, displayedComponents: [.date])
+                .datePickerStyle(.compact)
+        }
+        .padding()
+    }
+}
+

@@ -68,7 +68,13 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "Auth", code: 409, userInfo: [NSLocalizedDescriptionKey: "Username is already taken"])
         }
         
-        // 2. Create Auth User
+        // 2. Cleanup Anonymous User if exists
+        if let currentUser = auth.currentUser, currentUser.isAnonymous {
+            DebugLogger.log("Deleting anonymous user before creating new account")
+            try? await currentUser.delete()
+        }
+        
+        // 3. Create Auth User
         let result = try await auth.createUser(withEmail: email, password: password)
         let user = result.user
         

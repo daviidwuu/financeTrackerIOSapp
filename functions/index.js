@@ -153,3 +153,124 @@ function getColorForCategory(category) {
   };
   return categoryColors[category] || '#757575';
 }
+
+/**
+ * Cloud Function to process recurring transactions daily
+ * Runs every day at 00:01 UTC
+ */
+exports.processRecurringTransactions = functions.pubsub.schedule('1 0 * * *').onRun(async (context) => {
+  const db = admin.firestore();
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // 00:00:00 today
+
+  console.log('Processing recurring transactions for date:', today.toISOString());
+
+  try {
+    // Query all recurring transactions using Collection Group Query
+    // This finds all documents in any collection named 'recurringTransactions'
+    const snapshot = await db.collectionGroup('recurringTransactions').get();
+
+    if (snapshot.empty) {
+      console.log('No recurring transactions found.');
+      return null;
+    }
+
+    const batch = db.batch();
+    let operationCount = 0;
+
+    for (const doc of snapshot.docs) {
+      const item = doc.data();
+      const itemId = doc.id;
+      // The parent of 'recurringTransactions' is the user document: users/{userId}
+      // doc.ref.parent is the collection, doc.ref.parent.parent is the user doc
+      const userRef = doc.ref.parent.parent;
+      if (!userRef) continue;
+      const userId = userRef.id;
+
+      let nextDueDate;
+      let lastProcessed = item.lastProcessedDate ? item.lastProcessedDate.toDate() : null;
+
+      if (lastProcessed) {
+        // Calculate next due date based on frequency from last processed date
+        nextDueDate = new Date(lastProcessed);
+        switch (item.frequency) {
+          case "Daily":
+            nextDueDate.setDate(nextDueDate.getDate() + 1);
+            break;
+          case "Weekly":
+            nextDueDate.setDate(nextDueDate.getDate() + 7);
+            break;
+          case "Bi-Weekly":
+            nextDueDate.setDate(nextDueDate.getDate() + 14);
+            break;
+          case "Yearly":
+            nextDueDate.setFullYear(nextDueDate.getFullYear() + 1);
+            break;
+          default: // "Monthly"
+            nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+            break;
+        }
+      } else {
+        // First time: use startDate
+        nextDueDate = item.startDate.toDate();
+      }
+
+      // Normalize nextDueDate to Start of Day for comparison
+      const nextDueStartOfDay = new Date(nextDueDate.getFullYear(), nextDueDate.getMonth(), nextDueDate.getDate());
+
+      // Check if due (nextDueStartOfDay <= today)
+      if (nextDueStartOfDay <= today) {
+        console.log(`Processing item ${item.name} for user ${userId}. Due: ${nextDueStartOfDay.toISOString()}`);
+
+        const transactionDate = nextDueStartOfDay; // Use the calculated due date as the transaction date
+
+        // 1. Create the Transaction Data
+        // Handle Expense vs Income logic
+        let amount = item.amount;
+        // Logic from Swift:
+        // if item.type == "income" ? amount : -abs(amount)
+        const type = item.type || "expense";
+        const finalAmount = (type === "income") ? Math.abs(amount) : -Math.abs(amount);
+
+        const newTransactionRef = userRef.collection('transactions').doc();
+        const newTransaction = {
+          title: item.name,
+          subtitle: item.name,
+          amount: finalAmount,
+          date: admin.firestore.Timestamp.fromDate(transactionDate),
+          icon: item.icon,
+          colorHex: item.colorHex || '#000000',
+          note: `Recurring: ${item.frequency}` + (item.note ? ` - ${item.note}` : ""),
+          type: type,
+          source: 'recurring',
+          userId: userId,
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+
+        batch.set(newTransactionRef, newTransaction);
+
+        // 2. Update the RecurringTransaction
+        // We set lastProcessedDate to the date we just "paid" for/processed.
+        // This ensures the next run calculates from THIS date.
+        batch.update(doc.ref, {
+          lastProcessedDate: admin.firestore.Timestamp.fromDate(transactionDate)
+        });
+
+        operationCount++;
+      }
+    }
+
+    if (operationCount > 0) {
+      await batch.commit();
+      console.log(`Successfully processed ${operationCount} recurring transactions.`);
+    } else {
+      console.log('No recurring transactions due today.');
+    }
+
+    return null;
+
+  } catch (error) {
+    console.error('Error processing recurring transactions:', error);
+    return null;
+  }
+});
