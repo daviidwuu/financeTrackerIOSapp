@@ -115,205 +115,196 @@ struct LockScreenWidgetEntryView : View {
         // MARK: Home Screen - Small (Daily Focus)
         // MARK: Home Screen - Small (Daily Focus)
         // MARK: Home Screen - Small (Daily Focus)
+        // MARK: Home Screen - Small (Daily Focus - True Black Redesign)
         case .systemSmall:
-            VStack(alignment: .leading, spacing: 0) {
-                // Header
-                HStack(alignment: .center) {
-                    Circle()
-                        .fill(calculateColor(remaining: entry.dailyRemaining, limit: entry.dailyBudgetLimit))
-                        .frame(width: 8, height: 8)
-                    Text("Daily Focus")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                .padding(.bottom, 8)
+            ZStack {
+                // Background
+                Color.black.ignoresSafeArea()
                 
-                // Main Value
-                Text(formatShort(entry.dailyRemaining))
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundStyle(.primary)
-                    .contentTransition(.numericText())
-                
-                Text(entry.dailyRemaining >= 0 ? "remaining" : "over budget")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                
-                Spacer()
-                
-                // Progress Bar
-                VStack(alignment: .leading, spacing: 5) {
-                    GeometryReader { geo in
-                        Capsule()
-                            .fill(Color.secondary.opacity(0.15))
-                            .overlay(
-                                Capsule()
-                                    .fill(calculateColor(remaining: entry.dailyRemaining, limit: entry.dailyBudgetLimit))
-                                    .frame(width: min(max(entry.dailyRemaining / (entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 1), 0), 1) * geo.size.width),
-                                alignment: .leading
-                            )
+                VStack(alignment: .leading, spacing: 0) {
+                    // Header Row: Label + Gauge
+                    HStack(alignment: .top) {
+                        Text("Daily\nLimit")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Color(UIColor.systemGray))
+                            .lineSpacing(0)
+                        
+                        Spacer()
+                        
+                        // Thin Ring Gauge (Navigation Style)
+                        ZStack {
+                            Circle()
+                                .stroke(Color(UIColor.darkGray).opacity(0.4), lineWidth: 3)
+                                .frame(width: 32, height: 32)
+                            
+                            Circle()
+                                .trim(from: 0, to: min(max(entry.dailyRemaining / (entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 1), 0), 1))
+                                .stroke(
+                                    calculateColor(remaining: entry.dailyRemaining, limit: entry.dailyBudgetLimit),
+                                    style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                                )
+                                .rotationEffect(.degrees(-90))
+                                .frame(width: 32, height: 32)
+                        }
                     }
-                    .frame(height: 6)
                     
-                    HStack {
-                        Text("\(Int((entry.dailySpend / (entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 1)) * 100))%")
-                             .font(.caption2)
-                             .fontWeight(.medium)
-                             .foregroundStyle(.secondary)
-                         
-                         Spacer()
-                         
-                         Text(formatShort(entry.dailyBudgetLimit))
-                             .font(.caption2)
-                             .foregroundStyle(.secondary)
-                    }
+                    Spacer()
+                    
+                    // Massive Value
+                    Text(formatShort(entry.dailyRemaining))
+                        .font(.system(size: 42, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .minimumScaleFactor(0.5)
+                        .contentTransition(.numericText())
+                    
+                    // Footer
+                    Text(entry.dailyRemaining >= 0 ? "REMAINING" : "OVER")
+                        .font(.system(size: 10, weight: .bold))
+                        .tracking(1)
+                        .foregroundStyle(entry.dailyRemaining >= 0 ? Color(UIColor.systemGray2) : .red)
+                        .padding(.top, 2)
                 }
+                .padding(16)
             }
-            .padding(16)
             .containerBackground(for: .widget) {
-                ContainerRelativeShape()
-                    // Subtle background gradient for depth
-                    .fill(LinearGradient(
-                        colors: [
-                            Color(UIColor.systemBackground),
-                            Color(UIColor.secondarySystemBackground).opacity(0.5)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ))
+                Color.black
             }
             
-        // MARK: Home Screen - Medium (Financial Overview)
+        // MARK: Home Screen - Medium (Financial Dashboard - Hero Monthly)
         case .systemMedium:
-            VStack(spacing: 0) {
-                HStack(spacing: 0) {
-                    // LEFT: Daily Focus (Circular Ring)
+            ZStack {
+                Color.black.ignoresSafeArea()
+                
+                HStack(spacing: 12) {
+                    // LEFT: Daily Card (Compact - Fixed Width)
+                    // Dynamic Color Logic
+                    let dailyBackground = entry.dailyRemaining < 0 
+                        ? Color(UIColor.systemRed).opacity(0.15) 
+                        : Color(UIColor.systemGray6).opacity(0.12)
+                    
                     VStack(alignment: .leading, spacing: 0) {
-                        Text("Daily Focus")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.secondary)
-                            .padding(.bottom, 12)
+                        HStack {
+                            Image(systemName: entry.dailyRemaining < 0 ? "exclamationmark.triangle.fill" : "sun.max.fill")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.white)
+                            Text("TODAY")
+                                .font(.system(size: 9, weight: .bold))
+                                .tracking(1)
+                                .foregroundStyle(Color(UIColor.systemGray))
+                        }
                         
-                        HStack(spacing: 12) {
-                            // Ring
-                            WidgetCircularProgressView(
-                                value: max(entry.dailyRemaining, 0),
-                                total: entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 100,
-                                color: calculateColor(remaining: entry.dailyRemaining, limit: entry.dailyBudgetLimit)
-                            )
-                            .frame(width: 44, height: 44)
-                            .overlay(
-                                Image(systemName: "dollarsign")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundStyle(calculateColor(remaining: entry.dailyRemaining, limit: entry.dailyBudgetLimit))
-                            )
+                        Spacer()
+                        
+                        // Compact Donut
+                        ZStack {
+                            Circle()
+                                .stroke(Color.white.opacity(0.1), lineWidth: 6)
                             
-                            // Text
-                            VStack(alignment: .leading, spacing: 0) {
+                            Circle()
+                                .trim(from: 0, to: min(max(entry.dailyRemaining / (entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 1), 0), 1))
+                                .stroke(
+                                    calculateColor(remaining: entry.dailyRemaining, limit: entry.dailyBudgetLimit),
+                                    style: StrokeStyle(lineWidth: 6, lineCap: .round)
+                                )
+                                .rotationEffect(.degrees(-90))
+                            
+                            VStack(spacing: 0) {
                                 Text(formatShort(entry.dailyRemaining))
-                                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                                    .foregroundStyle(.primary)
-                                    .contentTransition(.numericText())
-                                Text("Remaining")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
+                                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                                    .foregroundStyle(.white)
+                                    .minimumScaleFactor(0.8)
                             }
                         }
-                        .frame(maxHeight: .infinity)
+                        .frame(width: 55, height: 55)
+                        .frame(maxWidth: .infinity)
+                        
+                        Spacer()
+                        
+                        // Footer Stat (Spent)
+                        HStack(spacing: 4) {
+                            Text("Spent:")
+                                .font(.system(size: 9))
+                                .foregroundStyle(Color(UIColor.systemGray))
+                            Text(formatShort(abs(entry.dailySpend)))
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(.white)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .center)
                     }
-                    .padding(16)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(16) // HIG Standard Padding (was 12)
+                    .frame(width: 115) // Slightly widened to accommodate padding (was 110)
+                    .background(dailyBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(entry.dailyRemaining < 0 ? Color.red.opacity(0.3) : Color.clear, lineWidth: 1)
+                    )
                     
-                    Divider()
-                        .padding(.vertical, 12)
-                    
-                    // RIGHT: Monthly Overview (Linear Bar)
+                    // RIGHT: Monthly Overview (HERO - Takes available space)
                     VStack(alignment: .leading, spacing: 0) {
-                        Text("Monthly Overview")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.secondary)
+                        Text("MONTHLY")
+                            .font(.system(size: 10, weight: .bold))
+                            .tracking(1)
+                            .foregroundStyle(Color(UIColor.systemGray))
                             .padding(.bottom, 12)
                         
-                        VStack(alignment: .leading, spacing: 6) {
-                            // Budget / Spent Rows
-                            HStack {
-                                Text("Budget")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text(formatShort(entry.monthlyBudget))
-                                    .font(.caption2)
-                                    .fontWeight(.medium)
-                            }
+                        // Main Stats Row
+                        HStack(alignment: .lastTextBaseline) {
+                            Text(formatShort(entry.monthlyBudget + entry.monthlySpend))
+                                .font(.system(size: 34, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                                .contentTransition(.numericText())
                             
+                            Text("left")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(Color(UIColor.systemGray))
+                                .padding(.leading, 2)
+                        }
+                        
+                        Spacer()
+                        
+                        // Progress Section
+                        VStack(alignment: .leading, spacing: 6) {
+                            // Labels
                             HStack {
                                 Text("Spent")
                                     .font(.caption2)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Color(UIColor.systemGray))
                                 Spacer()
-                                Text(formatShort(abs(entry.monthlySpend)))
+                                Text(formatShort(entry.monthlyBudget))
                                     .font(.caption2)
-                                    .fontWeight(.medium)
-                                    .foregroundStyle(.red)
+                                    .foregroundStyle(Color(UIColor.systemGray))
+                                Text("Limit")
+                                    .font(.caption2)
+                                    .foregroundStyle(Color(UIColor.systemGray2))
                             }
                             
-                            // Separator
-                            Rectangle()
-                                .fill(Color.secondary.opacity(0.2))
-                                .frame(height: 1)
-                                .padding(.vertical, 2)
-                            
-                            // Remaining & Bar
-                            VStack(alignment: .leading, spacing: 6) {
-                                HStack(alignment: .firstTextBaseline) {
-                                    Text("Left")
-                                        .font(.caption2)
-                                        .fontWeight(.semibold)
-                                    Spacer()
-                                    Text(formatShort(entry.monthlyBudget + entry.monthlySpend))
-                                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                                        .foregroundStyle((entry.monthlyBudget + entry.monthlySpend) < 0 ? .red : .primary)
-                                }
-                                
-                                // Linear Bar
-                                GeometryReader { geo in
+                            // Wide Progress Bar
+                            GeometryReader { geo in
+                                ZStack(alignment: .leading) {
                                     Capsule()
-                                        .fill(Color.secondary.opacity(0.1))
-                                        .overlay(
-                                            Capsule()
-                                                .fill(Color.orange) // Monthly Accent
-                                                .frame(width: min(max(abs(entry.monthlySpend) / (entry.monthlyBudget > 0 ? entry.monthlyBudget : 1), 0), 1) * geo.size.width),
-                                            alignment: .leading
-                                        )
+                                        .fill(Color.white.opacity(0.1))
+                                    
+                                    Capsule()
+                                        .fill(.white)
+                                        .frame(width: min(max(abs(entry.monthlySpend) / (entry.monthlyBudget > 0 ? entry.monthlyBudget : 1), 0), 1) * geo.size.width)
                                 }
-                                .frame(height: 6)
                             }
+                            .frame(height: 12) // Thicker for Hero feel
+                            
+                            // Spent Value (No Negative Sign)
+                            Text(formatShort(abs(entry.monthlySpend)))
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
                         }
-                        .frame(maxHeight: .infinity, alignment: .center)
                     }
                     .padding(16)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
             .containerBackground(for: .widget) {
-                ContainerRelativeShape()
-                    // Revert to cleaner subtle background
-                    .fill(LinearGradient(
-                        colors: [
-                            Color(UIColor.systemBackground),
-                            Color(UIColor.secondarySystemBackground).opacity(0.4)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    ))
+                Color.black
             }
-            .containerBackground(for: .widget) {
-                ContainerRelativeShape()
-                    .fill(Color(UIColor.systemBackground))
-            }
-
         default:
             Text("Full View")
         }
