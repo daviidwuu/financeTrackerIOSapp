@@ -26,16 +26,13 @@ struct AddTransactionView: View {
     @ObservedObject private var currencyManager = CurrencyManager.shared
     @State private var isUsingTravelCurrency = false
     
-    init(transactionToEdit: FirestoreModels.Transaction? = nil, onSave: ((Transaction) -> Void)? = nil) {
-        self.transactionToEdit = transactionToEdit
-        self.onSave = onSave
-        
+    private func populateData() {
         if let transaction = transactionToEdit {
             if abs(transaction.amount) != 0 {
-                _amount = State(initialValue: String(format: "%.2f", abs(transaction.amount)))
+                amount = String(format: "%.2f", abs(transaction.amount))
             }
-            _selectedDate = State(initialValue: transaction.date)
-            _transactionNotes = State(initialValue: transaction.note ?? "")
+            selectedDate = transaction.date
+            transactionNotes = transaction.note ?? ""
         }
     }
     
@@ -72,35 +69,14 @@ struct AddTransactionView: View {
                 .frame(maxHeight: .infinity, alignment: .top)
                 
                 Spacer()
-                
-                // Sticky Action Bar
-                VStack {
-                    Button(action: {
-                        if currentStep < 3 {
-                            HapticManager.shared.light()
-                            direction = .trailing
-                            withAnimation { currentStep += 1 }
-                        } else {
-                            HapticManager.shared.success()
-                            saveTransaction()
-                        }
-                    }) {
-                        Text(currentStep < 3 ? "Next" : (transactionToEdit != nil ? "Update Transaction" : "Save Transaction"))
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(colorScheme == .dark ? .black : .white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(isStepValid ? Color.primary : Color.primary.opacity(0.3))
-                            .cornerRadius(AppRadius.button)
-                    }
-                    .disabled(!isStepValid)
-                }
-                .padding(AppSpacing.margin)
-                .background(Color.backgroundPrimary)
+            }
+            .safeAreaInset(edge: .bottom) {
+                stickyActionBar
             }
         }
         .onAppear {
+            populateData()
+            
             if currencyManager.isTravelModeEnabled && currencyManager.mainCurrency != currencyManager.travelCurrency && transactionToEdit == nil {
                 isUsingTravelCurrency = true
             }
@@ -133,6 +109,41 @@ struct AddTransactionView: View {
             budgetRepo.stopListening()
             transactionRepo.stopListening()
         }
+    }
+    
+    private var stickyActionBar: some View {
+        VStack {
+            Button(action: {
+                // Sticky Logic: Enforce Large Detent on Interaction
+                availableDetents = [.large]
+                presentationDetent = .large
+                
+                if currentStep < 3 {
+                    HapticManager.shared.light()
+                    direction = .trailing
+                    withAnimation { currentStep += 1 }
+                } else {
+                    HapticManager.shared.success()
+                    saveTransaction()
+                }
+            }) {
+                Text(currentStep < 3 ? "Next" : (transactionToEdit != nil ? "Update Transaction" : "Save Transaction"))
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(isStepValid ? (colorScheme == .dark ? .black : .white) : .secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(isStepValid ? Color.primary : Color(UIColor.systemGray5))
+                    .cornerRadius(AppRadius.button)
+            }
+            .disabled(!isStepValid)
+            .animation(.easeInOut, value: isStepValid) // Smooth color transition
+        }
+        .padding(.horizontal, AppSpacing.margin)
+        .padding(.top, AppSpacing.compact)
+        .padding(.bottom, 8) // Reduced bottom padding
+        .background(Color.backgroundPrimary)
+        .animation(.easeInOut, value: currentStep) // Smooth transitions
     }
     
     private func saveTransaction() {
@@ -186,7 +197,9 @@ struct AddTransactionView: View {
     private var isStepValid: Bool {
         switch currentStep {
         case 1:
-            if let value = Double(amount), value > 0 {
+            // Handle both dot and comma
+            let normalizedAmount = amount.replacingOccurrences(of: ",", with: ".")
+            if let value = Double(normalizedAmount), value > 0 {
                 return true
             }
             return false

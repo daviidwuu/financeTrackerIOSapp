@@ -24,17 +24,14 @@ struct AddRecurringTransactionView: View {
     
     let frequencies = ["Weekly", "Bi-Weekly", "Monthly", "Yearly"]
     
-    init(recurringToEdit: FirestoreModels.RecurringTransaction? = nil, onSave: ((RecurringTransaction) -> Void)? = nil) {
-        self.recurringToEdit = recurringToEdit
-        self.onSave = onSave
-        
+    private func populateData() {
         if let transaction = recurringToEdit {
             if transaction.amount != 0 {
-                _amount = State(initialValue: String(format: "%.2f", transaction.amount))
+                amount = String(format: "%.2f", transaction.amount)
             }
-            _frequency = State(initialValue: transaction.frequency)
-            _startDate = State(initialValue: transaction.startDate)
-            _notes = State(initialValue: transaction.note ?? "")
+            frequency = transaction.frequency
+            startDate = transaction.startDate
+            notes = transaction.note ?? ""
         }
     }
     
@@ -68,44 +65,32 @@ struct AddRecurringTransactionView: View {
                     insertion: .move(edge: direction),
                     removal: .move(edge: direction == .leading ? .trailing : .leading)
                 ))
-                .frame(maxHeight: .infinity, alignment: .top) // Allow content to take available space
+                .frame(maxHeight: .infinity, alignment: .top)
                 
                 Spacer()
-                
-                // Sticky Action Bar
-                VStack {
-                    Button(action: {
-                        if currentStep < 4 {
-                            HapticManager.shared.light()
-                            direction = .trailing
-                            withAnimation { currentStep += 1 }
-                        } else {
-                            HapticManager.shared.success()
-                            saveRecurring()
-                        }
-                    }) {
-                        Text(currentStep < 4 ? "Next" : (recurringToEdit != nil ? "Update Recurring" : "Save Recurring"))
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(.black)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(isStepValid ? Color.white : Color.white.opacity(0.3))
-                            .cornerRadius(AppRadius.button)
-                    }
-                    .disabled(!isStepValid)
-                }
-                .padding(AppSpacing.margin)
-                .background(Color.backgroundPrimary)
+            }
+            .safeAreaInset(edge: .bottom) {
+                stickyActionBar
             }
         }
         .presentationDetents([.medium, .large], selection: $presentationDetent)
         .presentationDragIndicator(.visible)
         .onAppear {
+            populateData()
+            
             if !appState.currentUserId.isEmpty {
                 budgetRepo.startListening(userId: appState.currentUserId)
-                // Also listen to transactions for calculating remaining budget
                 transactionRepo.startListening(userId: appState.currentUserId)
+            }
+            
+            // Delay setting initial category to allow repo to load
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                if let recurring = recurringToEdit, selectedCategory == nil {
+                    // Try to find the category by name
+                    if let budget = budgetRepo.budgets.first(where: { $0.category == recurring.name }) {
+                        selectedCategory = budget
+                    }
+                }
             }
         }
         .onDisappear {
@@ -114,8 +99,44 @@ struct AddRecurringTransactionView: View {
         }
     }
     
+    private var stickyActionBar: some View {
+        VStack {
+            Button(action: {
+                // Sticky Logic: Enforce Large Detent
+                presentationDetent = .large
+                
+                if currentStep < 4 {
+                    HapticManager.shared.light()
+                    direction = .trailing
+                    withAnimation { currentStep += 1 }
+                } else {
+                    HapticManager.shared.success()
+                    saveRecurring()
+                }
+            }) {
+                Text(currentStep < 4 ? "Next" : (recurringToEdit != nil ? "Update Recurring" : "Save Recurring"))
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(isStepValid ? (colorScheme == .dark ? .black : .white) : .secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(isStepValid ? Color.primary : Color(UIColor.systemGray5))
+                    .cornerRadius(AppRadius.button)
+            }
+            .disabled(!isStepValid)
+            .animation(.easeInOut, value: isStepValid) // Smooth color transition
+        }
+        .padding(.horizontal, AppSpacing.margin)
+        .padding(.top, AppSpacing.compact)
+        .padding(.bottom, 8) // Reduced bottom padding
+        .background(Color.backgroundPrimary)
+        .animation(.easeInOut, value: currentStep) // Smooth transitions
+    }
+    
     private func saveRecurring() {
-        guard let amountValue = Double(amount), let category = selectedCategory else { return }
+        // Handle both dot and comma
+        let normalizedAmount = amount.replacingOccurrences(of: ",", with: ".")
+        guard let amountValue = Double(normalizedAmount), let category = selectedCategory else { return }
         
         let newRecurring = RecurringTransaction(
             name: category.category,

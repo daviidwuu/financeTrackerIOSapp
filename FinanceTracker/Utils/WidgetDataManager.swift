@@ -5,7 +5,7 @@ class WidgetDataManager {
     static let shared = WidgetDataManager()
     
     // REPLACE WITH YOUR ACTUAL APP GROUP ID
-    private let appGroup = "group.com.davidwu.FinanceTracker"
+    private let appGroup = "group.com.wu.FinanceTracker"
     
     private var userDefaults: UserDefaults? {
         return UserDefaults(suiteName: appGroup)

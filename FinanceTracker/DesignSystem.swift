@@ -102,48 +102,44 @@ struct AppConstants {
     // MARK: - Colors
     /// A wide palette of colors for categories, using system and custom hues
     static let allColors: [Color] = [
-        // Reds & Pinks
-        .red,
-        Color(hex: "#FF2D55"), // System Pink
+        // Reds (Passion/Urgency)
         Color(hex: "#FF3B30"), // System Red
-        Color(hex: "#E0245E"), // Twitter Pink
+        Color(hex: "#FF2D55"), // System Pink
+        Color(hex: "#E0245E"), // Deep Pink
         Color(hex: "#D0021B"), // Deep Red
         
-        // Oranges & Yellows
-        .orange,
-        .yellow,
+        // Oranges (Energy)
         Color(hex: "#FF9500"), // System Orange
-        Color(hex: "#FFCC00"), // System Yellow
+        Color(hex: "#FF7F00"), // Dark Orange
         Color(hex: "#F5A623"), // Gold
         
-        // Greens
-        .green,
-        .mint,
-        Color(hex: "#28CD41"), // System Green
-        Color(hex: "#00C7BE"), // System Teal/Aqua
+        // Yellows (Optimism)
+        Color(hex: "#FFCC00"), // System Yellow
+        Color(hex: "#FFD60A"), // Bright Yellow
+        
+        // Greens (Growth/Money)
+        Color(hex: "#34C759"), // System Green
+        Color(hex: "#28CD41"), // Bright Green
         Color(hex: "#4CD964"), // Light Green
-        Color(hex: "#34C759"), // Bright Green
+        Color(hex: "#00C7BE"), // Teal/Aqua
         
-        // Blues & Teals
-        .blue,
-        .cyan,
-        .teal,
-        Color(hex: "#007AFF"), // System Blue
+        // Blues (Trust/Calm)
         Color(hex: "#5AC8FA"), // Light Blue
+        Color(hex: "#007AFF"), // System Blue
         Color(hex: "#1DA1F2"), // Twitter Blue
+        Color(hex: "#0040DD"), // Dark Blue
         
-        // Purples & Indigos
-        .purple,
-        .indigo,
+        // Purples (Creativity/Luxury)
         Color(hex: "#5856D6"), // System Indigo
         Color(hex: "#AF52DE"), // System Purple
         Color(hex: "#794BC4"), // Vivid Purple
         
-        // Grays & Neutrals
-        .gray,
-        .brown,
-        Color(hex: "#8E8E93"), // System Gray
-        Color(hex: "#A2845E"), // Brown
+        // Grayscale (Neutral/Professional)
+        Color(hex: "#000000"), // Black
         Color(hex: "#3A3A3C"), // Dark Gray
+        Color(hex: "#8E8E93"), // System Gray
+        Color(hex: "#C7C7CC"), // Light Gray
+        Color(hex: "#E5E5EA"), // Very Light Gray
+        .white                 // White
     ]
 }

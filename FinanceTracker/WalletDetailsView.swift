@@ -102,14 +102,15 @@ struct WalletDetailsView: View {
                     Text("Save Changes")
                         .font(.headline)
                         .fontWeight(.bold)
-                        .foregroundColor(colorScheme == .dark ? .black : .white)
+                        .foregroundColor(!amount.isEmpty ? (colorScheme == .dark ? .black : .white) : .secondary)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(amount.isEmpty ? Color.gray : (colorScheme == .dark ? Color.white : Color.black))
+                        .background(!amount.isEmpty ? Color.primary : Color(UIColor.systemGray5))
                         .cornerRadius(AppRadius.button)
                 }
                 .disabled(amount.isEmpty)
-                .padding(AppSpacing.margin)
+                .padding(.horizontal, AppSpacing.margin)
+                .padding(.bottom, 8)
             }
         }
         .onAppear {

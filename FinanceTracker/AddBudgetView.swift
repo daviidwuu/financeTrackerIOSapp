@@ -24,18 +24,15 @@ struct AddBudgetView: View {
     let colors = AppConstants.allColors
     let frequencies = ["Weekly", "Bi-Weekly", "Monthly", "Yearly"]
     
-    init(budgetToEdit: FirestoreModels.CategoryBudget? = nil, onSave: ((Budget) -> Void)? = nil) {
-        self.budgetToEdit = budgetToEdit
-        self.onSave = onSave
-        
+    private func populateData() {
         if let budget = budgetToEdit {
             if budget.totalAmount != 0 {
-                _amount = State(initialValue: String(format: "%.2f", budget.totalAmount))
+                amount = String(format: "%.2f", budget.totalAmount)
             }
-            _name = State(initialValue: budget.category)
-            _selectedIcon = State(initialValue: budget.icon)
-            _selectedColor = State(initialValue: Color(hex: budget.colorHex))
-            _frequency = State(initialValue: budget.frequency)
+            name = budget.category
+            selectedIcon = budget.icon
+            selectedColor = Color(hex: budget.colorHex)
+            frequency = budget.frequency
         }
     }
     
@@ -73,32 +70,9 @@ struct AddBudgetView: View {
                 ))
                 
                 Spacer()
-                
-                // Sticky Action Bar
-                VStack {
-                    Button(action: {
-                        if currentStep < 5 { // Decreased steps to 5
-                            HapticManager.shared.light()
-                            direction = .trailing
-                            withAnimation { currentStep += 1 }
-                        } else {
-                            HapticManager.shared.success()
-                            saveBudget()
-                        }
-                    }) {
-                        Text(currentStep < 5 ? "Next" : (budgetToEdit != nil ? "Update Budget" : "Save Budget"))
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(.black)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(isStepValid ? Color.white : Color.white.opacity(0.3))
-                            .cornerRadius(AppRadius.button)
-                    }
-                    .disabled(!isStepValid)
-                }
-                .padding(AppSpacing.margin)
-                .background(Color.backgroundPrimary)
+            }
+            .safeAreaInset(edge: .bottom) {
+                stickyActionBar
             }
         }
         .presentationDetents(availableDetents, selection: $presentationDetent)
@@ -109,6 +83,44 @@ struct AddBudgetView: View {
                 availableDetents = [.large]
             }
         }
+        .onAppear {
+            populateData()
+        }
+    }
+    
+    private var stickyActionBar: some View {
+        VStack {
+            Button(action: {
+                // Sticky Logic: Enforce Large Detent
+                availableDetents = [.large]
+                presentationDetent = .large
+                
+                if currentStep < 5 {
+                    HapticManager.shared.light()
+                    direction = .trailing
+                    withAnimation { currentStep += 1 }
+                } else {
+                    HapticManager.shared.success()
+                    saveBudget()
+                }
+            }) {
+                Text(currentStep < 5 ? "Next" : (budgetToEdit != nil ? "Update Budget" : "Save Budget"))
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(isStepValid ? (colorScheme == .dark ? .black : .white) : .secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(isStepValid ? Color.primary : Color(UIColor.systemGray5))
+                    .cornerRadius(AppRadius.button)
+            }
+            .disabled(!isStepValid)
+            .animation(.easeInOut, value: isStepValid) // Smooth color transition
+        }
+        .padding(.horizontal, AppSpacing.margin)
+        .padding(.top, AppSpacing.compact)
+        .padding(.bottom, 8)
+        .background(Color.backgroundPrimary)
+        .animation(.easeInOut, value: currentStep) // Smooth transitions
     }
     
     private func saveBudget() {
@@ -136,7 +148,9 @@ struct AddBudgetView: View {
     private var isStepValid: Bool {
         switch currentStep {
         case 1:
-            if let value = Double(amount), value > 0 {
+            // Handle both dot and comma
+            let normalizedAmount = amount.replacingOccurrences(of: ",", with: ".")
+            if let value = Double(normalizedAmount), value > 0 {
                 return true
             }
             return false

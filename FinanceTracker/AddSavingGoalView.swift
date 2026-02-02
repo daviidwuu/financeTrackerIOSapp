@@ -21,24 +21,20 @@ struct AddSavingGoalView: View {
     let icons = AppConstants.allIcons
     let colors = AppConstants.allColors
     
-    init(goalToEdit: FirestoreModels.SavingGoal? = nil, onSave: ((SavingGoal) -> Void)? = nil) {
-        self.goalToEdit = goalToEdit
-        self.onSave = onSave
-        
+    private func populateData() {
         if let goal = goalToEdit {
             if goal.targetAmount != 0 {
-                _amount = State(initialValue: String(format: "%.2f", goal.targetAmount))
+                amount = String(format: "%.2f", goal.targetAmount)
             }
-            _goalName = State(initialValue: goal.name)
-            _selectedIcon = State(initialValue: goal.icon)
-            _selectedColor = State(initialValue: Color(hex: goal.colorHex))
-            _targetDate = State(initialValue: goal.targetDate)
+            goalName = goal.name
+            selectedIcon = goal.icon
+            selectedColor = Color(hex: goal.colorHex)
+            targetDate = goal.targetDate
         }
     }
     
     var body: some View {
         ZStack {
-            // ... (rest of body stays same until saveGoal)
             // Background
             (colorScheme == .dark ? Color.black : Color.white)
                 .ignoresSafeArea()
@@ -70,36 +66,50 @@ struct AddSavingGoalView: View {
                 .frame(maxHeight: .infinity, alignment: .top)
                 
                 Spacer()
-                
-                // Sticky Action Bar
-                VStack {
-                    Button(action: {
-                        if currentStep < 5 {
-                            HapticManager.shared.light()
-                            direction = .trailing
-                            withAnimation { currentStep += 1 }
-                        } else {
-                            HapticManager.shared.success()
-                            saveGoal()
-                        }
-                    }) {
-                        Text(currentStep < 5 ? "Next" : (goalToEdit != nil ? "Update Goal" : "Save Goal"))
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(colorScheme == .dark ? .black : .white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(isStepValid ? Color.primary : Color.primary.opacity(0.3))
-                            .cornerRadius(AppRadius.button)
-                    }
-                    .disabled(!isStepValid)
-                }
-                .padding(AppSpacing.margin)
-                .background(Color.backgroundPrimary)
+            }
+            .safeAreaInset(edge: .bottom) {
+                stickyActionBar
             }
         }
         .presentationDetents([.medium, .large], selection: $presentationDetent)
         .presentationDragIndicator(.visible)
+        .onAppear {
+            populateData()
+        }
+    }
+    
+    private var stickyActionBar: some View {
+        VStack {
+            Button(action: {
+                // Sticky Logic: Enforce Large Detent
+                presentationDetent = .large
+                
+                if currentStep < 5 {
+                    HapticManager.shared.light()
+                    direction = .trailing
+                    withAnimation { currentStep += 1 }
+                } else {
+                    HapticManager.shared.success()
+                    saveGoal()
+                }
+            }) {
+                Text(currentStep < 5 ? "Next" : (goalToEdit != nil ? "Update Goal" : "Save Goal"))
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(isStepValid ? (colorScheme == .dark ? .black : .white) : .secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(isStepValid ? Color.primary : Color(UIColor.systemGray5))
+                    .cornerRadius(AppRadius.button)
+            }
+            .disabled(!isStepValid)
+            .animation(.easeInOut, value: isStepValid) // Smooth color transition
+        }
+        .padding(.horizontal, AppSpacing.margin)
+        .padding(.top, AppSpacing.compact)
+        .padding(.bottom, 8) // Reduced bottom padding
+        .background(Color.backgroundPrimary)
+        .animation(.easeInOut, value: currentStep) // Smooth transitions
     }
     
     private var headerTitle: String {
@@ -144,7 +154,9 @@ struct AddSavingGoalView: View {
     private var isStepValid: Bool {
         switch currentStep {
         case 1:
-            if let value = Double(amount), value > 0 {
+            // Handle both dot and comma
+            let normalizedAmount = amount.replacingOccurrences(of: ",", with: ".")
+            if let value = Double(normalizedAmount), value > 0 {
                 return true
             }
             return false

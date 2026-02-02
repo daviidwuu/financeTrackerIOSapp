@@ -137,8 +137,8 @@ struct OnboardingView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
-                        .background(isStepValid ? Color.primary : Color.gray.opacity(0.3))
-                        .foregroundColor(colorScheme == .dark ? .black : .white)
+                        .background(isStepValid ? Color.primary : Color(UIColor.systemGray5))
+                        .foregroundColor(isStepValid ? (colorScheme == .dark ? .black : .white) : .secondary)
                         .cornerRadius(AppRadius.button)
                     }
                     .animation(nil, value: isStepValid) // Remove button color change animation
@@ -738,6 +738,9 @@ struct EditCategorySheet: View {
                 
                 // Action Button
                 Button(action: {
+                    // Sticky Logic: Enforce Large Detent
+                    presentationDetent = .large
+                    
                     if currentStep < 4 {
                         HapticManager.shared.light()
                         direction = .trailing
@@ -750,16 +753,16 @@ struct EditCategorySheet: View {
                     Text(currentStep < 4 ? "Next" : "Save Changes")
                         .font(.headline)
                         .fontWeight(.bold)
-                        .foregroundColor(colorScheme == .dark ? .black : .white)
+                        .foregroundColor(isStepValid ? (colorScheme == .dark ? .black : .white) : .secondary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50) // Standardize height
-                        .background(isStepValid ? Color.primary : Color.primary.opacity(0.3))
+                        .background(isStepValid ? Color.primary : Color(UIColor.systemGray5))
                         .cornerRadius(AppRadius.button) // Use standard radius
                         .contentShape(Rectangle()) // Explicitly define hit area
                 }
                 .disabled(!isStepValid)
                 .padding(.horizontal, 24)
-                .padding(.bottom, 24)
+                .padding(.bottom, 8)
             }
         }
         .presentationDetents([.medium, .large], selection: $presentationDetent)

@@ -1,6 +1,7 @@
 import Foundation
 import FirebaseFirestore
 import Combine
+import WidgetKit
 
 /// Repository for managing transactions in Firestore
 /// Repository for managing transactions in Firestore
@@ -81,6 +82,9 @@ class TransactionRepository: ObservableObject {
              
         WidgetDataManager.shared.saveDailySpend(dailySpend)
         WidgetDataManager.shared.saveMonthlySpend(monthlySpend)
+        
+        // Force reload to ensure widget updates immediately
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }
 
@@ -323,6 +327,12 @@ class SavingGoalRepository: ObservableObject {
         let maxOrder = savingGoals.map { $0.sortOrder ?? 0 }.max() ?? -1
         newGoal.sortOrder = maxOrder + 1
         newGoal.createdAt = Date()
+        
+        // Optimistic Update: Add to local list immediately
+        DispatchQueue.main.async {
+            self.savingGoals.append(newGoal)
+        }
+        
         try db.collection("users").document(userId).collection("savingGoals").document().setData(from: newGoal)
     }
     
