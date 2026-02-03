@@ -127,6 +127,7 @@ struct SetUsernameView: View {
     }
     
     private func saveUsername() {
+        HapticManager.shared.success()
         guard isAvailable else { return }
         isLoading = true
         errorMessage = nil

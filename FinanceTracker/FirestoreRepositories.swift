@@ -301,16 +301,25 @@ class SavingGoalRepository: ObservableObject {
     func startListening(userId: String) {
         self.userId = userId
         listener = db.collection("users").document(userId).collection("savingGoals")
-            .order(by: "sortOrder")
-            .order(by: "targetDate")
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let documents = snapshot?.documents else {
                     DebugLogger.log("Error fetching saving goals: \(error?.localizedDescription ?? "Unknown error")")
                     return
                 }
                 
-                self?.savingGoals = documents.compactMap { document in
+                let goals = documents.compactMap { document in
                     try? document.data(as: FirestoreModels.SavingGoal.self)
+                }
+                
+                // Sort client-side to handle legacy documents without sortOrder
+                self?.savingGoals = goals.sorted { (g1, g2) in
+                    let order1 = g1.sortOrder ?? Int.max
+                    let order2 = g2.sortOrder ?? Int.max
+                    
+                    if order1 != order2 {
+                        return order1 < order2
+                    }
+                    return g1.targetDate < g2.targetDate
                 }
             }
     }

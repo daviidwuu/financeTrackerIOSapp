@@ -472,10 +472,16 @@ struct IncomeStep: View {
         VStack(spacing: 24) {
             Spacer()
             
-            Image(systemName: "dollarsign.circle.fill")
-                .font(.system(size: 80))
-                .foregroundColor(.green)
-                .padding(.bottom, 20)
+            ZStack {
+                Circle()
+                    .fill(Color.green.opacity(0.1))
+                    .frame(width: 160, height: 160)
+                
+                Image(systemName: "dollarsign.circle.fill")
+                    .font(.system(size: 80))
+                    .foregroundColor(.green)
+            }
+            .padding(.bottom, 20)
             
             Text("What is your monthly income?")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
@@ -518,77 +524,92 @@ struct CategoriesStep: View {
                 .multilineTextAlignment(.center)
                 .padding(.top, 40)
             
-            List {
-                ForEach(categories) { category in
-                    HStack {
-                        Image(systemName: category.icon)
-                            .frame(width: 40, height: 40)
-                            .background(Color(hex: category.colorHex).opacity(0.2))
-                            .foregroundColor(Color(hex: category.colorHex))
-                            .clipShape(Circle())
-                        
-                        Text(category.name)
-                            .font(.headline)
-                        
-                        Spacer()
-                        
-                        if let amount = category.budgetAmount {
-                            Text("$\(Int(amount)) Limit")
-                                .font(.system(.subheadline, design: .rounded))
-                                .foregroundColor(.secondary)
-                                .contentShape(Rectangle())
-                                .highPriorityGesture(TapGesture().onEnded {
-                                    editSheetInitialStep = 2
-                                    categoryToEdit = category
-                                })
-                        } else {
-                            Text("Set Budget")
-                                .font(.system(.subheadline, design: .rounded))
-                                .foregroundColor(.secondary)
-                                .contentShape(Rectangle())
-                                .highPriorityGesture(TapGesture().onEnded {
-                                    editSheetInitialStep = 2
-                                    categoryToEdit = category
-                                })
-                        }
-                    }
-                    .padding()
-                    .background(Color(UIColor.secondarySystemBackground))
-                    .cornerRadius(16)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                    .padding(.bottom, 8)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        editSheetInitialStep = 1
-                        categoryToEdit = category
-                    }
-                    .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                        Button {
-                            HapticManager.shared.medium()
-                            categoryToEdit = category
-                        } label: {
-                            Label("Edit", systemImage: "pencil")
-                        }
-                        .tint(.blue)
-                    }
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button {
-                            HapticManager.shared.heavy()
-                            if let index = categories.firstIndex(where: { $0.id == category.id }) {
-                                categories.remove(at: index)
+            if categories.isEmpty {
+                VStack(spacing: 16) {
+                    Spacer()
+                    Image(systemName: "tray.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.gray.opacity(0.3))
+                    Text("No categories yet")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal)
+            } else {
+                List {
+                    ForEach(categories) { category in
+                        HStack {
+                            Image(systemName: category.icon)
+                                .frame(width: 40, height: 40)
+                                .background(Color(hex: category.colorHex).opacity(0.2))
+                                .foregroundColor(Color(hex: category.colorHex))
+                                .clipShape(Circle())
+                            
+                            Text(category.name)
+                                .font(.headline)
+                            
+                            Spacer()
+                            
+                            if let amount = category.budgetAmount {
+                                Text("$\(Int(amount)) Limit")
+                                    .font(.system(.subheadline, design: .rounded))
+                                    .foregroundColor(.secondary)
+                                    .contentShape(Rectangle())
+                                    .highPriorityGesture(TapGesture().onEnded {
+                                        editSheetInitialStep = 2
+                                        categoryToEdit = category
+                                    })
+                            } else {
+                                Text("Set Budget")
+                                    .font(.system(.subheadline, design: .rounded))
+                                    .foregroundColor(.secondary)
+                                    .contentShape(Rectangle())
+                                    .highPriorityGesture(TapGesture().onEnded {
+                                        editSheetInitialStep = 2
+                                        categoryToEdit = category
+                                    })
                             }
-                        } label: {
-                            Label("Delete", systemImage: "trash")
                         }
-                        .tint(.red)
+                        .padding()
+                        .background(Color(UIColor.secondarySystemBackground))
+                        .cornerRadius(16)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .padding(.bottom, 8)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            editSheetInitialStep = 1
+                            categoryToEdit = category
+                        }
+                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                            Button {
+                                HapticManager.shared.medium()
+                                categoryToEdit = category
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+                            .tint(.blue)
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button {
+                                HapticManager.shared.heavy()
+                                if let index = categories.firstIndex(where: { $0.id == category.id }) {
+                                    categories.remove(at: index)
+                                }
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                            .tint(.red)
+                        }
                     }
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .scrollIndicators(.hidden)
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .scrollIndicators(.hidden)
             
             Button(action: {
                 // Create a new empty category and open the sheet
@@ -834,13 +855,11 @@ struct EditCategorySheet: View {
                 .foregroundColor(.secondary)
             
             TextField("e.g. Rent", text: $name)
-                .font(.title)
-                .fontWeight(.bold)
+                .font(AppTypography.heroInput) // Use standardized Hero font
                 .multilineTextAlignment(.center)
-                .foregroundColor(.white)
+                .foregroundColor(.primary)
                 .padding()
-                .background(Color.black)
-                .cornerRadius(12)
+                .background(Color.clear)
         }
     }
     
@@ -979,72 +998,87 @@ struct SavingGoalsStep: View {
                 .multilineTextAlignment(.center)
                 .padding(.top, 40)
             
-            List {
-                ForEach(goals) { goal in
-                    HStack {
-                        Image(systemName: goal.icon)
-                            .frame(width: 40, height: 40)
-                            .background(Color(hex: goal.colorHex).opacity(0.2))
-                            .foregroundColor(Color(hex: goal.colorHex))
-                            .clipShape(Circle())
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(goal.name)
-                                .font(.headline)
-                            Text("Target: $\(Int(goal.targetAmount))")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Spacer()
-                        
-                        // Checkbox for selection
-                        Image(systemName: goal.isSelected ? "checkmark.circle.fill" : "circle")
-                            .font(.title2)
-                            .foregroundColor(goal.isSelected ? Color.blue : Color.gray)
-                            .onTapGesture {
-                                if let index = goals.firstIndex(where: { $0.id == goal.id }) {
-                                    HapticManager.shared.selection() // Selection haptic
-                                    goals[index].isSelected.toggle()
+            if goals.isEmpty {
+                VStack(spacing: 16) {
+                    Spacer()
+                    Image(systemName: "target")
+                        .font(.system(size: 60))
+                        .foregroundColor(.gray.opacity(0.3))
+                    Text("No saving goals set")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal)
+            } else {
+                List {
+                    ForEach(goals) { goal in
+                        HStack {
+                            Image(systemName: goal.icon)
+                                .frame(width: 40, height: 40)
+                                .background(Color(hex: goal.colorHex).opacity(0.2))
+                                .foregroundColor(Color(hex: goal.colorHex))
+                                .clipShape(Circle())
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(goal.name)
+                                    .font(.headline)
+                                Text("Target: $\(Int(goal.targetAmount))")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            // Checkbox for selection
+                            Image(systemName: goal.isSelected ? "checkmark.circle.fill" : "circle")
+                                .font(.title2)
+                                .foregroundColor(goal.isSelected ? Color.blue : Color.gray)
+                                .onTapGesture {
+                                    if let index = goals.firstIndex(where: { $0.id == goal.id }) {
+                                        HapticManager.shared.selection() // Selection haptic
+                                        goals[index].isSelected.toggle()
+                                    }
                                 }
-                            }
-                    }
-                    .padding()
-                    .background(Color(UIColor.secondarySystemBackground))
-                    .cornerRadius(16)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                    .padding(.bottom, 8)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        goalToEdit = goal
-                    }
-                    .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                        Button {
-                            HapticManager.shared.medium()
+                        }
+                        .padding()
+                        .background(Color(UIColor.secondarySystemBackground))
+                        .cornerRadius(16)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .padding(.bottom, 8)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
                             goalToEdit = goal
-                        } label: {
-                            Label("Edit", systemImage: "pencil")
                         }
-                        .tint(.blue)
-                    }
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button {
-                            HapticManager.shared.heavy()
-                            if let index = goals.firstIndex(where: { $0.id == goal.id }) {
-                                goals.remove(at: index)
+                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                            Button {
+                                HapticManager.shared.medium()
+                                goalToEdit = goal
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
                             }
-                        } label: {
-                            Label("Delete", systemImage: "trash")
+                            .tint(.blue)
                         }
-                        .tint(.red)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button {
+                                HapticManager.shared.heavy()
+                                if let index = goals.firstIndex(where: { $0.id == goal.id }) {
+                                    goals.remove(at: index)
+                                }
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                            .tint(.red)
+                        }
                     }
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .scrollIndicators(.hidden)
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .scrollIndicators(.hidden)
             
             Button(action: {
                 // Create a new goal and open the sheet
@@ -1259,13 +1293,12 @@ struct EditSavingGoalSheet: View {
                 .foregroundColor(.secondary)
             
             TextField("e.g. New Car", text: $name)
-                .font(.title)
+                .font(AppTypography.heroInput) // Use standardized Hero font
                 .fontWeight(.bold)
                 .multilineTextAlignment(.center)
-                .foregroundColor(.white)
+                .foregroundColor(.primary)
                 .padding()
-                .background(Color.black)
-                .cornerRadius(12)
+                .background(Color.clear)
         }
     }
     
@@ -2011,12 +2044,16 @@ struct OnboardingAddRecurringSheet: View {
                         Image(systemName: currentStep > 1 ? "chevron.left" : "xmark")
                             .font(.system(size: 22, weight: .semibold))
                             .foregroundColor(.primary)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
                     Spacer()
-                    Text(currentStep < 4 ? "Add Recurring" : "Confirm")
-                        .font(.headline)
+                    Text("Step \(currentStep) of 4")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.secondary)
                     Spacer()
-                    Color.clear.frame(width: 22)
+                    Color.clear.frame(width: 44, height: 44)
                 }
                 .padding()
                 
@@ -2049,13 +2086,15 @@ struct OnboardingAddRecurringSheet: View {
                         .bold()
                         .foregroundColor(isStepValid ? (colorScheme == .dark ? .black : .white) : .secondary)
                         .frame(maxWidth: .infinity)
-                        .padding()
+                        .frame(height: 50)
                         .background(isStepValid ? (colorScheme == .dark ? .white : .black) : Color(UIColor.systemGray5))
                         .cornerRadius(AppRadius.button)
+                        .contentShape(Rectangle())
                 }
                 .disabled(!isStepValid)
                 .animation(.easeInOut, value: isStepValid)
-                .padding()
+                .padding(.horizontal, 24)
+                .padding(.bottom, 8)
             }
         }
         .presentationDetents([.medium, .large], selection: $presentationDetent)

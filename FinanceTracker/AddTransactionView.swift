@@ -171,13 +171,26 @@ struct AddTransactionView: View {
             newTransaction.longitude = existing.longitude
             newTransaction.locationName = existing.locationName
         } else {
-            // New Transaction: Fetch Current Location
-            let locStatus = LocationManager.shared.authorizationStatus
-            if locStatus == .authorizedWhenInUse || locStatus == .authorizedAlways {
-                if let location = LocationManager.shared.currentLocation {
-                    newTransaction.latitude = location.coordinate.latitude
-                    newTransaction.longitude = location.coordinate.longitude
-                    // locationName can be resolved later or valid here
+            // New Transaction: Fetch Current Location if enabled
+            if UserDefaults.standard.bool(forKey: "isLocationEnabled") == true { // Default to true if not set, handled by AppStorage logic elsewhere but safe to check true explicitly or change to register defaults
+                // Actually AppStorage defaults are tricky in pure code without wrapper.
+                // Let's rely on standard valid check.
+                // Better approach: explicit check.
+                
+                // Note: @AppStorage in View is easiest, but inside func we use UserDefaults
+                // or we add @AppStorage prop to View.
+                // Let's use UserDefaults for simplicity in this func scope, assuming true default.
+                let locationEnabled = UserDefaults.standard.object(forKey: "isLocationEnabled") as? Bool ?? true
+                
+                if locationEnabled {
+                    let locStatus = LocationManager.shared.authorizationStatus
+                    if locStatus == .authorizedWhenInUse || locStatus == .authorizedAlways {
+                        if let location = LocationManager.shared.currentLocation {
+                            newTransaction.latitude = location.coordinate.latitude
+                            newTransaction.longitude = location.coordinate.longitude
+                            // locationName can be resolved later or valid here
+                        }
+                    }
                 }
             }
         }

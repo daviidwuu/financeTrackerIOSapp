@@ -45,4 +45,9 @@ class GroupRepository: ObservableObject {
         guard let userId = userId else { return }
         try await db.collection("users").document(userId).collection("groups").document(groupId).delete()
     }
+    
+    func updateGroup(_ group: FirestoreModels.Group) async throws {
+        guard let userId = userId, let groupId = group.id else { return }
+        try db.collection("users").document(userId).collection("groups").document(groupId).setData(from: group)
+    }
 }

@@ -93,6 +93,14 @@ struct ProfileView: View {
                                 Text("Notifications")
                             }
                         }
+                        NavigationLink(destination: LocationSettingsView()) {
+                            HStack {
+                                Image(systemName: "location.fill")
+                                    .foregroundColor(.primary)
+                                    .frame(width: 24)
+                                Text("Location Settings")
+                            }
+                        }
                         NavigationLink(destination: PrivacySettingsView()) {
                             HStack {
                                 Image(systemName: "lock.fill")
@@ -134,6 +142,7 @@ struct ProfileView: View {
                     
                     Section {
                         Button(action: {
+                            HapticManager.shared.medium()
                             appState.logout()
                         }) {
                             Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")

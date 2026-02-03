@@ -1,11 +1,14 @@
 import SwiftUI
 
-struct CreateGroupView: View {
+struct GroupFormView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var appState: AppState
     
     @StateObject private var friendRepo = FriendRepository()
     @StateObject private var groupRepo = GroupRepository()
+    
+    var groupToEdit: FirestoreModels.Group?
+    var onSave: ((FirestoreModels.Group) -> Void)?
     
     @State private var groupName = ""
     @State private var selectedIcon = "person.3.fill"
@@ -19,7 +22,10 @@ struct CreateGroupView: View {
         "car.fill", "heart.fill", "star.fill", "bolt.fill"
     ]
     
-    var onSave: ((FirestoreModels.Group) -> Void)?
+    init(groupToEdit: FirestoreModels.Group? = nil, onSave: ((FirestoreModels.Group) -> Void)? = nil) {
+        self.groupToEdit = groupToEdit
+        self.onSave = onSave
+    }
     
     var body: some View {
         NavigationStack {
@@ -72,15 +78,15 @@ struct CreateGroupView: View {
                     }
                 }
             }
-            .navigationTitle("New Group")
+            .navigationTitle(groupToEdit == nil ? "New Group" : "Edit Group")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") {
-                        createGroup()
+                    Button("Save") {
+                        saveGroup()
                     }
                     .disabled(groupName.isEmpty || selectedFriendIds.isEmpty)
                 }
@@ -114,6 +120,13 @@ struct CreateGroupView: View {
                     friendRepo.startListening(userId: appState.currentUserId)
                     groupRepo.startListening(userId: appState.currentUserId)
                 }
+                
+                // Pre-populate if editing
+                if let group = groupToEdit {
+                    groupName = group.name
+                    selectedIcon = group.icon
+                    selectedFriendIds = Set(group.memberIds)
+                }
             }
         }
     }
@@ -126,28 +139,41 @@ struct CreateGroupView: View {
         }
     }
     
-    private func createGroup() {
+    private func saveGroup() {
         guard !groupName.isEmpty, !selectedFriendIds.isEmpty else { return }
         
-        let newGroup = FirestoreModels.Group(
+        var group = groupToEdit ?? FirestoreModels.Group(
             name: groupName,
             memberIds: Array(selectedFriendIds),
             icon: selectedIcon,
             createdAt: Date()
         )
         
+        // Update fields
+        group.name = groupName
+        group.memberIds = Array(selectedFriendIds)
+        group.icon = selectedIcon
+        
         Task {
-            if let id = try? await groupRepo.addGroup(newGroup) {
-                var groupWithId = newGroup
-                groupWithId.id = id
-                
+            if group.id != nil {
+                // Update
+                try? await groupRepo.updateGroup(group)
                 await MainActor.run {
-                    onSave?(groupWithId)
+                    onSave?(group)
                     dismiss()
                 }
             } else {
-                 // Fallback if add fails or no ID returned (shouldn't happen with updated repo)
-                 dismiss()
+                // Create
+                if let id = try? await groupRepo.addGroup(group) {
+                    var groupWithId = group
+                    groupWithId.id = id
+                    await MainActor.run {
+                        onSave?(groupWithId)
+                        dismiss()
+                    }
+                } else {
+                     dismiss()
+                }
             }
         }
     }

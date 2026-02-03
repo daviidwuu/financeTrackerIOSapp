@@ -24,7 +24,10 @@ struct CalendarView: View {
         VStack(spacing: 20) {
             // Month/Year Selector
             HStack {
-                Button(action: { changeMonth(by: -1) }) {
+                Button(action: { 
+                    HapticManager.shared.light()
+                    changeMonth(by: -1) 
+                }) {
                     Image(systemName: "chevron.left")
                         .font(.title3)
                         .foregroundColor(canGoToPreviousMonth() ? .primary : .gray.opacity(0.3))
@@ -42,7 +45,10 @@ struct CalendarView: View {
                 
                 Spacer()
                 
-                Button(action: { changeMonth(by: 1) }) {
+                Button(action: { 
+                    HapticManager.shared.light()
+                    changeMonth(by: 1) 
+                }) {
                     Image(systemName: "chevron.right")
                         .font(.title3)
                         .foregroundColor(.primary)

@@ -62,7 +62,10 @@ struct TransactionDetailView: View {
                             Text("Split with Friends")
                                 .font(.headline)
                             Spacer()
-                            Button(action: { showSplitSheet = true }) {
+                            Button(action: { 
+                                HapticManager.shared.light()
+                                showSplitSheet = true 
+                            }) {
                                 Image(systemName: "plus.circle.fill") // Using standard SF Symbol
                                     .font(.title2)
                             }
@@ -172,6 +175,7 @@ struct TransactionDetailView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Edit") {
+                        HapticManager.shared.light()
                         showEditSheet = true
                     }
                 }
@@ -358,7 +362,10 @@ struct SplitConfigurationView: View {
     @State private var searchResults: [FriendRepository.UserSearchResult] = []
     @State private var message: String?
     
-    @State private var showCreateGroup = false
+    @State private var showGroupForm = false
+    @State private var groupToEdit: FirestoreModels.Group?
+    @State private var showGroupDeleteAlert = false
+    @State private var groupToDelete: FirestoreModels.Group?
     
     init(transactionAmount: Double, existingSplits: [FirestoreModels.Split], onSave: @escaping ([FirestoreModels.Split]) -> Void) {
         self.transactionAmount = transactionAmount
@@ -466,7 +473,8 @@ struct SplitConfigurationView: View {
                             Text("Groups")
                             Spacer()
                             Button("New Group") {
-                                showCreateGroup = true
+                                groupToEdit = nil
+                                showGroupForm = true
                             }
                             .font(.caption)
                         }
@@ -491,6 +499,21 @@ struct SplitConfigurationView: View {
                                         }
                                         .onTapGesture {
                                             selectGroup(group)
+                                        }
+                                        .contextMenu {
+                                            Button {
+                                                groupToEdit = group
+                                                showGroupForm = true
+                                            } label: {
+                                                Label("Edit", systemImage: "pencil")
+                                            }
+                                            
+                                            Button(role: .destructive) {
+                                                groupToDelete = group
+                                                showGroupDeleteAlert = true
+                                            } label: {
+                                                Label("Delete", systemImage: "trash")
+                                            }
                                         }
                                     }
                                 }
@@ -597,17 +620,26 @@ struct SplitConfigurationView: View {
                     groupRepo.startListening(userId: appState.currentUserId)
                 }
             }
-            .sheet(isPresented: $showCreateGroup) {
-                CreateGroupView { newGroup in
-                    // 1. Auto-select the newly created group
+            .sheet(isPresented: $showGroupForm) {
+                GroupFormView(groupToEdit: groupToEdit) { newGroup in
+                    // 1. Auto-select the newly created/updated group
                     selectGroup(newGroup)
                     
-                    // 2. Optimistically add to the list so it appears immediately
-                    // The snapshot listener will eventually confirm this, but this bridges the gap
-                    if !groupRepo.groups.contains(where: { $0.id == newGroup.id }) {
+                    // 2. Optimistically add/update list
+                    if let index = groupRepo.groups.firstIndex(where: { $0.id == newGroup.id }) {
+                        groupRepo.groups[index] = newGroup
+                    } else {
                         groupRepo.groups.insert(newGroup, at: 0)
                     }
                 }
+            }
+            .alert("Delete Group?", isPresented: $showGroupDeleteAlert, presenting: groupToDelete) { group in
+                 Button("Delete", role: .destructive) {
+                     deleteGroup(group)
+                 }
+                 Button("Cancel", role: .cancel) {}
+            } message: { group in
+                Text("Are you sure you want to delete \(group.name)?")
             }
         }
     }
@@ -769,6 +801,13 @@ struct SplitConfigurationView: View {
         
         for index in unlockedIndices {
             splits[index].amount = newShare
+        }
+    }
+    
+    private func deleteGroup(_ group: FirestoreModels.Group) {
+        guard let id = group.id else { return }
+        Task {
+            try? await groupRepo.deleteGroup(groupId: id)
         }
     }
 }

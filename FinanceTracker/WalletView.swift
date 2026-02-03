@@ -139,6 +139,7 @@ struct WalletView: View {
                             Text("Saving Goals").font(.title2).fontWeight(.bold).foregroundColor(.primary)
                             Spacer()
                             Button(action: { 
+                                HapticManager.shared.light()
                                 goalToEdit = nil
                                 showAddSavingGoal = true 
                             }) {
