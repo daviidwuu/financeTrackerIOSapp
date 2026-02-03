@@ -231,10 +231,17 @@ struct NotificationsSettingsView: View {
     @AppStorage("notificationsEnabled_eod") private var eodCheck = false
     @AppStorage("notificationsEnabled_tips") private var motivationalTips = false
     @AppStorage("notificationsEnabled_unpaidSplits") private var unpaidSplitReminders = false
+    @AppStorage("notificationsEnabled_goals") private var goalMilestones = false
+    
+    // New Settings
+    @AppStorage("budgetAlertThreshold") private var budgetAlertThreshold: Double = 0.8
+    @AppStorage("dailySummaryTime") private var dailySummaryTime: Double = 75600 // 21:00 default (21 * 3600)
+    
     @Environment(\.colorScheme) var colorScheme
     
     @State private var permissionStatus: UNAuthorizationStatus = .notDetermined
     @State private var showingPermissionAlert = false
+    @State private var summaryDate: Date = Date()
     
     var body: some View {
         Form {
@@ -280,47 +287,58 @@ struct NotificationsSettingsView: View {
             Section(header: Text("Transaction Alerts"), footer: Text("Get notified when you add or edit transactions")) {
                 Toggle("Transaction Notifications", isOn: $transactionNotifs)
                     .onChange(of: transactionNotifs) { _, newValue in
-                        if newValue {
-                            ensurePermission()
-                        }
+                        if newValue { ensurePermission() }
                     }
             }
             
             // Budget Alerts
-            Section(header: Text("Budget Alerts"), footer: Text("Get warned when you reach 80% of your budget")) {
+            Section(header: Text("Budget Alerts"), footer: Text("Get warned when you reach a % of your budget")) {
                 Toggle("Budget Warnings", isOn: $budgetNotifs)
                     .onChange(of: budgetNotifs) { _, newValue in
-                        if newValue {
-                            ensurePermission()
-                        }
+                        if newValue { ensurePermission() }
                     }
+                
+                if budgetNotifs {
+                    Picker("Alert Threshold", selection: $budgetAlertThreshold) {
+                        Text("50%").tag(0.5)
+                        Text("80%").tag(0.8)
+                        Text("90%").tag(0.9)
+                        Text("100%").tag(1.0)
+                    }
+                }
             }
             
             // Split Bill Reminders
             Section(header: Text("Split Reminders"), footer: Text("Get reminded about unpaid splits >24h old, every 2 days")) {
                Toggle("Unpaid Split Reminders", isOn: $unpaidSplitReminders)
                    .onChange(of: unpaidSplitReminders) { _, newValue in
-                       if newValue {
-                           ensurePermission()
-                           // Logic is handled in daily summary check usually, 
-                           // but we could schedule a specific check if needed.
-                           // For now, we piggyback or trigger an immediate check? 
-                           // No, just ensure permission.
-                       }
+                       if newValue { ensurePermission() }
                    }
             }
             
             // Scheduled Reports
             Section(header: Text("Scheduled Reports")) {
-                Toggle("Daily Summary (9 PM)", isOn: $dailySummary)
+                Toggle("Daily Summary", isOn: $dailySummary)
                     .onChange(of: dailySummary) { _, newValue in
                         if newValue {
                             ensurePermission()
-                            NotificationManager.shared.scheduleDailySummary()
+                            updateDailySummarySchedule()
                         } else {
                             NotificationManager.shared.cancelDailySummary()
                         }
                     }
+                
+                if dailySummary {
+                    DatePicker("Time", selection: $summaryDate, displayedComponents: .hourAndMinute)
+                        .onChange(of: summaryDate) { _, newDate in
+                            // Save seconds from midnight
+                            let calendar = Calendar.current
+                            let components = calendar.dateComponents([.hour, .minute], from: newDate)
+                            let seconds = (Double(components.hour ?? 21) * 3600) + (Double(components.minute ?? 0) * 60)
+                            dailySummaryTime = seconds
+                            updateDailySummarySchedule()
+                        }
+                }
                 
                 Toggle("Weekly Report (Sunday 8 PM)", isOn: $weeklyReport)
                     .onChange(of: weeklyReport) { _, newValue in
@@ -364,6 +382,11 @@ struct NotificationsSettingsView: View {
                             NotificationManager.shared.cancelMotivationalTips()
                         }
                     }
+                
+                Toggle("Goal Milestones", isOn: $goalMilestones)
+                    .onChange(of: goalMilestones) { _, newValue in
+                        if newValue { ensurePermission() }
+                    }
             }
         }
         .navigationTitle("Notifications")
@@ -371,6 +394,17 @@ struct NotificationsSettingsView: View {
         .scrollContentBackground(.hidden)
         .onAppear {
             checkPermissionStatus()
+            // Initialize Summary Date from Stored Time
+            let totalSeconds = Int(dailySummaryTime)
+            let hours = totalSeconds / 3600
+            let minutes = (totalSeconds % 3600) / 60
+            let calendar = Calendar.current
+            var components = calendar.dateComponents([.year, .month, .day], from: Date())
+            components.hour = hours
+            components.minute = minutes
+            if let date = calendar.date(from: components) {
+                summaryDate = date
+            }
         }
         .alert("Open Settings", isPresented: $showingPermissionAlert) {
             Button("Cancel", role: .cancel) {}
@@ -382,6 +416,10 @@ struct NotificationsSettingsView: View {
         } message: {
             Text("To enable notifications, please allow them in Settings.")
         }
+    }
+    
+    private func updateDailySummarySchedule() {
+        NotificationManager.shared.scheduleDailySummary()
     }
     
     private var permissionIcon: String {

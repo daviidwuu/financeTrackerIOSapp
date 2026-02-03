@@ -27,6 +27,7 @@ class AppState: ObservableObject {
     // Navigation State
     @Published var showProfile = false
     @Published var shouldOpenCurrencySettings = false
+    @Published var selectedTab = 0 // 0: Home, 1: Wallet, 2: Friends, etc.
     
     static let shared = AppState()
     

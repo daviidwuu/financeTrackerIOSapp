@@ -11,6 +11,23 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     private override init() {
         super.init()
         UNUserNotificationCenter.current().delegate = self
+        setupNotificationCategories()
+    }
+    
+    private func setupNotificationCategories() {
+        // Transaction Actions
+        let viewAction = UNNotificationAction(identifier: "VIEW_ACTION", title: "View Details", options: .foreground)
+        let transactionCategory = UNNotificationCategory(identifier: "TRANSACTION", actions: [viewAction], intentIdentifiers: [], options: .customDismissAction)
+        
+        // Split Actions
+        let remindAction = UNNotificationAction(identifier: "REMIND_ACTION", title: "Remind Friend", options: .foreground)
+        let splitCategory = UNNotificationCategory(identifier: "SPLIT", actions: [remindAction], intentIdentifiers: [], options: .customDismissAction)
+        
+        // Daily Summary Actions
+        let analyticsAction = UNNotificationAction(identifier: "ANALYTICS_ACTION", title: "View Analytics", options: .foreground)
+        let summaryCategory = UNNotificationCategory(identifier: "DAILY_SUMMARY", actions: [analyticsAction], intentIdentifiers: [], options: .customDismissAction)
+        
+        UNUserNotificationCenter.current().setNotificationCategories([transactionCategory, splitCategory, summaryCategory])
     }
     
     func registerBackgroundTasks() {
@@ -87,6 +104,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         
         content.sound = .default
         content.badge = 1
+        content.categoryIdentifier = "TRANSACTION"
         
         DebugLogger.log("🔔 Scheduling notification: \(content.title) - \(content.body)")
         
@@ -129,8 +147,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         guard UserDefaults.standard.bool(forKey: "notificationsEnabled_dailySummary") else { return }
         
         let request = BGAppRefreshTaskRequest(identifier: Self.dailySummaryTaskID)
-        // Earliest begin date: Tonight at 9 PM (or tomorrow 9 PM if passed)
-        request.earliestBeginDate = getNextNinePM()
+        request.earliestBeginDate = getNextScheduledTime()
         
         do {
             try BGTaskScheduler.shared.submit(request)
@@ -140,19 +157,26 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         }
     }
     
-    private func getNextNinePM() -> Date {
+    private func getNextScheduledTime() -> Date {
+        let storedSeconds = UserDefaults.standard.double(forKey: "dailySummaryTime")
+        // Default to 9 PM (21 * 3600 = 75600) if not set or 0
+        let totalSeconds = storedSeconds > 0 ? Int(storedSeconds) : 75600
+        
+        let hour = totalSeconds / 3600
+        let minute = (totalSeconds % 3600) / 60
+        
         let calendar = Calendar.current
         let now = Date()
         var components = calendar.dateComponents([.year, .month, .day], from: now)
-        components.hour = 21 // 9 PM
-        components.minute = 0
+        components.hour = hour
+        components.minute = minute
         
-        guard let ninePM = calendar.date(from: components) else { return now.addingTimeInterval(3600) }
+        guard let scheduledDate = calendar.date(from: components) else { return now.addingTimeInterval(3600) }
         
-        if ninePM < now {
-            return calendar.date(byAdding: .day, value: 1, to: ninePM)!
+        if scheduledDate < now {
+            return calendar.date(byAdding: .day, value: 1, to: scheduledDate)!
         }
-        return ninePM
+        return scheduledDate
     }
     
     func cancelDailySummary() {
@@ -205,6 +229,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
                     content.body = "You spent $\(Int(totalSpent)) across \(count) transactions today."
                     content.sound = .default
                     content.userInfo = ["date": Date().timeIntervalSince1970]
+                    content.categoryIdentifier = "DAILY_SUMMARY"
                     
                     let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil) // Deliver immediately
                     UNUserNotificationCenter.current().add(request)
@@ -293,6 +318,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         content.title = "Unpaid Splits Reminder"
         content.body = "You have \(count) unpaid split\(count > 1 ? "s" : "") totaling $\(Int(total)). Check if friends have paid you back!"
         content.sound = .default
+        content.categoryIdentifier = "SPLIT"
         
         let request = UNNotificationRequest(identifier: "split-reminder-\(Date().timeIntervalSince1970)", content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request)
@@ -504,15 +530,77 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
              }
         }
         
-        // Handle Daily Summary Deep Link
-        if let timestamp = userInfo["date"] as? TimeInterval {
-            let date = Date(timeIntervalSince1970: timestamp)
-            DispatchQueue.main.async {
-                AppState.shared.dailySummaryDate = date
-                AppState.shared.showDailySummary = true
-            }
-        }
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        let userInfo = response.notification.request.content.userInfo
+        let categoryId = response.notification.request.content.categoryIdentifier
         
+        // --- 1. Daily Summary (Deep Link) ---
+        if categoryId == "DAILY_SUMMARY" || response.actionIdentifier == "ANALYTICS_ACTION" {
+            if let timestamp = userInfo["date"] as? TimeInterval {
+                let date = Date(timeIntervalSince1970: timestamp)
+                DispatchQueue.main.async {
+                    AppState.shared.dailySummaryDate = date
+                    AppState.shared.showDailySummary = true
+                }
+            } else {
+                 DispatchQueue.main.async {
+                     // Default to today if no date provided
+                     AppState.shared.dailySummaryDate = Date()
+                     AppState.shared.showDailySummary = true
+                 }
+            }
+        
+        // --- 2. Transactions (View Details) ---
+        } else if categoryId == "TRANSACTION" || response.actionIdentifier == "VIEW_ACTION" {
+            DispatchQueue.main.async {
+                // Ensure we are on the Home Dashboard
+                AppState.shared.selectedTab = 0
+                // We could potentially open a detail view if a Transaction ID was passed, 
+                // but for now, just taking them to the list is good.
+                // Or maybe show the "All Transactions" sheet
+                 // AppState.shared.showDailySummary = true // Reusing 'AllTransactionsView' which is what Daily Summary uses
+            }
+            
+        // --- 3. Split Reminders (Friends/Profile) ---
+        } else if categoryId == "SPLIT" || response.actionIdentifier == "REMIND_ACTION" {
+            DispatchQueue.main.async {
+                // Navigate to the Profile where Friends are usually located
+                AppState.shared.showProfile = true
+            }
+        
+        // --- 4. Budget Alerts (Wallet Tab) ---
+        } else if response.notification.request.content.title == "Budget Alert" {
+             DispatchQueue.main.async {
+                 // Switch to Wallet Tab (Index 1)
+                 AppState.shared.selectedTab = 1
+             }
+             
+        // --- 5. Inactivity Check (Prompt to Add Transaction) ---
+        } else if categoryId == "INACTIVITY" || response.actionIdentifier == "LOG_ACTION" { // Assuming we add this category later
+             DispatchQueue.main.async {
+                 AppState.shared.selectedTab = 0
+                 // There isn't a direct "showAddTransaction" in AppState, 
+                 // but we can add one or use a URL scheme if ContentView listens for it.
+                 // For now, just going to Home is sufficient prompt.
+                 // Actually, let's use the URL scheme we saw in ContentView!
+                 if let url = URL(string: "financetracker://add-transaction") {
+                     UIApplication.shared.open(url)
+                 }
+             }
+             
+        // --- 6. Weekly Report (Wallet or Summary) ---
+        } else if response.notification.request.content.title == "Weekly Report" {
+             DispatchQueue.main.async {
+                 AppState.shared.showWeeklyReport = true
+             }
+             
+        // --- 7. Goal Milestones (Wallet Tab) ---
+        } else if response.notification.request.content.title.contains("Goal") {
+             DispatchQueue.main.async {
+                 AppState.shared.selectedTab = 1
+             }
+        }
+
         completionHandler()
     }
 }

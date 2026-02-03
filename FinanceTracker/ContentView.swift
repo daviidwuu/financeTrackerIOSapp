@@ -7,12 +7,13 @@ struct ContentView: View {
     @StateObject private var recurringRepo = RecurringTransactionRepository()
     @State private var showAddTransaction = false
     @Environment(\.colorScheme) var colorScheme
-    @State private var selectedTab = 0
+    // @State private var selectedTab = 0 // Moved to AppState
     @State private var showPostOnboardingGuide = false
+    @AppStorage("budgetAlertThreshold") private var budgetAlertThreshold: Double = 0.8
     
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            TabView(selection: $selectedTab) {
+            TabView(selection: $appState.selectedTab) {
                 HomeView()
                     .tag(0)
                     .tabItem {
@@ -31,7 +32,7 @@ struct ContentView: View {
             // .preferredColorScheme(.none) removed to respect app-level setting
             
             // Floating Action Button
-            if selectedTab == 0 {
+            if appState.selectedTab == 0 {
                 Button(action: {
                     HapticManager.shared.medium()
                     // Refresh budgets when opening add
@@ -145,8 +146,9 @@ struct ContentView: View {
             
             let percentUsed = Int(percent)
             
-            // Warn if over 80%
-            if percentUsed >= 80 {
+            // Warn if over configured threshold
+            let threshold = Int(budgetAlertThreshold * 100)
+            if percentUsed >= threshold {
                 let remaining = totalLimit - spent
                 NotificationManager.shared.sendBudgetWarning(
                     category: category,

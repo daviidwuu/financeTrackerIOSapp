@@ -76,7 +76,7 @@ struct OnboardingView: View {
             VStack(spacing: 0) {
                 // Progress Bar
                 HStack(spacing: 4) {
-                    ForEach(1...12, id: \.self) { step in
+                    ForEach(1...15, id: \.self) { step in
                         Capsule()
                             .fill(step <= currentStep ? Color.white : Color.gray.opacity(0.2))
                             .frame(height: 4)
@@ -99,10 +99,13 @@ struct OnboardingView: View {
                         case 6: CategoriesStep(categories: $onboardingCategories)
                         case 7: RecurringTransactionsStep(transactions: $onboardingRecurringTransactions, categories: onboardingCategories)
                         case 8: SavingGoalsStep(goals: $onboardingSavingGoals)
-                        case 9: BackTapStep()
-                        case 10: TravelModeStep()
-                        case 11: WidgetStep()
-                        case 12: AccountStep(email: $emailInput, password: $passwordInput, errorMessage: $errorMessage)
+                        case 9: SplitTutorialStep()
+                        case 10: BackTapStep()
+                        case 11: TravelModeStep()
+                        case 12: LocationPermissionStep()
+                        case 13: WidgetStep()
+                        case 14: NotificationSetupStep()
+                        case 15: AccountStep(email: $emailInput, password: $passwordInput, errorMessage: $errorMessage)
                         default: EmptyView()
                         }
                     }
@@ -130,7 +133,7 @@ struct OnboardingView: View {
                                 ProgressView()
                                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             } else {
-                                Text(currentStep == 12 ? "Create Account" : "Continue")
+                                Text(currentStep == 15 ? "Create Account" : "Continue")
                                     .font(.headline)
                                     .fontWeight(.bold)
                             }
@@ -165,17 +168,20 @@ struct OnboardingView: View {
         case 6: return !onboardingCategories.filter { $0.isSelected }.isEmpty
         case 7: return true // Recurring Transactions (Optional)
         case 8: return true // Saving Goals
-        case 9: return true // Back Tap
-        case 10: return true // Travel Mode
-        case 11: return true // Widget
-        case 12: return !emailInput.isEmpty && !passwordInput.isEmpty && emailInput.contains("@") && passwordInput.count >= 6
+        case 9: return true // Split Tutorial
+        case 10: return true // Back Tap
+        case 11: return true // Travel Mode
+        case 12: return true // Location
+        case 13: return true // Widget
+        case 14: return true // Notification
+        case 15: return !emailInput.isEmpty && !passwordInput.isEmpty && emailInput.contains("@") && passwordInput.count >= 6
         default: return false
         }
     }
     
     private func nextStep() {
         hideKeyboard()
-        if currentStep < 12 {
+        if currentStep < 15 {
             direction = .trailing
             HapticManager.shared.light() // Navigation haptic
             currentStep += 1
@@ -1460,6 +1466,305 @@ struct WidgetStep: View {
             
             Spacer()
         }
+    }
+}
+
+struct NotificationSetupStep: View {
+    @AppStorage("notificationsEnabled_transactions") private var transactionNotifs = false
+    @AppStorage("notificationsEnabled_budgets") private var budgetNotifs = false
+    @AppStorage("notificationsEnabled_dailySummary") private var dailySummary = false
+    
+    @State private var hasRequested = false
+    @State private var permissionStatus: UNAuthorizationStatus = .notDetermined
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            
+            ZStack {
+                Circle()
+                    .fill(Color.blue.opacity(0.1))
+                    .frame(width: 160, height: 160)
+                
+                Image(systemName: "bell.badge.fill")
+                    .font(.system(size: 80))
+                    .foregroundColor(.blue)
+            }
+            .padding(.bottom, 20)
+            
+            Text("Stay on Track")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .multilineTextAlignment(.center)
+            
+            VStack(spacing: 16) {
+                Text("Get timely updates about your spending habits and budgets.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+                
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                            .frame(width: 24)
+                        VStack(alignment: .leading) {
+                            Text("Budget Alerts")
+                                .font(.headline)
+                            Text("Get warned when near limits")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    HStack {
+                        Image(systemName: "doc.text.fill")
+                            .foregroundColor(.purple)
+                            .frame(width: 24)
+                        VStack(alignment: .leading) {
+                            Text("Daily Summary")
+                                .font(.headline)
+                            Text("Review your day at 9 PM")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    HStack {
+                        Image(systemName: "creditcard.fill")
+                            .foregroundColor(.green)
+                            .frame(width: 24)
+                        VStack(alignment: .leading) {
+                            Text("Transaction Updates")
+                                .font(.headline)
+                            Text("Confirm when you add income/expense")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .padding()
+                .background(Color(UIColor.secondarySystemBackground))
+                .cornerRadius(16)
+                .padding(.horizontal, 24)
+            }
+            
+            Spacer()
+            
+            if permissionStatus == .notDetermined {
+                Button(action: {
+                    requestPermission()
+                }) {
+                    Text("Enable Notifications")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(Color.blue)
+                        .cornerRadius(AppRadius.button)
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 8)
+            } else if permissionStatus == .authorized {
+                HStack {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                    Text("Notifications Enabled!")
+                        .font(.headline)
+                        .foregroundColor(.green)
+                }
+                .padding(.bottom, 20)
+            } else {
+                 Text("Notifications are disabled in Settings.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.bottom, 20)
+            }
+        }
+        .onAppear {
+            checkStatus()
+        }
+    }
+    
+    private func requestPermission() {
+        NotificationManager.shared.requestPermission { granted in
+            checkStatus()
+            if granted {
+                // Enable default settings
+                transactionNotifs = true
+                budgetNotifs = true
+                dailySummary = true
+                
+                // Schedule default reports
+                NotificationManager.shared.scheduleDailySummary()
+            }
+        }
+    }
+    
+    private func checkStatus() {
+        NotificationManager.shared.checkPermissionStatus { status in
+            permissionStatus = status
+        }
+    }
+}
+
+struct SplitTutorialStep: View {
+    var body: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            
+            ZStack {
+                Circle()
+                    .fill(Color.orange.opacity(0.1))
+                    .frame(width: 160, height: 160)
+                
+                Image(systemName: "person.2.circle.fill")
+                    .font(.system(size: 80))
+                    .foregroundColor(.orange)
+            }
+            .padding(.bottom, 20)
+            
+            Text("Split Bills Easily")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .multilineTextAlignment(.center)
+            
+            VStack(spacing: 16) {
+                Text("Sharing expenses with friends? We make it simple.")
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+                
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(alignment: .top) {
+                        Image(systemName: "1.circle.fill")
+                            .foregroundColor(.secondary)
+                        Text("Go to your **Profile** to add friends.")
+                    }
+                    HStack(alignment: .top) {
+                        Image(systemName: "2.circle.fill")
+                            .foregroundColor(.secondary)
+                        Text("Tap **Split** when adding a transaction.")
+                    }
+                    HStack(alignment: .top) {
+                        Image(systemName: "3.circle.fill")
+                            .foregroundColor(.secondary)
+                        Text("We'll track who owes what automatically.")
+                    }
+                }
+                .padding()
+                .background(Color(UIColor.secondarySystemBackground))
+                .cornerRadius(16)
+            }
+            .padding(.horizontal, 32)
+            
+            Spacer()
+        }
+    }
+}
+
+struct LocationPermissionStep: View {
+    @State private var permissionStatus: CLAuthorizationStatus = .notDetermined
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            
+            ZStack {
+                Circle()
+                    .fill(Color.purple.opacity(0.1))
+                    .frame(width: 160, height: 160)
+                
+                Image(systemName: "location.circle.fill")
+                    .font(.system(size: 80))
+                    .foregroundColor(.purple)
+            }
+            .padding(.bottom, 20)
+            
+            Text("Smart Travel Mode")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .multilineTextAlignment(.center)
+            
+            VStack(spacing: 16) {
+                Text("Allow location access to automatically detect when you travel and switch currencies.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+                
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Image(systemName: "globe")
+                            .foregroundColor(.blue)
+                            .frame(width: 24)
+                        Text("Auto-detect Country")
+                            .font(.subheadline)
+                    }
+                    HStack {
+                        Image(systemName: "banknote")
+                            .foregroundColor(.green)
+                            .frame(width: 24)
+                        Text("Switch Currency Instantly")
+                            .font(.subheadline)
+                    }
+                }
+                .padding()
+                .background(Color(UIColor.secondarySystemBackground))
+                .cornerRadius(16)
+            }
+            
+            Spacer()
+            
+            if permissionStatus == .notDetermined {
+                Button(action: {
+                   requestLocation()
+                }) {
+                    Text("Enable Location")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(Color.blue)
+                        .cornerRadius(AppRadius.button)
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 8)
+            } else if permissionStatus == .authorizedWhenInUse || permissionStatus == .authorizedAlways {
+                HStack {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                    Text("Location Enabled!")
+                        .font(.headline)
+                        .foregroundColor(.green)
+                }
+                .padding(.bottom, 20)
+            } else {
+                 Text("Location access is disabled.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.bottom, 20)
+            }
+        }
+        .onAppear {
+            checkStatus()
+        }
+    }
+    
+    private func requestLocation() {
+        LocationManager.shared.requestPermission()
+        // Poll for change or wait a bit? 
+        // LocationManager delegate handles changes, but we ideally need to listen to it.
+        // For simplicity in this step, we can just check status after a delay or rely on the user tapping Continue.
+        // A better way is to observe LocationManager, but let's just do a simple check.
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            checkStatus()
+        }
+    }
+    
+    private func checkStatus() {
+        let manager = CLLocationManager()
+        permissionStatus = manager.authorizationStatus
     }
 }
 struct SocialFeaturesStep: View {
