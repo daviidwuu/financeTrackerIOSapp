@@ -5,6 +5,7 @@ import SwiftUI
 struct FinanceWidgetBundle: WidgetBundle {
     var body: some Widget {
         LockScreenWidget()
+        SpentWidget()
         QuickLogWidget()
     }
 }

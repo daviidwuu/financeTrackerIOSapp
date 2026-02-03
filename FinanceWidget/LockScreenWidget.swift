@@ -56,6 +56,8 @@ struct LockScreenWidgetEntryView : View {
     var entry: Provider.Entry
     @Environment(\.widgetFamily) var family
     @Environment(\.colorScheme) var colorScheme
+    
+    var mode: WidgetDisplayMode = .remaining
 
     var body: some View {
         switch family {
@@ -94,18 +96,33 @@ struct LockScreenWidgetEntryView : View {
 
         // MARK: Lock Screen - Circular (Daily Ring - "Fuel Gauge")
         case .accessoryCircular:
-            WidgetCircularProgressView(
-                value: max(entry.dailyRemaining, 0),
-                total: entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 100,
-                color: .primary // System tint on Lock Screen
-            )
-            .padding(2)
-            .overlay(
-                Text(formatShort(entry.dailyRemaining))
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .minimumScaleFactor(0.5)
-            )
-            .containerBackground(.clear, for: .widget)
+            if mode == .spent {
+                WidgetCircularProgressView(
+                    value: abs(entry.dailySpend),
+                    total: entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 100,
+                    color: calculateSpentColor(spent: abs(entry.dailySpend), limit: entry.dailyBudgetLimit)
+                )
+                .padding(2)
+                .overlay(
+                    Text(formatShort(abs(entry.dailySpend)))
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .minimumScaleFactor(0.5)
+                )
+                .containerBackground(.clear, for: .widget)
+            } else {
+                WidgetCircularProgressView(
+                    value: max(entry.dailyRemaining, 0),
+                    total: entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 100,
+                    color: .primary // System tint on Lock Screen
+                )
+                .padding(2)
+                .overlay(
+                    Text(formatShort(entry.dailyRemaining))
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .minimumScaleFactor(0.5)
+                )
+                .containerBackground(.clear, for: .widget)
+            }
             
         // MARK: Lock Screen - Inline (Monthly Left)
         case .accessoryInline:
@@ -178,15 +195,29 @@ struct LockScreenWidgetEntryView : View {
                 HStack(spacing: 12) {
                     // LEFT: Daily Card (Compact - Fixed Width)
                     // Dynamic Color Logic
-                    let dailyBackground = entry.dailyRemaining < 0 
-                        ? Color(UIColor.systemRed).opacity(0.15) 
-                        : Color(UIColor.systemGray6).opacity(0.12)
+                    let dailyBackground = {
+                        if mode == .spent {
+                           return abs(entry.dailySpend) > entry.dailyBudgetLimit
+                                ? Color(UIColor.systemRed).opacity(0.15)
+                                : Color(UIColor.systemGray6).opacity(0.12)
+                        } else {
+                           return entry.dailyRemaining < 0 
+                                ? Color(UIColor.systemRed).opacity(0.15) 
+                                : Color(UIColor.systemGray6).opacity(0.12)
+                        }
+                    }()
                     
                     VStack(alignment: .leading, spacing: 0) {
                         HStack {
-                            Image(systemName: entry.dailyRemaining < 0 ? "exclamationmark.triangle.fill" : "sun.max.fill")
-                                .font(.system(size: 10))
-                                .foregroundStyle(.white)
+                            if mode == .spent {
+                                Image(systemName: abs(entry.dailySpend) > entry.dailyBudgetLimit ? "exclamationmark.triangle.fill" : "flame.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(abs(entry.dailySpend) > entry.dailyBudgetLimit ? .red : .orange)
+                            } else {
+                                Image(systemName: entry.dailyRemaining < 0 ? "exclamationmark.triangle.fill" : "sun.max.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.white)
+                            }
                             Text("TODAY")
                                 .font(.system(size: 9, weight: .bold))
                                 .tracking(1)
@@ -200,16 +231,22 @@ struct LockScreenWidgetEntryView : View {
                             Circle()
                                 .stroke(Color.white.opacity(0.1), lineWidth: 6)
                             
+                            // Ring Value
+                            let ringValue = mode == .spent ? abs(entry.dailySpend) : entry.dailyRemaining
+                            let ringColor = mode == .spent 
+                                ? calculateSpentColor(spent: abs(entry.dailySpend), limit: entry.dailyBudgetLimit)
+                                : calculateColor(remaining: entry.dailyRemaining, limit: entry.dailyBudgetLimit)
+                            
                             Circle()
-                                .trim(from: 0, to: min(max(entry.dailyRemaining / (entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 1), 0), 1))
+                                .trim(from: 0, to: min(max(ringValue / (entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 1), 0), 1))
                                 .stroke(
-                                    calculateColor(remaining: entry.dailyRemaining, limit: entry.dailyBudgetLimit),
+                                    ringColor,
                                     style: StrokeStyle(lineWidth: 6, lineCap: .round)
                                 )
                                 .rotationEffect(.degrees(-90))
                             
                             VStack(spacing: 0) {
-                                Text(formatShort(entry.dailyRemaining))
+                                Text(formatShort(ringValue))
                                     .font(.system(size: 14, weight: .bold, design: .rounded))
                                     .foregroundStyle(.white)
                                     .minimumScaleFactor(0.8)
@@ -220,14 +257,23 @@ struct LockScreenWidgetEntryView : View {
                         
                         Spacer()
                         
-                        // Footer Stat (Spent)
+                        // Footer Stat
                         HStack(spacing: 4) {
-                            Text("Spent:")
-                                .font(.system(size: 9))
-                                .foregroundStyle(Color(UIColor.systemGray))
-                            Text(formatShort(abs(entry.dailySpend)))
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(.white)
+                            if mode == .spent {
+                                Text("Save:")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(Color(UIColor.systemGray))
+                                Text(formatShort(entry.dailyRemaining))
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundStyle(entry.dailyRemaining < 0 ? .red : .white)
+                            } else {
+                                Text("Spent:")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(Color(UIColor.systemGray))
+                                Text(formatShort(abs(entry.dailySpend)))
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundStyle(.white)
+                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .center)
                     }
@@ -237,7 +283,11 @@ struct LockScreenWidgetEntryView : View {
                     .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(entry.dailyRemaining < 0 ? Color.red.opacity(0.3) : Color.clear, lineWidth: 1)
+                            .stroke(
+                                (mode == .spent ? (abs(entry.dailySpend) > entry.dailyBudgetLimit) : (entry.dailyRemaining < 0)) 
+                                ? Color.red.opacity(0.3) : Color.clear, 
+                                lineWidth: 1
+                            )
                     )
                     
                     // RIGHT: Monthly Overview (HERO - Takes available space)
@@ -250,15 +300,27 @@ struct LockScreenWidgetEntryView : View {
                         
                         // Main Stats Row
                         HStack(alignment: .lastTextBaseline) {
-                            Text(formatShort(entry.monthlyBudget + entry.monthlySpend))
-                                .font(.system(size: 34, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white)
-                                .contentTransition(.numericText())
-                            
-                            Text("left")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundStyle(Color(UIColor.systemGray))
-                                .padding(.leading, 2)
+                            if mode == .spent {
+                                Text(formatShort(abs(entry.monthlySpend)))
+                                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                                    .foregroundStyle(.white)
+                                    .contentTransition(.numericText())
+                                
+                                Text("spent")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundStyle(Color(UIColor.systemGray))
+                                    .padding(.leading, 2)
+                            } else {
+                                Text(formatShort(entry.monthlyBudget + entry.monthlySpend))
+                                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                                    .foregroundStyle(.white)
+                                    .contentTransition(.numericText())
+                                
+                                Text("left")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundStyle(Color(UIColor.systemGray))
+                                    .padding(.leading, 2)
+                            }
                         }
                         
                         Spacer()
@@ -267,7 +329,7 @@ struct LockScreenWidgetEntryView : View {
                         VStack(alignment: .leading, spacing: 6) {
                             // Labels
                             HStack {
-                                Text("Spent")
+                                Text(mode == .spent ? "Left" : "Spent")
                                     .font(.caption2)
                                     .foregroundStyle(Color(UIColor.systemGray))
                                 Spacer()
@@ -292,8 +354,10 @@ struct LockScreenWidgetEntryView : View {
                             }
                             .frame(height: 12) // Thicker for Hero feel
                             
-                            // Spent Value (No Negative Sign)
-                            Text(formatShort(abs(entry.monthlySpend)))
+                            // Spent/Left Value (No Negative Sign)
+                            // In Spent mode, footer shows "Left: $X"
+                            // In Remaining mode, footer shows "Spent: $X"
+                            Text(formatShort(mode == .spent ? (entry.monthlyBudget + entry.monthlySpend) : abs(entry.monthlySpend)))
                                 .font(.system(size: 14, weight: .bold, design: .rounded))
                                 .foregroundStyle(.white)
                         }
@@ -342,6 +406,25 @@ struct LockScreenWidgetEntryView : View {
             return .red
         }
     }
+    
+    // New Helper for Spent Mode Color
+    func calculateSpentColor(spent: Double, limit: Double) -> Color {
+        guard limit > 0 else { return .red }
+        let percentage = spent / limit
+        
+        if percentage < 0.5 {
+            return .green
+        } else if percentage < 0.8 {
+            return .orange
+        } else {
+            return .red
+        }
+    }
+}
+
+enum WidgetDisplayMode {
+    case remaining
+    case spent
 }
 
 // MARK: - Helper Views
@@ -380,11 +463,25 @@ struct LockScreenWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: Provider()) { entry in
-            LockScreenWidgetEntryView(entry: entry)
+            LockScreenWidgetEntryView(entry: entry, mode: .remaining)
         }
         .configurationDisplayName("spendi")
         .description("Track daily habits and monthly budget.")
         .supportedFamilies([.accessoryRectangular, .accessoryCircular, .accessoryInline, .systemSmall, .systemMedium])
         .contentMarginsDisabled() // Modern look for system widgets
+    }
+}
+
+struct SpentWidget: Widget {
+    let kind: String = "SpentWidget"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: Provider()) { entry in
+            LockScreenWidgetEntryView(entry: entry, mode: .spent)
+        }
+        .configurationDisplayName("Spent Tracker")
+        .description("Track how much you have spent.")
+        .supportedFamilies([.accessoryCircular, .systemMedium])
+        .contentMarginsDisabled()
     }
 }
