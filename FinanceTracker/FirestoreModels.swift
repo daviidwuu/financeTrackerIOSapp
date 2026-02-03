@@ -24,8 +24,13 @@ enum FirestoreModels {
         var exchangeRate: Double? = nil // e.g., 100.0 (1 Main = 100 Travel) or 0.01
         var originalAmount: Double? = nil // Amount in original currency
         
-        // Splitwise Support
+        // Splits
         var splits: [Split]? = nil
+        
+        // Location
+        var latitude: Double? = nil
+        var longitude: Double? = nil
+        var locationName: String? = nil
         
         enum CodingKeys: String, CodingKey {
             case id
@@ -44,6 +49,9 @@ enum FirestoreModels {
             case exchangeRate
             case originalAmount
             case splits
+            case latitude
+            case longitude
+            case locationName
         }
     }
     

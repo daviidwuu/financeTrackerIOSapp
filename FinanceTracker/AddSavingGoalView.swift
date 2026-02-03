@@ -10,8 +10,8 @@ struct AddSavingGoalView: View {
     @State private var currentStep = 1
     @State private var amount: String = ""
     @State private var goalName: String = ""
-    @State private var selectedIcon: String = "car.fill"
-    @State private var selectedColor: Color = .blue
+    @State private var selectedIcon: String = ""
+    @State private var selectedColor: Color = .clear
     @State private var targetDate = Date()
     @State private var direction: Edge = .trailing
     
@@ -99,7 +99,7 @@ struct AddSavingGoalView: View {
                     .foregroundColor(isStepValid ? (colorScheme == .dark ? .black : .white) : .secondary)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(isStepValid ? Color.primary : Color(UIColor.systemGray5))
+                    .background(isStepValid ? (colorScheme == .dark ? .white : .black) : Color(UIColor.systemGray5))
                     .cornerRadius(AppRadius.button)
             }
             .disabled(!isStepValid)
@@ -163,9 +163,9 @@ struct AddSavingGoalView: View {
         case 2:
             return !goalName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case 3:
-            return true
+            return !selectedIcon.isEmpty
         case 4:
-            return true
+            return selectedColor != .clear
         case 5:
             return true
         default:

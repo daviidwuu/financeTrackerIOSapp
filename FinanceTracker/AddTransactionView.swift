@@ -1,5 +1,7 @@
 import SwiftUI
 
+import CoreLocation
+
 struct AddTransactionView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
@@ -161,6 +163,24 @@ struct AddTransactionView: View {
             notes: transactionNotes,
             type: type
         )
+        
+        // --- Location Logic ---
+        if let existing = transactionToEdit {
+            // Preserve existing location
+            newTransaction.latitude = existing.latitude
+            newTransaction.longitude = existing.longitude
+            newTransaction.locationName = existing.locationName
+        } else {
+            // New Transaction: Fetch Current Location
+            let locStatus = LocationManager.shared.authorizationStatus
+            if locStatus == .authorizedWhenInUse || locStatus == .authorizedAlways {
+                if let location = LocationManager.shared.currentLocation {
+                    newTransaction.latitude = location.coordinate.latitude
+                    newTransaction.longitude = location.coordinate.longitude
+                    // locationName can be resolved later or valid here
+                }
+            }
+        }
         
         if isUsingTravelCurrency {
             let rawAmount = Double(amount) ?? 0

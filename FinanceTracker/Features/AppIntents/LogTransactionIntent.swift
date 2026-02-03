@@ -2,6 +2,7 @@ import AppIntents
 import FirebaseFirestore
 import FirebaseAuth
 import UserNotifications
+import CoreLocation
 
 
 struct LogTransactionIntent: AppIntent {
@@ -20,8 +21,11 @@ struct LogTransactionIntent: AppIntent {
     @Parameter(title: "Note", requestValueDialog: "Any note?")
     var note: String?
     
+    @Parameter(title: "Location")
+    var location: CLPlacemark?
+    
     static var parameterSummary: some ParameterSummary {
-        Summary("Log \(\.$amount) for \(\.$category) with \(\.$note)")
+        Summary("Log \(\.$amount) for \(\.$category) with \(\.$note) at \(\.$location)")
     }
     
     @MainActor
@@ -70,7 +74,12 @@ struct LogTransactionIntent: AppIntent {
             type: budgetData.type ?? "expense",
             source: "shortcuts",
             userId: user.uid,
-            createdAt: Date()
+            createdAt: Date(),
+            
+            // Location
+            latitude: location?.location?.coordinate.latitude,
+            longitude: location?.location?.coordinate.longitude,
+            locationName: location?.name ?? location?.locality
         )
         
         let transactionsCollection = db.collection("users").document(user.uid).collection("transactions")

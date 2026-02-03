@@ -109,7 +109,12 @@ struct ContentView: View {
                     note: transaction.notes,
                     type: amount < 0 ? "expense" : "income",
                     userId: appState.currentUserId, // Use global user ID
-                    createdAt: Date()
+                    createdAt: Date(),
+                    
+                    // Location
+                    latitude: transaction.latitude,
+                    longitude: transaction.longitude,
+                    locationName: transaction.locationName
                 )
                 try await transactionRepo.addTransaction(firestoreTransaction)
                 

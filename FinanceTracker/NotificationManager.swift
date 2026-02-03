@@ -517,6 +517,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         let userInfo = response.notification.request.content.userInfo
+        let categoryId = response.notification.request.content.categoryIdentifier
         
         // Handle Travel Notification
         if let type = userInfo["type"] as? String, type == "travel_update" {
@@ -528,14 +529,9 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
                      AppState.shared.shouldOpenCurrencySettings = true
                  }
              }
-        }
-        
-    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        let userInfo = response.notification.request.content.userInfo
-        let categoryId = response.notification.request.content.categoryIdentifier
         
         // --- 1. Daily Summary (Deep Link) ---
-        if categoryId == "DAILY_SUMMARY" || response.actionIdentifier == "ANALYTICS_ACTION" {
+        } else if categoryId == "DAILY_SUMMARY" || response.actionIdentifier == "ANALYTICS_ACTION" {
             if let timestamp = userInfo["date"] as? TimeInterval {
                 let date = Date(timeIntervalSince1970: timestamp)
                 DispatchQueue.main.async {

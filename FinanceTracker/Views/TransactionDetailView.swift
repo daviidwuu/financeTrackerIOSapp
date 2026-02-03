@@ -1,10 +1,12 @@
 import SwiftUI
 import FirebaseFirestore
+import MapKit
 
 struct TransactionDetailView: View {
     @State private var transaction: FirestoreModels.Transaction
     @State private var showEditSheet = false
     @State private var showSplitSheet = false
+    @State private var showFullMap = false
     @Environment(\.dismiss) var dismiss
     
     // Callback for saving changes
@@ -22,6 +24,20 @@ struct TransactionDetailView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
+                    
+                    // Map Header
+                    if let lat = transaction.latitude, let lon = transaction.longitude {
+                        Map(initialPosition: .camera(MapCamera(centerCoordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon), distance: 1000))) {
+                            Marker(transaction.title, coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon))
+                        }
+                        .frame(height: 180)
+                        .cornerRadius(24)
+                        .padding(.horizontal)
+                        .padding(.top, 16)
+                        .onTapGesture {
+                            showFullMap = true
+                        }
+                    }
                     
                     // Amount Section
                     VStack(spacing: 8) {
@@ -175,6 +191,11 @@ struct TransactionDetailView: View {
                     newModel.note = updatedTransaction.notes
                     newModel.type = amount < 0 ? "expense" : "income"
                     
+                    // Location
+                    newModel.latitude = updatedTransaction.latitude
+                    newModel.longitude = updatedTransaction.longitude
+                    newModel.locationName = updatedTransaction.locationName
+                    
                     self.transaction = newModel
                     
                     // Call parent callback to persist changes
@@ -186,6 +207,11 @@ struct TransactionDetailView: View {
                     updateSplits(newSplits)
                 }
                 .presentationDetents([.medium, .large])
+            }
+            .sheet(isPresented: $showFullMap) {
+                if let lat = transaction.latitude, let lon = transaction.longitude {
+                    FullScreenMapView(coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon), title: transaction.title)
+                }
             }
             .onAppear {
                 transactionRepo.startListening(userId: transaction.userId)
@@ -727,6 +753,7 @@ struct SplitConfigurationView: View {
             .filter { lockedSplitIds.contains($0.id) }
             .reduce(0) { $0 + $1.amount }
         
+        // ... (rest of logic unchanged, just anchoring at end of struct) ...
         let remainder = transactionAmount - lockedTotal
         
         // Identify Unlocked Splits
@@ -737,20 +764,33 @@ struct SplitConfigurationView: View {
             }
         }
         
-        // Calculate Share
-        // Divisor = Unlocked Friends + Yourself (1)
         let divisor = Double(unlockedIndices.count + 1)
+        let newShare = remainder <= 0 ? 0 : remainder / divisor
         
-        let newShare: Double
-        if remainder <= 0 {
-             newShare = 0 // Locked exceeds total
-        } else {
-             newShare = remainder / divisor
-        }
-        
-        // Update Unlocked Splits
         for index in unlockedIndices {
             splits[index].amount = newShare
+        }
+    }
+}
+
+struct FullScreenMapView: View {
+    let coordinate: CLLocationCoordinate2D
+    let title: String
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            Map(initialPosition: .camera(MapCamera(centerCoordinate: coordinate, distance: 1000))) {
+                Marker(title, coordinate: coordinate)
+            }
+            .ignoresSafeArea()
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                }
+            }
         }
     }
 }

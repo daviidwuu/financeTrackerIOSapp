@@ -12,6 +12,14 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var currentCountryCode: String?
     @Published var currentCountryName: String?
     
+    var currentLocation: CLLocation? {
+        locationManager.location
+    }
+    
+    var authorizationStatus: CLAuthorizationStatus {
+        locationManager.authorizationStatus
+    }
+    
     override init() {
         super.init()
         locationManager.delegate = self

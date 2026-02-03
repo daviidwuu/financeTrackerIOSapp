@@ -1,6 +1,7 @@
 import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
+import CoreLocation
 
 struct OnboardingView: View {
     @Environment(\.colorScheme) var colorScheme
@@ -599,10 +600,10 @@ struct CategoriesStep: View {
                     Text("Add Category")
                 }
                 .font(.headline)
-                .foregroundColor(.white)
+                .foregroundColor(.primary)
                 .padding()
                 .frame(maxWidth: .infinity)
-                .background(Color.blue)
+                .background(Color.clear)
                 .cornerRadius(12)
                 .padding(.horizontal)
             }
@@ -762,11 +763,12 @@ struct EditCategorySheet: View {
                         .foregroundColor(isStepValid ? (colorScheme == .dark ? .black : .white) : .secondary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50) // Standardize height
-                        .background(isStepValid ? Color.primary : Color(UIColor.systemGray5))
+                        .background(isStepValid ? (colorScheme == .dark ? .white : .black) : Color(UIColor.systemGray5))
                         .cornerRadius(AppRadius.button) // Use standard radius
                         .contentShape(Rectangle()) // Explicitly define hit area
                 }
                 .disabled(!isStepValid)
+                .animation(.easeInOut, value: isStepValid)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 8)
             }
@@ -1046,7 +1048,7 @@ struct SavingGoalsStep: View {
             
             Button(action: {
                 // Create a new goal and open the sheet
-                let newGoal = OnboardingView.OnboardingSavingGoal(name: "", targetAmount: 500, icon: "star.fill", colorHex: "#FFD60A")
+                let newGoal = OnboardingView.OnboardingSavingGoal(name: "", targetAmount: 500, icon: "", colorHex: "")
                 goalToEdit = newGoal
             }) {
                 HStack {
@@ -1054,10 +1056,10 @@ struct SavingGoalsStep: View {
                     Text("Add Saving Goal")
                 }
                 .font(.headline)
-                .foregroundColor(.white)
+                .foregroundColor(.primary)
                 .padding()
                 .frame(maxWidth: .infinity)
-                .background(Color.blue)
+                .background(Color.clear)
                 .cornerRadius(12)
                 .padding(.horizontal)
             }
@@ -1189,12 +1191,14 @@ struct EditSavingGoalSheet: View {
                     Text(currentStep < 5 ? "Next" : "Save Changes")
                         .font(.headline)
                         .fontWeight(.bold)
-                        .foregroundColor(colorScheme == .dark ? .black : .white)
+                        .foregroundColor(isStepValid ? (colorScheme == .dark ? .black : .white) : .secondary)
+                        .frame(maxWidth: .infinity)
                         .frame(height: 50)
-                        .background(isStepValid ? Color.primary : Color.primary.opacity(0.3))
+                        .background(isStepValid ? (colorScheme == .dark ? .white : .black) : Color(UIColor.systemGray5))
                         .cornerRadius(AppRadius.button)
                 }
                 .disabled(!isStepValid)
+                .animation(.easeInOut, value: isStepValid)
                 .padding()
             }
         }
@@ -1299,14 +1303,15 @@ struct EditSavingGoalSheet: View {
                             HapticManager.shared.selection()
                         }) {
                             Circle()
-                                .fill(selectedIcon == icon ? Color.primary : Color.secondary.opacity(0.1))
+                                .fill(selectedIcon == icon ? Color.primary : Color(UIColor.systemGray5))
                                 .frame(width: 60, height: 60)
                                 .overlay(
                                     Image(systemName: icon)
                                         .font(.title2)
-                                        .foregroundColor(selectedIcon == icon ? (colorScheme == .dark ? .black : .white) : .primary)
+                                        .foregroundColor(selectedIcon == icon ? (colorScheme == .dark ? .black : .white) : .secondary)
                                 )
                         }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal)
@@ -1335,15 +1340,18 @@ struct EditSavingGoalSheet: View {
                                 .frame(width: 60, height: 60)
                                 .overlay(
                                     Circle()
-                                        .stroke(Color.primary, lineWidth: selectedColorHex == hex ? 3 : 0)
+                                        .stroke(Color.primary, lineWidth: selectedColorHex == hex ? 4 : 0)
                                 )
                                 .overlay(
                                     Image(systemName: "checkmark")
-                                        .font(.title3)
+                                        .font(.title2)
+                                        .fontWeight(.bold)
                                         .foregroundColor(.white)
+                                        .shadow(color: .black.opacity(0.3), radius: 2)
                                         .opacity(selectedColorHex == hex ? 1 : 0)
                                 )
                         }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal)
@@ -1885,8 +1893,6 @@ struct RecurringTransactionsStep: View {
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
-                .background(Color(UIColor.secondarySystemBackground).opacity(0.5))
-                .cornerRadius(16)
                 .padding(.horizontal)
             } else {
                 List {
@@ -1920,10 +1926,10 @@ struct RecurringTransactionsStep: View {
                     Text("Add Recurring")
                 }
                 .font(.headline)
-                .foregroundColor(.white)
+                .foregroundColor(.primary)
                 .padding()
                 .frame(maxWidth: .infinity)
-                .background(Color.blue)
+                .background(Color.clear)
                 .cornerRadius(12)
                 .padding(.horizontal)
             }
@@ -2041,13 +2047,14 @@ struct OnboardingAddRecurringSheet: View {
                     Text(currentStep < 4 ? "Next" : (transactionToEdit != nil ? "Update" : "Save"))
                         .font(.headline)
                         .bold()
-                        .foregroundColor(.black)
+                        .foregroundColor(isStepValid ? (colorScheme == .dark ? .black : .white) : .secondary)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(isStepValid ? Color.white : Color.white.opacity(0.3))
+                        .background(isStepValid ? (colorScheme == .dark ? .white : .black) : Color(UIColor.systemGray5))
                         .cornerRadius(AppRadius.button)
                 }
                 .disabled(!isStepValid)
+                .animation(.easeInOut, value: isStepValid)
                 .padding()
             }
         }

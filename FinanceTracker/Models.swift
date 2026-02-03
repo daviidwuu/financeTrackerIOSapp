@@ -15,6 +15,11 @@ struct Transaction: Identifiable {
     var currencyCode: String?
     var exchangeRate: Double?
     var originalAmount: Double?
+    
+    // Location
+    var latitude: Double?
+    var longitude: Double?
+    var locationName: String?
 }
 
 struct SavingGoal: Identifiable {
