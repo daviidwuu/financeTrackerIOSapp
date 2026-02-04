@@ -300,71 +300,113 @@ struct AddTransactionView: View {
             .padding(.horizontal, AppSpacing.margin)
             
             ScrollView {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: AppSpacing.element) {
-                    ForEach(budgetRepo.budgets) { budget in
-                        let remaining = budget.remainingAmount(transactions: transactionRepo.transactions)
-                        let progress = min(max(1.0 - (remaining / budget.totalAmount), 0.0), 1.0)
-                        
+                VStack(spacing: AppSpacing.element) {
+                    // 1. Featured Income Card (if available)
+                    if let incomeBudget = budgetRepo.budgets.first(where: { $0.category.lowercased() == "income" }) {
                         Button(action: {
-                            selectedCategory = budget
+                            selectedCategory = incomeBudget
                             HapticManager.shared.light()
                         }) {
-                            VStack(spacing: 0) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: budget.icon)
+                            HStack {
+                                Image(systemName: incomeBudget.icon)
                                     .font(.caption)
-                                    .foregroundColor(Color(hex: budget.colorHex))
+                                    .foregroundColor(.white)
                                     .frame(width: 30, height: 30)
-                                    .background(Color(hex: budget.colorHex).opacity(0.2))
+                                    .background(Color.white.opacity(0.2))
                                     .clipShape(Circle())
-                                    
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(budget.category)
-                                        .font(.caption)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.primary)
-                                        .lineLimit(1)
-                                    }
-                                    
-                                    Spacer()
-                                    
-                                    VStack(alignment: .trailing, spacing: 2) {
-                                        if budget.type != "income" {
-                                            Text("$\(Int(remaining))")
-                                                .font(.caption2)
-                                                .foregroundColor(.secondary)
-                                        }
-                                        
-                                        if selectedCategory?.category == budget.category {
-                                            Image(systemName: "checkmark.circle.fill")
-                                            .font(.caption)
-                                            .foregroundColor(.green)
-                                        }
-                                    }
-                                }
-                                .padding(8)
                                 
-                                // Thin progress bar at bottom
-                                GeometryReader { geometry in
-                                    ZStack(alignment: .leading) {
-                                        Color(hex: budget.colorHex).opacity(0.1)
-                                        Color(hex: budget.colorHex)
-                                        .frame(width: geometry.size.width * progress)
-                                    }
+                                Text(incomeBudget.category)
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                
+                                Spacer()
+                                
+                                if selectedCategory?.category == incomeBudget.category {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.title3)
+                                        .foregroundColor(.white)
                                 }
-                                .frame(height: 3)
                             }
-                            .background(selectedCategory?.category == budget.category ? Color(hex: budget.colorHex).opacity(0.1) : Color(UIColor.secondarySystemBackground))
-                            .cornerRadius(AppRadius.small)
+                            .padding(.vertical, 10)
+                            .padding(.horizontal)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color(hex: incomeBudget.colorHex)) // Green background
+                            .cornerRadius(AppRadius.medium)
                             .overlay(
-                                RoundedRectangle(cornerRadius: AppRadius.small)
-                                .stroke(selectedCategory?.category == budget.category ? Color(hex: budget.colorHex) : Color.clear, lineWidth: 1)
+                                RoundedRectangle(cornerRadius: AppRadius.medium)
+                                    .stroke(Color.white.opacity(0.5), lineWidth: selectedCategory?.category == incomeBudget.category ? 4 : 0)
                             )
                         }
+                        .padding(.horizontal, AppSpacing.compact) // Match grid padding
                     }
+                    
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: AppSpacing.element) {
+                        // 2. Expense Categories
+                        ForEach(budgetRepo.budgets.filter { $0.category.lowercased() != "income" }) { budget in
+                            let remaining = budget.remainingAmount(transactions: transactionRepo.transactions)
+                            let progress = min(max(1.0 - (remaining / budget.totalAmount), 0.0), 1.0)
+                            
+                            Button(action: {
+                                selectedCategory = budget
+                                HapticManager.shared.light()
+                            }) {
+                                VStack(spacing: 0) {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: budget.icon)
+                                        .font(.caption)
+                                        .foregroundColor(Color(hex: budget.colorHex))
+                                        .frame(width: 30, height: 30)
+                                        .background(Color(hex: budget.colorHex).opacity(0.2))
+                                        .clipShape(Circle())
+                                        
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(budget.category)
+                                            .font(.caption)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.primary)
+                                            .lineLimit(1)
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        VStack(alignment: .trailing, spacing: 2) {
+                                            if budget.type != "income" {
+                                                Text("$\(Int(remaining))")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            
+                                            if selectedCategory?.category == budget.category {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                .font(.caption)
+                                                .foregroundColor(.green)
+                                            }
+                                        }
+                                    }
+                                    .padding(8)
+                                    
+                                    // Thin progress bar at bottom
+                                    GeometryReader { geometry in
+                                        ZStack(alignment: .leading) {
+                                            Color(hex: budget.colorHex).opacity(0.1)
+                                            Color(hex: budget.colorHex)
+                                            .frame(width: geometry.size.width * progress)
+                                        }
+                                    }
+                                    .frame(height: 3)
+                                }
+                                .background(selectedCategory?.category == budget.category ? Color(hex: budget.colorHex).opacity(0.1) : Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(AppRadius.small)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: AppRadius.small)
+                                    .stroke(selectedCategory?.category == budget.category ? Color(hex: budget.colorHex) : Color.clear, lineWidth: 1)
+                                )
+                            }
+                        }
+                    }
+                    .padding(.horizontal, AppSpacing.compact)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .padding(.horizontal, AppSpacing.compact)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
     }
