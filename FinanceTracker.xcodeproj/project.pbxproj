@@ -13,6 +13,7 @@
 		4A66623F2F1DC8C100917527 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4A66623E2F1DC8C100917527 /* WidgetKit.framework */; };
 		4A6662412F1DC8C100917527 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4A6662402F1DC8C100917527 /* SwiftUI.framework */; };
 		4A6662522F1DC8C500917527 /* FinanceWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4A66623D2F1DC8C100917527 /* FinanceWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4A7997CD2F34FFBB00F57974 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 4A7997CC2F34FFBB00F57974 /* FirebaseMessaging */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -131,6 +132,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4A7997CD2F34FFBB00F57974 /* FirebaseMessaging in Frameworks */,
 				4A6660D82EF0CBD200917527 /* FirebaseFirestoreCombine-Community in Frameworks */,
 				4A6660D42EF0CBAC00917527 /* FirebaseAuth in Frameworks */,
 				4A6660D62EF0CBB400917527 /* FirebaseFirestore in Frameworks */,
@@ -234,6 +236,7 @@
 				4A6660D32EF0CBAC00917527 /* FirebaseAuth */,
 				4A6660D52EF0CBB400917527 /* FirebaseFirestore */,
 				4A6660D72EF0CBD200917527 /* FirebaseFirestoreCombine-Community */,
+				4A7997CC2F34FFBB00F57974 /* FirebaseMessaging */,
 			);
 			productName = FinanceTracker;
 			productReference = 4ADB75BC2EF03ED200C767DE /* FinanceTracker.app */;
@@ -846,6 +849,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4A6660CF2EF0CA9A00917527 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = "FirebaseFirestoreCombine-Community";
+		};
+		4A7997CC2F34FFBB00F57974 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4A6660CF2EF0CA9A00917527 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

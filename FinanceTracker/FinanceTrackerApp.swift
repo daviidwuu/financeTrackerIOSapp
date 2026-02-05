@@ -1,14 +1,31 @@
 import SwiftUI
 import FirebaseCore
+import FirebaseMessaging
 
 class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         FirebaseApp.configure()
+        
+        // Push Notifications
+        Messaging.messaging().delegate = NotificationManager.shared
+        UNUserNotificationCenter.current().delegate = NotificationManager.shared
+        
+        // Register
+        application.registerForRemoteNotifications()
+        
         // Initialize NotificationManager to set delegate
         let manager = NotificationManager.shared
         manager.registerBackgroundTasks()
         return true
+    }
+    
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        Messaging.messaging().apnsToken = deviceToken
+    }
+    
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        DebugLogger.log("Failed to register for remote notifications: \(error)")
     }
 }
 
@@ -46,6 +63,11 @@ struct FinanceTrackerApp: App {
                 NotificationManager.shared.scheduleDailySummary()
             default:
                 break
+            }
+        }
+        .onChange(of: appState.isUserLoggedIn) { _, isLoggedIn in
+            if isLoggedIn {
+                NotificationManager.shared.syncTokenWithServer()
             }
         }
     }

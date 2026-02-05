@@ -2,15 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-
-    <key>CFBundleVersion</key>
-    <string>$(CURRENT_PROJECT_VERSION)</string>
-    <key>CFBundleShortVersionString</key>
-    <string>$(MARKETING_VERSION)</string>
-    <key>CFBundleDisplayName</key>
-    <string>wym</string>
-    <key>CFBundleName</key>
-    <string>wym</string>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.davidwu.financetracker.dailySummary</string>
@@ -32,13 +23,12 @@
 	</dict>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>wym sends notifications when you add transactions and reach budget limits.</string>
-
-    <key>UIBackgroundModes</key>
-    <array>
-        <string>remote-notification</string>
-        <string>fetch</string>
-        <string>processing</string>
-    </array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 </dict>

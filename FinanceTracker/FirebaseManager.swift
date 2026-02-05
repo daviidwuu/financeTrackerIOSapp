@@ -163,7 +163,12 @@ class FirebaseManager: ObservableObject {
             await MainActor.run { self.currentUserUsername = newUsername }
         }
     }
+    // MARK: - Notification
     
+    func updateFCMToken(userId: String, token: String) async throws {
+       try await db.collection("users").document(userId).setData(["fcmToken": token], merge: true)
+    }
+
     // MARK: - Streak Management
     
     /// Get user's streak data (count and last visit date)

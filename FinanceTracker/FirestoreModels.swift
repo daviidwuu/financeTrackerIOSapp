@@ -65,6 +65,7 @@ enum FirestoreModels {
         var isPaid: Bool
         var paidDate: Date? // When they paid back
         var incomeTransactionId: String? // Linked ID to the "Income" transaction created when they pay
+        var requestId: String? // Linked ID of the SplitRequest sent to the friend
     }
 
     // MARK: - CategoryBudget Model
@@ -225,6 +226,29 @@ enum FirestoreModels {
         }
     }
 
+    // MARK: - SplitRequest Model
+    struct SplitRequest: Identifiable, Codable {
+        @DocumentID var id: String?
+        var requesterId: String
+        var requesterName: String
+        var amount: Double
+        var note: String
+        var originalTransactionId: String
+        var status: String // "pending", "accepted", "declined"
+        var createdAt: Date
+        
+        enum CodingKeys: String, CodingKey {
+            case id
+            case requesterId
+            case requesterName
+            case amount
+            case note
+            case originalTransactionId
+            case status
+            case createdAt
+        }
+    }
+    
     // MARK: - Friend Model
     struct Friend: Identifiable, Codable {
         @DocumentID var id: String? // The Friend's User ID

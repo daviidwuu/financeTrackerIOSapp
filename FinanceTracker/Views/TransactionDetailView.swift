@@ -8,12 +8,14 @@ struct TransactionDetailView: View {
     @State private var showSplitSheet = false
     @State private var showFullMap = false
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var appState: AppState
     
     // Callback for saving changes
     var onSave: ((FirestoreModels.Transaction, Transaction) -> Void)?
     
     // Repository for creating/deleting income transactions
     @StateObject private var transactionRepo = TransactionRepository()
+    @StateObject private var requestRepo = RequestRepository()
     
     init(transaction: FirestoreModels.Transaction, onSave: ((FirestoreModels.Transaction, Transaction) -> Void)? = nil) {
         _transaction = State(initialValue: transaction)
@@ -240,12 +242,18 @@ struct TransactionDetailView: View {
     // MARK: - Logic
     
     private func updateSplits(_ newSplits: [FirestoreModels.Split]) {
+        var updatedSplits = newSplits
+        
+        // Remove Request ID generation logic as Cloud Functions now handle request creation
+        // Just update the transaction, and the backend trigger will upsert requests
+        
         var updatedTransaction = transaction
-        updatedTransaction.splits = newSplits
+        updatedTransaction.splits = updatedSplits
+        
         self.transaction = updatedTransaction
         
-        // Persist to Firestore
         Task {
+            // Persist to Firestore
             try? await transactionRepo.updateTransaction(updatedTransaction)
         }
     }
@@ -806,6 +814,8 @@ struct SplitConfigurationView: View {
         }
     }
 }
+// MARK: - Split Configuration View
+// Moved to separate file: SplitConfigurationView.swift
 
 struct FullScreenMapView: View {
     let coordinate: CLLocationCoordinate2D

@@ -3,7 +3,9 @@ import UserNotifications
 import FirebaseFirestore
 import BackgroundTasks
 
-class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
+import FirebaseMessaging
+
+class NotificationManager: NSObject, UNUserNotificationCenterDelegate, MessagingDelegate {
     static let shared = NotificationManager()
     static let dailySummaryTaskID = "com.davidwu.financetracker.dailySummary"
     static let inactivityTaskID = "com.davidwu.financetracker.inactivityCheck"
@@ -612,5 +614,32 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         }
 
         completionHandler()
+    }
+
+    // MARK: - MessagingDelegate
+    
+    // MARK: - MessagingDelegate
+    
+    private var cachedFCMToken: String?
+    
+    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        guard let token = fcmToken else { return }
+        DebugLogger.log("FCM Token: \(token)")
+        self.cachedFCMToken = token
+        
+        // Save to User Profile if logged in
+        syncTokenWithServer()
+    }
+    
+    func syncTokenWithServer() {
+        guard let token = cachedFCMToken ?? Messaging.messaging().fcmToken else { return }
+        let userId = AppState.shared.currentUserId
+        
+        if !userId.isEmpty {
+             Task {
+                 try? await FirebaseManager.shared.updateFCMToken(userId: userId, token: token)
+                 DebugLogger.log("✅ FCM Token synced for user: \(userId)")
+             }
+        }
     }
 }

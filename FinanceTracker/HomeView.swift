@@ -20,12 +20,14 @@ struct HomeView: View {
     @StateObject private var transactionRepo = TransactionRepository()
     @StateObject private var budgetRepo = BudgetRepository()
     @StateObject private var recurringRepo = RecurringTransactionRepository()
+    @StateObject private var requestRepo = RequestRepository()
     
     @State private var showAddTransaction = false
     // showProfile moved to AppState
     @State private var showAllTransactions = false
     @State private var selectedTransaction: FirestoreModels.Transaction?
     @State private var transactionToEdit: FirestoreModels.Transaction?
+    @State private var requestToAccept: FirestoreModels.SplitRequest?
     @State private var showRemainingBudget = false
     @State private var isAnimating = false
     
@@ -169,6 +171,32 @@ struct HomeView: View {
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                         .padding(.bottom, AppSpacing.compact)
+                        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .padding(.bottom, AppSpacing.compact)
+                    }
+                    
+                    // Section 1.5: Pending Requests
+                    let pendingRequests = requestRepo.requests.filter { $0.status == "pending" }
+                    if !pendingRequests.isEmpty {
+                        Section(header: Text("Pending Requests").font(.headline)) {
+                            ForEach(pendingRequests) { request in
+                                RequestCardView(
+                                    request: request,
+                                    onAccept: {
+                                        requestToAccept = request
+                                    },
+                                    onDecline: {
+                                        declineRequest(request)
+                                    }
+                                )
+                                .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                                .padding(.bottom, AppSpacing.compact)
+                            }
+                        }
                     }
                     
                     // Section 2: Recent Transactions
@@ -272,6 +300,11 @@ struct HomeView: View {
                         addTransaction(transaction)
                     })
                 }
+                .sheet(item: $requestToAccept) { request in
+                    AddTransactionView(requestToAccept: request, onSave: { transaction in
+                         acceptRequest(request, transaction: transaction)
+                    })
+                }
             }
             .navigationBarHidden(true)
             .onAppear {
@@ -280,12 +313,14 @@ struct HomeView: View {
                     transactionRepo.startListening(userId: appState.currentUserId)
                     budgetRepo.startListening(userId: appState.currentUserId)
                     recurringRepo.startListening(userId: appState.currentUserId)
+                    requestRepo.startListening(userId: appState.currentUserId)
                 }
             }
             .onDisappear {
                 transactionRepo.stopListening()
                 budgetRepo.stopListening()
                 recurringRepo.stopListening()
+                requestRepo.stopListening()
             }
         }
     }
@@ -354,6 +389,36 @@ struct HomeView: View {
                 try await transactionRepo.deleteTransaction(id: id)
             } catch {
                 DebugLogger.log("Failed to delete transaction: \(error)")
+            }
+        }
+    }
+
+    
+    // MARK: - Request Logic
+    
+    private func acceptRequest(_ request: FirestoreModels.SplitRequest, transaction: Transaction) {
+        // 1. Add the transaction
+        addTransaction(transaction)
+        
+        // 2. Update Request Status
+        Task {
+            do {
+                guard let id = request.id else { return }
+                try await requestRepo.updateRequestStatus(userId: appState.currentUserId, requestId: id, status: "accepted")
+            } catch {
+                DebugLogger.log("Failed to accept request: \(error)")
+            }
+        }
+    }
+    
+    private func declineRequest(_ request: FirestoreModels.SplitRequest) {
+        Task {
+            do {
+                guard let id = request.id else { return }
+                try await requestRepo.updateRequestStatus(userId: appState.currentUserId, requestId: id, status: "declined")
+                // Optionally remove from list after delay or just let status update hide it
+            } catch {
+                DebugLogger.log("Failed to decline request: \(error)")
             }
         }
     }

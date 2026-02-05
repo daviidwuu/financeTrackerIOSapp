@@ -8,6 +8,7 @@ struct AddTransactionView: View {
     @EnvironmentObject var appState: AppState
     
     var transactionToEdit: FirestoreModels.Transaction?
+    var requestToAccept: FirestoreModels.SplitRequest?
     var onSave: ((Transaction) -> Void)?
     
     @StateObject private var budgetRepo = BudgetRepository()
@@ -35,6 +36,10 @@ struct AddTransactionView: View {
             }
             selectedDate = transaction.date
             transactionNotes = transaction.note ?? ""
+        } else if let request = requestToAccept {
+            amount = String(format: "%.2f", abs(request.amount))
+            transactionNotes = request.note
+            // We start at step 1 to confirm amount, but could jump to 2 if desired
         }
     }
     
