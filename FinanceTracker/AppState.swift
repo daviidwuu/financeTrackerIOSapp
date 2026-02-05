@@ -118,7 +118,8 @@ class AppState: ObservableObject {
                 if let timestamp = profile["createdAt"] as? Timestamp {
                     self.userSignupDate = timestamp.dateValue()
                     // Cache to UserDefaults for offline/fallback use
-                    UserDefaults.standard.set(self.userSignupDate, forKey: "userSignupDate")
+                    let userKey = "userSignupDate_\(userId)"
+                    UserDefaults.standard.set(self.userSignupDate, forKey: userKey)
                 }
                 
                 // Load post-onboarding guide status per user

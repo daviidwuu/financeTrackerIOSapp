@@ -443,10 +443,10 @@ struct WalletView: View {
     
     
     private func calculateAllTimeSavingsPool() -> Double {
-        // Find signup date: UserDefaults or fallback to first transaction
+        // Find signup date: AppState or fallback to first transaction
         let signupDate: Date
-        if let savedDate = UserDefaults.standard.object(forKey: "userSignupDate") as? Date {
-            signupDate = savedDate
+        if let appDate = appState.userSignupDate {
+            signupDate = appDate
         } else if let firstTransaction = transactionRepo.transactions.last?.date {
             signupDate = firstTransaction
         } else {

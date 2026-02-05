@@ -79,7 +79,7 @@ struct OnboardingView: View {
                 HStack(spacing: 4) {
                     ForEach(1...15, id: \.self) { step in
                         Capsule()
-                            .fill(step <= currentStep ? Color.white : Color.gray.opacity(0.2))
+                            .fill(step <= currentStep ? Color.primary : Color.gray.opacity(0.2))
                             .frame(height: 4)
                             .frame(maxWidth: .infinity)
                     }

@@ -246,7 +246,8 @@ struct CalendarView: View {
         var totalSaved = 0.0
         
         for date in days {
-            if !isDateBeforeSignup(date) && !isFutureDate(date) {
+            // Exclude before signup, future dates, AND today
+            if !isDateBeforeSignup(date) && !isFutureDate(date) && !Calendar.current.isDateInToday(date) {
                 let status = dailyStatus(for: date)
                 totalSaved += status.balance
             }
@@ -286,8 +287,6 @@ struct CalendarView: View {
         
         if let propDate = self.signupDate {
             targetSignupDate = propDate
-        } else if let savedDate = UserDefaults.standard.object(forKey: "userSignupDate") as? Date {
-            targetSignupDate = savedDate
         } else {
             return true // Fallback to allowing navigation
         }
@@ -309,8 +308,6 @@ struct CalendarView: View {
         
         if let propDate = self.signupDate {
             targetSignupDate = propDate
-        } else if let savedDate = UserDefaults.standard.object(forKey: "userSignupDate") as? Date {
-            targetSignupDate = savedDate
         } else if let firstTransaction = transactions.last?.date {
             targetSignupDate = firstTransaction
         } else {
