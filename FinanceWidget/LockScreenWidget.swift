@@ -465,7 +465,7 @@ struct LockScreenWidget: Widget {
         StaticConfiguration(kind: kind, provider: Provider()) { entry in
             LockScreenWidgetEntryView(entry: entry, mode: .remaining)
         }
-        .configurationDisplayName("spendi")
+        .configurationDisplayName("wym")
         .description("Track daily habits and monthly budget.")
         .supportedFamilies([.accessoryRectangular, .accessoryCircular, .accessoryInline, .systemSmall, .systemMedium])
         .contentMarginsDisabled() // Modern look for system widgets
@@ -479,7 +479,7 @@ struct SpentWidget: Widget {
         StaticConfiguration(kind: kind, provider: Provider()) { entry in
             LockScreenWidgetEntryView(entry: entry, mode: .spent)
         }
-        .configurationDisplayName("Spent Tracker")
+        .configurationDisplayName("wym Spent")
         .description("Track how much you have spent.")
         .supportedFamilies([.accessoryCircular, .systemMedium])
         .contentMarginsDisabled()

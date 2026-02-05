@@ -65,42 +65,56 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     
     // MARK: - Transaction Notifications
     
-    func sendTransactionNotification(amount: Double, category: String, type: String) {
+    func sendTransactionNotification(amount: Double, category: String, type: String, originalAmount: Double? = nil, currencyCode: String? = nil) {
         // Auto-request permission if needed
         checkPermissionStatus { status in
             if status == .notDetermined {
                 self.requestPermission { granted in
                     if granted {
-                        self.sendNotification(amount: amount, category: category, type: type)
+                        self.sendNotification(amount: amount, category: category, type: type, originalAmount: originalAmount, currencyCode: currencyCode)
                     } else {
                         DebugLogger.log("❌ Notification permission denied")
                     }
                 }
             } else if status == .authorized || status == .provisional {
-                self.sendNotification(amount: amount, category: category, type: type)
+                self.sendNotification(amount: amount, category: category, type: type, originalAmount: originalAmount, currencyCode: currencyCode)
             } else {
                 DebugLogger.log("❌ Notifications not authorized. Status: \(status.rawValue)")
             }
         }
     }
     
-    private func sendNotification(amount: Double, category: String, type: String) {
+    private func sendNotification(amount: Double, category: String, type: String, originalAmount: Double? = nil, currencyCode: String? = nil) {
         // Check if transaction notifications are enabled (optional for now)
         let isEnabled = UserDefaults.standard.bool(forKey: "notificationsEnabled_transactions")
-        DebugLogger.log("🔔 Notification toggle enabled: \(isEnabled)")
         
         // Send anyway for debugging - remove this line in production
          guard isEnabled else { return }
         
         let content = UNMutableNotificationContent()
         
+        // Format: "You have spent $6 (HKD$12) on (Category)"
+        var bodyString = ""
         if type == "income" {
             content.title = "Income Received"
-            content.body = "You received $\(Int(abs(amount))) from \(category)"
+            bodyString = "You received $\(Int(abs(amount)))"
         } else {
             content.title = "Expense Added"
-            content.body = "You have spent $\(Int(abs(amount))) on \(category)"
+            bodyString = "You have spent $\(Int(abs(amount)))"
         }
+        
+        // Add Travel Currency info if available
+        if let original = originalAmount, let code = currencyCode {
+             bodyString += " (\(code)$\(Int(abs(original))))"
+        }
+        
+        if type == "income" {
+            bodyString += " from \(category)"
+        } else {
+            bodyString += " on \(category)"
+        }
+        
+        content.body = bodyString
         
         content.sound = .default
         content.badge = 1

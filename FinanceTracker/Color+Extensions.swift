@@ -92,4 +92,40 @@ extension Color {
     static let selectableColors: [Color] = [
         .red, .orange, .yellow, .green, .mint, .teal, .cyan, .blue, .indigo, .purple, .pink, .brown, .gray
     ]
+    
+    // MARK: - Premium Gradients
+    struct GradientTheme: Identifiable, Hashable {
+        let id = UUID()
+        let name: String
+        let colors: [Color]
+        let startPoint: UnitPoint
+        let endPoint: UnitPoint
+        
+        static let ocean = GradientTheme(name: "Ocean", colors: [.blue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing)
+        static let sunset = GradientTheme(name: "Sunset", colors: [.orange, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
+        static let berry = GradientTheme(name: "Berry", colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
+        static let forest = GradientTheme(name: "Forest", colors: [.green, .mint], startPoint: .topLeading, endPoint: .bottomTrailing)
+        static let midnight = GradientTheme(name: "Midnight", colors: [.indigo, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)
+        static let ember = GradientTheme(name: "Ember", colors: [.red, .orange], startPoint: .topLeading, endPoint: .bottomTrailing)
+        static let royal = GradientTheme(name: "Royal", colors: [Color(hex: "4158D0"), Color(hex: "C850C0")], startPoint: .topLeading, endPoint: .bottomTrailing)
+        
+        static let allThemes: [GradientTheme] = [.ocean, .sunset, .berry, .forest, .midnight, .ember, .royal]
+        
+        static func from(colorHex: String?) -> GradientTheme {
+            guard let hex = colorHex else { return .ocean }
+            // If the hex matches a theme's first color, return that theme
+            if let match = allThemes.first(where: { $0.colors.first?.toHex() == hex }) {
+                return match
+            }
+            return .ocean 
+        }
+        
+        // Helper to get a gradient from a hex string (store hex as primary color, derive gradient)
+        static func gradient(for hex: String?) -> LinearGradient {
+            if let hex = hex, let color = Color(hex: hex) as Color? {
+                return LinearGradient(colors: [color, color.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing)
+            }
+            return LinearGradient(colors: [.blue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing)
+        }
+    }
 }

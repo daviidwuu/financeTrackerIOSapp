@@ -1,17 +1,17 @@
-# FinanceTracker 🚀
-### Your Wealth. Reimagined.
+# wym 🚀
+**where's your money**
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Platform](https://img.shields.io/badge/platform-iOS-lightgrey.svg) ![SwiftUI](https://img.shields.io/badge/SwiftUI-5.0-orange.svg)
 
 **Stop just tracking. Start building.**
 
-FinanceTracker isn't just another budgeting app. It's a financial command center designed to turn your daily spending habits into long-term wealth. With a premium, haptic-driven interface and algorithms that actually *work* for you, it's time to take control of your financial destiny.
+wym isn't just another budgeting app. It's a financial command center designed to turn your daily spending habits into long-term wealth. With a premium, haptic-driven interface and algorithms that actually *work* for you, it's time to take control of your financial destiny.
 
 ---
 
-## 🌟 Why FinanceTracker?
+## 🌟 Why wym?
 
-Most apps just tell you where your money went. FinanceTracker tells you where it *should* go.
+Most apps just tell you where your money went. wym tells you where it *should* go.
 
 ### 🏦 The Vault Technology
 **"The Grind" vs. "The Vault"**  
@@ -68,7 +68,7 @@ We believe financial tools should feel good to use. **Really good.**
 
 1. **Clone the repo**
    ```bash
-   git clone https://github.com/daviidwuu/FinanceTracker.git
+   git clone https://github.com/daviidwuu/wym.git
    ```
 2. **Open in Xcode**
    Open `FinanceTracker.xcodeproj`
@@ -77,4 +77,4 @@ We believe financial tools should feel good to use. **Really good.**
 
 ---
 
-*FinanceTracker — Master your money. Own your future.*
+*wym — Master your money. Own your future.*

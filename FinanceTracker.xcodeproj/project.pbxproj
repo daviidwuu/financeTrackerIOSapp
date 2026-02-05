@@ -491,7 +491,7 @@
 				DEVELOPMENT_TEAM = H6U663Z4ZQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FinanceTracker/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = spendi;
+				INFOPLIST_KEY_CFBundleDisplayName = wym;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to tag where transactions occurred.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -534,7 +534,7 @@
 				DEVELOPMENT_TEAM = H6U663Z4ZQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FinanceTracker/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = spendi;
+				INFOPLIST_KEY_CFBundleDisplayName = wym;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to tag where transactions occurred.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

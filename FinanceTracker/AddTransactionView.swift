@@ -197,6 +197,7 @@ struct AddTransactionView: View {
         
         if isUsingTravelCurrency {
             let rawAmount = Double(amount) ?? 0
+            
             let mainAmount = currencyManager.convertToMain(amount: rawAmount, from: currencyManager.travelCurrency)
             
             // Re-assign amount in MAIN currency
@@ -206,14 +207,6 @@ struct AddTransactionView: View {
             newTransaction.currencyCode = currencyManager.travelCurrency
             newTransaction.exchangeRate = currencyManager.exchangeRate
             newTransaction.originalAmount = rawAmount
-            
-            // Append note about currency
-            let validationNote = "(Converted from \(String(format: "%.2f", rawAmount)) \(currencyManager.travelCurrency))"
-            if !newTransaction.notes.isEmpty {
-                 newTransaction.notes = newTransaction.notes + " " + validationNote
-            } else {
-                 newTransaction.notes = validationNote
-            }
         }
         
         if let _ = transactionToEdit {
@@ -221,8 +214,6 @@ struct AddTransactionView: View {
             onSave?(updatedTransaction)
         } else {
             onSave?(newTransaction)
-            
-            // Notification is handled in ContentView after successful save
         }
         dismiss()
     }

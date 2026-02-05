@@ -3,7 +3,6 @@ import FirebaseFirestore
 
 struct FriendsListView: View {
     @StateObject private var friendRepo = FriendRepository()
-    @StateObject private var groupRepo = GroupRepository()
     
     @EnvironmentObject var appState: AppState
     @Environment(\.colorScheme) var colorScheme
@@ -55,7 +54,7 @@ struct FriendsListView: View {
                                             .foregroundColor(.secondary)
                                     }
                                 }
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                     Button(role: .destructive) {
                                         HapticManager.shared.medium()
                                         friendToDelete = friend
@@ -76,7 +75,7 @@ struct FriendsListView: View {
                 // MARK: - Groups Tab
                 List {
                     Section {
-                        if groupRepo.groups.isEmpty {
+                        if appState.groupRepo.groups.isEmpty {
                             VStack(spacing: 12) {
                                 Image(systemName: "person.3.fill")
                                     .font(.system(size: 40))
@@ -88,34 +87,13 @@ struct FriendsListView: View {
                             .padding(.vertical, 32)
                             .listRowBackground(Color.clear)
                         } else {
-                            ForEach(groupRepo.groups) { group in
+                            ForEach(appState.groupRepo.groups) { group in
                                 Button(action: {
                                     groupToEdit = group
-                                    showGroupForm = true
                                 }) {
-                                    HStack {
-                                        Image(systemName: group.icon)
-                                            .font(.title2)
-                                            .frame(width: 40, height: 40)
-                                            .background(Color.blue.opacity(0.1))
-                                            .clipShape(Circle())
-                                            .foregroundColor(.blue)
-                                        
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(group.name)
-                                                .fontWeight(.medium)
-                                                .foregroundColor(.primary)
-                                            Text("\(group.memberIds.count) members")
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        }
-                                        Spacer()
-                                        Image(systemName: "chevron.right")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
+                                    GroupCardView(group: group)
                                 }
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                     Button(role: .destructive) {
                                         HapticManager.shared.medium()
                                         groupToDelete = group
@@ -134,13 +112,13 @@ struct FriendsListView: View {
                 }
             }
         }
+        .listStyle(.plain)
         .navigationTitle(selectedTab == 0 ? "Friends" : "Groups")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 if selectedTab == 1 {
                     Button(action: {
-                        groupToEdit = nil
                         showGroupForm = true
                     }) {
                         Image(systemName: "plus")
@@ -151,12 +129,12 @@ struct FriendsListView: View {
         .onAppear {
             if !appState.currentUserId.isEmpty {
                 friendRepo.startListening(userId: appState.currentUserId)
-                groupRepo.startListening(userId: appState.currentUserId)
+                // groupRepo is now managed by AppState
             }
         }
         .onDisappear {
             friendRepo.stopListening()
-            groupRepo.stopListening() // Also stop group listener
+            // groupRepo lifecycle managed by AppState
         }
         .confirmationDialog(
             "Remove Friend?",
@@ -183,7 +161,10 @@ struct FriendsListView: View {
             Text("Are you sure you want to delete this group? This action cannot be undone.")
         }
         .sheet(isPresented: $showGroupForm) {
-            GroupFormView(groupToEdit: groupToEdit)
+            GroupFormView(groupToEdit: nil)
+        }
+        .sheet(item: $groupToEdit) { group in
+            GroupFormView(groupToEdit: group)
         }
     }
     
@@ -197,7 +178,7 @@ struct FriendsListView: View {
     private func deleteGroup(_ group: FirestoreModels.Group) {
         guard let groupId = group.id else { return }
         Task {
-            try? await groupRepo.deleteGroup(groupId: groupId)
+            try? await appState.groupRepo.deleteGroup(groupId: groupId)
         }
     }
 }

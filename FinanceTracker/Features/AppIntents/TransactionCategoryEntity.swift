@@ -100,7 +100,19 @@ struct TransactionCategoryQuery: EntityQuery {
         }
             
         return uniqueBudgets
-            .sorted(by: { $0.category < $1.category })
+            .sorted { budget1, budget2 in
+                // Always put "Income" at the top
+                let isIncome1 = budget1.category.lowercased() == "income"
+                let isIncome2 = budget2.category.lowercased() == "income"
+                
+                if isIncome1 && !isIncome2 {
+                    return true  // Income comes first
+                } else if !isIncome1 && isIncome2 {
+                    return false // Income comes first
+                } else {
+                    return budget1.category < budget2.category // Alphabetical for the rest
+                }
+            }
             .map { TransactionCategoryEntity(from: $0) }
     }
 }

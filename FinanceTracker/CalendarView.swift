@@ -87,12 +87,12 @@ struct CalendarView: View {
                                     Text("\(Calendar.current.component(.day, from: date))")
                                         .font(.caption)
                                         .fontWeight(Calendar.current.isDateInToday(date) ? .bold : .regular)
-                                        .foregroundColor(isBeforeSignup ? .gray.opacity(0.3) : (Calendar.current.isDateInToday(date) ? .white : .primary))
+                                        .foregroundColor(isBeforeSignup ? .gray.opacity(0.3) : (Calendar.current.isDateInToday(date) ? .black : .primary))
                                         .frame(width: 30, height: 30)
-                                        .background(Calendar.current.isDateInToday(date) ? Color.blue : Color.clear)
+                                        .background(Calendar.current.isDateInToday(date) ? Color.white : Color.clear)
                                         .clipShape(Circle())
                                     
-                                    if !isBeforeSignup && !isFutureDate(date) {
+                                    if !isBeforeSignup && !isFutureDate(date) && !Calendar.current.isDateInToday(date) {
                                         let surplus = calculateSurplus(for: date)
                                         Text(surplus >= 0 ? "+\(Int(surplus))" : "\(Int(surplus))")
                                             .font(.system(size: 8))

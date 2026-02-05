@@ -1,5 +1,4 @@
 import SwiftUI
-
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
     @StateObject private var transactionRepo = TransactionRepository()
@@ -111,6 +110,11 @@ struct ContentView: View {
                     userId: appState.currentUserId, // Use global user ID
                     createdAt: Date(),
                     
+                    // Travel / Currency Support
+                    currencyCode: transaction.currencyCode,
+                    exchangeRate: transaction.exchangeRate,
+                    originalAmount: transaction.originalAmount,
+                    
                     // Location
                     latitude: transaction.latitude,
                     longitude: transaction.longitude,
@@ -122,7 +126,9 @@ struct ContentView: View {
                 NotificationManager.shared.sendTransactionNotification(
                     amount: amount,
                     category: transaction.title,
-                    type: transaction.type
+                    type: transaction.type,
+                    originalAmount: transaction.originalAmount,
+                    currencyCode: transaction.currencyCode
                 )
                 
                 // Check budget warnings

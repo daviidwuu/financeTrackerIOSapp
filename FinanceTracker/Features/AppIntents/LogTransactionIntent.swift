@@ -7,7 +7,7 @@ import CoreLocation
 
 struct LogTransactionIntent: AppIntent {
     static var title: LocalizedStringResource = "Log Transaction"
-    static var description = IntentDescription("Log a new transaction to your spendie.")
+    static var description = IntentDescription("Log a new transaction to your wym.")
     
     // We want this to run in the background without opening the app if possible
     static var openAppWhenRun: Bool = false
@@ -21,11 +21,8 @@ struct LogTransactionIntent: AppIntent {
     @Parameter(title: "Note", requestValueDialog: "Any note?")
     var note: String?
     
-    @Parameter(title: "Location")
-    var location: CLPlacemark?
-    
     static var parameterSummary: some ParameterSummary {
-        Summary("Log \(\.$amount) for \(\.$category) with \(\.$note) at \(\.$location)")
+        Summary("Log \(\.$amount) for \(\.$category) with \(\.$note)")
     }
     
     @MainActor
@@ -62,34 +59,82 @@ struct LogTransactionIntent: AppIntent {
         // Use budget category name as title, note as description (consistent with AddTransactionView)
         let title = budgetData.category
         
-        let newTransaction = FirestoreModels.Transaction(
+        // Check for Travel Mode
+        let defaults = UserDefaults.standard
+        let isTravelMode = defaults.bool(forKey: "isTravelModeEnabled")
+        let mainCurrency = defaults.string(forKey: "mainCurrency") ?? "SGD"
+        let travelCurrency = defaults.string(forKey: "travelCurrency") ?? "USD"
+        
+        var finalAmount = amount
+        var originalAmount: Double? = nil
+        var currencyCode: String? = nil
+        var exchangeRate: Double? = nil
+        let type = budgetData.type ?? "expense"
+        
+        if isTravelMode && mainCurrency != travelCurrency {
+            // Amount input is in Travel Currency
+            // Load saved rate
+            let key = "savedExchangeRate_\(mainCurrency)_\(travelCurrency)"
+            let rate = defaults.double(forKey: key)
+            
+            if rate > 0 {
+                // Convert to Main
+                // Rate: 1 Main = X Travel.  So Main = Travel / Rate
+                finalAmount = amount / rate
+                
+                originalAmount = amount
+                currencyCode = travelCurrency
+                exchangeRate = rate
+            }
+        }
+        
+        // Ensure correct sign for expense/income
+        // If expense, amount stored is negative. If income, positive.
+        // We received absolute amount from user input usually, but let's handle signs carefully.
+        let absAmount = abs(finalAmount)
+        let signedAmount = (type == "income" ? absAmount : -absAmount)
+
+        var newTransaction = FirestoreModels.Transaction(
             id: nil,
             title: title,
             subtitle: budgetData.category,
-            amount: (budgetData.type == "income" ? abs(amount) : -abs(amount)),
+            amount: signedAmount,
             date: Date(),
             icon: budgetData.icon,
             colorHex: budgetData.colorHex,
             note: finalNote,
-            type: budgetData.type ?? "expense",
+            type: type,
             source: "shortcuts",
             userId: user.uid,
             createdAt: Date(),
-            
-            // Location
-            latitude: location?.location?.coordinate.latitude,
-            longitude: location?.location?.coordinate.longitude,
-            locationName: location?.name ?? location?.locality
+            currencyCode: currencyCode,
+            exchangeRate: exchangeRate,
+            originalAmount: originalAmount
         )
+        
+        // Automatic Location Capture (matching AddTransactionView behavior)
+        let locationEnabled = UserDefaults.standard.object(forKey: "isLocationEnabled") as? Bool ?? true
+        
+        if locationEnabled {
+            let locStatus = LocationManager.shared.authorizationStatus
+            if locStatus == .authorizedWhenInUse || locStatus == .authorizedAlways {
+                if let location = LocationManager.shared.currentLocation {
+                    newTransaction.latitude = location.coordinate.latitude
+                    newTransaction.longitude = location.coordinate.longitude
+                }
+            }
+        }
         
         let transactionsCollection = db.collection("users").document(user.uid).collection("transactions")
         try transactionsCollection.document().setData(from: newTransaction)
         
         // Trigger notification immediately
         NotificationManager.shared.sendTransactionNotification(
-            amount: abs(amount),
+            amount: abs(finalAmount),
             category: title,
-            type: budgetData.type ?? "expense" // Use original budget type logic
+            type: type,
+            originalAmount: originalAmount, // This is set correctly in travel logic
+            currencyCode: currencyCode
         )
         
         return .result(value: "Logged \(amount) for \(category.name)")
@@ -102,7 +147,7 @@ struct LogTransactionIntent: AppIntent {
         
         var localizedStringResource: LocalizedStringResource {
             switch self {
-            case .notLoggedIn: return "You need to be logged into spendie."
+            case .notLoggedIn: return "You need to be logged into wym."
             case .categoryNotFound: return "Category not found."
             case .categoryMismatch: return "This category belongs to a different user account."
             }

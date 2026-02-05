@@ -346,7 +346,7 @@ struct IntroStep: View {
                 )
             
             VStack(spacing: 12) {
-                Text("Welcome to spendi")
+                Text("Welcome to wym")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .multilineTextAlignment(.center)
                 

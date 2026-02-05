@@ -1,23 +1,46 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+    match /users {
+      // 1. Username Availability Check (Collection-level)
+      allow list: if request.auth != null 
+                  && request.query.limit <= 1 
+                  && request.query.filters.size() == 1 
+                  && request.query.filters[0].field == "username";
       
-      match /transactions/{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-      match /categories/{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-      match /budgets/{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-      match /savingGoals/{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-      match /recurringTransactions/{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+      match /{userId} {
+        // 2. Profile Access
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == userId;
+        
+        // 3. Subcollections
+        match /transactions/{document=**} { 
+          allow read, write: if request.auth.uid == userId; 
+        }
+        match /budgets/{document=**} { 
+          allow read, write: if request.auth.uid == userId; 
+        }
+        match /savingGoals/{document=**} { 
+          allow read, write: if request.auth.uid == userId; 
+        }
+        match /recurringTransactions/{document=**} { 
+          allow read, write: if request.auth.uid == userId; 
+        }
+        match /categories/{document=**} { 
+          allow read, write: if request.auth.uid == userId; 
+        }
+        match /groups/{document=**} { 
+          allow read, write: if request.auth.uid == userId; 
+        }
+        
+        // 4. Friends (Mutual Add Exception)
+        // Allow Owner (userId) to read/write their own friends
+        // AND Allow "Requester" (auth.uid) to write THEIR OWN entry into someone else's list (friendId == auth.uid)
+        match /friends/{friendId} {
+          allow read: if request.auth.uid == userId; 
+          allow write: if request.auth.uid == userId || request.auth.uid == friendId;
+        }
       }
     }
   }

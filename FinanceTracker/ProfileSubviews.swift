@@ -597,7 +597,7 @@ struct AboutView: View {
                 .padding(.top, 40)
             
             VStack(spacing: 8) {
-                Text("spendie")
+                Text("wym")
                     .font(.title)
                     .fontWeight(.bold)
                 Text("Version 1.0.0")

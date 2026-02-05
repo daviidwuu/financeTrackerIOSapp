@@ -34,7 +34,7 @@ struct GuidesListView: View {
                 GuideStep(number: 1, text: "Go to your Home Screen or Lock Screen.", isBold: false),
                 GuideStep(number: 2, text: "Long press on an empty space until apps jiggle.", isBold: true),
                 GuideStep(number: 3, text: "Tap the + button in the top left corner.", isBold: true),
-                GuideStep(number: 4, text: "Search for 'Spendie' in the widget gallery.", isBold: true),
+                GuideStep(number: 4, text: "Search for 'wym' in the widget gallery.", isBold: true),
                 GuideStep(number: 5, text: "Select your preferred widget and tap 'Add Widget'.", isBold: true),
                 GuideStep(number: 6, text: "Drag to position it, then tap Done.", isBold: false)
             ],
@@ -45,12 +45,12 @@ struct GuidesListView: View {
             icon: "hand.tap.fill",
             color: .purple,
             steps: [
-                GuideStep(number: 1, text: "First, ensure you have the 'Spendie' shortcut enabled.", isBold: false),
+                GuideStep(number: 1, text: "First, ensure you have the 'wym' shortcut enabled.", isBold: false),
                 GuideStep(number: 2, text: "Open iPhone Settings.", isBold: true),
                 GuideStep(number: 3, text: "Go to Accessibility > Touch.", isBold: true),
                 GuideStep(number: 4, text: "Scroll down and select 'Back Tap'.", isBold: true),
                 GuideStep(number: 5, text: "Choose 'Double Tap' or 'Triple Tap'.", isBold: true),
-                GuideStep(number: 6, text: "Scroll down to Shortcuts and select 'Spendie'.", isBold: true),
+                GuideStep(number: 6, text: "Scroll down to Shortcuts and select 'wym'.", isBold: true),
                 GuideStep(number: 7, text: "Now just tap the back of your phone to log expenses!", isBold: false)
             ],
             videoPlaceholder: "hand.point.up.left.fill"

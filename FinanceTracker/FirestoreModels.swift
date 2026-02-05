@@ -212,6 +212,7 @@ enum FirestoreModels {
         var name: String
         var memberIds: [String] // List of Friend User IDs
         var icon: String
+        var colorHex: String? // Visual theme color
         var createdAt: Date
         
         enum CodingKeys: String, CodingKey {
@@ -219,6 +220,7 @@ enum FirestoreModels {
             case name
             case memberIds
             case icon
+            case colorHex
             case createdAt
         }
     }

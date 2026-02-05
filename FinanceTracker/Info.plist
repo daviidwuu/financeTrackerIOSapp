@@ -8,9 +8,9 @@
     <key>CFBundleShortVersionString</key>
     <string>$(MARKETING_VERSION)</string>
     <key>CFBundleDisplayName</key>
-    <string>spendi</string>
+    <string>wym</string>
     <key>CFBundleName</key>
-    <string>spendi</string>
+    <string>wym</string>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.davidwu.financetracker.dailySummary</string>
@@ -31,14 +31,14 @@
 		</dict>
 	</dict>
 	<key>NSUserNotificationsUsageDescription</key>
-	<string>spendi sends notifications when you add transactions and reach budget limits.</string>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>remote-notification</string>
-		<string>fetch</string>
-		<string>processing</string>
-		<string>location</string>
-	</array>
+	<string>wym sends notifications when you add transactions and reach budget limits.</string>
+
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>remote-notification</string>
+        <string>fetch</string>
+        <string>processing</string>
+    </array>
 	<key>UILaunchScreen</key>
 	<dict/>
 </dict>

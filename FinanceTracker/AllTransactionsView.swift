@@ -368,8 +368,9 @@ struct AllTransactionsView: View {
                 TransactionDetailView(transaction: transaction) { original, updated in
                     updateTransaction(original, with: updated)
                 }
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
+                .environmentObject(appState)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
             }
             .sheet(item: $transactionToEdit) { transaction in
                 AddTransactionView(transactionToEdit: transaction, onSave: { updatedTransaction in

@@ -56,85 +56,87 @@ struct TransactionDetailView: View {
                     }
                     .padding(.top, 20)
                     
-                    // Split Section
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Text("Split with Friends")
-                                .font(.headline)
-                            Spacer()
-                            Button(action: { 
-                                HapticManager.shared.light()
-                                showSplitSheet = true 
-                            }) {
-                                Image(systemName: "plus.circle.fill") // Using standard SF Symbol
-                                    .font(.title2)
-                            }
-                        }
-                        .padding(.horizontal)
-                        
-                        if let splits = transaction.splits, !splits.isEmpty {
-                            VStack(spacing: 0) {
-                                ForEach(splits) { split in
-                                    HStack {
-                                        Text(split.name)
-                                            .font(.body)
-                                        Spacer()
-                                        
-                                        Text(String(format: "$%.2f", split.amount))
-                                            .foregroundColor(.secondary)
-                                        
-                                        Button(action: {
-                                            toggleSplitPayment(split)
-                                        }) {
-                                            Image(systemName: split.isPaid ? "checkmark.circle.fill" : "circle")
-                                                .foregroundColor(split.isPaid ? .green : .gray)
-                                                .font(.title2)
-                                        }
-                                    }
-                                    .padding(.vertical, 12)
-                                    .padding(.horizontal, 16)
-                                    
-                                    if split.id != splits.last?.id {
-                                        Divider().padding(.leading, 16)
-                                    }
+                    // Split Section (hide for income transactions)
+                    if transaction.type != "income" {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Text("Split with Friends")
+                                    .font(.headline)
+                                Spacer()
+                                Button(action: { 
+                                    HapticManager.shared.light()
+                                    showSplitSheet = true 
+                                }) {
+                                    Image(systemName: "plus.circle.fill") // Using standard SF Symbol
+                                        .font(.title2)
                                 }
                             }
-                            .background(Color(UIColor.secondarySystemBackground))
-                            .cornerRadius(16)
                             .padding(.horizontal)
                             
-                            // Summary
-                             HStack {
-                                 VStack(alignment: .leading) {
-                                     Text("Total Bill")
-                                         .font(.caption)
-                                         .foregroundColor(.secondary)
-                                     Text(String(format: "$%.2f", abs(transaction.amount)))
-                                         .font(.headline)
-                                 }
-                                 Spacer()
-                                 VStack(alignment: .trailing) {
-                                     Text("Your Net Cost")
-                                         .font(.caption)
-                                         .foregroundColor(.secondary)
-                                     let reimbursed = splits.filter { $0.isPaid }.reduce(0) { $0 + $1.amount }
-                                     Text(String(format: "$%.2f", abs(transaction.amount) - reimbursed))
-                                         .font(.headline)
-                                 }
-                             }
-                             .padding(.horizontal)
-                        } else {
-                             Button(action: { showSplitSheet = true }) {
+                            if let splits = transaction.splits, !splits.isEmpty {
+                                VStack(spacing: 0) {
+                                    ForEach(splits) { split in
+                                        HStack {
+                                            Text(split.name)
+                                                .font(.body)
+                                            Spacer()
+                                            
+                                            Text(String(format: "$%.2f", split.amount))
+                                                .foregroundColor(.secondary)
+                                            
+                                            Button(action: {
+                                                toggleSplitPayment(split)
+                                            }) {
+                                                Image(systemName: split.isPaid ? "checkmark.circle.fill" : "circle")
+                                                    .foregroundColor(split.isPaid ? .green : .gray)
+                                                    .font(.title2)
+                                            }
+                                        }
+                                        .padding(.vertical, 12)
+                                        .padding(.horizontal, 16)
+                                        
+                                        if split.id != splits.last?.id {
+                                            Divider().padding(.leading, 16)
+                                        }
+                                    }
+                                }
+                                .background(Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(16)
+                                .padding(.horizontal)
+                                
+                                // Summary
                                  HStack {
-                                     Image(systemName: "person.2.fill")
-                                     Text("Split this bill")
+                                     VStack(alignment: .leading) {
+                                         Text("Total Bill")
+                                             .font(.caption)
+                                             .foregroundColor(.secondary)
+                                         Text(String(format: "$%.2f", abs(transaction.amount)))
+                                             .font(.headline)
+                                     }
+                                     Spacer()
+                                     VStack(alignment: .trailing) {
+                                         Text("Your Net Cost")
+                                             .font(.caption)
+                                             .foregroundColor(.secondary)
+                                         let reimbursed = splits.filter { $0.isPaid }.reduce(0) { $0 + $1.amount }
+                                         Text(String(format: "$%.2f", abs(transaction.amount) - reimbursed))
+                                             .font(.headline)
+                                     }
                                  }
-                                 .frame(maxWidth: .infinity)
-                                 .padding()
-                                 .background(Color(UIColor.secondarySystemBackground))
-                                 .cornerRadius(12)
-                             }
-                             .padding(.horizontal)
+                                 .padding(.horizontal)
+                            } else {
+                                 Button(action: { showSplitSheet = true }) {
+                                     HStack {
+                                         Image(systemName: "person.2.fill")
+                                         Text("Split this bill")
+                                     }
+                                     .frame(maxWidth: .infinity)
+                                     .padding()
+                                     .background(Color(UIColor.secondarySystemBackground))
+                                     .cornerRadius(12)
+                                 }
+                                 .padding(.horizontal)
+                            }
                         }
                     }
                     
@@ -264,15 +266,18 @@ struct TransactionDetailView: View {
                 let db = Firestore.firestore()
                 let ref = db.collection("users").document(transaction.userId).collection("transactions").document()
                 
+                // Build the description for the note
+                let description = transaction.note?.isEmpty == false ? transaction.note! : transaction.title
+                
                 let incomeTransaction = FirestoreModels.Transaction(
                     id: ref.documentID,
-                    title: "Split: \(split.name)",
-                    subtitle: "Income", // Set Category to "Income" so it's not Unknown
+                    title: "Income",
+                    subtitle: "Income",
                     amount: split.amount,
                     date: Date(),
                     icon: "dollarsign.circle.fill",
                     colorHex: "#34C759", // Green
-                    note: "Payment Received: \(transaction.title)",
+                    note: "Split Received: \(split.name) for \(description)",
                     type: "income",
                     source: "splitwise",
                     userId: transaction.userId,
@@ -347,7 +352,6 @@ struct SplitConfigurationView: View {
     
     // Friend Data
     @StateObject private var friendRepo = FriendRepository()
-    @StateObject private var groupRepo = GroupRepository()
     @EnvironmentObject var appState: AppState
     
     // Temporary Selection State
@@ -427,7 +431,7 @@ struct SplitConfigurationView: View {
                                 .padding(.vertical, 4)
                         } else if searchResults.isEmpty && !usernameQuery.isEmpty {
                              // "Invite" logic
-                            ShareLink(item: "Join me on FinanceTracker! My username is @\(appState.currentUserUsername).") {
+                            ShareLink(item: "Join me on wym! My username is @\(appState.currentUserUsername).") {
                                 Label("Invite '\(usernameQuery)' to App", systemImage: "square.and.arrow.up")
                                     .font(.subheadline)
                                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -479,45 +483,36 @@ struct SplitConfigurationView: View {
                             .font(.caption)
                         }
                     ) {
-                        if groupRepo.groups.isEmpty {
-                            Text("No groups created.")
-                                .font(.caption)
+                        if appState.groupRepo.groups.isEmpty {
+                            Text("No groups yet. Create one to quickly split with the same people.")
                                 .foregroundColor(.secondary)
+                                .font(.caption)
+                                .padding(.vertical, 8)
                         } else {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 12) {
-                                    ForEach(groupRepo.groups) { group in
-                                        VStack {
-                                            Image(systemName: group.icon)
-                                                .font(.title2)
-                                                .frame(width: 50, height: 50)
-                                                .background(Color.blue.opacity(0.1))
-                                                .clipShape(Circle())
-                                            Text(group.name)
-                                                .font(.caption)
-                                                .lineLimit(1)
-                                        }
-                                        .onTapGesture {
-                                            selectGroup(group)
-                                        }
-                                        .contextMenu {
-                                            Button {
-                                                groupToEdit = group
-                                                showGroupForm = true
-                                            } label: {
-                                                Label("Edit", systemImage: "pencil")
-                                            }
-                                            
-                                            Button(role: .destructive) {
-                                                groupToDelete = group
-                                                showGroupDeleteAlert = true
-                                            } label: {
-                                                Label("Delete", systemImage: "trash")
-                                            }
-                                        }
+                            ForEach(appState.groupRepo.groups) { group in
+                                Button(action: {
+                                    selectGroup(group)
+                                }) {
+                                    GroupCardView(group: group)
+                                }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        HapticManager.shared.medium()
+                                        groupToDelete = group
+                                        showGroupDeleteAlert = true
+                                    } label: {
+                                        Label("Delete", systemImage: "trash.fill")
                                     }
                                 }
-                                .padding(.vertical, 8)
+                                .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                    Button {
+                                        HapticManager.shared.medium()
+                                        groupToEdit = group
+                                    } label: {
+                                        Label("Edit", systemImage: "pencil")
+                                    }
+                                    .tint(.blue)
+                                }
                             }
                         }
                     }
@@ -599,6 +594,7 @@ struct SplitConfigurationView: View {
                     }
                 }
             }
+            .listStyle(.plain)
             .navigationTitle("Split Bill")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -617,20 +613,19 @@ struct SplitConfigurationView: View {
             .onAppear {
                 if !appState.currentUserId.isEmpty {
                     friendRepo.startListening(userId: appState.currentUserId)
-                    groupRepo.startListening(userId: appState.currentUserId)
+                    // groupRepo is now managed by AppState
                 }
             }
             .sheet(isPresented: $showGroupForm) {
-                GroupFormView(groupToEdit: groupToEdit) { newGroup in
-                    // 1. Auto-select the newly created/updated group
+                GroupFormView(groupToEdit: nil) { newGroup in
+                    // Auto-select the newly created group
                     selectGroup(newGroup)
-                    
-                    // 2. Optimistically add/update list
-                    if let index = groupRepo.groups.firstIndex(where: { $0.id == newGroup.id }) {
-                        groupRepo.groups[index] = newGroup
-                    } else {
-                        groupRepo.groups.insert(newGroup, at: 0)
-                    }
+                }
+            }
+            .sheet(item: $groupToEdit) { group in
+                GroupFormView(groupToEdit: group) { updatedGroup in
+                    // Re-select if needed (though updates usually persist automatically via repo)
+                    selectGroup(updatedGroup)
                 }
             }
             .alert("Delete Group?", isPresented: $showGroupDeleteAlert, presenting: groupToDelete) { group in
@@ -807,7 +802,7 @@ struct SplitConfigurationView: View {
     private func deleteGroup(_ group: FirestoreModels.Group) {
         guard let id = group.id else { return }
         Task {
-            try? await groupRepo.deleteGroup(groupId: id)
+            try? await appState.groupRepo.deleteGroup(groupId: id)
         }
     }
 }

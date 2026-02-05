@@ -12,6 +12,9 @@ class AppState: ObservableObject {
     @Published var userEmail = ""
     @Published var currentUserUsername = ""
     
+    // Repositories
+    @Published var groupRepo = GroupRepository()
+    
     private var authStateListener: AuthStateDidChangeListenerHandle?
     private let firebaseManager = FirebaseManager.shared
     
@@ -50,6 +53,11 @@ class AppState: ObservableObject {
                     Task {
                         await self?.loadUserProfile(userId: userId)
                     }
+                    // Start listening to groups for this user
+                    self?.groupRepo.startListening(userId: userId)
+                } else {
+                    // User logged out or is anonymous - stop group listener
+                    self?.groupRepo.stopListening()
                 }
             }
         }

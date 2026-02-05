@@ -245,8 +245,9 @@ struct HomeView: View {
                     TransactionDetailView(transaction: transaction) { original, updated in
                         updateTransaction(original, with: updated)
                     }
-                         .presentationDetents([.medium, .large])
-                         .presentationDragIndicator(.visible)
+                    .environmentObject(appState)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
                 }
                 .sheet(item: $transactionToEdit) { transaction in
                     AddTransactionView(transactionToEdit: transaction, onSave: { updatedTransaction in
@@ -304,7 +305,10 @@ struct HomeView: View {
                     note: transaction.notes,
                     type: amount < 0 ? "expense" : "income",
                     userId: appState.currentUserId, // Use global user ID
-                    createdAt: Date()
+                    createdAt: Date(),
+                    currencyCode: transaction.currencyCode,
+                    exchangeRate: transaction.exchangeRate,
+                    originalAmount: transaction.originalAmount
                 )
                 try await transactionRepo.addTransaction(firestoreTransaction)
                 
@@ -312,7 +316,9 @@ struct HomeView: View {
                 NotificationManager.shared.sendTransactionNotification(
                     amount: amount,
                     category: transaction.title,
-                    type: transaction.type
+                    type: transaction.type,
+                    originalAmount: transaction.originalAmount,
+                    currencyCode: transaction.currencyCode
                 )
             } catch {
                 DebugLogger.log("Failed to add transaction: \(error)")
@@ -389,6 +395,26 @@ struct TransactionRow: View {
             return "\(dateFormatter.string(from: date)) at \(timeString)"
         }
     }
+    
+    private func getSubtitleText() -> String? {
+        let noteText = (transaction.note?.isEmpty == false) ? transaction.note : nil
+        
+        var amountText: String? = nil
+        if let originalAmount = transaction.originalAmount,
+           let currency = transaction.currencyCode {
+            let amountString = String(format: "%.2f", abs(originalAmount))
+            amountText = "(\(currency)$\(amountString))"
+        }
+        
+        if let n = noteText, let a = amountText {
+            return "\(n) \(a)"
+        } else if let n = noteText {
+            return n
+        } else if let a = amountText {
+            return a
+        }
+        return nil
+    }
 
     var body: some View {
         HStack(spacing: AppSpacing.element) {
@@ -418,8 +444,9 @@ struct TransactionRow: View {
                 }
                 
                 // Show note (or original title if it was hijackng description in legacy income)
-                if let note = transaction.note, !note.isEmpty {
-                    Text(note)
+                // Travel Mode: Show (Note) Currency$Amount
+                if let subtitleText = getSubtitleText() {
+                    Text(subtitleText)
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
