@@ -28,6 +28,7 @@ struct AddTransactionView: View {
     // Travel Currency Logic
     @ObservedObject private var currencyManager = CurrencyManager.shared
     @State private var isUsingTravelCurrency = false
+    @FocusState private var isAmountFocused: Bool
     
     private func populateData() {
         if let transaction = transactionToEdit {
@@ -281,6 +282,12 @@ struct AddTransactionView: View {
             .multilineTextAlignment(.center)
             .keyboardType(.decimalPad)
             .foregroundColor(.primary)
+            .focused($isAmountFocused)
+            .onAppear {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    isAmountFocused = true
+                }
+            }
             
             Spacer()
         }

@@ -369,6 +369,7 @@ struct LockScreenWidgetEntryView : View {
             .containerBackground(for: .widget) {
                 Color.black
             }
+
         default:
             Text("Full View")
         }

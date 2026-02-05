@@ -29,7 +29,7 @@ struct TransactionDetailView: View {
                     
                     // Map Header
                     if let lat = transaction.latitude, let lon = transaction.longitude {
-                        Map(initialPosition: .camera(MapCamera(centerCoordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon), distance: 1000))) {
+                        Map(initialPosition: .camera(MapCamera(centerCoordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon), distance: 1000)), interactionModes: []) {
                             Marker(transaction.title, coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon))
                         }
                         .frame(height: 180)

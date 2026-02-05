@@ -93,10 +93,12 @@ struct CalendarView: View {
                                         .clipShape(Circle())
                                     
                                     if !isBeforeSignup && !isFutureDate(date) && !Calendar.current.isDateInToday(date) {
-                                        let surplus = calculateSurplus(for: date)
-                                        Text(surplus >= 0 ? "+\(Int(surplus))" : "\(Int(surplus))")
-                                            .font(.system(size: 8))
-                                            .foregroundColor(surplus >= 0 ? .green : .red)
+                                        let status = dailyStatus(for: date)
+                                        if status.color != .clear {
+                                            Text(status.balance >= 0 ? "+\(Int(status.balance))" : "\(Int(status.balance))")
+                                                .font(.system(size: 8))
+                                                .foregroundColor(status.color)
+                                        }
                                     }
                                 }
                                 .frame(maxWidth: .infinity)
@@ -190,6 +192,16 @@ struct CalendarView: View {
     }
     
     func dailyStatus(for date: Date) -> (balance: Double, color: Color) {
+        let calendar = Calendar.current
+        let dailyTransactions = transactions.filter {
+            calendar.isDate($0.date, inSameDayAs: date)
+        }
+        
+        // If no transactions, no streak (neutral)
+        if dailyTransactions.isEmpty {
+             return (0.0, .clear)
+        }
+        
         let surplus = calculateSurplus(for: date)
         return (surplus, surplus >= 0 ? .green : .red)
     }
