@@ -187,11 +187,10 @@ struct ProfileView: View {
                         dismiss()
                     }) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundColor(.secondary)
-                            .padding(8)
-                            .background(Color(UIColor.secondarySystemFill))
-                            .clipShape(Circle())
+                            .font(.system(size: 16, weight: .semibold)) // Standard nav bar weight
+                            .foregroundColor(Color(UIColor.label).opacity(0.6)) // Slightly softer than black/white
+                            .padding(8) // Touch target padding, but no background
+                            .contentShape(Circle()) // Helper for touch area
                     }
                 }
             }

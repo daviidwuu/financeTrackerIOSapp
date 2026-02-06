@@ -14,10 +14,22 @@
 		4A6662412F1DC8C100917527 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4A6662402F1DC8C100917527 /* SwiftUI.framework */; };
 		4A6662522F1DC8C500917527 /* FinanceWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4A66623D2F1DC8C100917527 /* FinanceWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4A7997CD2F34FFBB00F57974 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 4A7997CC2F34FFBB00F57974 /* FirebaseMessaging */; };
+		4A7997E22F3661B800F57974 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 4A7997DF2F3661B800F57974 /* FirebaseMessaging */; };
+		4A7997E32F3661B800F57974 /* FirebaseFirestoreCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 4A7997DE2F3661B800F57974 /* FirebaseFirestoreCombine-Community */; };
+		4A7997E42F3661B800F57974 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 4A7997DB2F3661B800F57974 /* FirebaseAuth */; };
+		4A7997E52F3661B800F57974 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 4A7997DD2F3661B800F57974 /* FirebaseFirestore */; };
+		4A7997E82F3661B800F57974 /* FinanceWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4A66623D2F1DC8C100917527 /* FinanceWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
 		4A6662502F1DC8C500917527 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4ADB75B42EF03ED200C767DE /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4A66623C2F1DC8C100917527;
+			remoteInfo = FinanceWidgetExtension;
+		};
+		4A7997DA2F3661B800F57974 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 4ADB75B42EF03ED200C767DE /* Project object */;
 			proxyType = 1;
@@ -52,6 +64,17 @@
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		4A7997E72F3661B800F57974 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				4A7997E82F3661B800F57974 /* FinanceWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -59,6 +82,8 @@
 		4A66623E2F1DC8C100917527 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		4A6662402F1DC8C100917527 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		4A6662582F1DC8DF00917527 /* FinanceWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FinanceWidgetExtension.entitlements; sourceTree = "<group>"; };
+		4A7997EC2F3661B800F57974 /* FinanceTracker copy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "FinanceTracker copy.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4A7997EE2F3661B900F57974 /* FinanceTracker copy-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "FinanceTracker copy-Info.plist"; path = "/Users/davidwu/Documents/FinanceTracker/FinanceTracker copy-Info.plist"; sourceTree = "<absolute>"; };
 		4ADB75BC2EF03ED200C767DE /* FinanceTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FinanceTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4ADB75D52EF03ED500C767DE /* FinanceTrackerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FinanceTrackerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4ADB75DF2EF03ED500C767DE /* FinanceTrackerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FinanceTrackerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -78,6 +103,69 @@
 				Utils/WidgetDataManager.swift,
 			);
 			target = 4A66623C2F1DC8C100917527 /* FinanceWidgetExtension */;
+		};
+		4A7997ED2F3661B900F57974 /* Exceptions for "FinanceTracker" folder in "FinanceTracker copy" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"/Localized: LaunchScreen.storyboard",
+				AddBudgetView.swift,
+				AddRecurringTransactionView.swift,
+				AddSavingGoalView.swift,
+				AddTransactionView.swift,
+				AllTransactionsView.swift,
+				AppState.swift,
+				Assets.xcassets,
+				CalendarView.swift,
+				"Color+Extensions.swift",
+				ContentView.swift,
+				CurrencyManager.swift,
+				DesignSystem.swift,
+				EmptyStateView.swift,
+				Features/AppIntents/FinanceTrackerShortcuts.swift,
+				Features/AppIntents/LogTransactionIntent.swift,
+				Features/AppIntents/TransactionCategoryEntity.swift,
+				FinanceTrackerApp.swift,
+				FirebaseManager.swift,
+				FirestoreModels.swift,
+				FirestoreRepositories.swift,
+				FriendRepository.swift,
+				"GoogleService-Info.plist",
+				GroupRepository.swift,
+				HapticManager.swift,
+				HomeView.swift,
+				Info.plist,
+				LocationManager.swift,
+				LoginView.swift,
+				ModalHeader.swift,
+				Models.swift,
+				NotificationManager.swift,
+				OnboardingView.swift,
+				PostOnboardingGuideView.swift,
+				PrivacyInfo.xcprivacy,
+				ProfileSubviews.swift,
+				ProfileView.swift,
+				RequestRepository.swift,
+				ShortcutsView.swift,
+				SwipeGuideView.swift,
+				Utilities/DebugLogger.swift,
+				Utils/NotificationContent.swift,
+				Utils/WidgetDataManager.swift,
+				Views/CurrencySettingsView.swift,
+				Views/FriendsListView.swift,
+				Views/GroupCardView.swift,
+				Views/GroupFormView.swift,
+				Views/GuidesView.swift,
+				Views/LocationSettingsView.swift,
+				Views/ProfileComponents.swift,
+				Views/RecurringTransactionCard.swift,
+				Views/RequestCardView.swift,
+				Views/SetUsernameView.swift,
+				Views/TransactionDetailView.swift,
+				WalletDetailsView.swift,
+				WalletView.swift,
+				WelcomeView.swift,
+			);
+			target = 4A7997D82F3661B800F57974 /* FinanceTracker copy */;
 		};
 		4ADB75E72EF03ED500C767DE /* Exceptions for "FinanceTracker" folder in "FinanceTracker" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
@@ -102,6 +190,7 @@
 			exceptions = (
 				4ADB75E72EF03ED500C767DE /* Exceptions for "FinanceTracker" folder in "FinanceTracker" target */,
 				4A66625A2F1DC92C00917527 /* Exceptions for "FinanceTracker" folder in "FinanceWidgetExtension" target */,
+				4A7997ED2F3661B900F57974 /* Exceptions for "FinanceTracker" folder in "FinanceTracker copy" target */,
 			);
 			path = FinanceTracker;
 			sourceTree = "<group>";
@@ -125,6 +214,17 @@
 			files = (
 				4A6662412F1DC8C100917527 /* SwiftUI.framework in Frameworks */,
 				4A66623F2F1DC8C100917527 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4A7997E12F3661B800F57974 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4A7997E22F3661B800F57974 /* FirebaseMessaging in Frameworks */,
+				4A7997E32F3661B800F57974 /* FirebaseFirestoreCombine-Community in Frameworks */,
+				4A7997E42F3661B800F57974 /* FirebaseAuth in Frameworks */,
+				4A7997E52F3661B800F57974 /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -174,6 +274,7 @@
 				4ADB75E22EF03ED500C767DE /* FinanceTrackerUITests */,
 				4A6662422F1DC8C100917527 /* FinanceWidget */,
 				4A6660D22EF0CBAC00917527 /* Frameworks */,
+				4A7997EE2F3661B900F57974 /* FinanceTracker copy-Info.plist */,
 				4ADB75BD2EF03ED200C767DE /* Products */,
 			);
 			sourceTree = "<group>";
@@ -185,6 +286,7 @@
 				4ADB75D52EF03ED500C767DE /* FinanceTrackerTests.xctest */,
 				4ADB75DF2EF03ED500C767DE /* FinanceTrackerUITests.xctest */,
 				4A66623D2F1DC8C100917527 /* FinanceWidgetExtension.appex */,
+				4A7997EC2F3661B800F57974 /* FinanceTracker copy.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -213,6 +315,34 @@
 			productName = FinanceWidgetExtension;
 			productReference = 4A66623D2F1DC8C100917527 /* FinanceWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
+		};
+		4A7997D82F3661B800F57974 /* FinanceTracker copy */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4A7997E92F3661B800F57974 /* Build configuration list for PBXNativeTarget "FinanceTracker copy" */;
+			buildPhases = (
+				4A7997E02F3661B800F57974 /* Sources */,
+				4A7997E12F3661B800F57974 /* Frameworks */,
+				4A7997E62F3661B800F57974 /* Resources */,
+				4A7997E72F3661B800F57974 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4A7997D92F3661B800F57974 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4ADB75BE2EF03ED200C767DE /* FinanceTracker */,
+			);
+			name = "FinanceTracker copy";
+			packageProductDependencies = (
+				4A7997DB2F3661B800F57974 /* FirebaseAuth */,
+				4A7997DD2F3661B800F57974 /* FirebaseFirestore */,
+				4A7997DE2F3661B800F57974 /* FirebaseFirestoreCombine-Community */,
+				4A7997DF2F3661B800F57974 /* FirebaseMessaging */,
+			);
+			productName = FinanceTracker;
+			productReference = 4A7997EC2F3661B800F57974 /* FinanceTracker copy.app */;
+			productType = "com.apple.product-type.application";
 		};
 		4ADB75BB2EF03ED200C767DE /* FinanceTracker */ = {
 			isa = PBXNativeTarget;
@@ -335,12 +465,20 @@
 				4ADB75D42EF03ED500C767DE /* FinanceTrackerTests */,
 				4ADB75DE2EF03ED500C767DE /* FinanceTrackerUITests */,
 				4A66623C2F1DC8C100917527 /* FinanceWidgetExtension */,
+				4A7997D82F3661B800F57974 /* FinanceTracker copy */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		4A66623B2F1DC8C100917527 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4A7997E62F3661B800F57974 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -378,6 +516,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		4A7997E02F3661B800F57974 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		4ADB75B82EF03ED200C767DE /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -406,6 +551,11 @@
 			isa = PBXTargetDependency;
 			target = 4A66623C2F1DC8C100917527 /* FinanceWidgetExtension */;
 			targetProxy = 4A6662502F1DC8C500917527 /* PBXContainerItemProxy */;
+		};
+		4A7997D92F3661B800F57974 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4A66623C2F1DC8C100917527 /* FinanceWidgetExtension */;
+			targetProxy = 4A7997DA2F3661B800F57974 /* PBXContainerItemProxy */;
 		};
 		4ADB75D72EF03ED500C767DE /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -479,6 +629,92 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		4A7997EA2F3661B800F57974 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = FinanceTracker/FinanceTracker.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 3;
+				DEVELOPMENT_TEAM = H6U663Z4ZQ;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "FinanceTracker copy-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = wym;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to tag where transactions occurred.";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = a;
+				INFOPLIST_KEY_UIStatusBarHidden = NO;
+				INFOPLIST_KEY_UIStatusBarStyle = "";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wu.FinanceTracker;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		4A7997EB2F3661B800F57974 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = FinanceTracker/FinanceTracker.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 3;
+				DEVELOPMENT_TEAM = H6U663Z4ZQ;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "FinanceTracker copy-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = wym;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to tag where transactions occurred.";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = a;
+				INFOPLIST_KEY_UIStatusBarHidden = NO;
+				INFOPLIST_KEY_UIStatusBarStyle = "";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wu.FinanceTracker;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -785,6 +1021,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		4A7997E92F3661B800F57974 /* Build configuration list for PBXNativeTarget "FinanceTracker copy" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4A7997EA2F3661B800F57974 /* Debug */,
+				4A7997EB2F3661B800F57974 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		4ADB75B72EF03ED200C767DE /* Build configuration list for PBXProject "FinanceTracker" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -832,6 +1077,14 @@
 				minimumVersion = 12.7.0;
 			};
 		};
+		4A7997DC2F3661B800F57974 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.7.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -853,6 +1106,26 @@
 		4A7997CC2F34FFBB00F57974 /* FirebaseMessaging */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 4A6660CF2EF0CA9A00917527 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
+		4A7997DB2F3661B800F57974 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4A7997DC2F3661B800F57974 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		4A7997DD2F3661B800F57974 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4A7997DC2F3661B800F57974 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		4A7997DE2F3661B800F57974 /* FirebaseFirestoreCombine-Community */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4A7997DC2F3661B800F57974 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = "FirebaseFirestoreCombine-Community";
+		};
+		4A7997DF2F3661B800F57974 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4A7997DC2F3661B800F57974 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseMessaging;
 		};
 /* End XCSwiftPackageProductDependency section */

@@ -69,8 +69,9 @@ struct TransactionDetailView: View {
                                     HapticManager.shared.light()
                                     showSplitSheet = true 
                                 }) {
-                                    Image(systemName: "plus.circle.fill") // Using standard SF Symbol
+                                    Image(systemName: (transaction.splits?.isEmpty == false) ? "pencil.circle.fill" : "plus.circle.fill")
                                         .font(.title2)
+                                        .foregroundColor(.primary)
                                 }
                             }
                             .padding(.horizontal)
@@ -132,6 +133,7 @@ struct TransactionDetailView: View {
                                          Image(systemName: "person.2.fill")
                                          Text("Split this bill")
                                      }
+                                     .foregroundColor(.primary)
                                      .frame(maxWidth: .infinity)
                                      .padding()
                                      .background(Color(UIColor.secondarySystemBackground))

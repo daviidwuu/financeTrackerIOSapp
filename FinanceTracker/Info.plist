@@ -23,6 +23,8 @@
 	</dict>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>wym sends notifications when you add transactions and reach budget limits.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>wym uses your location to tag transactions and automatically switch currencies in Travel Mode.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
