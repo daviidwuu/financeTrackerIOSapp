@@ -3,62 +3,103 @@ import SwiftUI
 struct CurrencySettingsView: View {
     @StateObject private var currencyManager = CurrencyManager.shared
     @State private var showRateModal = false
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
-        Form {
-            Section(header: Text("Currency Configuration")) {
-                // Main Currency
-                Picker("Main Currency", selection: $currencyManager.mainCurrency) {
-                    ForEach(currencyManager.availableCurrencies, id: \.self) { code in
-                        Text(currencyManager.currencyNames[code] ?? code).tag(code)
+        ScrollView {
+            VStack(spacing: 24) {
+                MenuSection("Currency Configuration") {
+                    HStack {
+                        Text("Main Currency")
+                            .font(.body)
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Picker("Main Currency", selection: $currencyManager.mainCurrency) {
+                            ForEach(currencyManager.availableCurrencies, id: \.self) { code in
+                                Text(currencyManager.currencyNames[code] ?? code).tag(code)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        .tint(.secondary)
+                    }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
+                    .background(Color(UIColor.secondarySystemBackground))
+                    
+                    MenuDivider()
+                    
+                    MenuRowView(title: "Travel Mode", showChevron: false, showToggle: $currencyManager.isTravelModeEnabled)
+                    
+                    if currencyManager.isTravelModeEnabled {
+                        MenuDivider()
+                        HStack {
+                            Text("Travel Currency")
+                                .font(.body)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Picker("Travel Currency", selection: $currencyManager.travelCurrency) {
+                                ForEach(currencyManager.availableCurrencies, id: \.self) { code in
+                                    Text(currencyManager.currencyNames[code] ?? code).tag(code)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .labelsHidden()
+                            .tint(.secondary)
+                        }
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 16)
+                        .background(Color(UIColor.secondarySystemBackground))
+                        
+                        MenuDivider()
+                        
+                        MenuRowView(title: "Auto-select Travel Currency based on Location", showChevron: false, showToggle: $currencyManager.isAutoDetectEnabled)
                     }
                 }
-                .onChange(of: currencyManager.mainCurrency) {
+                .onChange(of: currencyManager.mainCurrency) { _, _ in
                     currencyManager.fetchExchangeRate()
                     showRateModal = true
                 }
-                
-                // Travel Mode Toggle
-                Toggle("Travel Mode", isOn: $currencyManager.isTravelModeEnabled)
+                .onChange(of: currencyManager.travelCurrency) { _, _ in
+                    currencyManager.setTravelCurrency(currencyManager.travelCurrency)
+                    showRateModal = true
+                }
                 
                 if currencyManager.isTravelModeEnabled {
-                    // Travel Currency
-                    Picker("Travel Currency", selection: $currencyManager.travelCurrency) {
-                        ForEach(currencyManager.availableCurrencies, id: \.self) { code in
-                            Text(currencyManager.currencyNames[code] ?? code).tag(code)
+                    MenuSection("Current Exchange Rate") {
+                        HStack {
+                            Text("1 \(currencyManager.mainCurrency)")
+                                .font(.body)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Image(systemName: "arrow.right")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            if currencyManager.exchangeRate > 0 {
+                                Text("\(String(format: "%.2f", currencyManager.exchangeRate)) \(currencyManager.travelCurrency)")
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.blue)
+                            } else {
+                                ProgressView()
+                            }
                         }
-                    }
-                    .onChange(of: currencyManager.travelCurrency) {
-                        currencyManager.setTravelCurrency(currencyManager.travelCurrency)
-                        showRateModal = true
+                        .padding(16)
                     }
                     
-                    Toggle("Auto-select Travel Currency based on Location", isOn: $currencyManager.isAutoDetectEnabled)
-                }
-            }
-            
-            if currencyManager.isTravelModeEnabled {
-                Section(header: Text("Current Exchange Rate")) {
-                    HStack {
-                        Text("1 \(currencyManager.mainCurrency)")
-                        Spacer()
-                        Image(systemName: "arrow.right")
-                        Spacer()
-                        if currencyManager.exchangeRate > 0 {
-                            Text("\(String(format: "%.2f", currencyManager.exchangeRate)) \(currencyManager.travelCurrency)")
-                                .fontWeight(.bold)
-                                .foregroundColor(.blue)
-                        } else {
-                            ProgressView()
-                        }
-                    }
                     Text("Refreshed monthly based on 30-day average logic")
                         .font(.caption)
                         .foregroundColor(.secondary)
+                        .padding(.horizontal)
                 }
+                
+                Spacer()
             }
+            .padding(.top, 20)
         }
+        .background(Color(UIColor.systemBackground))
         .navigationTitle("Currency Settings")
+        .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showRateModal) {
             CurrencyRateModal(currencyManager: currencyManager)
         }

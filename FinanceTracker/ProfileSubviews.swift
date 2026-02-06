@@ -18,69 +18,92 @@ struct AccountSettingsView: View {
     @State private var initialUsername: String = ""
     
     var body: some View {
-        Form {
-            Section(header: Text("Profile Information")) {
-                TextField("Name", text: $name)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    TextField("Username", text: $username)
-                        .autocapitalization(.none)
-                        .disableAutocorrection(true)
-                        .onChange(of: username) { _, newValue in
-                            checkUsername(newValue)
-                        }
+        ScrollView {
+            VStack(spacing: 24) {
+                // Profile Information Section
+                MenuSection("Profile Information") {
+                    MenuInputRow(title: "Name", text: $name)
+                    MenuDivider()
                     
-                    if isCheckingUsername {
-                        Text("Checking availability...")
-                             .font(.caption)
-                             .foregroundColor(.secondary)
-                    } else if let msg = usernameMessage {
-                        Text(msg)
-                            .font(.caption)
-                            .foregroundColor(usernameAvailable ? .green : .red)
+                    VStack(spacing: 0) {
+                         MenuInputRow(title: "Username", text: $username, autocapitalization: .none)
+                         
+                         if isCheckingUsername {
+                             HStack {
+                                 Spacer()
+                                 Text("Checking availability...")
+                                     .font(.caption)
+                                     .foregroundColor(.secondary)
+                                     .padding(.trailing, 16)
+                                     .padding(.bottom, 8)
+                             }
+                         } else if let msg = usernameMessage {
+                             HStack {
+                                 Spacer()
+                                 Text(msg)
+                                     .font(.caption)
+                                     .foregroundColor(usernameAvailable ? .green : .red)
+                                     .padding(.trailing, 16)
+                                     .padding(.bottom, 8)
+                             }
+                         }
                     }
+                    .onChange(of: username) { _, newValue in
+                        checkUsername(newValue)
+                    }
+
+                    MenuDivider()
+                    MenuInputRow(title: "Email", text: $email, keyboardType: .emailAddress, autocapitalization: .none)
                 }
                 
-                TextField("Email", text: $email)
-                    .keyboardType(.emailAddress)
-                    .autocapitalization(.none)
-            }
-            
-            if let errorMessage = errorMessage {
-                Section {
+                if let errorMessage = errorMessage {
                     Text(errorMessage)
                         .foregroundColor(.red)
                         .font(.caption)
                 }
-            }
-            
-            Section {
-                Button(action: updateProfile) {
-                    if isLoading {
-                        ProgressView()
-                    } else {
-                        Text("Update Profile")
+                
+                // Actions
+                MenuSection {
+                    Button(action: updateProfile) {
+                        Text(isLoading ? "Updating..." : "Update Profile")
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(Color(UIColor.systemBackground))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                            .background(Color.primary)
+                            .cornerRadius(AppRadius.button)
+                    }
+                    .disabled(isLoading || name.isEmpty || email.isEmpty || username.isEmpty || !usernameAvailable || (name == appState.userName && email == appState.userEmail && username == initialUsername))
+                    .padding(16)
+                }
+                
+                // Security
+                MenuSection("Security") {
+                     Button(action: { sendPasswordReset() }) {
+                         MenuRowView(icon: "lock.rotation", title: "Reset Password", showChevron: true)
+                     }
+                     .buttonStyle(.plain)
+                }
+                
+                // Danger Zone
+                MenuSection {
+                    Button(action: { showDeleteConfirmation = true }) {
+                        Text("Delete Account")
+                            .font(.body)
+                            .foregroundColor(.red)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
                     }
                 }
-                .disabled(isLoading || name.isEmpty || email.isEmpty || username.isEmpty || !usernameAvailable || (name == appState.userName && email == appState.userEmail && username == initialUsername))
+                
+                Spacer()
             }
-            
-            Section(header: Text("Password")) {
-                Button("Reset Password") {
-                    sendPasswordReset()
-                }
-            }
-            
-            Section {
-                Button(action: { showDeleteConfirmation = true }) {
-                    Text("Delete Account")
-                        .foregroundColor(.red)
-                }
-            }
+            .padding(.top, 20)
         }
+        .background(Color(UIColor.systemBackground))
         .navigationTitle("Account Settings")
-        .background(Color.listBackground)
-        .scrollContentBackground(.hidden)
+        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             name = appState.userName
             email = appState.userEmail
@@ -127,7 +150,7 @@ struct AccountSettingsView: View {
                 await MainActor.run {
                     self.isCheckingUsername = false
                     self.usernameAvailable = isAvailable
-                    self.usernameMessage = isAvailable ? "Username available" : "Username taken"
+                    self.usernameMessage = isAvailable ? "Available" : "Taken"
                 }
             } catch {
                 await MainActor.run {
@@ -202,21 +225,36 @@ struct AppearanceSettingsView: View {
     @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
-        Form {
-            Section(header: Text("Display")) {
-            Section(header: Text("Display")) {
-                Picker("Theme", selection: $userTheme) {
-                    Text("System").tag("system")
-                    Text("Light").tag("light")
-                    Text("Dark").tag("dark")
+        ScrollView {
+            VStack(spacing: 24) {
+                MenuSection("Display") {
+                    HStack {
+                        Text("Theme")
+                            .font(.body)
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Picker("Theme", selection: $userTheme) {
+                            Text("System").tag("system")
+                            Text("Light").tag("light")
+                            Text("Dark").tag("dark")
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        .tint(.secondary)
+                    }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
+                    .background(Color(UIColor.secondarySystemBackground))
+                    .contentShape(Rectangle())
                 }
-                .pickerStyle(.menu)
+                
+                Spacer()
             }
-            }
+            .padding(.top, 20)
         }
+        .background(Color(UIColor.systemBackground))
         .navigationTitle("Appearance")
-        .background(Color.listBackground)
-        .scrollContentBackground(.hidden)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -244,154 +282,178 @@ struct NotificationsSettingsView: View {
     @State private var summaryDate: Date = Date()
     
     var body: some View {
-        Form {
-            // Permission Status Section
-            Section {
-                HStack {
-                    Image(systemName: permissionIcon)
-                        .foregroundColor(permissionColor)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Notification Permission")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                        Text(permissionText)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
-                    if permissionStatus == .notDetermined || permissionStatus == .denied {
-                        Button("Enable") {
-                            requestPermission()
-                        }
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                    }
-                }
-            }
-            
-            // Test Notification Button
-            Section {
-                Button(action: {
-                    testNotification()
-                }) {
+        ScrollView {
+            VStack(spacing: 24) {
+                // Permission Status Section
+                MenuSection {
                     HStack {
-                        Image(systemName: "bell.badge")
-                        Text("Send Test Notification")
+                        Image(systemName: permissionIcon)
+                            .foregroundColor(permissionColor)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Notification Permission")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                            Text(permissionText)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                         Spacer()
-                        Image(systemName: "paperplane.fill")
-                    }
-                }
-            }
-            
-            // Transaction Alerts
-            Section(header: Text("Transaction Alerts"), footer: Text("Get notified when you add or edit transactions")) {
-                Toggle("Transaction Notifications", isOn: $transactionNotifs)
-                    .onChange(of: transactionNotifs) { _, newValue in
-                        if newValue { ensurePermission() }
-                    }
-            }
-            
-            // Budget Alerts
-            Section(header: Text("Budget Alerts"), footer: Text("Get warned when you reach a % of your budget")) {
-                Toggle("Budget Warnings", isOn: $budgetNotifs)
-                    .onChange(of: budgetNotifs) { _, newValue in
-                        if newValue { ensurePermission() }
-                    }
-                
-                if budgetNotifs {
-                    Picker("Alert Threshold", selection: $budgetAlertThreshold) {
-                        Text("50%").tag(0.5)
-                        Text("80%").tag(0.8)
-                        Text("90%").tag(0.9)
-                        Text("100%").tag(1.0)
-                    }
-                }
-            }
-            
-            // Split Bill Reminders
-            Section(header: Text("Split Reminders"), footer: Text("Get reminded about unpaid splits >24h old, every 2 days")) {
-               Toggle("Unpaid Split Reminders", isOn: $unpaidSplitReminders)
-                   .onChange(of: unpaidSplitReminders) { _, newValue in
-                       if newValue { ensurePermission() }
-                   }
-            }
-            
-            // Scheduled Reports
-            Section(header: Text("Scheduled Reports")) {
-                Toggle("Daily Summary", isOn: $dailySummary)
-                    .onChange(of: dailySummary) { _, newValue in
-                        if newValue {
-                            ensurePermission()
-                            updateDailySummarySchedule()
-                        } else {
-                            NotificationManager.shared.cancelDailySummary()
+                        if permissionStatus == .notDetermined || permissionStatus == .denied {
+                            Button("Enable") {
+                                requestPermission()
+                            }
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .padding(.vertical, 6)
+                            .padding(.horizontal, 12)
+                            .background(Color.blue.opacity(0.1))
+                            .foregroundColor(.blue)
+                            .cornerRadius(8)
                         }
                     }
-                
-                if dailySummary {
-                    DatePicker("Time", selection: $summaryDate, displayedComponents: .hourAndMinute)
-                        .onChange(of: summaryDate) { _, newDate in
-                            // Save seconds from midnight
-                            let calendar = Calendar.current
-                            let components = calendar.dateComponents([.hour, .minute], from: newDate)
-                            let seconds = (Double(components.hour ?? 21) * 3600) + (Double(components.minute ?? 0) * 60)
-                            dailySummaryTime = seconds
-                            updateDailySummarySchedule()
-                        }
+                    .padding(16)
                 }
                 
-                Toggle("Weekly Report (Sunday 8 PM)", isOn: $weeklyReport)
-                    .onChange(of: weeklyReport) { _, newValue in
-                        if newValue {
-                            ensurePermission()
-                            NotificationManager.shared.scheduleWeeklyReport()
-                        } else {
-                            NotificationManager.shared.cancelWeeklyReport()
+                // Test Notification Button
+                MenuSection {
+                    Button(action: {
+                        testNotification()
+                    }) {
+                        HStack {
+                            Image(systemName: "bell.badge")
+                            Text("Send Test Notification")
+                            Spacer()
+                            Image(systemName: "paperplane.fill")
                         }
+                        .foregroundColor(.blue)
+                        .padding(16)
                     }
+                }
+                
+                // Transaction Alerts
+                MenuSection("Transaction Alerts") {
+                    MenuRowView(title: "Transaction Notifications", showChevron: false, showToggle: $transactionNotifs)
+                }
+                .onChange(of: transactionNotifs) { _, newValue in
+                    if newValue { ensurePermission() }
+                }
+                
+                // Budget Alerts
+                MenuSection("Budget Alerts") {
+                    MenuRowView(title: "Budget Warnings", showChevron: false, showToggle: $budgetNotifs)
+                    if budgetNotifs {
+                        MenuDivider()
+                        HStack {
+                            Text("Alert Threshold")
+                                .font(.body)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Picker("Threshold", selection: $budgetAlertThreshold) {
+                                Text("50%").tag(0.5)
+                                Text("80%").tag(0.8)
+                                Text("90%").tag(0.9)
+                                Text("100%").tag(1.0)
+                            }
+                            .pickerStyle(.menu)
+                            .labelsHidden()
+                            .tint(.secondary)
+                        }
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 16)
+                        .background(Color(UIColor.secondarySystemBackground))
+                    }
+                }
+                .onChange(of: budgetNotifs) { _, newValue in
+                    if newValue { ensurePermission() }
+                }
+                
+                // Split Bill Reminders
+                MenuSection("Split Reminders") {
+                   MenuRowView(title: "Unpaid Split Reminders", showChevron: false, showToggle: $unpaidSplitReminders)
+                }
+                .onChange(of: unpaidSplitReminders) { _, newValue in
+                    if newValue { ensurePermission() }
+                }
+                
+                // Scheduled Reports
+                MenuSection("Scheduled Reports") {
+                    MenuRowView(title: "Daily Summary", showChevron: false, showToggle: $dailySummary)
+                    
+                    if dailySummary {
+                        MenuDivider()
+                        HStack {
+                            Text("Time")
+                                .font(.body)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            DatePicker("", selection: $summaryDate, displayedComponents: .hourAndMinute)
+                                .labelsHidden()
+                        }
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 16)
+                        .background(Color(UIColor.secondarySystemBackground))
+                    }
+                    
+                    MenuDivider()
+                    MenuRowView(title: "Weekly Report (Sunday 8 PM)", showChevron: false, showToggle: $weeklyReport)
+                }
+                .onChange(of: dailySummary) { _, newValue in
+                    if newValue {
+                        ensurePermission()
+                        updateDailySummarySchedule()
+                    } else {
+                        NotificationManager.shared.cancelDailySummary()
+                    }
+                }
+                .onChange(of: summaryDate) { _, newDate in
+                    let calendar = Calendar.current
+                    let components = calendar.dateComponents([.hour, .minute], from: newDate)
+                    let seconds = (Double(components.hour ?? 21) * 3600) + (Double(components.minute ?? 0) * 60)
+                    dailySummaryTime = seconds
+                    updateDailySummarySchedule()
+                }
+                .onChange(of: weeklyReport) { _, newValue in
+                    if newValue {
+                        ensurePermission()
+                        NotificationManager.shared.scheduleWeeklyReport()
+                    } else {
+                        NotificationManager.shared.cancelWeeklyReport()
+                    }
+                }
+                
+                // Engagement & Tips
+                MenuSection("Engagement") {
+                    MenuRowView(title: "Inactivity Reminders", showChevron: false, showToggle: $inactivityCheck)
+                    MenuDivider()
+                    MenuRowView(title: "End of Day Check", showChevron: false, showToggle: $eodCheck)
+                    MenuDivider()
+                    MenuRowView(title: "Motivational Tips", showChevron: false, showToggle: $motivationalTips)
+                    MenuDivider()
+                    MenuRowView(title: "Goal Milestones", showChevron: false, showToggle: $goalMilestones)
+                }
+                .onChange(of: inactivityCheck) { _, newValue in
+                     if newValue { ensurePermission(); NotificationManager.shared.scheduleInactivityCheck() }
+                     else { NotificationManager.shared.cancelInactivityCheck() }
+                }
+                .onChange(of: eodCheck) { _, newValue in
+                    if newValue { ensurePermission(); NotificationManager.shared.scheduleEODCheck() }
+                    else { NotificationManager.shared.cancelEODCheck() }
+                }
+                .onChange(of: motivationalTips) { _, newValue in
+                    if newValue { ensurePermission(); NotificationManager.shared.scheduleMotivationalTips() }
+                    else { NotificationManager.shared.cancelMotivationalTips() }
+                }
+                .onChange(of: goalMilestones) { _, newValue in
+                    if newValue { ensurePermission() }
+                }
+                
+                Spacer()
             }
-            
-            // Engagement & Tips
-            Section(header: Text("Engagement")) {
-                Toggle("Inactivity Reminders (Every 4h)", isOn: $inactivityCheck)
-                    .onChange(of: inactivityCheck) { _, newValue in
-                        if newValue {
-                            ensurePermission()
-                            NotificationManager.shared.scheduleInactivityCheck()
-                        } else {
-                            NotificationManager.shared.cancelInactivityCheck()
-                        }
-                    }
-                
-                Toggle("End of Day Check (10 PM)", isOn: $eodCheck)
-                    .onChange(of: eodCheck) { _, newValue in
-                        if newValue {
-                            ensurePermission()
-                            NotificationManager.shared.scheduleEODCheck()
-                        } else {
-                            NotificationManager.shared.cancelEODCheck()
-                        }
-                    }
-                
-                Toggle("Motivational Tips (Every 3h)", isOn: $motivationalTips)
-                    .onChange(of: motivationalTips) { _, newValue in
-                        if newValue {
-                            ensurePermission()
-                            NotificationManager.shared.scheduleMotivationalTips()
-                        } else {
-                            NotificationManager.shared.cancelMotivationalTips()
-                        }
-                    }
-                
-                Toggle("Goal Milestones", isOn: $goalMilestones)
-                    .onChange(of: goalMilestones) { _, newValue in
-                        if newValue { ensurePermission() }
-                    }
-            }
+            .padding(.top, 20)
         }
+        .background(Color(UIColor.systemBackground))
         .navigationTitle("Notifications")
-        .background(Color.listBackground)
-        .scrollContentBackground(.hidden)
+        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             checkPermissionStatus()
             // Initialize Summary Date from Stored Time
@@ -523,26 +585,39 @@ struct PrivacySettingsView: View {
     @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
-        Form {
-            Section(header: Text("Security")) {
-                Toggle("Use Face ID", isOn: $faceIDEnabled)
-                NavigationLink("Two-Factor Authentication") {
-                    Text("2FA Setup")
-                        .navigationTitle("2FA")
+        ScrollView {
+            VStack(spacing: 24) {
+                MenuSection("Security") {
+                    MenuRowView(icon: "faceid", title: "Use Face ID", showChevron: false, showToggle: $faceIDEnabled)
+                    MenuDivider()
+                    NavigationLink {
+                        Text("2FA Setup")
+                            .navigationTitle("2FA")
+                    } label: {
+                        MenuRowView(icon: "lock.shield", title: "Two-Factor Authentication")
+                    }
+                    .buttonStyle(.plain)
                 }
-            }
-            
-            Section(header: Text("Data")) {
-                Toggle("Share Analytics", isOn: $analyticsEnabled)
-                NavigationLink("Data & Privacy Info") {
-                    Text("Privacy Policy Content")
-                        .navigationTitle("Privacy Policy")
+                
+                MenuSection("Data") {
+                    MenuRowView(title: "Share Analytics", showChevron: false, showToggle: $analyticsEnabled)
+                    MenuDivider()
+                    NavigationLink {
+                        Text("Privacy Policy Content")
+                            .navigationTitle("Privacy Policy")
+                    } label: {
+                        MenuRowView(icon: "hand.raised", title: "Data & Privacy Info")
+                    }
+                    .buttonStyle(.plain)
                 }
+                
+                Spacer()
             }
+            .padding(.top, 20)
         }
+        .background(Color(UIColor.systemBackground))
         .navigationTitle("Privacy & Security")
-        .background(Color.listBackground)
-        .scrollContentBackground(.hidden)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -551,37 +626,62 @@ struct HelpCenterView: View {
     @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
-        List {
-            Section(header: Text("FAQ")) {
-                NavigationLink("How to add a transaction?") {
-                    Text("Tap the + button on the home screen.")
-                        .padding()
-                        .navigationTitle("Adding Transactions")
+        ScrollView {
+            VStack(spacing: 24) {
+                MenuSection("FAQ") {
+                    NavigationLink {
+                        Text("Tap the + button on the home screen.")
+                            .padding()
+                            .navigationTitle("Adding Transactions")
+                    } label: {
+                        MenuRowView(icon: "plus.circle", title: "How to add a transaction?")
+                    }
+                    .buttonStyle(.plain)
+                    
+                    MenuDivider()
+                    
+                    NavigationLink {
+                        Text("Go to the Wallet tab and tap + next to Budgets.")
+                            .padding()
+                            .navigationTitle("Setting Budgets")
+                    } label: {
+                        MenuRowView(icon: "chart.pie", title: "How to set a budget?")
+                    }
+                    .buttonStyle(.plain)
+                    
+                    MenuDivider()
+                    
+                    NavigationLink {
+                        Text("Data export is coming soon.")
+                            .padding()
+                            .navigationTitle("Export Data")
+                    } label: {
+                        MenuRowView(icon: "square.and.arrow.up", title: "Exporting data")
+                    }
+                    .buttonStyle(.plain)
                 }
-                NavigationLink("How to set a budget?") {
-                    Text("Go to the Wallet tab and tap + next to Budgets.")
-                        .padding()
-                        .navigationTitle("Setting Budgets")
+                
+                MenuSection("Contact") {
+                    Button(action: { }) {
+                        MenuRowView(icon: "envelope", title: "Contact Support")
+                    }
+                    .buttonStyle(.plain)
+                    
+                    MenuDivider()
+                    
+                    Button(action: { }) {
+                        MenuRowView(icon: "ant", title: "Report a Bug")
+                    }
+                    .buttonStyle(.plain)
                 }
-                NavigationLink("Exporting data") {
-                    Text("Data export is coming soon.")
-                        .padding()
-                        .navigationTitle("Export Data")
-                }
+                
+                Spacer()
             }
-            
-            Section(header: Text("Contact")) {
-                Button("Contact Support") {
-                    // Email support action
-                }
-                Button("Report a Bug") {
-                    // Report bug action
-                }
-            }
+            .padding(.top, 20)
         }
+        .background(Color(UIColor.systemBackground))
         .navigationTitle("Help Center")
-        .background(Color.listBackground)
-        .scrollContentBackground(.hidden)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -590,48 +690,82 @@ struct AboutView: View {
     @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
-        VStack(spacing: 24) {
-            Image(systemName: "chart.bar.doc.horizontal.fill")
-                .font(.system(size: 80))
-                .foregroundColor(.primary)
-                .padding(.top, 40)
-            
-            VStack(spacing: 8) {
-                Text("wym")
-                    .font(.title)
-                    .fontWeight(.bold)
-                Text("Version 1.0.0")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            
-            List {
-                Section {
+        ScrollView {
+            VStack(spacing: 24) {
+                VStack(spacing: 8) {
+                    Image(systemName: "chart.bar.doc.horizontal.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.blue)
+                        .padding(.top, 20)
+                    
+                    Text("FinanceTracker")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    
+                    Text("Version 1.0.0")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+                
+                MenuSection {
                     HStack {
                         Text("Developer")
+                            .font(.body)
+                            .foregroundColor(.primary)
                         Spacer()
                         Text("David Wu")
+                            .font(.body)
                             .foregroundColor(.secondary)
                     }
+                    .padding(.vertical, 14)
+                    .padding(.horizontal, 16)
+                    
+                    MenuDivider()
+                    
                     HStack {
                         Text("Website")
+                            .font(.body)
+                            .foregroundColor(.primary)
                         Spacer()
                         Text("example.com")
+                            .font(.body)
                             .foregroundColor(.secondary)
                     }
+                    .padding(.vertical, 14)
+                    .padding(.horizontal, 16)
                 }
-                .listRowBackground(Color(UIColor.secondarySystemBackground))
                 
-                Section {
-                    Button("Rate App") { }
-                    Button("Terms of Service") { }
-                    Button("Privacy Policy") { }
+                MenuSection {
+                    Button(action: {}) {
+                        MenuRowView(title: "Rate App", showChevron: true)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    MenuDivider()
+                    
+                    Button(action: {}) {
+                        MenuRowView(title: "Terms of Service", showChevron: true)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    MenuDivider()
+                    
+                    Button(action: {}) {
+                        MenuRowView(title: "Privacy Policy", showChevron: true)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .listRowBackground(Color(UIColor.secondarySystemBackground))
+                
+                Spacer()
             }
-            .scrollContentBackground(.hidden)
+            .padding(.top, 10)
         }
-        .background(Color.listBackground)
+        .background(Color(UIColor.systemBackground))
         .navigationTitle("About Us")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
+
+

@@ -19,6 +19,7 @@ struct GuideStep: Identifiable, Hashable {
 }
 
 // MARK: - Guides List View
+// MARK: - Guides List View
 struct GuidesListView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
@@ -71,34 +72,51 @@ struct GuidesListView: View {
     ]
     
     var body: some View {
-        List {
-            ForEach(guides) { guide in
-                Button(action: {
-                    selectedGuide = guide
-                }) {
-                    HStack(spacing: 16) {
-                        Image(systemName: guide.icon)
-                            .font(.title2)
-                            .foregroundColor(.white)
-                            .frame(width: 50, height: 50)
-                            .background(guide.color)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+        ScrollView {
+            VStack(spacing: 24) {
+                MenuSection {
+                    ForEach(guides.indices, id: \.self) { index in
+                        let guide = guides[index]
+                        Button(action: {
+                            selectedGuide = guide
+                        }) {
+                            HStack(spacing: 16) {
+                                Image(systemName: guide.icon)
+                                    .font(.title2)
+                                    .foregroundColor(.white)
+                                    .frame(width: 40, height: 40)
+                                    .background(guide.color)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                                
+                                Text(guide.title)
+                                    .font(.body)
+                                    .foregroundColor(.primary)
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(Color(UIColor.tertiaryLabel))
+                            }
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 16)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                         
-                        Text(guide.title)
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        
-                        Spacer()
-                        
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.secondary)
+                        if index < guides.count - 1 {
+                            MenuDivider()
+                        }
                     }
-                    .padding(.vertical, 8)
                 }
+                
+                Spacer()
             }
+            .padding(.top, 20)
         }
+        .background(Color(UIColor.systemBackground))
         .navigationTitle("Guides")
+        .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $selectedGuide) { guide in
             GuideDetailView(guide: guide)
         }
@@ -114,7 +132,7 @@ struct GuideDetailView: View {
     
     var body: some View {
         ZStack {
-            (colorScheme == .dark ? Color.black : Color.white)
+            Color(UIColor.systemBackground)
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
@@ -186,7 +204,7 @@ struct GuideDetailView: View {
                     .padding()
                 }
                 .background(
-                    (colorScheme == .dark ? Color.black : Color.white)
+                    Color(UIColor.systemBackground)
                         .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: -5)
                 )
             }

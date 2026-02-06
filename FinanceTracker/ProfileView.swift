@@ -9,167 +9,197 @@ struct ProfileView: View {
     
     var body: some View {
         NavigationStack {
-            ZStack {
-                // Background
-                (colorScheme == .dark ? Color.black : Color.white)
-                    .ignoresSafeArea()
-                
-                List {
-                    Section {
-                        HStack(spacing: 16) {
-                            Circle()
-                                .fill(Color.secondary.opacity(0.15))
-                                .frame(width: 60, height: 60)
-                                .overlay(
-                                    Image(systemName: "person.fill")
-                                        .font(.system(size: 30))
-                                        .foregroundColor(.primary)
-                                )
-                            
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(appState.userName.isEmpty ? "User" : appState.userName)
-                                    .font(.title3)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.primary)
-                                if !appState.currentUserUsername.isEmpty {
-                                    Text("@\(appState.currentUserUsername)")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                } else {
-                                    Button("Set Username") {
-                                        showSetUsername = true
-                                    }
-                                    .font(.caption)
-                                    .foregroundColor(.blue)
-                                }
-                                Text(appState.userEmail.isEmpty ? "No Email" : appState.userEmail)
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        .padding(.vertical, 8)
+            ScrollView {
+                VStack(spacing: 16) {
+                    // 1. ChatGPT-style Header
+                    ProfileHeaderView(appState: appState) {
+                        showSetUsername = true
                     }
-                    .listRowBackground(Color(UIColor.secondarySystemBackground))
+                    .padding(.top, 10)
                     
-                    Section("Account") {
-                        // Manual Nav Link
+                    // 2. Account Section
+                    MenuSection("Account") {
+                        // Email (Static)
+                        MenuRowView(
+                            icon: "envelope.fill",
+                            title: "Email",
+                            value: appState.userEmail,
+                            showChevron: false
+                        )
+                        MenuDivider()
+                        
+                        // Plan (Visual only)
+                        MenuRowView(
+                            icon: "crown.fill",
+                            title: "Subscription",
+                            value: "Free Plan",
+                            showChevron: false
+                        )
+                    }
+                    
+                    // 3. Social Section
+                    MenuSection("Social") {
                         NavigationLink(destination: FriendsListView()) {
-                            HStack {
-                                Image(systemName: "person.2.fill")
-                                    .foregroundColor(.primary)
-                                    .frame(width: 24)
-                                Text("Friends")
-                            }
+                            MenuRowView(
+                                icon: "person.2.fill",
+                                title: "Friends"
+                            )
                         }
-                        NavigationLink(destination: CurrencySettingsView()) {
-                             HStack {
-                                 Image(systemName: "banknote.fill")
-                                     .foregroundColor(.primary)
-                                     .frame(width: 24)
-                                 Text("Currency Settings")
-                             }
-                        }
-                        NavigationLink(destination: AccountSettingsView()) {
-                            HStack {
-                                Image(systemName: "gearshape.fill")
-                                    .foregroundColor(.primary)
-                                    .frame(width: 24)
-                                Text("Account Settings")
-                            }
-                        }
+                        .buttonStyle(.plain)
+                    }
+                    
+                    // 4. App Settings
+                    MenuSection("App Settings") {
                         NavigationLink(destination: AppearanceSettingsView()) {
-                            HStack {
-                                Image(systemName: "paintbrush.fill")
-                                    .foregroundColor(.primary)
-                                    .frame(width: 24)
-                                Text("Appearance")
-                            }
+                            MenuRowView(
+                                icon: "paintbrush.fill",
+                                title: "Appearance",
+                                value: userTheme.capitalized
+                            )
                         }
+                        .buttonStyle(.plain)
+                        
+                        MenuDivider()
+                        
+                        NavigationLink(destination: CurrencySettingsView()) {
+                            MenuRowView(
+                                icon: "banknote.fill",
+                                title: "Currency",
+                                value: CurrencyManager.shared.mainCurrency
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        
+                        MenuDivider()
+                        
                         NavigationLink(destination: NotificationsSettingsView()) {
-                            HStack {
-                                Image(systemName: "bell.fill")
-                                    .foregroundColor(.primary)
-                                    .frame(width: 24)
-                                Text("Notifications")
-                            }
+                            MenuRowView(
+                                icon: "bell.fill",
+                                title: "Notifications"
+                            )
                         }
-                        NavigationLink(destination: LocationSettingsView()) {
-                            HStack {
-                                Image(systemName: "location.fill")
-                                    .foregroundColor(.primary)
-                                    .frame(width: 24)
-                                Text("Location Settings")
-                            }
+                        .buttonStyle(.plain)
+                    }
+                    
+                    // 5. Security & Privacy
+                    MenuSection("Privacy & Security") {
+                        NavigationLink(destination: AccountSettingsView()) {
+                            MenuRowView(
+                                icon: "gearshape.fill",
+                                title: "Account Settings"
+                            )
                         }
+                        .buttonStyle(.plain)
+                        
+                        MenuDivider()
+                        
                         NavigationLink(destination: PrivacySettingsView()) {
-                            HStack {
-                                Image(systemName: "lock.fill")
-                                    .foregroundColor(.primary)
-                                    .frame(width: 24)
-                                Text("Privacy & Security")
-                            }
+                            MenuRowView(
+                                icon: "lock.fill",
+                                title: "Privacy & Security"
+                            )
                         }
+                        .buttonStyle(.plain)
+                        
+                        MenuDivider()
+                        
+                        NavigationLink(destination: LocationSettingsView()) {
+                            MenuRowView(
+                                icon: "location.fill",
+                                title: "Location"
+                            )
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .listRowBackground(Color(UIColor.secondarySystemBackground))
                     
-                    Section("Support") {
-                        NavigationLink(destination: GuidesListView()) {
-                            HStack {
-                                Image(systemName: "book.fill")
-                                    .foregroundColor(.primary)
-                                    .frame(width: 24)
-                                Text("Guides")
-                            }
-                        }
+                    // 6. Support
+                    MenuSection("Support") {
                         NavigationLink(destination: HelpCenterView()) {
-                            HStack {
-                                Image(systemName: "questionmark.circle.fill")
-                                    .foregroundColor(.primary)
-                                    .frame(width: 24)
-                                Text("Help Center")
-                            }
+                            MenuRowView(
+                                icon: "questionmark.circle.fill",
+                                title: "Help Center"
+                            )
                         }
+                        .buttonStyle(.plain)
+                        
+                        MenuDivider()
+                        
+                        NavigationLink(destination: GuidesListView()) {
+                            MenuRowView(
+                                icon: "book.fill",
+                                title: "Guides"
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        
+                        MenuDivider()
+                        
                         NavigationLink(destination: AboutView()) {
-                            HStack {
-                                Image(systemName: "info.circle.fill")
-                                    .foregroundColor(.primary)
-                                    .frame(width: 24)
-                                Text("About Us")
-                            }
+                            MenuRowView(
+                                icon: "info.circle.fill",
+                                title: "About Us"
+                            )
                         }
+                        .buttonStyle(.plain)
                     }
-                    .listRowBackground(Color(UIColor.secondarySystemBackground))
                     
-                    Section {
+                    // 7. Log Out
+                    VStack {
                         Button(action: {
                             HapticManager.shared.medium()
                             appState.logout()
                         }) {
-                            Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
+                            Text("Log out")
+                                .font(.body)
+                                .fontWeight(.medium)
                                 .foregroundColor(.red)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(AppRadius.large)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: AppRadius.large)
+                                        .stroke(Color.primary.opacity(0.03), lineWidth: 1)
+                                )
                         }
                     }
-                    .listRowBackground(Color(UIColor.secondarySystemBackground))
+                    .padding(.horizontal, AppSpacing.margin)
+                    .padding(.bottom, 40)
                     
-                }
-                .scrollContentBackground(.hidden)
-                .background(colorScheme == .dark ? Color.black : Color.white)
-                .navigationDestination(isPresented: $appState.shouldOpenCurrencySettings) {
-                    CurrencySettingsView()
-                }
-                .sheet(isPresented: $showSetUsername) {
-                    SetUsernameView()
+                    // Version info footer
+                    VStack(spacing: 4) {
+                        Text("FinanceTracker for iOS")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        Text("Version 1.0.0 (Build 1)")
+                            .font(.caption2)
+                            .foregroundColor(Color(UIColor.tertiaryLabel))
+                    }
+                    .padding(.bottom, 20)
                 }
             }
-            .navigationTitle("Profile")
+            .background(Color(UIColor.systemBackground)) // Main background
             .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Settings") // Changed from "Profile" to match "Settings" in screenshots often
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
+                    Button(action: {
                         dismiss()
+                    }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundColor(.secondary)
+                            .padding(8)
+                            .background(Color(UIColor.secondarySystemFill))
+                            .clipShape(Circle())
                     }
-                    .fontWeight(.bold)
                 }
+            }
+            .sheet(isPresented: $showSetUsername) {
+                SetUsernameView()
+            }
+            .navigationDestination(isPresented: $appState.shouldOpenCurrencySettings) {
+                CurrencySettingsView()
             }
         }
         .preferredColorScheme(userTheme == "system" ? nil : (userTheme == "dark" ? .dark : .light))

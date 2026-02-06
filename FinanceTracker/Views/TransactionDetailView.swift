@@ -242,7 +242,7 @@ struct TransactionDetailView: View {
     // MARK: - Logic
     
     private func updateSplits(_ newSplits: [FirestoreModels.Split]) {
-        var updatedSplits = newSplits
+        let updatedSplits = newSplits
         
         // Remove Request ID generation logic as Cloud Functions now handle request creation
         // Just update the transaction, and the backend trigger will upsert requests

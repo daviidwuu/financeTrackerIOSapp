@@ -32,7 +32,7 @@ struct SetUsernameView: View {
                         .autocapitalization(.none)
                         .disableAutocorrection(true)
                         .padding()
-                        .background(Color(UIColor.secondarySystemBackground))
+                        .background(Color(UIColor.systemBackground)) // Match view background
                         .cornerRadius(12)
                         .padding(.horizontal, 32)
                         .onChange(of: username) { _, newValue in
@@ -77,8 +77,8 @@ struct SetUsernameView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
-                .background(isAvailable && !isLoading ? Color.blue : Color.gray.opacity(0.3))
-                .foregroundColor(.white)
+                .background(isAvailable && !isLoading ? Color.white : Color.gray.opacity(0.3))
+                .foregroundColor(.black)
                 .cornerRadius(AppRadius.button)
                 .disabled(!isAvailable || isLoading)
                 .padding(24)

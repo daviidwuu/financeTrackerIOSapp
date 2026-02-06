@@ -17,6 +17,7 @@ class AppState: ObservableObject {
     
     private var authStateListener: AuthStateDidChangeListenerHandle?
     private let firebaseManager = FirebaseManager.shared
+    private var cancellables = Set<AnyCancellable>()
     
     @Published var streakCount = 1
     @Published var hasSeenPostOnboardingGuide = false
@@ -61,6 +62,13 @@ class AppState: ObservableObject {
                 }
             }
         }
+        // Monitor GroupRepository changes
+        groupRepo.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
     }
     
     deinit {
