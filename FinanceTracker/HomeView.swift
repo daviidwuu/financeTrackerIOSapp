@@ -30,6 +30,8 @@ struct HomeView: View {
     @State private var requestToAccept: FirestoreModels.SplitRequest?
     @State private var showRemainingBudget = false
     @State private var isAnimating = false
+    @State private var showMissions = false
+    @ObservedObject private var gamificationManager = GamificationManager.shared
     
     var totalBudget: Double {
         // Exclude income budgets
@@ -49,12 +51,32 @@ struct HomeView: View {
     var totalSpent: Double {
         let calendar = Calendar.current
         let currentMonthTransactions = transactionRepo.transactions.filter { transaction in
-            // Only count expenses
-            guard transaction.amount < 0 else { return false }
             // Filter by current month
-            return calendar.isDate(transaction.date, equalTo: Date(), toGranularity: .month)
+            guard calendar.isDate(transaction.date, equalTo: Date(), toGranularity: .month) else { return false }
+            
+            // Exclude explicit "Income" category (Salary, etc.)
+            // But INCLUDE "Expense" categories even if amount is positive (Reimbursements)
+            return transaction.subtitle != "Income"
         }
-        return currentMonthTransactions.reduce(0) { $0 + abs($1.amount) }
+        
+        // Sum signed amounts:
+        // Expense: -50
+        // Reimbursement: +25
+        // Sum: -25
+        // Result: abs(-25) = 25 (Net Spent)
+        let netSpend = currentMonthTransactions.reduce(0) { $0 + $1.amount }
+        
+        // Return absolute value (spending is usually displayed as positive number)
+        // If net is positive (made profit on dining?), treat as 0 spend or show negative spend? 
+        // For "Spent" label, 0 makes most sense if we made money, but let's stick to abs() for now 
+        // effectively treating net income in an expense category as "negative spending" (which abs makes positive... wait)
+        
+        // Correct Logic:
+        // If Sum is -25 (Net Expense), Abs is 25. Correct.
+        // If Sum is +10 (Net Profit), Abs is 10. incorrectly shows as 10 spent.
+        // We should probably only count it as spend if it's negative.
+        
+        return netSpend < 0 ? abs(netSpend) : 0
     }
     
     var body: some View {
@@ -105,6 +127,26 @@ struct HomeView: View {
                                 }
                                 
                                 Spacer()
+                                
+                                // [NEW] Mission Button
+                                Button(action: { showMissions = true }) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color.primary.opacity(0.05))
+                                            .frame(width: 44, height: 44)
+                                        
+                                        Image(systemName: "trophy.fill")
+                                            .font(.system(size: 18))
+                                            .foregroundColor(.primary)
+                                        
+                                        CircularProgressView(
+                                            progress: GamificationManager.shared.progressForPhase(GamificationManager.shared.currentPhase),
+                                            color: .primary
+                                        )
+                                            .frame(width: 44, height: 44)
+                                    }
+                                }
+                                .buttonStyle(.plain)
                                 
                                 Button(action: { appState.showProfile = true }) {
                                     Circle()
@@ -305,6 +347,10 @@ struct HomeView: View {
                          acceptRequest(request, transaction: transaction)
                     })
                 }
+                .sheet(isPresented: $showMissions) {
+                    MissionHubView()
+                        .environmentObject(appState)
+                }
             }
             .navigationBarHidden(true)
             .onAppear {
@@ -314,6 +360,9 @@ struct HomeView: View {
                     budgetRepo.startListening(userId: appState.currentUserId)
                     recurringRepo.startListening(userId: appState.currentUserId)
                     requestRepo.startListening(userId: appState.currentUserId)
+                    
+                    // Load Gamification Data
+                    gamificationManager.loadUserData(userId: appState.currentUserId)
                 }
             }
             .onDisappear {
@@ -497,7 +546,7 @@ struct TransactionRow: View {
                 Text(transaction.type == "income" ? (transaction.subtitle ?? "Income") : transaction.title)
                     .font(.body)
                     .fontWeight(.semibold)
-                    .foregroundColor(.primary)
+                    .foregroundColor(transaction.type == "income" ? Color(hex: transaction.colorHex) : .primary)
                 
                 // Subtitle logic
                 if transaction.type != "income" {

@@ -139,6 +139,10 @@ struct CalendarView: View {
         .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(20)
         .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
+        .onAppear {
+            // Gamification
+            GamificationManager.shared.completeMission(id: "insight_master")
+        }
     }
     
     // Helpers

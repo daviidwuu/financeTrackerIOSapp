@@ -139,12 +139,20 @@ enum FirestoreModels {
             }
             
             // 2. Filter transactions
-            let spent = transactions
+            // 2. Filter transactions and calculate Net Spend
+            let netDiff = transactions
                 .filter { transaction in
-                    guard transaction.subtitle == category && transaction.type == "expense" else { return false }
+                    // Match category
+                    // Include both Expenses (negative) and Reimbursements (positive)
+                    // Exclude "Income" category explicitly if needed, but usually budgeting is for specific categories
+                    guard transaction.subtitle == category else { return false }
                     return transaction.date >= startDate && transaction.date < endDate
                 }
-                .reduce(0) { $0 + abs($1.amount) }
+                .reduce(0) { $0 + $1.amount }
+            
+            // If netDiff is -25 (Net Expense), Spent is 25.
+            // If netDiff is +10 (Net Profit), Spent is 0.
+            let spent = netDiff < 0 ? abs(netDiff) : 0
                 
             return totalAmount - spent
         }
@@ -264,5 +272,52 @@ enum FirestoreModels {
             case email
             case addedAt
         }
+    }
+    // MARK: - User Profile Model
+    struct UserProfile: Codable {
+        @DocumentID var id: String?
+        var name: String
+        var email: String
+        var username: String
+        var createdAt: Date
+        
+        // Gamification
+        var points: Int? = 0
+        var completedMissionIds: [String]? = []
+        var streakCount: Int? = 1
+        var lastVisitDate: Date?
+        
+        enum CodingKeys: String, CodingKey {
+            case id
+            case name
+            case email
+            case username
+            case createdAt
+            case points
+            case completedMissionIds
+            case streakCount
+            case lastVisitDate
+        }
+    }
+    
+    // MARK: - Rewards System
+    struct Reward: Identifiable, Codable, Equatable {
+        var id: String
+        var title: String
+        var cost: Int
+        var icon: String // SF Symbol
+        var partnerName: String
+        var description: String
+        var colorHex: String
+    }
+    
+    struct Redemption: Identifiable, Codable {
+        var id: String = UUID().uuidString
+        var rewardId: String
+        var rewardTitle: String
+        var rewardIcon: String
+        var cost: Int
+        var date: Date
+        var code: String // Unique redemption code
     }
 }

@@ -147,6 +147,8 @@ struct AddSavingGoalView: View {
             onSave?(updatedGoal)
         } else {
             onSave?(newGoal)
+            // Gamification
+            GamificationManager.shared.completeMission(id: "goal_getter")
         }
         dismiss()
     }

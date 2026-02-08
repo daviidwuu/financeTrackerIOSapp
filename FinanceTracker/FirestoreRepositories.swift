@@ -50,6 +50,34 @@ class TransactionRepository: ObservableObject {
         var newTransaction = transaction
         newTransaction.createdAt = Date()
         try db.collection("users").document(userId).collection("transactions").document().setData(from: newTransaction)
+        
+        // Gamification Checks
+        DispatchQueue.main.async {
+            // Check Social Splitter
+            if let splits = newTransaction.splits, !splits.isEmpty {
+                GamificationManager.shared.completeMission(id: "social_splitter")
+            }
+            
+            // Check Streak Starter (3 Days)
+            self.checkStreak(userId: userId)
+        }
+    }
+    
+    private func checkStreak(userId: String) {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        
+        // 1. Get unique days with transactions
+        let uniqueDays = Set(self.transactions.map { calendar.startOfDay(for: $0.date) })
+        
+        // 2. Check for 3 consecutive days ending today or yesterday
+        // (Allow verification even if today's transaction was just added)
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        let twoDaysAgo = calendar.date(byAdding: .day, value: -2, to: today)!
+        
+        if uniqueDays.contains(today) && uniqueDays.contains(yesterday) && uniqueDays.contains(twoDaysAgo) {
+            GamificationManager.shared.completeMission(id: "streak_starter")
+        }
     }
     
     /// Update an existing transaction
@@ -70,18 +98,19 @@ class TransactionRepository: ObservableObject {
         let calendar = Calendar.current
         let today = Date()
         
-        // Calculate Daily Spend (Expense only)
+        // Calculate Daily Spend (Net)
         let dailySpend = transactions
-            .filter { $0.type == "expense" && calendar.isDateInToday($0.date) }
+            .filter { $0.subtitle != "Income" && calendar.isDateInToday($0.date) }
             .reduce(0) { $0 + $1.amount }
         
-        // Calculate Monthly Spend (Expense only)
+        // Calculate Monthly Spend (Net)
         let monthlySpend = transactions
-             .filter { $0.type == "expense" && calendar.isDate($0.date, equalTo: today, toGranularity: .month) }
+             .filter { $0.subtitle != "Income" && calendar.isDate($0.date, equalTo: today, toGranularity: .month) }
              .reduce(0) { $0 + $1.amount }
              
-        WidgetDataManager.shared.saveDailySpend(dailySpend)
-        WidgetDataManager.shared.saveMonthlySpend(monthlySpend)
+        // Save absolute values (if net is negative, it's spend)
+        WidgetDataManager.shared.saveDailySpend(dailySpend < 0 ? abs(dailySpend) : 0)
+        WidgetDataManager.shared.saveMonthlySpend(monthlySpend < 0 ? abs(monthlySpend) : 0)
         
         // Force reload to ensure widget updates immediately
         WidgetCenter.shared.reloadAllTimelines()
@@ -175,6 +204,12 @@ class BudgetRepository: ObservableObject {
         var newBudget = budget
         newBudget.createdAt = Date()
         try db.collection("users").document(userId).collection("budgets").document().setData(from: newBudget)
+        
+        // Gamification
+        DispatchQueue.main.async {
+            GamificationManager.shared.completeMission(id: "budget_beginner")
+            GamificationManager.shared.completeMission(id: "personalizer")
+        }
     }
     
     func updateBudget(_ budget: FirestoreModels.CategoryBudget) async throws {
@@ -199,9 +234,13 @@ class BudgetRepository: ObservableObject {
     }
     
     func calculateSpent(for category: String, transactions: [FirestoreModels.Transaction]) -> Double {
-        return transactions
-            .filter { $0.subtitle == category && $0.type == "expense" }
-            .reduce(0) { $0 + abs($1.amount) }
+        let netDiff = transactions
+            .filter { $0.subtitle == category } // specific category
+            .reduce(0) { $0 + $1.amount } // sum (Ex: -50 + 25 = -25)
+            
+        // If net is negative (expense), return positive magnitude (25)
+        // If net is positive (profit), return 0 (no spend)
+        return netDiff < 0 ? abs(netDiff) : 0
     }
     
     private func updateWidgetData(budgets: [FirestoreModels.CategoryBudget]) {
@@ -343,6 +382,11 @@ class SavingGoalRepository: ObservableObject {
         }
         
         try db.collection("users").document(userId).collection("savingGoals").document().setData(from: newGoal)
+        
+        // Gamification
+        DispatchQueue.main.async {
+            GamificationManager.shared.completeMission(id: "goal_getter")
+        }
     }
     
     func updateSavingGoal(_ goal: FirestoreModels.SavingGoal) async throws {
@@ -436,6 +480,11 @@ class RecurringTransactionRepository: ObservableObject {
         var newTransaction = transaction
         newTransaction.createdAt = Date()
         try db.collection("users").document(userId).collection("recurringTransactions").document().setData(from: newTransaction)
+        
+        // Gamification
+        DispatchQueue.main.async {
+            GamificationManager.shared.completeMission(id: "subscription_tracker")
+        }
     }
     
     func updateRecurringTransaction(_ transaction: FirestoreModels.RecurringTransaction) async throws {

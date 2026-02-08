@@ -137,6 +137,10 @@ struct LogTransactionIntent: AppIntent {
             currencyCode: currencyCode
         )
         
+        
+        // Gamification: Complete "Speedster" mission
+        GamificationManager.shared.completeMission(id: "speedster")
+        
         return .result(value: "Logged \(amount) for \(category.name)")
     }
     

@@ -141,6 +141,9 @@ struct AddBudgetView: View {
             onSave?(newBudget)
         } else {
             onSave?(newBudget)
+            // Gamification
+            GamificationManager.shared.completeMission(id: "budget_beginner")
+            GamificationManager.shared.completeMission(id: "personalizer")
         }
         dismiss()
     }

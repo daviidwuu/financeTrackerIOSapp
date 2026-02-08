@@ -25,7 +25,7 @@ struct TransactionDetailView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
+                VStack(spacing: 16) { // Reduced from 24
                     
                     // Map Header
                     if let lat = transaction.latitude, let lon = transaction.longitude {
@@ -35,7 +35,7 @@ struct TransactionDetailView: View {
                         .frame(height: 180)
                         .cornerRadius(24)
                         .padding(.horizontal)
-                        .padding(.top, 16)
+                        .padding(.top, 8) // Reduced from 16
                         .onTapGesture {
                             showFullMap = true
                         }
@@ -56,7 +56,7 @@ struct TransactionDetailView: View {
                             .foregroundColor(Color(hex: transaction.colorHex))
                             .cornerRadius(12)
                     }
-                    .padding(.top, 20)
+                    .padding(.top, 0) // Reduced from 20
                     
                     // Split Section (hide for income transactions)
                     if transaction.type != "income" {
@@ -133,11 +133,12 @@ struct TransactionDetailView: View {
                                          Image(systemName: "person.2.fill")
                                          Text("Split this bill")
                                      }
-                                     .foregroundColor(.primary)
+                                     .foregroundColor(.black)
                                      .frame(maxWidth: .infinity)
                                      .padding()
-                                     .background(Color(UIColor.secondarySystemBackground))
+                                     .background(Color.white)
                                      .cornerRadius(12)
+                                     .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
                                  }
                                  .padding(.horizontal)
                             }
@@ -281,12 +282,12 @@ struct TransactionDetailView: View {
                 
                 let incomeTransaction = FirestoreModels.Transaction(
                     id: ref.documentID,
-                    title: "Income",
-                    subtitle: "Income",
+                    title: "Split Reimbursement", // Clearer title than just "Income"
+                    subtitle: transaction.subtitle ?? "Income", // Use original category
                     amount: split.amount,
                     date: Date(),
-                    icon: "dollarsign.circle.fill",
-                    colorHex: "#34C759", // Green
+                    icon: transaction.icon, // Use original category icon
+                    colorHex: "#34C759", // Keep Green to indicate positive flow
                     note: "Split Received: \(split.name) for \(description)",
                     type: "income",
                     source: "splitwise",

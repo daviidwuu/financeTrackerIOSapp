@@ -95,6 +95,11 @@ class AppState: ObservableObject {
                 let newStreak = currentStreak + 1
                 DispatchQueue.main.async {
                     self.streakCount = newStreak
+                    
+                    // Gamification
+                    if newStreak >= 3 {
+                        GamificationManager.shared.completeMission(id: "streak_starter")
+                    }
                 }
                 try await firebaseManager.updateStreakData(userId: userId, streakCount: newStreak, lastVisitDate: Date())
             } else {

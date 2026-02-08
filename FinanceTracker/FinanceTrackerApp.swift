@@ -40,15 +40,23 @@ struct FinanceTrackerApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if appState.isUserLoggedIn {
-                ContentView()
-                    .environmentObject(appState)
-                    .preferredColorScheme(userTheme == "system" ? nil : (userTheme == "dark" ? .dark : .light))
-
-            } else {
-                WelcomeView()
-                    .environmentObject(appState)
-                    .preferredColorScheme(userTheme == "system" ? nil : (userTheme == "dark" ? .dark : .light))
+            ZStack {
+                if appState.isUserLoggedIn {
+                    ContentView()
+                        .environmentObject(appState)
+                        .preferredColorScheme(userTheme == "system" ? nil : (userTheme == "dark" ? .dark : .light))
+                    
+                } else {
+                    WelcomeView()
+                        .environmentObject(appState)
+                        .preferredColorScheme(userTheme == "system" ? nil : (userTheme == "dark" ? .dark : .light))
+                }
+            }
+            .onOpenURL { url in
+                // Handle Widget Deep Link
+                if url.scheme == "wym" && url.host == "widget-launch" {
+                    GamificationManager.shared.completeMission(id: "widget_watcher")
+                }
             }
         }
         .onChange(of: scenePhase) { _, phase in
@@ -66,9 +74,8 @@ struct FinanceTrackerApp: App {
             }
         }
         .onChange(of: appState.isUserLoggedIn) { _, isLoggedIn in
-            if isLoggedIn {
                 NotificationManager.shared.syncTokenWithServer()
+                MigrationManager.shared.checkForMigrations()
             }
-        }
     }
 }

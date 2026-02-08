@@ -10,7 +10,7 @@ struct RecurringTransactionCard: View {
             // Icon
             Image(systemName: transaction.icon)
                 .font(.title2)
-                .frame(width: 50, height: 50)
+                .frame(width: 48, height: 48)
                 .background(Color(hex: transaction.colorHex).opacity(0.2))
                 .foregroundColor(Color(hex: transaction.colorHex))
                 .clipShape(Circle())

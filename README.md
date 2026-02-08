@@ -17,27 +17,33 @@ Most apps just tell you where your money went. wym tells you where it *should* g
 **"The Grind" vs. "The Vault"**  
 We don't just subtract expenses from income. Our proprietary **Savings Pool Algorithm** calculates a "Daily Allowance" based on your budget.
 - **Beat the Daily Grind**: Stay under your daily allowance, and watch your surplus grow.
-- **Unlock The Vault**: At the end of every month, unspent budget and unallocated income are swept into your "Vault" — a dedicated savings pool that fuels your long-term goals. It's gamified savings that actually works.
+- **Unlock The Vault**: At the end of every month, unspent budget and unallocated income are swept into your "Vault" — a dedicated savings pool that fuels your long-term goals.
+
+### 🎮 Gamified Finance
+**Level Up Your Wallet.**  
+Make financial discipline addictive.
+- **Missions & Rewards**: Complete challenges like "Streak Starter" or "Budget Beginner" to earn points.
+- **Real Rewards**: Redeem your hard-earned points for real-world perks like coffee or gym passes.
+- **Phased Progression**: Unlock new features and "Phases" as you master your money.
 
 ### ✈️ Travel Mode
 **The World is Your Wallet.**  
 Going abroad? Don't let currency math ruin the moment.
 - **One-Tap Switch**: Instantly toggle "Travel Mode" to handle a secondary currency.
-- **Real-Time Rates**: We fetch fresh exchange rates automatically (or manually override).
-- **Auto-Detection**: Enable "Auto-Select" to have the app switch currencies based on your location. Your wallet now knows where you are.
+- **Auto-Detection**: We detect when you land in a new country and suggest the local currency automatically.
+- **Real-Time Rates**: Live exchange rates ensure you know exactly what you're spending in your home currency.
+
+### 📱 Widgets & Shortcuts
+**Financial Clarity at a Glance.**
+- **Lock Screen**: Check your "Daily Spend" without even unlocking your phone.
+- **Interactive Widgets**: See your monthly budget progress right from your Home Screen.
+- **Smart Shortcuts**: Log transactions via Siri or Back Tap for friction-free tracking.
 
 ### 🤝 Social Finance
 **Split Bills, Not Friendships.**  
-Built-in bill splitting that puts dedicated apps to shame.
-- **Seamless Splitting**: Split any transaction with friends in seconds.
-- **Smart Distribution**: Auto-split equally or manually adjust amounts with our "Lock & Distribute" logic.
-- **Payment Tracking**: Mark splits as "Paid" and we automatically generate an income transaction for you. It's accounting magic.
-
-### 🔄 Smart Recurring
-**Subscriptions, Tamed.**  
-Never be surprised by a renewal again.
-- **Flexible Frequencies**: Weekly, Bi-Weekly, Yearly — we track it all.
-- **Monthly Normalization**: We calculate exactly how much your yearly subscriptions cost you *per month*, giving you a true picture of your monthly burn rate.
+- **Seamless Splitting**: Split any transaction with friends or groups in seconds.
+- **Smart Distribution**: Auto-split equally or manually adjust amounts.
+- **Payment Tracking**: Mark splits as "Paid" and we automatically generate an income transaction for you.
 
 ---
 
@@ -45,8 +51,8 @@ Never be surprised by a renewal again.
 
 We believe financial tools should feel good to use. **Really good.**
 
-- **🔥 Streak Counter**: Keep your financial discipline alive with daily streak tracking. Visual feedback that keeps you motivated.
-- **📳 Haptic Touch**: Every interaction is designed with intended haptic feedback. Feel the satisfying "thud" of a deleted expense or the "click" of a successful save.
+- **🔥 Streak Counter**: Keep your financial discipline alive with daily streak tracking.
+- **📳 Haptic Touch**: Every interaction is designed with intended haptic feedback. Feel the satisfying "thud" of a deleted expense.
 - **🌒 True Dark Mode**: Optimization for OLED screens that looks stunning at night.
 - **🔒 Privacy First**: Your data stays on your device and your private cloud. We don't sell your data. Period.
 
@@ -57,9 +63,9 @@ We believe financial tools should feel good to use. **Really good.**
 | Feature | Description |
 |---------|-------------|
 | **Dynamic Balance** | Toggle between "Budget Left" and "Total Spent" with a single tap. |
-| **Financial Calendar** | Visualise your spending habits day-by-day. See your net cash flow at a glance. |
+| **Financial Calendar** | Visualise your spending habits day-by-day. |
 | **Saving Goals** | Set targets and allocate your "Vault" savings to them visually. |
-| **Widgets** | Lock Screen and Home Screen widgets keep your daily allowance front and center. |
+| **Groups** | Manage shared expenses with specific groups of friends. |
 | **Export Data** | Your data is yours. Export transactions to CSV anytime. |
 
 ---

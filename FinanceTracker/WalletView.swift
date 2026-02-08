@@ -174,7 +174,7 @@ struct WalletView: View {
                                     Image(systemName: goal.icon)
                                         .font(.title2)
                                         .foregroundColor(.white)
-                                        .frame(width: 50, height: 50)
+                                        .frame(width: 48, height: 48)
                                         .background(Color(hex: goal.colorHex))
                                         .clipShape(Circle())
                                     
@@ -240,9 +240,12 @@ struct WalletView: View {
                                 signupDate: appState.userSignupDate
                             )
                         }
-                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: AppSpacing.compact, trailing: 16))
+                        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
+                        .onAppear {
+                            GamificationManager.shared.completeMission(id: "insight_master")
+                        }
                     }
                     
                     // Section 4: Recurring Transactions
@@ -320,7 +323,7 @@ struct WalletView: View {
                             ForEach(budgetRepo.budgets.filter { $0.category != "Income" }) { budget in
                                 HStack(spacing: AppSpacing.element) {
                                     Image(systemName: budget.icon)
-                                        .frame(width: 40, height: 40)
+                                        .frame(width: 48, height: 48)
                                         .background(Color(hex: budget.colorHex).opacity(0.2))
                                         .foregroundColor(Color(hex: budget.colorHex))
                                         .clipShape(Circle())
@@ -436,7 +439,34 @@ struct WalletView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(Color.backgroundPrimary)
+                .presentationBackground(Color.backgroundPrimary)
             }
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SwitchTab"))) { notification in
+                if let action = notification.userInfo?["action"] as? String {
+                    handleWalletAction(action)
+                }
+            }
+        }
+    }
+    
+    private func handleWalletAction(_ action: String) {
+        // Reset sheets
+        showAddSavingGoal = false
+        showAddRecurring = false
+        showAddBudget = false
+        
+        switch action {
+        case "add_budget", "add_category":
+            showAddBudget = true
+        case "add_goal":
+            showAddSavingGoal = true
+        case "add_recurring":
+            showAddRecurring = true
+        case "scroll_to_calendar":
+            // Scroll logic would go here if we had a ScrollViewProxy
+            break
+        default:
+            break
         }
     }
 
@@ -671,31 +701,7 @@ struct WalletView: View {
 
 
 
-struct CircularProgressView: View {
-    let progress: Double
-    
-    var body: some View {
-        ZStack {
-            Circle()
-                .stroke(
-                    Color.gray.opacity(0.2),
-                    lineWidth: 6
-                )
-            
-            Circle()
-                .trim(from: 0, to: progress)
-                .stroke(
-                    progress >= 0 ? Color.white : Color.red,
-                    style: StrokeStyle(
-                        lineWidth: 6,
-                        lineCap: .round
-                    )
-                )
-                .rotationEffect(.degrees(-90))
-                .animation(.easeOut, value: progress)
-        }
-    }
-}
+
 
 
 #Preview {

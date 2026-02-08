@@ -50,36 +50,40 @@ struct AddTransactionView: View {
             (colorScheme == .dark ? Color.black : Color.white)
                 .ignoresSafeArea()
             
-            VStack(spacing: 20) {
-                // Header
-                ModalHeader(
-                    title: currentStep < 3 ? "Add Transaction" : "Details",
-                    currentStep: currentStep,
-                    totalSteps: 3,
-                    onBack: currentStep > 1 ? {
-                        direction = .leading
-                        withAnimation { currentStep -= 1 }
-                    } : nil,
-                    onClose: { dismiss() }
-                )
-                .padding(.horizontal, AppSpacing.margin)
-                .padding(.top, 16)
-                
-                // Content
-                ZStack(alignment: .top) {
-                    currentStepView
+            if isReimbursement {
+                readOnlyView
+            } else {
+                VStack(spacing: 20) {
+                    // Header
+                    ModalHeader(
+                        title: currentStep < 3 ? "Add Transaction" : "Details",
+                        currentStep: currentStep,
+                        totalSteps: 3,
+                        onBack: currentStep > 1 ? {
+                            direction = .leading
+                            withAnimation { currentStep -= 1 }
+                        } : nil,
+                        onClose: { dismiss() }
+                    )
+                    .padding(.horizontal, AppSpacing.margin)
+                    .padding(.top, 16)
+                    
+                    // Content
+                    ZStack(alignment: .top) {
+                        currentStepView
+                    }
+                    .id(currentStep)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: direction),
+                        removal: .move(edge: direction == .leading ? .trailing : .leading)
+                    ))
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    
+                    Spacer()
                 }
-                .id(currentStep)
-                .transition(.asymmetric(
-                    insertion: .move(edge: direction),
-                    removal: .move(edge: direction == .leading ? .trailing : .leading)
-                ))
-                .frame(maxHeight: .infinity, alignment: .top)
-                
-                Spacer()
-            }
-            .safeAreaInset(edge: .bottom) {
-                stickyActionBar
+                .safeAreaInset(edge: .bottom) {
+                    stickyActionBar
+                }
             }
         }
         .onAppear {
@@ -116,6 +120,73 @@ struct AddTransactionView: View {
         .onDisappear {
             budgetRepo.stopListening()
             transactionRepo.stopListening()
+        }
+    }
+    
+    private var isReimbursement: Bool {
+        guard let note = transactionToEdit?.note else { return false }
+        return note.contains("Split Received:")
+    }
+    
+    private var readOnlyView: some View {
+        VStack(spacing: 24) {
+            // Header
+            HStack {
+                Spacer()
+                Button(action: { dismiss() }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.horizontal, AppSpacing.margin)
+            .padding(.top, 16)
+            
+            // Icon
+            if let t = transactionToEdit {
+                Image(systemName: t.icon)
+                    .font(.system(size: 48))
+                    .foregroundColor(Color(hex: t.colorHex))
+                    .padding()
+                    .background(Color(hex: t.colorHex).opacity(0.1))
+                    .clipShape(Circle())
+            }
+            
+            // Amount
+            if let t = transactionToEdit {
+                Text("+\(String(format: "%.2f", t.amount))")
+                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                    .foregroundColor(.green)
+            }
+            
+            // Title
+            if let t = transactionToEdit {
+                Text(t.title)
+                    .font(.title2)
+                    .fontWeight(.semibold)
+            }
+            
+            // Info Box
+            VStack(spacing: 8) {
+                Image(systemName: "lock.fill")
+                    .font(.title2)
+                    .foregroundColor(.secondary)
+                
+                Text("Automatic Transaction")
+                    .font(.headline)
+                
+                Text("This is an automatic reimbursement for a split bill. To modify it, please update the split status on the original transaction.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding()
+            .background(Color(UIColor.secondarySystemBackground))
+            .cornerRadius(AppRadius.medium)
+            .padding(.horizontal, AppSpacing.margin)
+            
+            Spacer()
         }
     }
     
@@ -314,7 +385,7 @@ struct AddTransactionView: View {
                                 Image(systemName: incomeBudget.icon)
                                     .font(.caption)
                                     .foregroundColor(.white)
-                                    .frame(width: 30, height: 30)
+                                    .frame(width: 32, height: 32)
                                     .background(Color.white.opacity(0.2))
                                     .clipShape(Circle())
                                 
@@ -358,7 +429,7 @@ struct AddTransactionView: View {
                                         Image(systemName: budget.icon)
                                         .font(.caption)
                                         .foregroundColor(Color(hex: budget.colorHex))
-                                        .frame(width: 30, height: 30)
+                                        .frame(width: 32, height: 32)
                                         .background(Color(hex: budget.colorHex).opacity(0.2))
                                         .clipShape(Circle())
                                         

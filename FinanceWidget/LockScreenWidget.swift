@@ -47,7 +47,7 @@ struct SimpleEntry: TimelineEntry {
     
     // New Derived Helper: Amount Left for Today
     var dailyRemaining: Double {
-        return dailyBudgetLimit + dailySpend
+        return dailyBudgetLimit - dailySpend
     }
 }
 
@@ -87,9 +87,9 @@ struct LockScreenWidgetEntryView : View {
                             .font(.system(size: 10, weight: .bold))
                             .textCase(.uppercase)
                     }
-                    Text(formatShort(entry.monthlyBudget + entry.monthlySpend))
+                        Text(formatShort(entry.monthlyBudget - entry.monthlySpend))
                         .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle((entry.monthlyBudget + entry.monthlySpend) < 0 ? .red : .primary)
+                        .foregroundStyle((entry.monthlyBudget - entry.monthlySpend) < 0 ? .red : .primary)
                 }
             }
             .containerBackground(.clear, for: .widget)
@@ -126,7 +126,7 @@ struct LockScreenWidgetEntryView : View {
             
         // MARK: Lock Screen - Inline (Monthly Left)
         case .accessoryInline:
-            Text("Left: \(formatMoney(entry.monthlyBudget + entry.monthlySpend))")
+            Text("Left: \(formatMoney(entry.monthlyBudget - entry.monthlySpend))")
                 .containerBackground(.clear, for: .widget)
             
         // MARK: Home Screen - Small (Daily Focus)
@@ -311,7 +311,7 @@ struct LockScreenWidgetEntryView : View {
                                     .foregroundStyle(Color(UIColor.systemGray))
                                     .padding(.leading, 2)
                             } else {
-                                Text(formatShort(entry.monthlyBudget + entry.monthlySpend))
+                                Text(formatShort(entry.monthlyBudget - entry.monthlySpend))
                                     .font(.system(size: 34, weight: .bold, design: .rounded))
                                     .foregroundStyle(.white)
                                     .contentTransition(.numericText())
@@ -357,7 +357,7 @@ struct LockScreenWidgetEntryView : View {
                             // Spent/Left Value (No Negative Sign)
                             // In Spent mode, footer shows "Left: $X"
                             // In Remaining mode, footer shows "Spent: $X"
-                            Text(formatShort(mode == .spent ? (entry.monthlyBudget + entry.monthlySpend) : abs(entry.monthlySpend)))
+                            Text(formatShort(mode == .spent ? (entry.monthlyBudget - entry.monthlySpend) : abs(entry.monthlySpend)))
                                 .font(.system(size: 14, weight: .bold, design: .rounded))
                                 .foregroundStyle(.white)
                         }
