@@ -39,37 +39,25 @@ class FriendRepository: ObservableObject {
         friends = []
     }
     
-    /// User A adds User B
+    /// User A sends a Friend Request to User B (v2.1 Request Flow)
     /// - Parameters:
     ///   - currentUserId: ID of the user performing the add
     ///   - currentUserInfo: (username, name, email) of current user to add to target's list
     ///   - targetUser: The user being added
     func addFriend(currentUserId: String, currentUserInfo: (username: String, name: String, email: String), targetUser: UserSearchResult) async throws {
-        
-        let batch = db.batch()
-        
-        // 1. Add Target to Current User's list
-        let friendForCurrent = FirestoreModels.Friend(
-            username: targetUser.username,
-            name: targetUser.name,
-            email: targetUser.email,
-            addedAt: Date()
+        // v2.1: Redirect to Friend Request Flow
+        let request = FirestoreModels.FriendRequest(
+            fromUid: currentUserId,
+            toUid: targetUser.id!,
+            status: "pending",
+            createdAt: Date()
         )
-        // Use target's ID as the document ID in the friends collection
-        let currentRef = db.collection("users").document(currentUserId).collection("friends").document(targetUser.id!)
-        try batch.setData(from: friendForCurrent, forDocument: currentRef)
-        
-        // 2. Add Current User to Target's list
-        let friendForTarget = FirestoreModels.Friend(
-            username: currentUserInfo.username,
-            name: currentUserInfo.name,
-            email: currentUserInfo.email,
-            addedAt: Date()
-        )
-        let targetRef = db.collection("users").document(targetUser.id!).collection("friends").document(currentUserId)
-        try batch.setData(from: friendForTarget, forDocument: targetRef)
-        
-        try await batch.commit()
+        try db.collection("friend_requests").document().setData(from: request)
+    }
+    
+    /// Check if a user is already a friend (Synchronous Cache Lookup)
+    func isFriend(uid: String) -> Bool {
+        return friends.contains(where: { $0.id == uid })
     }
     
     /// Search for users by username
@@ -93,18 +81,45 @@ class FriendRepository: ObservableObject {
     func deleteFriend(friendId: String) async throws {
         guard let userId = userId else { return }
         
-        let batch = db.batch()
-        
-        // Remove from my list
+        // remove batch to prevent one failure from blocking the other
+        // 1. Remove from my list (Primary Action)
         let myRef = db.collection("users").document(userId).collection("friends").document(friendId)
-        batch.deleteDocument(myRef)
+        try await myRef.delete()
         
-        // Remove me from their list
-        // Note: This assumes we want to break the link both ways. 
-        // Some apps allow one-way, but user asked for "added to both", so deleting from both makes sense to keep in sync.
-        let theirRef = db.collection("users").document(friendId).collection("friends").document(userId)
-        batch.deleteDocument(theirRef)
+        // 2. Remove me from their list (Best Effort)
+        Task {
+            do {
+                let theirRef = db.collection("users").document(friendId).collection("friends").document(userId)
+                try await theirRef.delete()
+            } catch {
+                print("Warning: Could not remove self from friend's list: \(error)")
+            }
+        }
+    }
+    
+    /// Create bidirectional friendship (Client-side fallback for Phase 6 Cloud Functions)
+    func createFriendship(requestId: String, fromUser: (uid: String, name: String, username: String), toUser: (uid: String, name: String, username: String, email: String)) async throws {
+        // 1. Add 'From User' (Sender) to 'To User' (Receiver/Me) friends list
+        let senderAsFriend = FirestoreModels.Friend(
+            id: fromUser.uid,
+            username: fromUser.username,
+            name: fromUser.name,
+            email: nil, // Email not available in request
+            addedAt: Date()
+        )
+        try db.collection("users").document(toUser.uid).collection("friends").document(fromUser.uid).setData(from: senderAsFriend)
         
-        try await batch.commit()
+        // 2. Add 'To User' (Receiver/Me) to 'From User' (Sender) friends list
+        let receiverAsFriend = FirestoreModels.Friend(
+            id: toUser.uid,
+            username: toUser.username,
+            name: toUser.name,
+            email: toUser.email,
+            addedAt: Date()
+        )
+        try db.collection("users").document(fromUser.uid).collection("friends").document(toUser.uid).setData(from: receiverAsFriend)
+        
+        // 3. Update Request Status
+        try await db.collection("friend_requests").document(requestId).updateData(["status": "accepted"])
     }
 }

@@ -2,7 +2,6 @@ import Foundation
 import UserNotifications
 import FirebaseFirestore
 import BackgroundTasks
-
 import FirebaseMessaging
 
 class NotificationManager: NSObject, UNUserNotificationCenterDelegate, MessagingDelegate {
@@ -29,7 +28,15 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
         let analyticsAction = UNNotificationAction(identifier: "ANALYTICS_ACTION", title: "View Analytics", options: .foreground)
         let summaryCategory = UNNotificationCategory(identifier: "DAILY_SUMMARY", actions: [analyticsAction], intentIdentifiers: [], options: .customDismissAction)
         
-        UNUserNotificationCenter.current().setNotificationCategories([transactionCategory, splitCategory, summaryCategory])
+        // Bill Reminder Actions
+        let payAction = UNNotificationAction(identifier: "PAY_ACTION", title: "Mark Paid", options: .foreground)
+        let billCategory = UNNotificationCategory(identifier: "BILL", actions: [payAction], intentIdentifiers: [], options: .customDismissAction)
+        
+        // Streak Actions
+        let logAction = UNNotificationAction(identifier: "LOG_ACTION", title: "Log Now", options: .foreground)
+        let streakCategory = UNNotificationCategory(identifier: "STREAK", actions: [logAction], intentIdentifiers: [], options: .customDismissAction)
+        
+        UNUserNotificationCenter.current().setNotificationCategories([transactionCategory, splitCategory, summaryCategory, billCategory, streakCategory])
     }
     
     func registerBackgroundTasks() {
@@ -87,11 +94,14 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
     }
     
     private func sendNotification(amount: Double, category: String, type: String, originalAmount: Double? = nil, currencyCode: String? = nil) {
-        // Check if transaction notifications are enabled (optional for now)
-        let isEnabled = UserDefaults.standard.bool(forKey: "notificationsEnabled_transactions")
+        // Check if transaction notifications are enabled
+        guard UserDefaults.standard.bool(forKey: "notificationsEnabled_transactions") else { return }
         
-        // Send anyway for debugging - remove this line in production
-         guard isEnabled else { return }
+        // Large Expense Check
+        let threshold = UserDefaults.standard.double(forKey: "largeExpenseThreshold")
+        if threshold > 0 && abs(amount) >= threshold && type != "income" {
+            sendLargeExpenseAlert(amount: abs(amount))
+        }
         
         let content = UNMutableNotificationContent()
         
@@ -137,15 +147,34 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
         }
     }
     
+    private func sendLargeExpenseAlert(amount: Double) {
+        let userName = AppState.shared.userName
+        let message = NotificationContent.getMessage(for: .largeExpense(amount: amount), userName: userName)
+        
+        let content = UNMutableNotificationContent()
+        content.title = message.title
+        content.body = message.body
+        content.sound = .default
+        content.categoryIdentifier = "TRANSACTION" // Reuse category to view details? Or maybe specific alert
+        
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 2, repeats: false) // Slightly delayed
+        let request = UNNotificationRequest(identifier: "large-expense-\(UUID().uuidString)", content: content, trigger: trigger)
+        UNUserNotificationCenter.current().add(request)
+    }
+    
     // MARK: - Budget Notifications
     
     func sendBudgetWarning(category: String, percentUsed: Int, remaining: Double) {
         guard UserDefaults.standard.bool(forKey: "notificationsEnabled_budgets") else { return }
         
+        let userName = AppState.shared.userName
+        let message = NotificationContent.getMessage(for: .budgetHit(category: category, percent: percentUsed), userName: userName)
+        
         let content = UNMutableNotificationContent()
-        content.title = "Budget Alert"
-        content.body = "\(category): \(percentUsed)% spent! $\(Int(remaining)) remaining"
+        content.title = message.title
+        content.body = message.body
         content.sound = .default
+        content.categoryIdentifier = "BUDGET"
         
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
@@ -251,8 +280,16 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
                     UNUserNotificationCenter.current().add(request)
                 }
                 
-                // Check for Split Reminders before completing the task
-                self.checkSplitBillReminders {
+                // Concurrent Checks
+                let group = DispatchGroup()
+                
+                group.enter()
+                self.checkSplitBillReminders { group.leave() }
+                
+                group.enter()
+                self.checkBillDueReminders { group.leave() }
+                
+                group.notify(queue: .main) {
                     task.setTaskCompleted(success: true)
                 }
             }
@@ -337,6 +374,67 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
         content.categoryIdentifier = "SPLIT"
         
         let request = UNNotificationRequest(identifier: "split-reminder-\(Date().timeIntervalSince1970)", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request)
+    }
+    
+    // MARK: - Bill Reminders
+    
+    func checkBillDueReminders(completion: @escaping () -> Void = {}) {
+        guard UserDefaults.standard.bool(forKey: "notificationsEnabled_billReminders") else {
+            completion()
+            return
+        }
+        
+        let userId = AppState.shared.currentUserId
+        guard !userId.isEmpty else {
+            completion()
+            return
+        }
+        
+        let db = Firestore.firestore()
+        db.collection("users").document(userId).collection("recurring_transactions")
+            .getDocuments { [weak self] snapshot, error in
+                guard let self = self, let documents = snapshot?.documents, error == nil else {
+                    completion()
+                    return
+                }
+                
+                let calendar = Calendar.current
+                let tomorrow = calendar.date(byAdding: .day, value: 1, to: Date())!
+                
+                for doc in documents {
+                    do {
+                        let recurring = try doc.data(as: FirestoreModels.RecurringTransaction.self)
+                        // Simple check: Is the start date day-of-month == tomorrow's day-of-month?
+                        // A robust implementation would calculate the exact next occurrence.
+                        
+                        // Using a simplified logic: If day matches tomorrow.
+                        let dayOfStart = calendar.component(.day, from: recurring.startDate)
+                        let dayOfTomorrow = calendar.component(.day, from: tomorrow)
+                        
+                        if dayOfStart == dayOfTomorrow {
+                            self.sendBillReminder(recurring: recurring)
+                        }
+                    } catch {
+                        continue
+                    }
+                }
+                completion()
+            }
+    }
+    
+    private func sendBillReminder(recurring: FirestoreModels.RecurringTransaction) {
+        let userName = AppState.shared.userName
+        let message = NotificationContent.getMessage(for: .billDue(name: recurring.name, amount: recurring.amount), userName: userName)
+        
+        let content = UNMutableNotificationContent()
+        content.title = message.title
+        content.body = message.body
+        content.sound = .default
+        content.categoryIdentifier = "BILL"
+        content.userInfo = ["recurringId": recurring.id ?? ""]
+        
+        let request = UNNotificationRequest(identifier: "bill-reminder-\(recurring.id ?? UUID().uuidString)", content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request)
     }
     
@@ -427,20 +525,53 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
                 
                 // If no documents found, user hasn't logged anything
                 if snapshot?.documents.isEmpty ?? true {
-                    let userName = AppState.shared.userName
-                    let message = NotificationContent.getMessage(for: .inactivity, userName: userName)
                     
-                    let content = UNMutableNotificationContent()
-                    content.title = message.title
-                    content.body = message.body
-                    content.sound = .default
-                    
-                    let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-                    UNUserNotificationCenter.current().add(request)
+                    // Check Streak Warning Logic
+                    if UserDefaults.standard.bool(forKey: "notificationsEnabled_streaks") {
+                        self.checkStreakWarning(userId: userId)
+                    } else {
+                        self.sendInactivityNotification()
+                    }
                 }
                 
                 task.setTaskCompleted(success: true)
             }
+    }
+    
+    private func sendInactivityNotification() {
+        let userName = AppState.shared.userName
+        let message = NotificationContent.getMessage(for: .inactivity, userName: userName)
+        
+        let content = UNMutableNotificationContent()
+        content.title = message.title
+        content.body = message.body
+        content.sound = .default
+        content.categoryIdentifier = "INACTIVITY"
+        
+        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request)
+    }
+    
+    private func checkStreakWarning(userId: String) {
+        // This would typically check the UserProfile 'lastVisitDate'
+        // Simplification: Just send the streak warning if inactivity is detected late in the day (after 6 PM)
+        let hour = Calendar.current.component(.hour, from: Date())
+        if hour >= 18 {
+             let userName = AppState.shared.userName
+             let message = NotificationContent.getMessage(for: .streakWarning(daysConfig: 1), userName: userName)
+             
+             let content = UNMutableNotificationContent()
+             content.title = message.title
+             content.body = message.body
+             content.sound = .default
+             content.categoryIdentifier = "STREAK"
+             
+             let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+             UNUserNotificationCenter.current().add(request)
+        } else {
+            // Normal inactivity
+            sendInactivityNotification()
+        }
     }
     
     // MARK: - End of Day Check
@@ -448,9 +579,16 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
     func scheduleEODCheck() {
         guard UserDefaults.standard.bool(forKey: "notificationsEnabled_eod") else { return }
         
+        // Retrieve custom time or default to 10 PM
+        let storedSeconds = UserDefaults.standard.double(forKey: "eodCheckTime")
+        let totalSeconds = storedSeconds > 0 ? Int(storedSeconds) : 79200 // 22 * 3600
+        
+        let hour = totalSeconds / 3600
+        let minute = (totalSeconds % 3600) / 60
+        
         var dateComponents = DateComponents()
-        dateComponents.hour = 22 // 10 PM
-        dateComponents.minute = 0
+        dateComponents.hour = hour
+        dateComponents.minute = minute
         
         let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
         
@@ -479,8 +617,14 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
     func scheduleMotivationalTips() {
         guard UserDefaults.standard.bool(forKey: "notificationsEnabled_tips") else { return }
         
-        // Schedule for 7am, 10am, 1pm, 4pm, 7pm
-        let hours = [7, 10, 13, 16, 19]
+        // Retrieve custom times
+        let morningSeconds = UserDefaults.standard.double(forKey: "motivationalTime_morning")
+        let eveningSeconds = UserDefaults.standard.double(forKey: "motivationalTime_evening")
+        
+        let morningHour = morningSeconds > 0 ? Int(morningSeconds) / 3600 : 7
+        let eveningHour = eveningSeconds > 0 ? Int(eveningSeconds) / 3600 : 19
+        
+        let hours = [morningHour, 10, 13, 16, eveningHour]
         let userName = AppState.shared.userName
         
         for hour in hours {
@@ -489,15 +633,6 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
             components.minute = 0
             
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
-            
-            // Note: In a real app, you might want to dynamically randomize this content
-            // For now, we schedule it. To make it dynamic, we'd use a background task to schedule local notifs nearby,
-            // or just rely on the static content generated at schedule time (which limits variety until app re-opens).
-            // Better approach for variety: Use Background Task to schedule the *next* tip.
-            // But simplifying here: We will just schedule them.
-            // Wait, if we schedule them now, the message is fixed.
-            // To make it dynamic, let's use the Background Task approach or just accept fixed messages until next launch.
-            // Let's accept fixed messages for MVP simplification, but re-schedule on app launch.
             
             let message = NotificationContent.getMessage(for: .motivational, userName: userName)
             
@@ -512,8 +647,11 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
     }
     
     func cancelMotivationalTips() {
-        let identifiers = [7, 10, 13, 16, 19].map { "tip-\($0)" }
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
+        // Remove all requests that start with "tip-"
+        UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
+            let tipIds = requests.filter { $0.identifier.hasPrefix("tip-") }.map { $0.identifier }
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: tipIds)
+        }
     }
     
     // MARK: - Clear Badges
@@ -526,8 +664,6 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
     // MARK: - UNUserNotificationCenterDelegate
     
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        // Show banner and play sound even when app is in foreground
-        // Show banner and play sound even when app is in foreground
         completionHandler([.banner, .sound, .badge])
     }
     
@@ -567,10 +703,6 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
             DispatchQueue.main.async {
                 // Ensure we are on the Home Dashboard
                 AppState.shared.selectedTab = 0
-                // We could potentially open a detail view if a Transaction ID was passed, 
-                // but for now, just taking them to the list is good.
-                // Or maybe show the "All Transactions" sheet
-                 // AppState.shared.showDailySummary = true // Reusing 'AllTransactionsView' which is what Daily Summary uses
             }
             
         // --- 3. Split Reminders (Friends/Profile) ---
@@ -581,20 +713,16 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
             }
         
         // --- 4. Budget Alerts (Wallet Tab) ---
-        } else if response.notification.request.content.title == "Budget Alert" {
+        } else if response.notification.request.content.title == "Budget Alert" || response.notification.request.content.categoryIdentifier == "BUDGET" {
              DispatchQueue.main.async {
                  // Switch to Wallet Tab (Index 1)
                  AppState.shared.selectedTab = 1
              }
              
-        // --- 5. Inactivity Check (Prompt to Add Transaction) ---
-        } else if categoryId == "INACTIVITY" || response.actionIdentifier == "LOG_ACTION" { // Assuming we add this category later
+        // --- 5. Inactivity/Streak Check (Prompt to Add Transaction) ---
+        } else if categoryId == "INACTIVITY" || categoryId == "STREAK" || response.actionIdentifier == "LOG_ACTION" {
              DispatchQueue.main.async {
                  AppState.shared.selectedTab = 0
-                 // There isn't a direct "showAddTransaction" in AppState, 
-                 // but we can add one or use a URL scheme if ContentView listens for it.
-                 // For now, just going to Home is sufficient prompt.
-                 // Actually, let's use the URL scheme we saw in ContentView!
                  if let url = URL(string: "financetracker://add-transaction") {
                      UIApplication.shared.open(url)
                  }
@@ -606,7 +734,15 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
                  AppState.shared.showWeeklyReport = true
              }
              
-        // --- 7. Goal Milestones (Wallet Tab) ---
+        // --- 7. Bill Reminders ---
+        } else if categoryId == "BILL" {
+             DispatchQueue.main.async {
+                 // Open Recurring Transactions list in Wallet?
+                 AppState.shared.selectedTab = 1
+                 // Could ideally scroll to Recurring section or open modal
+             }
+             
+        // --- 8. Goal Milestones (Wallet Tab) ---
         } else if response.notification.request.content.title.contains("Goal") {
              DispatchQueue.main.async {
                  AppState.shared.selectedTab = 1
@@ -616,8 +752,6 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
         completionHandler()
     }
 
-    // MARK: - MessagingDelegate
-    
     // MARK: - MessagingDelegate
     
     private var cachedFCMToken: String?

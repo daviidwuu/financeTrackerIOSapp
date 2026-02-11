@@ -39,7 +39,7 @@ struct AddTransactionView: View {
             transactionNotes = transaction.note ?? ""
         } else if let request = requestToAccept {
             amount = String(format: "%.2f", abs(request.amount))
-            transactionNotes = request.note
+            transactionNotes = request.note ?? ""
             // We start at step 1 to confirm amount, but could jump to 2 if desired
         }
     }
@@ -131,12 +131,16 @@ struct AddTransactionView: View {
     private var readOnlyView: some View {
         VStack(spacing: 24) {
             // Header
+            // Header
             HStack {
                 Spacer()
                 Button(action: { dismiss() }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(.secondary)
+                    Image(systemName: "xmark")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .frame(width: 44, height: 44)
+                        .background(Color.primary.opacity(0.05))
+                        .clipShape(Circle())
                 }
             }
             .padding(.horizontal, AppSpacing.margin)
@@ -207,16 +211,9 @@ struct AddTransactionView: View {
                 }
             }) {
                 Text(currentStep < 3 ? "Next" : (transactionToEdit != nil ? "Update Transaction" : "Save Transaction"))
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(isStepValid ? (colorScheme == .dark ? .black : .white) : .secondary)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(isStepValid ? Color.primary : Color(UIColor.systemGray5))
-                    .cornerRadius(AppRadius.button)
             }
+            .buttonStyle(PrimaryButtonStyle())
             .disabled(!isStepValid)
-            .animation(.easeInOut, value: isStepValid) // Smooth color transition
         }
         .padding(.horizontal, AppSpacing.margin)
         .padding(.top, AppSpacing.compact)

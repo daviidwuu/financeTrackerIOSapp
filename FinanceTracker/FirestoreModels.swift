@@ -58,14 +58,80 @@ enum FirestoreModels {
     // MARK: - Split Model
     struct Split: Identifiable, Codable {
         var id: String = UUID().uuidString
-        var name: String // Friend's name
+        var name: String // Friend's name or Guest's name
         var friendId: String? // Linked Friend User ID
         var username: String? // Friend's Username
+        var guestId: String? // ✅ NEW: Linked Guest ID
+        var isGuest: Bool = false // ✅ NEW: Flag to distinguish guests
         var amount: Double
         var isPaid: Bool
+        var isAccepted: Bool = false // ✅ NEW: Tracks if receiver accepted
         var paidDate: Date? // When they paid back
         var incomeTransactionId: String? // Linked ID to the "Income" transaction created when they pay
         var requestId: String? // Linked ID of the SplitRequest sent to the friend
+    }
+
+    // MARK: - Guest Model
+    struct Guest: Identifiable, Codable {
+        @DocumentID var id: String?
+        var name: String
+        var avatarColor: String // For consistent UI color (random hex)
+        var totalOwed: Double // Aggregate debt across all transactions
+        var createdAt: Date
+        var userId: String // Owner of this guest record
+        
+        enum CodingKeys: String, CodingKey {
+            case id
+            case name
+            case avatarColor
+            case totalOwed
+            case createdAt
+            case userId
+        }
+    }
+
+    // MARK: - FriendRequest Model
+    struct FriendRequest: Identifiable, Codable {
+        @DocumentID var id: String?
+        var fromUid: String
+        var toUid: String
+        var status: String // "pending", "accepted", "declined"
+        var fromName: String? // ✅ NEW: For UI display
+        var fromUsername: String? // ✅ NEW: For UI display
+        var createdAt: Date
+        
+        enum CodingKeys: String, CodingKey {
+            case id
+            case fromUid
+            case toUid
+            case status
+            case fromName
+            case fromUsername
+            case createdAt
+        }
+    }
+
+    // MARK: - GroupInvitation Model
+    struct GroupInvitation: Identifiable, Codable {
+        @DocumentID var id: String?
+        var groupId: String
+        var groupName: String // Denormalized for UI
+        var fromUid: String
+        var toUid: String
+        var status: String // "pending", "accepted", "declined", "blocked_by_friendship"
+        var dependencyId: String? // Links to blocking friend_request
+        var createdAt: Date
+        
+        enum CodingKeys: String, CodingKey {
+            case id
+            case groupId
+            case groupName
+            case fromUid
+            case toUid
+            case status
+            case dependencyId
+            case createdAt
+        }
     }
 
     // MARK: - CategoryBudget Model
@@ -219,40 +285,96 @@ enum FirestoreModels {
     struct Group: Identifiable, Codable {
         @DocumentID var id: String?
         var name: String
-        var memberIds: [String] // List of Friend User IDs
+        var normalizedName: String? // ✅ NEW: For duplicate detection
+        var members: [String] // ✅ RENAMED from memberIds
+        var createdBy: String // ✅ NEW: Track creator
         var icon: String
-        var colorHex: String? // Visual theme color
+        var color: String // ✅ RENAMED from colorHex
         var createdAt: Date
+        var updatedAt: Date? // ✅ NEW: Track modifications
+        var defaultCurrency: String? // ✅ NEW: Master currency for the group
         
         enum CodingKeys: String, CodingKey {
             case id
             case name
-            case memberIds
+            case normalizedName
+            case members
+            case createdBy
             case icon
-            case colorHex
+            case color
             case createdAt
+            case updatedAt
+            case defaultCurrency
+        }
+        
+        func isMember(_ uid: String) -> Bool {
+            return members.contains(uid)
+        }
+    }
+
+    // MARK: - GroupTransaction Model
+    struct GroupTransaction: Identifiable, Codable {
+        @DocumentID var id: String?
+        var title: String
+        var amount: Double
+        var payerId: String
+        var payerName: String
+        var date: Date
+        var type: String // "expense" or "income" (reimbursement)
+        var currencyCode: String?
+        var originalTransactionId: String? // Linked to the user's private transaction
+        
+        enum CodingKeys: String, CodingKey {
+            case id
+            case title
+            case amount
+            case payerId
+            case payerName
+            case date
+            case type
+            case currencyCode
+            case originalTransactionId
         }
     }
 
     // MARK: - SplitRequest Model
     struct SplitRequest: Identifiable, Codable {
         @DocumentID var id: String?
-        var requesterId: String
-        var requesterName: String
+        var transactionId: String
+        var groupId: String? // ✅ NEW: Link to group
+        var fromUid: String // ✅ RENAMED from requesterId
+        var toUid: String // ✅ NEW: Explicit receiver
+        var fromName: String? // Denormalized sender name
         var amount: Double
-        var note: String
-        var originalTransactionId: String
-        var status: String // "pending", "accepted", "declined"
+        var currency: String? // ✅ NEW: Multi-currency support
+        var note: String?
+        var status: RequestStatus // ✅ CHANGED to enum
+        var dependencyId: String? // ✅ NEW: Links to blocking document
+        var lastNudgedAt: Date? // ✅ NEW: For nudge feature
         var createdAt: Date
+        
+        enum RequestStatus: String, Codable {
+            case pending
+            case accepted
+            case declined
+            case paid
+            case blocked_by_group
+            case blocked_by_friendship
+        }
         
         enum CodingKeys: String, CodingKey {
             case id
-            case requesterId
-            case requesterName
+            case transactionId
+            case groupId
+            case fromUid
+            case toUid
+            case fromName
             case amount
+            case currency
             case note
-            case originalTransactionId
             case status
+            case dependencyId
+            case lastNudgedAt
             case createdAt
         }
     }

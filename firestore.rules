@@ -1,6 +1,59 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // ✅ NEW: Root collection for groups (Wiki-style shared)
+    match /groups/{groupId} {
+      allow create: if request.auth != null
+                    && request.resource.data.createdBy == request.auth.uid
+                    && request.resource.data.members.hasAll([request.auth.uid]);
+      
+      allow read: if request.auth.uid in resource.data.members;
+      
+      // Any member can update (wiki-style)
+      allow update: if request.auth.uid in resource.data.members;
+      
+      // Any member can delete (wiki-style)
+      // Any member can delete (wiki-style)
+      allow delete: if request.auth.uid in resource.data.members;
+
+      // ✅ NEW: Group Transactions Subcollection
+      match /transactions/{transactionId} {
+        allow read, write: if request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.members;
+      }
+    }
+    
+    // ✅ NEW: Root collection for split requests
+    match /split_requests/{requestId} {
+      allow create: if request.auth.uid == request.resource.data.fromUid
+                    && (request.resource.data.status == 'pending' 
+                        || request.resource.data.status == 'paid'
+                        || request.resource.data.status in ['blocked_by_group', 'blocked_by_friendship']);
+      
+      allow read: if request.auth.uid == resource.data.fromUid 
+                  || request.auth.uid == resource.data.toUid
+                  || (resource.data.groupId != null && request.auth.uid in get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.members);
+      
+      // Allow receiver to update (accept/decline) OR sender to update (cancel/delete/mark paid)
+      allow update: if request.auth.uid == resource.data.toUid 
+                    || request.auth.uid == resource.data.fromUid;
+    }
+    
+    // ✅ NEW: Root collection for friend requests
+    match /friend_requests/{requestId} {
+      allow create: if request.auth.uid == request.resource.data.fromUid;
+      allow read: if request.auth.uid == resource.data.fromUid 
+                  || request.auth.uid == resource.data.toUid;
+      allow update: if request.auth.uid == resource.data.toUid;
+    }
+    
+    // ✅ NEW: Root collection for group invitations
+    match /group_invitations/{inviteId} {
+      allow create: if request.auth.uid == request.resource.data.fromUid;
+      allow read: if request.auth.uid == resource.data.fromUid 
+                  || request.auth.uid == resource.data.toUid;
+      allow update: if request.auth.uid == resource.data.toUid;
+    }
 
     match /users {
       // 1. Username Availability Check (Collection-level)
@@ -30,22 +83,27 @@ service cloud.firestore {
         match /categories/{document=**} { 
           allow read, write: if request.auth.uid == userId; 
         }
-        match /groups/{document=**} { 
-          allow read, write: if request.auth.uid == userId; 
+        
+        // ✅ NEW: Private guest subcollection
+        match /guests/{guestId} {
+          allow read, write: if request.auth.uid == userId;
         }
         
-        // 4. Friends (Mutual Add Exception)
-        // Allow Owner (userId) to read/write their own friends
-        // AND Allow "Requester" (auth.uid) to write THEIR OWN entry into someone else's list (friendId == auth.uid)
+        // LEGACY: Keep for 30 days (read-only)
+        match /groups/{groupId} {
+          allow read: if request.auth.uid == userId;
+          allow write: if false;  // ⬅️ No new writes
+        }
+        
+        match /requests/{requestId} {
+          allow read: if request.auth.uid == userId;
+          allow write: if false;  // ⬅️ No new writes
+        }
+        
+        // 4. Friends (Mutual Add Exception) - Still needed for active friends list
         match /friends/{friendId} {
           allow read: if request.auth.uid == userId; 
           allow write: if request.auth.uid == userId || request.auth.uid == friendId;
-        }
-
-        // 5. Split Requests
-        match /requests/{requestId} {
-          allow read, update, delete: if request.auth.uid == userId;
-          allow create: if request.auth != null; // Allow any auth user to send a request
         }
       }
     }

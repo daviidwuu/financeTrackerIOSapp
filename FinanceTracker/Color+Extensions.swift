@@ -19,6 +19,14 @@ extension Color {
     static let secondarySystemBackground = Color(UIColor.secondarySystemBackground)
     static let tertiarySystemBackground = Color(UIColor.tertiarySystemBackground)
     
+    static let label = Color(UIColor.label)
+    static let secondaryLabel = Color(UIColor.secondaryLabel)
+    static let tertiaryLabel = Color(UIColor.tertiaryLabel)
+    
+    // Semantic Functional Colors
+    static let functionalSuccess = Color(hex: "#34C759") // IOS System Green
+    static let functionalError = Color(hex: "#FF3B30")   // IOS System Red
+    
     // Helper to convert Color to Hex String
     func toHex() -> String? {
         let uic = UIColor(self)
@@ -127,5 +135,12 @@ extension Color {
             }
             return LinearGradient(colors: [.blue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing)
         }
+    }
+    
+    // Deterministic random color from string seed
+    static func random(seed: String) -> Color {
+        let total = seed.unicodeScalars.reduce(0) { $0 + Int($1.value) }
+        let index = total % selectableColors.count
+        return selectableColors[index]
     }
 }

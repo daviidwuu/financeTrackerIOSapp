@@ -32,17 +32,8 @@ struct ProfileHeaderView: View {
             }
             
             // Edit Button
-            Button(action: onEditProfile) {
-                Text("Edit profile")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.primary)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(
-                        Capsule()
-                            .stroke(Color.primary.opacity(0.2), lineWidth: 1)
-                    )
-            }
+            Button("Edit profile", action: onEditProfile)
+                .buttonStyle(SmallSecondaryButtonStyle())
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)

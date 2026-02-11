@@ -10,19 +10,19 @@ struct RewardsView: View {
     @State private var showRedemptionAlert = false
     
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: AppSpacing.margin) {
             // segmented control
             Picker("Mode", selection: $selectedTab) {
                 Text("Marketplace").tag(0)
                 Text("My Rewards").tag(1)
             }
             .pickerStyle(.segmented)
-            .padding(.horizontal)
+            .padding(.horizontal, AppSpacing.margin)
             
             if selectedTab == 0 {
                 // Marketplace
                 ScrollView {
-                    LazyVStack(spacing: 16) {
+                    LazyVStack(spacing: AppSpacing.element) {
                         ForEach(manager.availableRewards) { reward in
                             RewardCard(reward: reward, canAfford: manager.points >= reward.cost) {
                                 selectedReward = reward
@@ -30,7 +30,8 @@ struct RewardsView: View {
                             }
                         }
                     }
-                    .padding()
+                    .padding(.horizontal, AppSpacing.margin)
+                    .padding(.bottom, 20)
                 }
             } else {
                 // My Rewards
@@ -54,12 +55,13 @@ struct RewardsView: View {
                     .padding(.top, 40)
                 } else {
                     ScrollView {
-                        LazyVStack(spacing: 16) {
+                        LazyVStack(spacing: AppSpacing.element) {
                             ForEach(manager.redemptions) { redemption in
                                 RedemptionCard(redemption: redemption)
                             }
                         }
-                        .padding()
+                        .padding(.horizontal, AppSpacing.margin)
+                        .padding(.bottom, 20)
                     }
                 }
             }
@@ -88,7 +90,7 @@ struct RewardCard: View {
         HStack(spacing: 16) {
             // Icon
             ZStack {
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: AppRadius.small)
                     .fill(Color(hex: reward.colorHex).opacity(0.15))
                     .frame(width: 60, height: 60)
                 
@@ -123,13 +125,13 @@ struct RewardCard: View {
                     .padding(.vertical, 6)
                     .background(canAfford ? Color.primary : Color.secondary.opacity(0.2))
                     .foregroundColor(canAfford ? Color(UIColor.systemBackground) : .secondary)
-                    .cornerRadius(16)
+                    .cornerRadius(AppRadius.small)
             }
             .disabled(!canAfford)
         }
-        .padding()
+        .padding(AppSpacing.element)
         .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(16)
+        .cornerRadius(AppRadius.medium)
     }
 }
 
@@ -155,7 +157,7 @@ struct RedemptionCard: View {
                     .font(.title2)
                     .foregroundColor(.primary)
             }
-            .padding()
+            .padding(AppSpacing.element)
             .background(Color(UIColor.secondarySystemBackground))
             
             Divider()
@@ -184,12 +186,12 @@ struct RedemptionCard: View {
                         .foregroundColor(.blue)
                 }
             }
-            .padding()
+            .padding(AppSpacing.element)
             .background(Color(UIColor.secondarySystemBackground).opacity(0.5))
         }
-        .cornerRadius(16)
+        .cornerRadius(AppRadius.medium)
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: AppRadius.medium)
                 .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
         )
     }

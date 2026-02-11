@@ -9,82 +9,111 @@ struct MissionHubView: View {
     @State private var viewMode = 0 // 0 = Journey, 1 = Rewards
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 // Background
                 Color.backgroundPrimary.ignoresSafeArea()
                 
-                ScrollView {
-                    VStack(spacing: 24) {
-                        // Header / Current Level
-                        VStack(spacing: 8) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color.primary.opacity(0.05))
-                                    .frame(width: 80, height: 80)
-                                
-                                Image(systemName: "trophy.fill")
-                                    .font(.system(size: 40))
-                                    .foregroundColor(.primary)
-                            }
-                            
-                            Text("\(manager.points) Points")
-                                .font(.system(size: 32, weight: .bold, design: .rounded))
+                VStack(spacing: 0) {
+                    // Custom Header (Dismiss + Title)
+                    HStack {
+                        Button(action: {
+                            HapticManager.shared.light()
+                            dismiss()
+                        }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 18, weight: .semibold))
                                 .foregroundColor(.primary)
-                            
-                            Text("Phase \(manager.currentPhase): \(getPhaseTitle(manager.currentPhase))")
-                                .font(.headline)
+                                .frame(width: 44, height: 44)
+                                .background(Color.primary.opacity(0.05))
+                                .clipShape(Circle())
+                        }
+                        
+                        Spacer()
+                        
+                        Text("Your Journey")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                        
+                        Spacer()
+                        
+                        // Placeholder for alignment
+                        Color.clear.frame(width: 44, height: 44)
+                    }
+                    .padding(.horizontal, AppSpacing.margin)
+                    .padding(.top, 16)
+                    .padding(.bottom, 8)
+                    
+                    ScrollView {
+                        VStack(spacing: AppSpacing.section) {
+                            // Points & Phase Header
+                            VStack(spacing: 8) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.primary.opacity(0.05))
+                                        .frame(width: 80, height: 80)
+                                    
+                                    Image(systemName: "trophy.fill")
+                                        .font(.system(size: 40))
+                                        .foregroundColor(.primary)
+                                }
+                                
+                                Text("\(manager.points) Points")
+                                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                                    .foregroundColor(.primary)
+                                
+                                HStack(spacing: 6) {
+                                    Image(systemName: "flag.fill")
+                                        .font(.caption2)
+                                    Text("Phase \(manager.currentPhase): \(getPhaseTitle(manager.currentPhase))")
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                }
                                 .foregroundColor(.secondary)
-                        }
-                        .padding(.top, 20)
-                        
-                        .padding(.top, 20)
-                        
-                        Divider()
-                        
-                        // Tab Switching
-                        Picker("View Mode", selection: $viewMode) {
-                            Text("Journey").tag(0)
-                            Text("Rewards").tag(1)
-                        }
-                        .pickerStyle(.segmented)
-                        .padding(.horizontal)
-                        
-                        if viewMode == 0 {
-                            // Mission List
-                            LazyVStack(spacing: 20) {
-                                // Current Phase
-                                missionSection(phase: manager.currentPhase, isLocked: false)
-                                
-                                // Future Phases
-                                if manager.currentPhase < 4 {
-                                    ForEach((manager.currentPhase + 1)...4, id: \.self) { phase in
-                                        missionSection(phase: phase, isLocked: true)
-                                    }
-                                }
-                                
-                                if manager.currentPhase > 1 {
-                                    ForEach(1..<manager.currentPhase, id: \.self) { phase in
-                                        missionSection(phase: phase, isLocked: false) // Already done
-                                    }
-                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.primary.opacity(0.05))
+                                .clipShape(Capsule())
                             }
-                            .padding(.horizontal)
-                            .padding(.bottom, 40)
-                        } else {
-                            // Rewards View
-                            RewardsView(manager: manager)
+                            .padding(.top, 20)
+                            
+                            // Tab Switching
+                            Picker("View Mode", selection: $viewMode) {
+                                Text("Journey").tag(0)
+                                Text("Rewards").tag(1)
+                            }
+                            .pickerStyle(.segmented)
+                            .padding(.horizontal, AppSpacing.margin)
+                            
+                            if viewMode == 0 {
+                                // Mission List
+                                LazyVStack(spacing: AppSpacing.margin) {
+                                    // Current Phase
+                                    missionSection(phase: manager.currentPhase, isLocked: false)
+                                    
+                                    // Future Phases
+                                    if manager.currentPhase < 4 {
+                                        ForEach((manager.currentPhase + 1)...4, id: \.self) { phase in
+                                            missionSection(phase: phase, isLocked: true)
+                                        }
+                                    }
+                                    
+                                    // Past Phases
+                                    if manager.currentPhase > 1 {
+                                        ForEach(1..<manager.currentPhase, id: \.self) { phase in
+                                            missionSection(phase: phase, isLocked: false)
+                                        }
+                                    }
+                                }
+                                .padding(.horizontal, AppSpacing.margin)
                                 .padding(.bottom, 40)
+                            } else {
+                                // Rewards View
+                                RewardsView(manager: manager)
+                                    .padding(.bottom, 40)
+                            }
                         }
                     }
-                }
-            }
-            .navigationTitle("Your Journey")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Close") { dismiss() }
-                        .foregroundColor(.primary)
                 }
             }
             .sheet(item: $selectedMission) { mission in
@@ -109,12 +138,7 @@ struct MissionHubView: View {
     }
     
     private func handleMissionAction(_ mission: GamificationManager.Mission) {
-        // Dismiss Mission Hub to let user navigate
         dismiss()
-        
-        // Post notification or trigger state change in AppState to navigate
-        // For simplicity, we can print for now or assume user will navigate manually.
-        // Ideally, we post a notification that HomeView or ContentView listens to.
         guard let link = mission.actionLink else { return }
         NotificationCenter.default.post(name: NSNotification.Name("HandleDeepLink"), object: nil, userInfo: ["link": link])
     }
@@ -131,7 +155,7 @@ struct MissionHubView: View {
     
     @ViewBuilder
     private func missionSection(phase: Int, isLocked: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: AppSpacing.element) {
             HStack {
                 Text(getPhaseTitle(phase))
                     .font(.title2)
@@ -145,6 +169,7 @@ struct MissionHubView: View {
                         .foregroundColor(.primary)
                 }
             }
+            .padding(.bottom, 4)
             
             let missions = manager.getMissions(forPhase: phase)
             
@@ -155,13 +180,13 @@ struct MissionHubView: View {
                 }) {
                     MissionRow(mission: mission, isCompleted: manager.completedMissionIds.contains(mission.id), isLocked: isLocked)
                 }
-                .buttonStyle(.plain) // Standard button style for rows
+                .buttonStyle(.plain)
                 .disabled(isLocked)
             }
         }
-        .padding()
+        .padding(AppSpacing.margin)
         .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(16)
+        .cornerRadius(AppRadius.medium)
         .opacity(isLocked ? 0.6 : 1.0)
     }
 }
@@ -188,10 +213,12 @@ struct MissionRow: View {
                     .font(.headline)
                     .strikethrough(isCompleted)
                     .foregroundColor(isCompleted ? .secondary : .primary)
+                    .lineLimit(1)
                 
                 Text(mission.description)
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .lineLimit(2)
             }
             
             Spacer()
@@ -200,42 +227,15 @@ struct MissionRow: View {
                 Text("\(mission.points) pts")
                     .font(.caption)
                     .fontWeight(.bold)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
                     .background(Color.primary.opacity(0.1))
                     .foregroundColor(.primary)
-                    .cornerRadius(8)
+                    .clipShape(Capsule()) // Standardized to Capsule
             }
         }
         .padding(.vertical, 4)
     }
 }
 
-// Simple Confetti Placeholder
-struct ConfettiView: View {
-    var body: some View {
-        GeometryReader { geo in
-            ZStack {
-                ForEach(0..<50) { _ in
-                    Circle()
-                        .fill(Color.random)
-                        .frame(width: 8, height: 8)
-                        .position(
-                            x: CGFloat.random(in: 0...geo.size.width),
-                            y: CGFloat.random(in: 0...geo.size.height)
-                        )
-                }
-            }
-        }
-    }
-}
 
-extension Color {
-    static var random: Color {
-        return Color(
-            red: .random(in: 0...1),
-            green: .random(in: 0...1),
-            blue: .random(in: 0...1)
-        )
-    }
-}

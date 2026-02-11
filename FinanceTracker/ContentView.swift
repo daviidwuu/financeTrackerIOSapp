@@ -17,11 +17,18 @@ struct ContentView: View {
                     .tag(0)
                     .tabItem {
                         Image(systemName: "square.grid.2x2.fill")
-                        Text("Dashboard")
+                        Text("Home")
+                    }
+                
+                SocialDashboardView()
+                    .tag(1)
+                    .tabItem {
+                        Image(systemName: "person.2.fill")
+                        Text("Social")
                     }
                 
                 WalletView()
-                    .tag(1)
+                    .tag(2)
                     .tabItem {
                         Image(systemName: "creditcard.fill")
                         Text("Wallet")
@@ -111,7 +118,7 @@ struct ContentView: View {
             switch link {
             case "add_budget", "add_category", "add_goal", "add_recurring", "calendar_view":
                 // Switch to Wallet
-                appState.selectedTab = 1
+                appState.selectedTab = 2
                 // Post notification for WalletView to handle specific sheet
                 NotificationCenter.default.post(
                     name: NSNotification.Name("SwitchTab"),

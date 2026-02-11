@@ -1,0 +1,147 @@
+import SwiftUI
+
+struct FriendSearchView: View {
+    @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var appState: AppState
+    @StateObject private var repo = FriendRepository() // Local repo for search isolation
+    
+    @State private var searchText = ""
+    @State private var isSearching = false
+    @State private var searchResults: [FriendRepository.UserSearchResult] = []
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Search Bar
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.secondary)
+                    TextField("Search by username", text: $searchText)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .submitLabel(.search)
+                        .onSubmit {
+                            performSearch()
+                        }
+                    
+                    if !searchText.isEmpty {
+                        Button(action: { searchText = "" }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .padding()
+                .background(Color(UIColor.secondarySystemBackground))
+                .cornerRadius(10)
+                .padding()
+                
+                // Results or Empty State
+                if isSearching {
+                    ProgressView()
+                        .padding(.top, 20)
+                    Spacer()
+                } else if !searchResults.isEmpty {
+                    List {
+                        ForEach(searchResults) { user in
+                            HStack {
+                                ProfileAvatar(
+                                    text: String(user.name.prefix(1)),
+                                    color: Color.random(seed: user.name),
+                                    size: 40
+                                )
+                                
+                                VStack(alignment: .leading) {
+                                    Text(user.name)
+                                        .font(.headline)
+                                    Text("@\(user.username)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                Button(action: {
+                                    addFriend(user: user)
+                                }) {
+                                    Text("Add")
+                                        .font(.subheadline)
+                                        .fontWeight(.bold)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 8)
+                                        .background(Color.blue)
+                                        .foregroundColor(.white)
+                                        .clipShape(Capsule())
+                                }
+                            }
+                        }
+                    }
+                    .listStyle(.plain)
+                } else if !searchText.isEmpty {
+                    ContentUnavailableView(
+                        "No Users Found",
+                        systemImage: "person.slash",
+                        description: Text("Try searching for a different username.")
+                    )
+                    Spacer()
+                } else {
+                    ContentUnavailableView(
+                        "Find Friends",
+                        systemImage: "person.badge.magnifyingglass",
+                        description: Text("Search for your friends by their username to start splitting bills.")
+                    )
+                    Spacer()
+                }
+            }
+            .navigationTitle("Add Friend")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                }
+            }
+            .onChange(of: searchText) { oldValue, newValue in
+                if newValue.isEmpty {
+                    searchResults = []
+                }
+            }
+        }
+    }
+    
+    private func performSearch() {
+        guard !searchText.isEmpty else { return }
+        isSearching = true
+        
+        Task {
+            do {
+                let results = try await repo.searchUsers(username: searchText)
+                await MainActor.run {
+                    self.searchResults = results
+                    self.isSearching = false
+                }
+            } catch {
+                print("Search error: \(error)")
+                await MainActor.run { isSearching = false }
+            }
+        }
+    }
+    
+    private func addFriend(user: FriendRepository.UserSearchResult) {
+         Task {
+             do {
+                 try await appState.friendRepo.addFriend(
+                     currentUserId: appState.currentUserId,
+                     currentUserInfo: (username: appState.currentUserUsername, name: appState.userName, email: appState.userEmail),
+                     targetUser: user
+                 )
+                 // Show success feedback/toast?
+                 // For now just dismiss or change button state
+                 await MainActor.run {
+                     dismiss()
+                 }
+             } catch {
+                 print("Add friend error: \(error)")
+             }
+         }
+    }
+}

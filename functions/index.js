@@ -3,62 +3,73 @@ const { setGlobalOptions } = require('firebase-functions/v2');
 const { onDocumentCreated, onDocumentUpdated, onDocumentDeleted } = require('firebase-functions/v2/firestore');
 const admin = require('firebase-admin');
 
-// CRITICAL: Use Firebase Admin SDK service account (not Compute Engine default)
+// CRITICAL: Use Firebase Admin SDK service account
 setGlobalOptions({
   serviceAccount: 'firebase-adminsdk-fbsvc@financetracker-c628c.iam.gserviceaccount.com'
 });
 
-// Initialize Firebase Admin
 admin.initializeApp();
 
-// Helper function to get default icon for category
+// --- Helpers ---
+
 function getIconForCategory(category) {
   const categoryIcons = {
-    'Dining': 'fork.knife',
-    'Groceries': 'cart.fill',
-    'Transportation': 'car.fill',
-    'Shopping': 'bag.fill',
-    'Entertainment': 'tv.fill',
-    'Utilities': 'bolt.fill',
-    'Health': 'heart.fill',
-    'Salary': 'dollarsign.circle.fill',
-    'Freelance': 'laptopcomputer'
+    'Dining': 'fork.knife', 'Groceries': 'cart.fill', 'Transportation': 'car.fill',
+    'Shopping': 'bag.fill', 'Entertainment': 'tv.fill', 'Utilities': 'bolt.fill',
+    'Health': 'heart.fill', 'Salary': 'dollarsign.circle.fill', 'Freelance': 'laptopcomputer'
   };
   return categoryIcons[category] || 'dollarsign.circle';
 }
 
-// Helper function to get default color for category
 function getColorForCategory(category) {
   const categoryColors = {
-    'Dining': '#FF6B6B',
-    'Groceries': '#4ECDC4',
-    'Transportation': '#45B7D1',
-    'Shopping': '#FFA07A',
-    'Entertainment': '#98D8C8',
-    'Utilities': '#FFD93D',
-    'Health': '#6BCF7F',
-    'Salary': '#4CAF50',
-    'Freelance': '#2196F3'
+    'Dining': '#FF6B6B', 'Groceries': '#4ECDC4', 'Transportation': '#45B7D1',
+    'Shopping': '#FFA07A', 'Entertainment': '#98D8C8', 'Utilities': '#FFD93D',
+    'Health': '#6BCF7F', 'Salary': '#4CAF50', 'Freelance': '#2196F3'
   };
   return categoryColors[category] || '#757575';
 }
 
-/**
- * Cloud Function to add transactions via Apple Shortcuts
- */
-exports.addTransaction = functions.https.onRequest(async (req, res) => {
-  // Enable CORS
-  res.set('Access-Control-Allow-Origin', '*');
+async function getUserInfo(uid) {
+  const doc = await admin.firestore().collection('users').doc(uid).get();
+  if (!doc.exists) return { name: 'Someone', fcmToken: null };
+  const data = doc.data();
+  return {
+    name: data.name || data.displayName || 'Someone',
+    username: data.username || 'user',
+    fcmToken: data.fcmToken,
+    avatarColor: data.avatarColor || '#808080'
+  };
+}
 
+async function sendNotification(uid, title, body, data) {
+  try {
+    const { fcmToken } = await getUserInfo(uid);
+    if (!fcmToken) return;
+
+    const message = {
+      token: fcmToken,
+      notification: { title, body },
+      data: data,
+      apns: { payload: { aps: { sound: 'default', badge: 1 } } }
+    };
+    await admin.messaging().send(message);
+    console.log(`Notification sent to ${uid}: ${title}`);
+  } catch (error) {
+    console.error(`Error sending notification to ${uid}:`, error);
+  }
+}
+
+// --- HTTP Functions ---
+
+exports.addTransaction = functions.https.onRequest(async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') {
     res.set('Access-Control-Allow-Methods', 'POST');
     res.set('Access-Control-Allow-Headers', 'Content-Type');
-    res.set('Access-Control-Max-Age', '3600');
     res.status(204).send('');
     return;
   }
-
-  // Only allow POST
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
@@ -66,523 +77,306 @@ exports.addTransaction = functions.https.onRequest(async (req, res) => {
 
   try {
     const { UserID, Data } = req.body;
-
-    // Validate required fields
     if (!UserID || !Data) {
-      res.status(400).json({
-        error: 'Missing required fields',
-        required: { UserID: 'string', Data: { Category: 'string', Type: 'string', Amount: 'number', Notes: 'string' } }
-      });
+      res.status(400).json({ error: 'Missing required fields' });
       return;
     }
-
     const { Category, Type, Amount, Notes } = Data;
-
-    if (!Category || !Type || Amount === undefined) {
-      res.status(400).json({
-        error: 'Missing required Data fields',
-        required: ['Category', 'Type', 'Amount']
-      });
-      return;
-    }
-
-    // Validate amount
     const parsedAmount = parseFloat(Amount);
     if (isNaN(parsedAmount)) {
       res.status(400).json({ error: 'Invalid Amount' });
       return;
     }
 
-    // Prepare transaction data
     const transactionType = Type.toLowerCase();
-    const finalAmount = transactionType === 'income'
-      ? Math.abs(parsedAmount)
-      : -Math.abs(parsedAmount);
+    const finalAmount = transactionType === 'income' ? Math.abs(parsedAmount) : -Math.abs(parsedAmount);
 
     const transactionData = {
-      title: Category,
-      subtitle: Category,
-      amount: finalAmount,
-      date: new Date(),
-      icon: getIconForCategory(Category),
-      colorHex: getColorForCategory(Category),
-      note: Notes || null,
-      userId: UserID,
-      type: transactionType,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      source: 'shortcuts'
+      title: Category, subtitle: Category, amount: finalAmount, date: new Date(),
+      icon: getIconForCategory(Category), colorHex: getColorForCategory(Category),
+      note: Notes || null, userId: UserID, type: transactionType,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(), source: 'shortcuts'
     };
 
-    // Add to Firestore
-    const docRef = await admin.firestore()
-      .collection('users')
-      .doc(UserID)
-      .collection('transactions')
-      .add(transactionData);
-
-    // Success response
-    res.status(200).json({
-      success: true,
-      message: `Transaction added successfully`,
-      transactionId: docRef.id,
-      data: {
-        amount: finalAmount,
-        category: Category,
-        type: transactionType
-      }
-    });
-
+    const docRef = await admin.firestore().collection('users').doc(UserID).collection('transactions').add(transactionData);
+    res.status(200).json({ success: true, transactionId: docRef.id });
   } catch (error) {
     console.error('Error adding transaction:', error);
-    res.status(500).json({
-      error: 'Internal server error',
-      message: error.message
-    });
+    res.status(500).json({ error: error.message });
   }
 });
 
-/**
- * Cloud Function to process recurring transactions daily
- * Runs every day at 00:01 UTC
- */
+// --- Scheduled Functions ---
+
 exports.processRecurringTransactions = functions.pubsub.schedule('1 0 * * *').onRun(async (context) => {
   const db = admin.firestore();
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // 00:00:00 today
-
-  console.log('Processing recurring transactions for date:', today.toISOString());
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   try {
-    // Query all recurring transactions using Collection Group Query
-    // This finds all documents in any collection named 'recurringTransactions'
     const snapshot = await db.collectionGroup('recurringTransactions').get();
-
-    if (snapshot.empty) {
-      console.log('No recurring transactions found.');
-      return null;
-    }
+    if (snapshot.empty) return null;
 
     const batch = db.batch();
-    let operationCount = 0;
+    let count = 0;
 
     for (const doc of snapshot.docs) {
       const item = doc.data();
-      const itemId = doc.id;
-      // The parent of 'recurringTransactions' is the user document: users/{userId}
-      // doc.ref.parent is the collection, doc.ref.parent.parent is the user doc
       const userRef = doc.ref.parent.parent;
       if (!userRef) continue;
       const userId = userRef.id;
 
       let nextDueDate;
-      let lastProcessed = item.lastProcessedDate ? item.lastProcessedDate.toDate() : null;
-
-      if (lastProcessed) {
-        // Calculate next due date based on frequency from last processed date
-        nextDueDate = new Date(lastProcessed);
+      if (item.lastProcessedDate) {
+        nextDueDate = item.lastProcessedDate.toDate();
         switch (item.frequency) {
-          case "Daily":
-            nextDueDate.setDate(nextDueDate.getDate() + 1);
-            break;
-          case "Weekly":
-            nextDueDate.setDate(nextDueDate.getDate() + 7);
-            break;
-          case "Bi-Weekly":
-            nextDueDate.setDate(nextDueDate.getDate() + 14);
-            break;
-          case "Yearly":
-            nextDueDate.setFullYear(nextDueDate.getFullYear() + 1);
-            break;
-          default: // "Monthly"
-            nextDueDate.setMonth(nextDueDate.getMonth() + 1);
-            break;
+          case "Daily": nextDueDate.setDate(nextDueDate.getDate() + 1); break;
+          case "Weekly": nextDueDate.setDate(nextDueDate.getDate() + 7); break;
+          case "Bi-Weekly": nextDueDate.setDate(nextDueDate.getDate() + 14); break;
+          case "Yearly": nextDueDate.setFullYear(nextDueDate.getFullYear() + 1); break;
+          default: nextDueDate.setMonth(nextDueDate.getMonth() + 1); break;
         }
       } else {
-        // First time: use startDate
         nextDueDate = item.startDate.toDate();
       }
 
-      // Normalize nextDueDate to Start of Day for comparison
-      const nextDueStartOfDay = new Date(nextDueDate.getFullYear(), nextDueDate.getMonth(), nextDueDate.getDate());
+      const nextDueStart = new Date(nextDueDate);
+      nextDueStart.setHours(0, 0, 0, 0);
 
-      // Check if due (nextDueStartOfDay <= today)
-      if (nextDueStartOfDay <= today) {
-        console.log(`Processing item ${item.name} for user ${userId}. Due: ${nextDueStartOfDay.toISOString()}`);
-
-        const transactionDate = nextDueStartOfDay; // Use the calculated due date as the transaction date
-
-        // 1. Create the Transaction Data
-        // Handle Expense vs Income logic
-        let amount = item.amount;
-        // Logic from Swift:
-        // if item.type == "income" ? amount : -abs(amount)
+      if (nextDueStart <= today) {
         const type = item.type || "expense";
-        const finalAmount = (type === "income") ? Math.abs(amount) : -Math.abs(amount);
+        const finalAmount = (type === "income") ? Math.abs(item.amount) : -Math.abs(item.amount);
 
-        const newTransactionRef = userRef.collection('transactions').doc();
-        const newTransaction = {
-          title: item.name,
-          subtitle: item.name,
-          amount: finalAmount,
-          date: admin.firestore.Timestamp.fromDate(transactionDate),
-          icon: item.icon,
-          colorHex: item.colorHex || '#000000',
+        const newTxRef = userRef.collection('transactions').doc();
+        batch.set(newTxRef, {
+          title: item.name, subtitle: item.name, amount: finalAmount,
+          date: admin.firestore.Timestamp.fromDate(nextDueStart),
+          icon: item.icon, colorHex: item.colorHex,
           note: `Recurring: ${item.frequency}` + (item.note ? ` - ${item.note}` : ""),
-          type: type,
-          source: 'recurring',
-          userId: userId,
+          type: type, source: 'recurring', userId: userId,
           createdAt: admin.firestore.FieldValue.serverTimestamp()
-        };
-
-        batch.set(newTransactionRef, newTransaction);
-
-        // 2. Update the RecurringTransaction
-        // We set lastProcessedDate to the date we just "paid" for/processed.
-        // This ensures the next run calculates from THIS date.
-        batch.update(doc.ref, {
-          lastProcessedDate: admin.firestore.Timestamp.fromDate(transactionDate)
         });
 
-        operationCount++;
+        batch.update(doc.ref, { lastProcessedDate: admin.firestore.Timestamp.fromDate(nextDueStart) });
+        count++;
       }
     }
 
-    if (operationCount > 0) {
-      await batch.commit();
-      console.log(`Successfully processed ${operationCount} recurring transactions.`);
-    } else {
-      console.log('No recurring transactions due today.');
-    }
-
+    if (count > 0) await batch.commit();
     return null;
-
   } catch (error) {
-    console.error('Error processing recurring transactions:', error);
+    console.error('Error processing recurring:', error);
     return null;
   }
 });
 
-/**
- * Triggered when a new Split Request is created.
- * Notifies the target user (User 2) with push notification.
- * Using Gen 2 with Firebase Admin SDK service account configured via setGlobalOptions()
- */
-exports.onSplitRequestCreated = onDocumentCreated(
-  'users/{userId}/requests/{requestId}',
-  async (event) => {
-    const snap = event.data;
-    if (!snap) {
-      console.log('No data associated with the event');
-      return;
-    }
+// --- v2.1 Social Triggers ---
 
-    const request = snap.data();
-    const requestId = event.params.requestId;
-    const targetUserId = event.params.userId; // User ID from path: users/{userId}/requests/{requestId}
+// 1. Friend Requests
+exports.v2_onFriendRequestCreated = onDocumentCreated('friend_requests/{requestId}', async (event) => {
+  const data = event.data.data();
+  if (!data) return;
+  const sender = await getUserInfo(data.fromUid);
+  await sendNotification(data.toUid, 'New Friend Request', `${sender.name} wants to be friends!`, { type: 'friend_request', id: event.params.requestId });
+});
 
-    console.log('Split request created:', requestId, request);
-    console.log('Using Service Account for FCM Auth');
-
-    // Get the sender user ID from request data
-    const senderUserId = request.requesterId; // iOS model uses 'requesterId' for sender
-
-    // Validate user IDs
-    if (!targetUserId) {
-      console.error('Target userId missing from path params');
-      return;
-    }
-
-    if (!senderUserId) {
-      console.error('Sender requesterId is missing from request:', request);
-      return;
-    }
-
-    console.log('Target user:', targetUserId, 'Sender:', senderUserId);
-
-    try {
-      console.log('Fetching target user doc for:', targetUserId);
-      const targetUserDoc = await admin.firestore()
-        .collection('users')
-        .doc(targetUserId)
-        .get();
-      console.log('Generic Firestore fetch complete. Exists:', targetUserDoc.exists);
-
-      if (!targetUserDoc.exists) {
-        console.log('Target user not found:', targetUserId);
-        return;
-      }
-
-      const fcmToken = targetUserDoc.data().fcmToken;
-      console.log('FCM Token retrieved:', fcmToken ? 'Yes' : 'No');
-
-      if (!fcmToken) {
-        console.log('No FCM token for user:', targetUserId);
-        return;
-      }
-
-      const senderName = request.requesterName || 'Someone';
-
-      const message = {
-        token: fcmToken,
-        notification: {
-          title: 'Split Request',
-          body: `${senderName} wants to split $${Math.abs(request.amount).toFixed(2)} with you`
-        },
-        data: {
-          type: 'split_request',
-          requestId: requestId,
-          fromUserId: senderUserId,
-          amount: String(request.amount)
-        },
-        apns: {
-          payload: {
-            aps: {
-              sound: 'default',
-              badge: 1
-            }
-          }
-        }
-      };
-
-      console.log('Attemping to send message payload...');
-      const response = await admin.messaging().send(message);
-      console.log('Successfully sent notification. MessageID:', response);
-
-    } catch (error) {
-      console.error('Error sending notification:', error);
-    }
-  }
-);
-
-/**
- * Triggered when a Split Request is updated (e.g., accepted/declined).
- * Notifies the sender (User 1) about the status change.
- */
-exports.onSplitRequestUpdated = onDocumentUpdated(
-  'users/{userId}/requests/{requestId}',
-  async (event) => {
-    const beforeData = event.data.before.data();
-    const afterData = event.data.after.data();
-    const requestId = event.params.requestId;
-
-    // Only send notification if status changed
-    if (beforeData.status === afterData.status) {
-      console.log('Status unchanged, skipping notification');
-      return;
-    }
-
-    console.log('Split request updated:', requestId, 'Status:', afterData.status);
-
-    const senderUserId = afterData.fromUserId; // User 1 (original sender)
-    const targetUserId = afterData.userId; // User 2 (responder)
-
-    try {
-      // Get sender's FCM token
-      const senderDoc = await admin.firestore()
-        .collection('users')
-        .doc(senderUserId)
-        .get();
-
-      if (!senderDoc.exists) {
-        console.log('Sender user not found:', senderUserId);
-        return;
-      }
-
-      const fcmToken = senderDoc.data().fcmToken;
-      if (!fcmToken) {
-        console.log('No FCM token for user:', senderUserId);
-        return;
-      }
-
-      // Get responder's name
-      const targetDoc = await admin.firestore()
-        .collection('users')
-        .doc(targetUserId)
-        .get();
-
-      const targetName = targetDoc.exists ? (targetDoc.data().name || targetDoc.data().displayName || 'Friend') : 'Someone';
-
-      // Determine notification content based on status
-      let title, body;
-      if (afterData.status === 'accepted') {
-        title = '✅ Split Accepted';
-        body = `${targetName} accepted your split request for $${Math.abs(afterData.amount).toFixed(2)}`;
-      } else if (afterData.status === 'declined') {
-        title = 'Split Declined';
-        body = `${targetName} declined the split for $${Math.abs(afterData.amount).toFixed(2)}`;
-      } else {
-        console.log('Unknown status:', afterData.status);
-        return;
-      }
-
-      // Send notification
-      const message = {
-        token: fcmToken,
-        notification: {
-          title: title,
-          body: body
-        },
-        data: {
-          type: 'split_response',
-          requestId: requestId,
-          status: afterData.status,
-          fromUserId: targetUserId
-        },
-        apns: {
-          payload: {
-            aps: {
-              sound: 'default',
-              badge: 1
-            }
-          }
-        }
-      };
-
-      await admin.messaging().send(message);
-      console.log('Successfully sent status update notification to:', senderUserId);
-
-    } catch (error) {
-      console.error('Error sending notification:', error);
-    }
-  }
-);
-
-/**
- * Triggered when a Transaction is updated.
- * Detects removed splits and deletes corresponding requests.
- */
-exports.onTransactionUpdated = onDocumentUpdated(
-  'users/{userId}/transactions/{transactionId}',
-  async (event) => {
-    const beforeData = event.data.before.data();
-    const afterData = event.data.after.data();
-    const transactionId = event.params.transactionId;
-    const senderId = event.params.userId;
-
-    const beforeSplits = beforeData.splits || [];
-    const afterSplits = afterData.splits || [];
-
-    // 1. Identify Removed Splits
-    const afterSplitIds = new Set(afterSplits.map(s => s.id));
-    const removedSplits = beforeSplits.filter(s => !afterSplitIds.has(s.id));
-
-    // Fetch sender details once if needed
-    let senderNameVal = 'Friend';
-    if (removedSplits.length > 0 || afterSplits.length > beforeSplits.length) {
-      const senderDoc = await admin.firestore().collection('users').doc(senderId).get();
-      senderNameVal = senderDoc.exists ? (senderDoc.data().name || senderDoc.data().displayName || 'Friend') : 'Friend';
-    }
-
-    // Handle Removed Splits
-    for (const split of removedSplits) {
-      if (split.friendId) {
-        const reqId = split.requestId || transactionId;
-        await deleteSplitRequest(split.friendId, reqId, senderNameVal, split.amount);
-      }
-    }
-
-    // 2. Identify Added or Updated Splits
-    for (const split of afterSplits) {
-      if (!split.friendId) continue;
-
-      const oldSplit = beforeSplits.find(s => s.id === split.id);
-
-      if (!oldSplit || Math.abs(oldSplit.amount - split.amount) > 0.01) {
-
-        const requestData = {
-          requesterId: senderId,
-          requesterName: senderNameVal,
-          amount: split.amount,
-          note: afterData.note || afterData.title || 'Split Bill',
-          originalTransactionId: transactionId,
-          status: 'pending',
-          createdAt: admin.firestore.FieldValue.serverTimestamp()
-        };
-
-        await admin.firestore()
-          .collection('users')
-          .doc(split.friendId)
-          .collection('requests')
-          .doc(transactionId)
-          .set(requestData, { merge: true });
-
-        console.log(`Upserted request ${transactionId} for friend ${split.friendId}`);
-      }
-    }
-  }
-);
-
-/**
- * Triggered when a Transaction is deleted.
- * Deletes all associated split requests.
- */
-exports.onTransactionDeleted = onDocumentDeleted(
-  'users/{userId}/transactions/{transactionId}',
-  async (event) => {
-    const data = event.data.data(); // In delete, data() returns the document before deletion
-
-    if (!data) return;
-
-    const splits = data.splits || [];
-    if (splits.length === 0) return;
-
-    const senderId = event.params.userId;
-    const senderDoc = await admin.firestore().collection('users').doc(senderId).get();
-    const senderNameVal = senderDoc.exists ? (senderDoc.data().name || senderDoc.data().displayName || 'Friend') : 'Friend';
-
-    for (const split of splits) {
-      if (split.friendId && split.requestId) {
-        await deleteSplitRequest(split.friendId, split.requestId, senderNameVal, split.amount);
-      }
-    }
-  }
-);
-
-async function deleteSplitRequest(friendId, transactionId, senderName, amount) {
-  try {
-    const requestsRef = admin.firestore().collection('users').doc(friendId).collection('requests');
-
-    // Query for ANY request linked to this transaction (handles legacy UUIDs and new transactionId-based docs)
-    const snapshot = await requestsRef.where('originalTransactionId', '==', transactionId).get();
-
-    if (snapshot.empty) {
-      console.log('No requests found to delete for transaction:', transactionId);
-      // Fallback: Check if a doc exists with the exact ID (in case originalTransactionId wasn't set on legacy docs?)
-      // Unlikely, but good safety net if we passed explicit ID.
-      // But for now, we rely on the query.
-      return;
-    }
-
-    // Delete all matching requests (should usually be 1)
+exports.v2_onFriendRequestUpdated = onDocumentUpdated('friend_requests/{requestId}', async (event) => {
+  const after = event.data.after.data();
+  if (after.status === 'accepted') {
     const batch = admin.firestore().batch();
-    snapshot.docs.forEach(doc => {
-      batch.delete(doc.ref);
+    const fromInfo = await getUserInfo(after.fromUid);
+    const toInfo = await getUserInfo(after.toUid);
+
+    // a. Bidirectional Friend Added
+    const fromFriendRef = admin.firestore().collection('users').doc(after.toUid).collection('friends').doc(after.fromUid);
+    batch.set(fromFriendRef, {
+      id: after.fromUid, username: fromInfo.username, name: fromInfo.name,
+      avatarColor: fromInfo.avatarColor, createdAt: new Date()
     });
+
+    const toFriendRef = admin.firestore().collection('users').doc(after.fromUid).collection('friends').doc(after.toUid);
+    batch.set(toFriendRef, {
+      id: after.toUid, username: toInfo.username, name: toInfo.name,
+      avatarColor: toInfo.avatarColor, createdAt: new Date()
+    });
+
+    // b. Unblock Group Invitations
+    const invites = await admin.firestore().collection('group_invitations').where('dependencyId', '==', event.params.requestId).get();
+    invites.docs.forEach(doc => batch.update(doc.ref, { status: 'pending' }));
+
     await batch.commit();
-
-    console.log(`Deleted ${snapshot.size} request(s) for transaction ${transactionId} friend ${friendId}`);
-
-    // Send Notification
-    const userDoc = await admin.firestore().collection('users').doc(friendId).get();
-    const fcmToken = userDoc.data()?.fcmToken;
-
-    if (fcmToken) {
-      const message = {
-        token: fcmToken,
-        notification: {
-          title: 'Split Removed',
-          body: `${senderName} removed the split for $${Math.abs(amount).toFixed(2)}.`
-        },
-        data: {
-          type: 'split_removed',
-          requestId: transactionId // Use transactionId as reference
-        },
-        apns: { payload: { aps: { sound: 'default', badge: 1 } } }
-      };
-      await admin.messaging().send(message);
-      console.log('Sent removal notification to:', friendId);
-    }
-  } catch (e) {
-    console.error('Error deleting split request:', e);
+    await sendNotification(after.fromUid, 'Friend Request Accepted', `${toInfo.name} accepted your request!`, { type: 'friend_accepted' });
   }
+});
+
+// 2. Group Invitations
+exports.v2_onGroupInvitationCreated = onDocumentCreated('group_invitations/{inviteId}', async (event) => {
+  const data = event.data.data();
+  if (!data || data.status === 'blocked_by_friendship') return; // Don't notify if blocked
+  const sender = await getUserInfo(data.fromUid);
+  await sendNotification(data.toUid, 'Group Invite', `${sender.name} invited you to join "${data.groupName}"`, { type: 'group_invite', id: event.params.inviteId });
+});
+
+exports.v2_onGroupInvitationUpdated = onDocumentUpdated('group_invitations/{inviteId}', async (event) => {
+  const after = event.data.after.data();
+  const headers = event.data.before.data();
+
+  // Notify if unblocked
+  if (headers.status === 'blocked_by_friendship' && after.status === 'pending') {
+    const sender = await getUserInfo(after.fromUid);
+    await sendNotification(after.toUid, 'Group Invite', `${sender.name} invited you to join "${after.groupName}"`, { type: 'group_invite', id: event.params.inviteId });
+  }
+
+  if (after.status === 'accepted') {
+    const batch = admin.firestore().batch();
+
+    // a. Add to Group Members
+    const groupRef = admin.firestore().collection('groups').doc(after.groupId);
+    batch.update(groupRef, { members: admin.firestore.FieldValue.arrayUnion(after.toUid) });
+
+    // b. Unblock Split Requests
+    const requests = await admin.firestore().collection('split_requests').where('dependencyId', '==', event.params.inviteId).get();
+    requests.docs.forEach(doc => batch.update(doc.ref, { status: 'pending' }));
+
+    await batch.commit();
+  }
+});
+
+// 3. Split Requests
+exports.v2_onSplitRequestCreated = onDocumentCreated('split_requests/{requestId}', async (event) => {
+  const data = event.data.data();
+  if (!data || data.status === 'blocked_by_group') return; // Don't notify if blocked
+  const sender = await getUserInfo(data.fromUid);
+  await sendNotification(data.toUid, 'Split Request', `${sender.name} requests $${data.amount.toFixed(2)} for ${data.note}`, { type: 'split_request', id: event.params.requestId });
+});
+
+exports.v2_onSplitRequestUpdated = onDocumentUpdated('split_requests/{requestId}', async (event) => {
+  const after = event.data.after.data();
+  const before = event.data.before.data();
+
+  // Notify if unblocked
+  if (before.status === 'blocked_by_group' && after.status === 'pending') {
+    const sender = await getUserInfo(after.fromUid);
+    await sendNotification(after.toUid, 'Split Request', `${sender.name} requests $${after.amount.toFixed(2)} for ${after.note}`, { type: 'split_request', id: event.params.requestId });
+  }
+
+  if (after.status === 'accepted') {
+    // Update Transaction
+    const transactionRef = admin.firestore().collection('users').doc(after.fromUid).collection('transactions').doc(after.transactionId);
+
+    try {
+      await admin.firestore().runTransaction(async (t) => {
+        const doc = await t.get(transactionRef);
+        if (!doc.exists) return;
+        const txData = doc.data();
+
+        // Find and update split
+        const splits = txData.splits || [];
+        // Find split by requestId (v2.1)
+        const splitIndex = splits.findIndex(s => s.requestId === event.params.requestId);
+
+        if (splitIndex !== -1) {
+          splits[splitIndex].isAccepted = true;
+          // Also set isPaid if we want to auto-mark (optional, spec says keep separate?)
+          // Spec says: "Accepting a split request acknowledges the debt."
+          // It does NOT automatically pay it.
+          t.update(transactionRef, { splits: splits });
+        }
+      });
+
+      const receiver = await getUserInfo(after.toUid);
+      await sendNotification(after.fromUid, 'Split Accepted', `${receiver.name} accepted your request.`, { type: 'split_accepted' });
+
+    } catch (e) {
+      console.error('Error syncing split acceptance:', e);
+    }
+  }
+});
+
+
+// --- LEGACY TRIGGERS (Backward Compatibility) ---
+
+exports.onSplitRequestCreatedLegacy = onDocumentCreated('users/{userId}/requests/{requestId}', async (event) => {
+  // Existing logic for legacy path
+  const request = event.data.data();
+  if (!request) return;
+  const sender = await getUserInfo(request.requesterId);
+  await sendNotification(event.params.userId, 'Split Request', `${sender.name} wants to split $${Math.abs(request.amount).toFixed(2)}`, { type: 'split_request', id: event.params.requestId });
+});
+
+exports.onSplitRequestUpdatedLegacy = onDocumentUpdated('users/{userId}/requests/{requestId}', async (event) => {
+  const after = event.data.after.data();
+  const before = event.data.before.data();
+  if (after.status === before.status) return;
+
+  const target = await getUserInfo(event.params.userId); // Responder
+  let title = after.status === 'accepted' ? '✅ Split Accepted' : 'Split Declined';
+  await sendNotification(after.fromUserId, title, `${target.name} ${after.status} your split.`, { type: 'split_response' });
+});
+
+exports.onTransactionUpdated = onDocumentUpdated('users/{userId}/transactions/{transactionId}', async (event) => {
+  const afterData = event.data.after.data();
+  // ✅ CRITICAL: Skip v2.1 transactions to avoid duplicate request creation
+  if (afterData.source === 'social_v2') return;
+
+  // ... Existing Legacy Logic (Preserved but skipped for new app version) ...
+  const beforeData = event.data.before.data();
+  const transactionId = event.params.transactionId;
+  const senderId = event.params.userId;
+  const beforeSplits = beforeData.splits || [];
+  const afterSplits = afterData.splits || [];
+
+  // Removed Splits Logic
+  const afterSplitIds = new Set(afterSplits.map(s => s.id));
+  const removedSplits = beforeSplits.filter(s => !afterSplitIds.has(s.id));
+
+  const senderInfo = await getUserInfo(senderId);
+
+  for (const split of removedSplits) {
+    if (split.friendId) {
+      const reqId = split.requestId || transactionId;
+      await deleteSplitRequestLegacy(split.friendId, reqId, senderInfo.name, split.amount);
+    }
+  }
+
+  // Added/Updated Splits Logic
+  for (const split of afterSplits) {
+    if (!split.friendId) continue;
+    const oldSplit = beforeSplits.find(s => s.id === split.id);
+    if (!oldSplit || Math.abs(oldSplit.amount - split.amount) > 0.01) {
+      // Upsert legacy request
+      const requestData = {
+        requesterId: senderId, requesterName: senderInfo.name,
+        amount: split.amount, note: afterData.note || afterData.title || 'Split Bill',
+        originalTransactionId: transactionId, status: 'pending',
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      };
+      await admin.firestore().collection('users').doc(split.friendId).collection('requests').doc(transactionId).set(requestData, { merge: true });
+    }
+  }
+});
+
+exports.onTransactionDeleted = onDocumentDeleted('users/{userId}/transactions/{transactionId}', async (event) => {
+  const data = event.data.data();
+  if (!data) return;
+  const splits = data.splits || [];
+  if (splits.length === 0) return;
+  const senderInfo = await getUserInfo(event.params.userId);
+
+  for (const split of splits) {
+    if (split.friendId && split.requestId) {
+      await deleteSplitRequestLegacy(split.friendId, split.requestId, senderInfo.name, split.amount);
+    }
+  }
+});
+
+async function deleteSplitRequestLegacy(friendId, transactionId, senderName, amount) {
+  try {
+    const snapshot = await admin.firestore().collection('users').doc(friendId).collection('requests').where('originalTransactionId', '==', transactionId).get();
+    if (snapshot.empty) return;
+    const batch = admin.firestore().batch();
+    snapshot.docs.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+    await sendNotification(friendId, 'Split Removed', `${senderName} removed the split.`, { type: 'split_removed' });
+  } catch (e) { console.error(e); }
 }

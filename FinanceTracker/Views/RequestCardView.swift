@@ -23,12 +23,23 @@ struct RequestCardView: View {
                     .fontWeight(.bold)
                     .foregroundColor(.primary)
                 
-                Text("\(request.requesterName) requests $\(String(format: "%.2f", abs(request.amount)))")
+                let senderName: String = {
+                    if let name = request.fromName, !name.isEmpty {
+                        return name
+                    }
+                    // Fallback to friend lookup
+                    if let friend = AppState.shared.friendRepo.friends.first(where: { $0.id == request.fromUid }) {
+                        return friend.name
+                    }
+                    return "Friend"
+                }()
+                
+                Text("\(senderName) requests $\(String(format: "%.2f", abs(request.amount)))")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 
-                if !request.note.isEmpty {
-                    Text(request.note)
+                if let note = request.note, !note.isEmpty {
+                    Text(note)
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
@@ -63,7 +74,7 @@ struct RequestCardView: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color("CardBackground")) // Assuming app has this, or use secondarySystemBackground
+                .fill(Color(UIColor.secondarySystemBackground))
                 .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
         )
         // Red border to emphasize importance
@@ -78,12 +89,13 @@ struct RequestCardView: View {
     RequestCardView(
         request: FirestoreModels.SplitRequest(
             id: "1",
-            requesterId: "user1",
-            requesterName: "Alice",
+            transactionId: "tx1",
+            fromUid: "user1",
+            toUid: "user2",
+            fromName: "Alice",
             amount: 25.0,
             note: "Dinner",
-            originalTransactionId: "tx1",
-            status: "pending",
+            status: .pending,
             createdAt: Date()
         ),
         onAccept: {},

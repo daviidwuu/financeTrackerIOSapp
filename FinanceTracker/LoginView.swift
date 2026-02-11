@@ -22,7 +22,7 @@ struct LoginView: View {
                 // Header
                 VStack(spacing: 8) {
                     Text("Welcome Back")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .font(AppTypography.titleDisplay)
                         .foregroundColor(.primary)
                     
                     Text("Sign in to continue")
@@ -66,22 +66,9 @@ struct LoginView: View {
                 
                 // Action Button
                 Button(action: login) {
-                    if isLoading {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                    } else {
-                        Text("Log In")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(.black)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                    }
+                    Text("Log In")
                 }
-                .background(isFormValid ? Color.white : Color.gray.opacity(0.3))
-                .cornerRadius(16)
+                .buttonStyle(PrimaryButtonStyle(isLoading: isLoading))
                 .disabled(!isFormValid || isLoading)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 20)
@@ -149,7 +136,7 @@ struct CustomTextField: View {
         }
         .padding()
         .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(12)
+        .cornerRadius(AppRadius.medium)
     }
 }
 
@@ -168,7 +155,7 @@ struct CustomSecureField: View {
         }
         .padding()
         .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(12)
+        .cornerRadius(AppRadius.medium)
     }
 }
 

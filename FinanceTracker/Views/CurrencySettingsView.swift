@@ -79,7 +79,7 @@ struct CurrencySettingsView: View {
                             if currencyManager.exchangeRate > 0 {
                                 Text("\(String(format: "%.2f", currencyManager.exchangeRate)) \(currencyManager.travelCurrency)")
                                     .fontWeight(.bold)
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(.functionalSuccess)
                             } else {
                                 ProgressView()
                             }

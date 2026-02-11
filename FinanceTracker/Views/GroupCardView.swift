@@ -6,7 +6,7 @@ struct GroupCardView: View {
     var onDelete: (() -> Void)? = nil
     
     var gradient: LinearGradient {
-        Color.GradientTheme.gradient(for: group.colorHex)
+        Color.GradientTheme.gradient(for: group.color)
     }
     
     var body: some View {
@@ -15,8 +15,8 @@ struct GroupCardView: View {
             ZStack {
                 Circle()
                     .fill(gradient)
-                    .frame(width: 40, height: 40)
-                    .shadow(color: Color(hex: group.colorHex ?? "").opacity(0.3), radius: 4, x: 0, y: 2)
+                    .frame(width: 48, height: 48)
+                    .shadow(color: Color(hex: group.color).opacity(0.3), radius: 4, x: 0, y: 2)
                 
                 Image(systemName: group.icon)
                     .font(.system(size: 20, weight: .semibold))
@@ -29,7 +29,7 @@ struct GroupCardView: View {
                     .fontWeight(.medium)
                     .foregroundColor(.primary)
                 
-                Text("\(group.memberIds.count) members")
+                Text("\(group.members.count) members")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -49,10 +49,13 @@ struct GroupCardView_Previews: PreviewProvider {
     static var previews: some View {
         GroupCardView(group: FirestoreModels.Group(
             name: "Travel Crew",
-            memberIds: ["1", "2", "3"],
+            normalizedName: "travel crew",
+            members: ["1", "2", "3"],
+            createdBy: "user1",
             icon: "airplane",
-            colorHex: "#FF5733", // Orangeish
-            createdAt: Date()
+            color: "#FF5733",
+            createdAt: Date(),
+            updatedAt: Date()
         ))
         .padding()
         .background(Color.systemBackground)

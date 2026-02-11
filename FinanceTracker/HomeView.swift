@@ -220,7 +220,7 @@ struct HomeView: View {
                     }
                     
                     // Section 1.5: Pending Requests
-                    let pendingRequests = requestRepo.requests.filter { $0.status == "pending" }
+                    let pendingRequests = requestRepo.requests.filter { $0.status == .pending }
                     if !pendingRequests.isEmpty {
                         Section(header: Text("Pending Requests").font(.headline)) {
                             ForEach(pendingRequests) { request in
@@ -256,7 +256,7 @@ struct HomeView: View {
                                 Text("View All")
                                     .font(.subheadline)
                                     .fontWeight(.semibold)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(.primary)
                             }
                         }
                         .textCase(nil)
@@ -371,6 +371,20 @@ struct HomeView: View {
                 recurringRepo.stopListening()
                 requestRepo.stopListening()
             }
+            .onChange(of: appState.currentUserId) { _, newUserId in
+                if !newUserId.isEmpty {
+                    transactionRepo.startListening(userId: newUserId)
+                    budgetRepo.startListening(userId: newUserId)
+                    recurringRepo.startListening(userId: newUserId)
+                    requestRepo.startListening(userId: newUserId)
+                    gamificationManager.loadUserData(userId: newUserId)
+                } else {
+                    transactionRepo.stopListening()
+                    budgetRepo.stopListening()
+                    recurringRepo.stopListening()
+                    requestRepo.stopListening()
+                }
+            }
         }
     }
     
@@ -453,7 +467,7 @@ struct HomeView: View {
         Task {
             do {
                 guard let id = request.id else { return }
-                try await requestRepo.updateRequestStatus(userId: appState.currentUserId, requestId: id, status: "accepted")
+                try await requestRepo.updateRequestStatus(userId: appState.currentUserId, requestId: id, status: .accepted)
             } catch {
                 DebugLogger.log("Failed to accept request: \(error)")
             }
@@ -464,7 +478,7 @@ struct HomeView: View {
         Task {
             do {
                 guard let id = request.id else { return }
-                try await requestRepo.updateRequestStatus(userId: appState.currentUserId, requestId: id, status: "declined")
+                try await requestRepo.updateRequestStatus(userId: appState.currentUserId, requestId: id, status: .declined)
                 // Optionally remove from list after delay or just let status update hide it
             } catch {
                 DebugLogger.log("Failed to decline request: \(error)")

@@ -94,14 +94,8 @@ struct AddSavingGoalView: View {
                 }
             }) {
                 Text(currentStep < 5 ? "Next" : (goalToEdit != nil ? "Update Goal" : "Save Goal"))
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(isStepValid ? (colorScheme == .dark ? .black : .white) : .secondary)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(isStepValid ? (colorScheme == .dark ? .white : .black) : Color(UIColor.systemGray5))
-                    .cornerRadius(AppRadius.button)
             }
+            .buttonStyle(PrimaryButtonStyle())
             .disabled(!isStepValid)
             .animation(.easeInOut, value: isStepValid) // Smooth color transition
         }

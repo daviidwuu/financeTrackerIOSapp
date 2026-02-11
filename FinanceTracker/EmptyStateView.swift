@@ -32,14 +32,8 @@ struct EmptyStateView: View {
                     action()
                 }) {
                     Text(actionTitle)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .padding(.horizontal, AppSpacing.element)
-                        .padding(.vertical, AppSpacing.compact)
-                        .background(Color.primary)
-                        .foregroundColor(Color.backgroundPrimary)
-                        .cornerRadius(AppRadius.button)
                 }
+                .buttonStyle(PrimaryButtonStyle())
                 .padding(.top, AppSpacing.compact)
             }
         }

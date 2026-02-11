@@ -19,10 +19,11 @@ struct ModalHeader: View {
                     }
                 }) {
                     Image(systemName: onBack != nil ? "chevron.left" : "xmark")
-                        .font(.system(size: 18, weight: .semibold)) // Slightly smaller, refined index
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.primary)
                         .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
+                        .background(Color.primary.opacity(0.05)) // Match TransactionDetailView
+                        .clipShape(Circle())
                 }
                 
                 Spacer()

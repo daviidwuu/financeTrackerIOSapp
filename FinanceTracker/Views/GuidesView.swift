@@ -199,7 +199,7 @@ struct GuideDetailView: View {
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(guide.color)
-                            .cornerRadius(16)
+                            .clipShape(Capsule()) // Standard button shape
                     }
                     .padding()
                 }

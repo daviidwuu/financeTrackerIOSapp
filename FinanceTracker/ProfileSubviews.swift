@@ -65,15 +65,9 @@ struct AccountSettingsView: View {
                 // Actions
                 MenuSection {
                     Button(action: updateProfile) {
-                        Text(isLoading ? "Updating..." : "Update Profile")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(Color(UIColor.systemBackground))
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(Color.primary)
-                            .cornerRadius(AppRadius.button)
+                        Text("Update Profile")
                     }
+                    .buttonStyle(PrimaryButtonStyle(isLoading: isLoading))
                     .disabled(isLoading || name.isEmpty || email.isEmpty || username.isEmpty || !usernameAvailable || (name == appState.userName && email == appState.userEmail && username == initialUsername))
                     .padding(16)
                 }
@@ -272,7 +266,12 @@ struct NotificationsSettingsView: View {
     @AppStorage("notificationsEnabled_goals") private var goalMilestones = false
     
     // New Settings
+    @AppStorage("notificationsEnabled_billReminders") private var billReminders = false
+    @AppStorage("notificationsEnabled_streaks") private var streakWarnings = false
+    @AppStorage("notificationsEnabled_largeExpense") private var largeExpenseAlert = false
+    
     @AppStorage("budgetAlertThreshold") private var budgetAlertThreshold: Double = 0.8
+    @AppStorage("largeExpenseThreshold") private var largeExpenseThreshold: Double = 100.0
     @AppStorage("dailySummaryTime") private var dailySummaryTime: Double = 75600 // 21:00 default (21 * 3600)
     
     @Environment(\.colorScheme) var colorScheme
@@ -332,14 +331,35 @@ struct NotificationsSettingsView: View {
                 
                 // Transaction Alerts
                 MenuSection("Transaction Alerts") {
-                    MenuRowView(title: "Transaction Notifications", showChevron: false, showToggle: $transactionNotifs)
+                    MenuRowView(title: "New Transactions", showChevron: false, showToggle: $transactionNotifs)
+                    MenuDivider()
+                    MenuRowView(title: "Large Expense Alert", showChevron: false, showToggle: $largeExpenseAlert)
+                    
+                    if largeExpenseAlert {
+                        MenuDivider()
+                        HStack {
+                            Text("Threshold")
+                                .font(.body)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            TextField("Amount", value: $largeExpenseThreshold, format: .currency(code: CurrencyManager.shared.mainCurrency))
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .frame(width: 100)
+                                .padding(.vertical, 4)
+                                .padding(.horizontal, 8)
+                                .background(Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(6)
+                        }
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 16)
+                    }
                 }
-                .onChange(of: transactionNotifs) { _, newValue in
-                    if newValue { ensurePermission() }
-                }
+                .onChange(of: transactionNotifs) { _, newValue in if newValue { ensurePermission() } }
+                .onChange(of: largeExpenseAlert) { _, newValue in if newValue { ensurePermission() } }
                 
-                // Budget Alerts
-                MenuSection("Budget Alerts") {
+                // Budget & Bills
+                MenuSection("Budget & Bills") {
                     MenuRowView(title: "Budget Warnings", showChevron: false, showToggle: $budgetNotifs)
                     if budgetNotifs {
                         MenuDivider()
@@ -362,18 +382,15 @@ struct NotificationsSettingsView: View {
                         .padding(.horizontal, 16)
                         .background(Color(UIColor.secondarySystemBackground))
                     }
+                    
+                    MenuDivider()
+                    MenuRowView(title: "Bill Reminders", showChevron: false, showToggle: $billReminders)
+                    MenuDivider()
+                    MenuRowView(title: "Unpaid Split Reminders", showChevron: false, showToggle: $unpaidSplitReminders)
                 }
-                .onChange(of: budgetNotifs) { _, newValue in
-                    if newValue { ensurePermission() }
-                }
-                
-                // Split Bill Reminders
-                MenuSection("Split Reminders") {
-                   MenuRowView(title: "Unpaid Split Reminders", showChevron: false, showToggle: $unpaidSplitReminders)
-                }
-                .onChange(of: unpaidSplitReminders) { _, newValue in
-                    if newValue { ensurePermission() }
-                }
+                .onChange(of: budgetNotifs) { _, newValue in if newValue { ensurePermission() } }
+                .onChange(of: billReminders) { _, newValue in if newValue { ensurePermission() } }
+                .onChange(of: unpaidSplitReminders) { _, newValue in if newValue { ensurePermission() } }
                 
                 // Scheduled Reports
                 MenuSection("Scheduled Reports") {
@@ -425,6 +442,8 @@ struct NotificationsSettingsView: View {
                 MenuSection("Engagement") {
                     MenuRowView(title: "Inactivity Reminders", showChevron: false, showToggle: $inactivityCheck)
                     MenuDivider()
+                    MenuRowView(title: "Streak Warnings", showChevron: false, showToggle: $streakWarnings)
+                    MenuDivider()
                     MenuRowView(title: "End of Day Check", showChevron: false, showToggle: $eodCheck)
                     MenuDivider()
                     MenuRowView(title: "Motivational Tips", showChevron: false, showToggle: $motivationalTips)
@@ -434,6 +453,10 @@ struct NotificationsSettingsView: View {
                 .onChange(of: inactivityCheck) { _, newValue in
                      if newValue { ensurePermission(); NotificationManager.shared.scheduleInactivityCheck() }
                      else { NotificationManager.shared.cancelInactivityCheck() }
+                }
+                .onChange(of: streakWarnings) { _, newValue in
+                    if newValue { ensurePermission() }
+                    // Streak warnings are part of inactivity check logic currently
                 }
                 .onChange(of: eodCheck) { _, newValue in
                     if newValue { ensurePermission(); NotificationManager.shared.scheduleEODCheck() }

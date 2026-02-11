@@ -8,12 +8,16 @@ class AppState: ObservableObject {
     @Published var isUserLoggedIn = false
     @Published var currentUserId = ""
     @Published var hasCompletedOnboarding = false
-    @Published var userName = ""
+    @Published var userName = UserDefaults.standard.string(forKey: "user_name") ?? ""
     @Published var userEmail = ""
     @Published var currentUserUsername = ""
     
     // Repositories
     @Published var groupRepo = GroupRepository()
+    @Published var friendRepo = FriendRepository() // ✅ NEW: Global friendship cache
+    @Published var friendRequestRepo = FriendRequestRepository() // ✅ NEW: For incoming/outgoing requests
+    @Published var groupInvitationRepo = GroupInvitationRepository() // ✅ NEW: For group invites
+    @Published var guestRepo = GuestRepository() // ✅ NEW: For guests
     
     private var authStateListener: AuthStateDidChangeListenerHandle?
     private let firebaseManager = FirebaseManager.shared
@@ -56,14 +60,54 @@ class AppState: ObservableObject {
                     }
                     // Start listening to groups for this user
                     self?.groupRepo.startListening(userId: userId)
+                    self?.friendRepo.startListening(userId: userId) // ✅ NEW
+                    self?.friendRequestRepo.startListening(userId: userId) // ✅ NEW
+                    self?.groupInvitationRepo.startListening(userId: userId) // ✅ NEW
+                    self?.guestRepo.startListening(userId: userId) // ✅ NEW
                 } else {
                     // User logged out or is anonymous - stop group listener
                     self?.groupRepo.stopListening()
+                    self?.friendRepo.stopListening()
+                    self?.friendRequestRepo.stopListening()
+                    self?.groupInvitationRepo.stopListening()
+                    self?.guestRepo.stopListening()
                 }
             }
         }
         // Monitor GroupRepository changes
         groupRepo.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+            
+        // Monitor FriendRepository changes
+        friendRepo.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+            
+        // Monitor FriendRequestRepository changes
+        friendRequestRepo.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+            
+        // Monitor GroupInvitationRepository changes
+        groupInvitationRepo.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+            
+        // Monitor GuestRepository changes
+        guestRepo.objectWillChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.objectWillChange.send()
@@ -135,6 +179,11 @@ class AppState: ObservableObject {
                     UserDefaults.standard.set(self.userSignupDate, forKey: userKey)
                 }
                 
+                // Cache username for offline/fast access
+                if !self.userName.isEmpty {
+                    UserDefaults.standard.set(self.userName, forKey: "user_name")
+                }
+                
                 // Load post-onboarding guide status per user
                 let guideKey = "hasSeenPostOnboardingGuide_\(userId)"
                 self.hasSeenPostOnboardingGuide = UserDefaults.standard.bool(forKey: guideKey)
@@ -149,6 +198,7 @@ class AppState: ObservableObject {
     func login(userId: String, name: String, email: String) {
         // Firebase auth state listener will handle the update
         self.userName = name
+        UserDefaults.standard.set(name, forKey: "user_name")
         self.userEmail = email
         Task {
             await updateStreak(userId: userId)
@@ -169,6 +219,7 @@ class AppState: ObservableObject {
     func completeOnboarding(userId: String, name: String, email: String) {
         self.hasCompletedOnboarding = true
         self.userName = name
+        UserDefaults.standard.set(name, forKey: "user_name")
         self.userEmail = email
         Task {
             await updateStreak(userId: userId)

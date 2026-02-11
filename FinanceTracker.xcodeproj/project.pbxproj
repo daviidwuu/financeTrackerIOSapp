@@ -153,7 +153,6 @@
 				Views/CurrencySettingsView.swift,
 				Views/FriendsListView.swift,
 				Views/GroupCardView.swift,
-				Views/GroupFormView.swift,
 				Views/GuidesView.swift,
 				Views/LocationSettingsView.swift,
 				Views/ProfileComponents.swift,

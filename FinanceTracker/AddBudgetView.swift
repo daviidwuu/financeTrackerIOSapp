@@ -105,14 +105,8 @@ struct AddBudgetView: View {
                 }
             }) {
                 Text(currentStep < 5 ? "Next" : (budgetToEdit != nil ? "Update Budget" : "Save Budget"))
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(isStepValid ? (colorScheme == .dark ? .black : .white) : .secondary)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(isStepValid ? Color.primary : Color(UIColor.systemGray5))
-                    .cornerRadius(AppRadius.button)
             }
+            .buttonStyle(PrimaryButtonStyle())
             .disabled(!isStepValid)
             .animation(.easeInOut, value: isStepValid) // Smooth color transition
         }

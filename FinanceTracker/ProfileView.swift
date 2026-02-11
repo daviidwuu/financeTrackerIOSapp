@@ -37,16 +37,7 @@ struct ProfileView: View {
                         )
                     }
                     
-                    // 3. Social Section
-                    MenuSection("Social") {
-                        NavigationLink(destination: FriendsListView()) {
-                            MenuRowView(
-                                icon: "person.2.fill",
-                                title: "Friends"
-                            )
-                        }
-                        .buttonStyle(.plain)
-                    }
+
                     
                     // 4. App Settings
                     MenuSection("App Settings") {
