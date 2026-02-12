@@ -41,7 +41,11 @@ struct FinanceTrackerApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                if appState.isUserLoggedIn {
+                if appState.isLoadingAuth {
+                    // Launch Screen / Loading View
+                    Color.backgroundPrimary
+                        .ignoresSafeArea()
+                } else if appState.isUserLoggedIn {
                     ContentView()
                         .environmentObject(appState)
                         .preferredColorScheme(userTheme == "system" ? nil : (userTheme == "dark" ? .dark : .light))

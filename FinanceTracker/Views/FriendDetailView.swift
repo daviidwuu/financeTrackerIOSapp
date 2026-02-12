@@ -4,7 +4,6 @@ struct FriendDetailView: View {
     let friend: FirestoreModels.Friend
     @EnvironmentObject var appState: AppState
     @StateObject private var repo = SocialRepository()
-    @State private var balances: [String: Double] = [:] // Changed to Dictionary
     @State private var showingSettleUp = false
     
     // Details Sheet
@@ -35,9 +34,8 @@ struct FriendDetailView: View {
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                         
-                        // Actions (Settle Up & Nudge)
                         HStack(spacing: 12) {
-                            if !balances.isEmpty {
+                            if !repo.friendBalances.isEmpty {
                                 Button(action: { showingSettleUp = true }) {
                                     Text("Settle Up")
                                         .font(.subheadline)
@@ -51,7 +49,7 @@ struct FriendDetailView: View {
                             }
                             
                             // Show Nudge if they owe you anything
-                            if balances.values.contains(where: { $0 > 0.01 }) {
+                            if repo.friendBalances.values.contains(where: { $0 > 0.01 }) {
                                 Button(action: sendNudge) {
                                     HStack(spacing: 4) {
                                         Image(systemName: "hand.wave.fill")
@@ -73,7 +71,7 @@ struct FriendDetailView: View {
                     
                     // Stats (Multi-Currency)
                     VStack(spacing: 12) {
-                        if balances.isEmpty {
+                        if repo.friendBalances.isEmpty {
                             Text("All settled up!")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
@@ -83,7 +81,7 @@ struct FriendDetailView: View {
                                 .cornerRadius(12)
                         } else {
                             // Sort balances: Positive (Owes You) first, then Negative
-                            ForEach(balances.sorted(by: { $0.value > $1.value }), id: \.key) { currency, amount in
+                            ForEach(repo.friendBalances.sorted(by: { $0.value > $1.value }), id: \.key) { currency, amount in
                                 HStack {
                                     Text(amount > 0 ? "Owes You" : "You Owe")
                                         .font(.caption)
@@ -218,9 +216,6 @@ struct FriendDetailView: View {
     private func loadData() {
         if let fid = friend.id {
             repo.fetchFriendTransactions(currentUserId: appState.currentUserId, friendId: fid)
-            Task {
-                balances = await repo.calculateFriendBalance(currentUserId: appState.currentUserId, friendId: fid)
-            }
         }
     }
     
@@ -314,11 +309,7 @@ struct FriendDetailView: View {
                 // 2. Perform Network Delete
                 try await repo.deleteFriendTransaction(transaction: transaction, currentUserId: appState.currentUserId)
                 
-                // 3. Silent Balance Update (No Spinner)
-                let newBalances = await repo.calculateFriendBalance(currentUserId: appState.currentUserId, friendId: friend.id ?? "")
-                await MainActor.run {
-                    self.balances = newBalances
-                }
+                // 3. Balance update is handled by listener
             } catch {
                 print("Error deleting friend transaction: \(error)")
                 // On error, reload to restore state

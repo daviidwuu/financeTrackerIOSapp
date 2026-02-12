@@ -19,7 +19,15 @@ class FirebaseManager: ObservableObject {
     
     private init() {
         self.auth = Auth.auth()
-        self.db = Firestore.firestore()
+        
+        // Configure Firestore with persistence enabled
+        let settings = FirestoreSettings()
+        settings.isPersistenceEnabled = true
+        settings.cacheSizeBytes = FirestoreCacheSizeUnlimited
+        
+        let db = Firestore.firestore()
+        db.settings = settings
+        self.db = db
         
         // Listen to auth state changes
         let _ = auth.addStateDidChangeListener { [weak self] _, user in
@@ -142,14 +150,33 @@ class FirebaseManager: ObservableObject {
         return data
     }
     
-    /// Fetch and cache current user profile
+    /// Fetch and cache current user profile (Cache-first strategy)
     func fetchUserProfile(userId: String) async throws {
-        let data = try await getUserProfile(userId: userId)
-        await MainActor.run {
-            self.currentUserName = data["name"] as? String
-            self.currentUserEmail = data["email"] as? String
-            self.currentUserUsername = data["username"] as? String
+        // 1. Try to fetch from cache first for instant load
+        do {
+            let cachedDoc = try await db.collection("users").document(userId).getDocument(source: .cache)
+            if let data = cachedDoc.data() {
+                await self.updateLocalUser(data: data)
+                DebugLogger.log("Loaded user profile from cache")
+            }
+        } catch {
+            // Cache miss is expected on first run
+            DebugLogger.log("Cache miss for user profile: \(error.localizedDescription)")
         }
+        
+        // 2. Fetch from server to ensure fresh data
+        let serverDoc = try await db.collection("users").document(userId).getDocument(source: .server)
+        if let data = serverDoc.data() {
+            await self.updateLocalUser(data: data)
+            DebugLogger.log("Refreshed user profile from server")
+        }
+    }
+    
+    @MainActor
+    private func updateLocalUser(data: [String: Any]) {
+        self.currentUserName = data["name"] as? String
+        self.currentUserEmail = data["email"] as? String
+        self.currentUserUsername = data["username"] as? String
     }
     
     /// Update user profile

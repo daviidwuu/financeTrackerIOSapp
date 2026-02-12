@@ -8,6 +8,7 @@ import WidgetKit
 class TransactionRepository: ObservableObject {
     private let db = Firestore.firestore()
     @Published var transactions: [FirestoreModels.Transaction] = []
+    @Published var isLoading = true // Track loading state
     private var userId: String?
     
     private var listener: ListenerRegistration?
@@ -15,17 +16,20 @@ class TransactionRepository: ObservableObject {
     /// Start listening to transactions for a specific user
     func startListening(userId: String) {
         self.userId = userId
+        self.isLoading = true // Reset loading state on start
         listener = db.collection("users").document(userId).collection("transactions")
             .order(by: "date", descending: true)
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let documents = snapshot?.documents else {
                     DebugLogger.log("Error fetching transactions: \(error?.localizedDescription ?? "Unknown error")")
+                    self?.isLoading = false // Stop loading on error
                     return
                 }
                 
                 self?.transactions = documents.compactMap { document in
                     try? document.data(as: FirestoreModels.Transaction.self)
                 }
+                self?.isLoading = false // Stop loading on success
                 
                 // Update Widget Data
                 if let transactions = self?.transactions {

@@ -12,6 +12,7 @@ class SocialRepository: ObservableObject {
         let points: Int
     }
 
+    @Published var friendBalances: [String: Double] = [:] // Real-time balance
     @Published var groupTransactions: [FirestoreModels.GroupTransaction] = []
     @Published var friendTransactions: [FirestoreModels.Transaction] = [] // Shared history
     @Published var leaderboardData: [LeaderboardEntry] = []
@@ -22,6 +23,7 @@ class SocialRepository: ObservableObject {
     // MARK: - Group Data
     
     func fetchGroupTransactions(groupId: String) {
+        // ... (unchanged)
         self.isLoading = true
         
         db.collection("groups").document(groupId).collection("transactions")
@@ -46,83 +48,99 @@ class SocialRepository: ObservableObject {
     
     // MARK: - Friend Data
     
+    private var friendTransactionsListener1: ListenerRegistration?
+    private var friendTransactionsListener2: ListenerRegistration?
+
     /// Fetches 1-on-1 transaction history (SplitRequests + Shared Transactions)
     func fetchFriendTransactions(currentUserId: String, friendId: String) {
         self.isLoading = true
         self.friendTransactions = []
+        // self.friendBalances = [:] // Keep old balance or clear? Better keep to avoid flicker, or clear if ID changed.
         
-        // We fetch SplitRequests where either:
-        // 1. fromUid = current, toUid = friend
-        // 2. fromUid = friend, toUid = current
+        // Cancel previous listeners
+        friendTransactionsListener1?.remove()
+        friendTransactionsListener2?.remove()
         
-        let requestsRef = db.collection("split_requests")
-        
-        // Firestore doesn't support logical OR in simple queries efficiently for this without multiple listeners or "in" queries on specific fields if structure allows.
-        // We will run two listeners or one listener with an "array-contains" if we had a "participants" array.
-        // Since we don't have "participants" on SplitRequest, we'll use two queries or a client-side merge if data is small. 
-        // Better: Add `participants` array to SplitRequest for easier querying? 
-        // For now, let's use two queries and merge locally.
-        
-        let q1 = requestsRef
+        // Query 1: Requests SENT by YOU (from: You, to: Friend)
+        let q1 = db.collection("split_requests")
             .whereField("fromUid", isEqualTo: currentUserId)
             .whereField("toUid", isEqualTo: friendId)
         
-        let q2 = requestsRef
+        // Query 2: Requests RECEIVED by YOU (from: Friend, to: You)
+        let q2 = db.collection("split_requests")
             .whereField("fromUid", isEqualTo: friendId)
             .whereField("toUid", isEqualTo: currentUserId)
         
-        // Combined Listener
-        // Note: This is a bit simplified. In a real heavy app, we might change schema.
+        var sentRequests: [FirestoreModels.SplitRequest] = []
+        var receivedRequests: [FirestoreModels.SplitRequest] = []
         
-        q1.addSnapshotListener { [weak self] snap1, err1 in
+        // Helper to merge and publish
+        let updateBlock = { [weak self] in
             guard let self = self else { return }
-            if let err = err1 { print("Error q1: \(err)"); return }
             
-                Task { @MainActor in
-                    do {
-                        let snap2 = try await q2.getDocuments()
-                        
-
-                        var combined: [FirestoreModels.Transaction] = []
-                        
-                        let docs1 = snap1?.documents ?? []
-                        let docs2 = snap2.documents
-                        let allDocs = docs1 + docs2
-                        
-                        // Explicitly decode on MainActor loop to avoid "nonisolated context" error
-                        var requests: [FirestoreModels.SplitRequest] = []
-                        for doc in allDocs {
-                            if let req = try? doc.data(as: FirestoreModels.SplitRequest.self) {
-                                requests.append(req)
-                            }
-                        }
-                        
-                        // Convert to Transactions
-                        combined = requests.map { req in
-                            let isPayer = req.fromUid == currentUserId
-                            
-                            return FirestoreModels.Transaction(
-                                id: req.id,
-                                title: req.note ?? "Split Request",
-                                subtitle: isPayer ? "You requested" : "\(req.fromName ?? "Friend") requested",
-                                amount: req.amount,
-                                date: req.createdAt,
-                                icon: "arrow.left.arrow.right",
-                                colorHex: isPayer ? "#34C759" : "#FF3B30",
-                                note: req.status.rawValue,
-                                type: isPayer ? "income" : "expense",
-                                userId: currentUserId,
-                                createdAt: req.createdAt
-                            )
-                        }
-                        
-                        self.friendTransactions = combined.sorted(by: { $0.date > $1.date })
-                        self.isLoading = false
-                        
-                    } catch {
-                        print("Error fetching friend transactions: \(error)")
-                    }
-                }
+            // Explicitly decode/map on MainActor loop or just publish
+            let allRequests = sentRequests + receivedRequests
+            
+            // 1. Map Transactions
+            let combined = allRequests.map { req -> FirestoreModels.Transaction in
+                let isPayer = req.fromUid == currentUserId
+                
+                return FirestoreModels.Transaction(
+                    id: req.id,
+                    title: req.note ?? "Split Request",
+                    subtitle: isPayer ? "You requested" : "\(req.fromName ?? "Friend") requested",
+                    amount: req.amount,
+                    date: req.createdAt,
+                    icon: "arrow.left.arrow.right",
+                    colorHex: isPayer ? "#34C759" : "#FF3B30",
+                    note: req.status.rawValue,
+                    type: isPayer ? "income" : "expense",
+                    userId: currentUserId,
+                    createdAt: req.createdAt
+                )
+            }
+            
+            // 2. Calculate Balances
+            var newBalances: [String: Double] = [:]
+            let mainCurrency = CurrencyManager.shared.mainCurrency
+            
+            // Owed To You (Positive)
+            for req in sentRequests where req.status == .pending || req.status == .accepted {
+                let currency = req.currency ?? mainCurrency
+                newBalances[currency, default: 0] += req.amount
+            }
+            
+            // You Owe (Negative)
+            for req in receivedRequests where req.status == .pending || req.status == .accepted {
+                let currency = req.currency ?? mainCurrency
+                newBalances[currency, default: 0] -= req.amount
+            }
+            // Filter zero
+            let filteredBalances = newBalances.filter { abs($0.value) > 0.01 }
+            
+            DispatchQueue.main.async {
+                self.friendTransactions = combined.sorted(by: { $0.date > $1.date })
+                self.friendBalances = filteredBalances
+                self.isLoading = false
+            }
+        }
+        
+        // Listener 1 (Sent)
+        friendTransactionsListener1 = q1.addSnapshotListener { [weak self] snapshot, error in
+            guard let _ = self else { return }
+            if let error = error { print("Error listening to sent requests: \(error)"); return }
+            
+            sentRequests = snapshot?.documents.compactMap { try? $0.data(as: FirestoreModels.SplitRequest.self) } ?? []
+            updateBlock()
+        }
+        
+        // Listener 2 (Received)
+        friendTransactionsListener2 = q2.addSnapshotListener { [weak self] snapshot, error in
+            guard let _ = self else { return }
+            if let error = error { print("Error listening to received requests: \(error)"); return }
+            
+            receivedRequests = snapshot?.documents.compactMap { try? $0.data(as: FirestoreModels.SplitRequest.self) } ?? []
+            updateBlock()
         }
     }
     

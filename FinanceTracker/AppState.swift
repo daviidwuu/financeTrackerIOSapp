@@ -11,6 +11,7 @@ class AppState: ObservableObject {
     @Published var userName = UserDefaults.standard.string(forKey: "user_name") ?? ""
     @Published var userEmail = ""
     @Published var currentUserUsername = ""
+    @Published var isLoadingAuth = true // Track initial auth check
     
     // Repositories
     // Repositories
@@ -58,6 +59,7 @@ class AppState: ObservableObject {
                 self?.isUserLoggedIn = hasUser && !isAnonymous
                 self?.currentUserId = user?.uid ?? ""
                 self?.userEmail = user?.email ?? ""
+                self?.isLoadingAuth = false // Auth check complete
                 
                 // Load user profile if authenticated and NOT anonymous
                 if let userId = user?.uid, !isAnonymous {

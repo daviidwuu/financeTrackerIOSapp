@@ -262,7 +262,32 @@ struct HomeView: View {
                         }
                         .textCase(nil)
                     ) {
-                        if transactionRepo.transactions.isEmpty {
+                        if transactionRepo.isLoading {
+                            // Skeleton Loading State
+                            ForEach(0..<3) { _ in
+                                HStack {
+                                    Circle()
+                                        .fill(Color.secondary.opacity(0.1))
+                                        .frame(width: 40, height: 40)
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Capsule()
+                                            .fill(Color.secondary.opacity(0.1))
+                                            .frame(width: 120, height: 16)
+                                        Capsule()
+                                            .fill(Color.secondary.opacity(0.1))
+                                            .frame(width: 80, height: 12)
+                                    }
+                                    Spacer()
+                                    Capsule()
+                                        .fill(Color.secondary.opacity(0.1))
+                                        .frame(width: 60, height: 16)
+                                }
+                                .padding(.vertical, 8)
+                                .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                            }
+                        } else if transactionRepo.transactions.isEmpty {
                             EmptyStateView(
                                 icon: "tray.fill",
                                 title: "No Transactions",
