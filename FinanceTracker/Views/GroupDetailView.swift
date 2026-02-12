@@ -19,7 +19,7 @@ struct GroupDetailView: View {
                         // Icon
                         ZStack {
                             Circle()
-                                .fill(Color(hex: group.color))
+                                .fill(Color.GradientTheme.gradient(for: group.color))
                                 .frame(width: 80, height: 80)
                                 .shadow(color: Color(hex: group.color).opacity(0.3), radius: 10, x: 0, y: 5)
                             
@@ -472,7 +472,7 @@ struct BalanceCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                ProfileAvatar(text: String(name.prefix(1)), color: .blue, size: 32)
+                ProfileAvatar(text: String(name.prefix(1)), color: Color.random(seed: name), size: 32)
                 Spacer()
             }
             

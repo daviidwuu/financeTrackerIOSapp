@@ -181,19 +181,21 @@ struct SplitConfigurationView: View {
                                         }
                                     }) {
                                         VStack(spacing: 8) {
-                                            Circle()
-                                                .fill(Color(hex: group.color).opacity(0.15))
-                                                .frame(width: 64, height: 64)
-                                                .overlay(
-                                                    Text(String(group.name.prefix(1)).uppercased())
-                                                        .font(.title3)
-                                                        .fontWeight(.bold)
-                                                        .foregroundColor(Color(hex: group.color))
-                                                )
-                                                .overlay(
-                                                    Circle()
-                                                        .stroke(selectedGroupId == group.id ? Color.primary : Color.clear, lineWidth: 3)
-                                                )
+                                            // Rich Icon Style matching Social Tab
+                                            ZStack {
+                                                Circle()
+                                                    .fill(Color.GradientTheme.gradient(for: group.color))
+                                                    .frame(width: 64, height: 64)
+                                                    .shadow(color: Color(hex: group.color).opacity(0.3), radius: 4, x: 0, y: 2)
+                                                
+                                                Image(systemName: group.icon)
+                                                    .font(.title3)
+                                                    .foregroundColor(.white)
+                                            }
+                                            .overlay(
+                                                Circle()
+                                                    .stroke(selectedGroupId == group.id ? Color.primary : Color.clear, lineWidth: 3)
+                                            )
                                             
                                             Text(group.name)
                                                 .font(.caption)
@@ -235,14 +237,17 @@ struct SplitConfigurationView: View {
                         ForEach(filteredFriends) { friend in
                             Button(action: { toggleFriendSelection(friend) }) {
                                 HStack(spacing: 16) {
-                                    // Avatar
+                                    // Avatar - Usage of consistent random color seeding
                                     ZStack {
                                         Circle()
-                                            .fill(Color.gray.opacity(0.1))
+                                            .fill(Color.random(seed: friend.name))
                                             .frame(width: 48, height: 48)
+                                            // Add shadow for depth consistency with FriendCardView
+                                            .shadow(color: Color.random(seed: friend.name).opacity(0.3), radius: 4, x: 0, y: 2)
+                                        
                                         Text(String(friend.name.prefix(1)).uppercased())
                                             .font(.headline)
-                                            .foregroundColor(.primary)
+                                            .foregroundColor(.white) // Always white on colorful background
                                     }
                                     
                                     Text(friend.name)
@@ -353,9 +358,9 @@ struct SplitConfigurationView: View {
                             HStack(spacing: 16) {
                                 ZStack {
                                     Circle()
-                                        .fill(Color.orange.opacity(0.1))
+                                        .fill(Color.orange.opacity(0.15)) // Slightly stronger opacity
                                         .frame(width: 48, height: 48)
-                                    Image(systemName: "person")
+                                    Image(systemName: "person.fill") // Fill icon for weight
                                         .font(.headline)
                                         .foregroundColor(.orange)
                                 }
@@ -701,9 +706,7 @@ struct SplitConfigurationView: View {
             Button(action: {
                 HapticManager.shared.light()
                 if currentStep == 1 {
-                    if !splits.isEmpty {
-                        withAnimation { currentStep = 2 }
-                    }
+                    withAnimation { currentStep = 2 }
                 } else {
                     onSave(splits, selectedGroupId)
                     dismiss()
@@ -712,7 +715,7 @@ struct SplitConfigurationView: View {
                 Text(currentStep == 1 ? "Next" : "Save Changes")
             }
             .buttonStyle(PrimaryButtonStyle())
-            .disabled(currentStep == 1 && splits.isEmpty)
+            // Removed .disabled check to allow zero-person split (user pays 100%, or clearing splits)
         }
         .padding(.horizontal, AppSpacing.margin)
         .padding(.top, AppSpacing.compact)
@@ -745,10 +748,11 @@ struct CustomSplitRow: View {
                 if split.isGuest {
                     Text("Guest")
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.orange) // Match logic color
+                        .fontWeight(.medium)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Color.secondary.opacity(0.1))
+                        .background(Color.orange.opacity(0.1))
                         .cornerRadius(4)
                 }
             }
@@ -897,13 +901,24 @@ struct SplitAvatar: View {
     
     var body: some View {
         ZStack {
-            Circle()
-                .fill(isGuest ? Color.orange.opacity(0.1) : Color.green.opacity(0.1))
-                .frame(width: 48, height: 48)
-            Text(String(name.prefix(1)).uppercased())
-                .font(.headline)
-                .fontWeight(.bold)
-                .foregroundColor(isGuest ? .orange : .green)
+            if isGuest {
+                Circle()
+                    .fill(Color.orange.opacity(0.15))
+                    .frame(width: 48, height: 48)
+                Image(systemName: "person.fill")
+                    .font(.headline)
+                    .foregroundColor(.orange)
+            } else {
+                Circle()
+                    .fill(Color.random(seed: name))
+                    .frame(width: 48, height: 48)
+                    .shadow(color: Color.random(seed: name).opacity(0.3), radius: 4, x: 0, y: 2)
+                
+                Text(String(name.prefix(1)).uppercased())
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+            }
         }
     }
 }

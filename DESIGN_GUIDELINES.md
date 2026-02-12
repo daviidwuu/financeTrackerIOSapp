@@ -28,6 +28,10 @@ This document establishes the visual consistency standards for the FinanceTracke
 *   **List Items**: Always use **48x48** for the primary leading icon in a `List` or `ScrollView` row.
 *   **Grids**: Use **32x32** for selectable grid items where space is at a premium.
 *   **Menus**: Use smaller **24x24** frames for settings/utility rows to avoid overwhelming the text.
+*   **Social & Profile**:
+    *   **Groups**: Gradient Background + White SF Symbol.
+    *   **Friends**: Random Color Background (seeded by name) + White Initials.
+    *   **Guests**: Orange Tint Background + Icon.
 
 ## 3. Spacing & Layout
 

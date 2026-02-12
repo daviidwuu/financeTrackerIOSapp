@@ -299,11 +299,12 @@ struct GroupCreationWizardView: View {
                                     // Avatar
                                     ZStack {
                                         Circle()
-                                            .fill(Color.gray.opacity(0.1))
+                                            .fill(Color.random(seed: friend.name))
                                             .frame(width: 48, height: 48)
+                                            .shadow(color: Color.random(seed: friend.name).opacity(0.3), radius: 4, x: 0, y: 2)
                                         Text(String(friend.name.prefix(1)).uppercased())
                                             .font(.headline)
-                                            .foregroundColor(.primary)
+                                            .foregroundColor(.white)
                                     }
                                     
                                     Text(friend.name)
@@ -411,7 +412,7 @@ struct GroupCreationWizardView: View {
                 // Preview
                 VStack(spacing: 12) {
                     Circle()
-                        .fill(Color(hex: selectedColor))
+                        .fill(Color.GradientTheme.gradient(for: selectedColor))
                         .frame(width: 80, height: 80)
                         .overlay(
                             Image(systemName: selectedIcon)

@@ -32,6 +32,7 @@ This view handles complex mathematical distribution with a simple, guided interf
 *   **Guided Progression**: It breaks the process into two logical stages: **Selection** (Who is involved?) and **Distribution** (How much do they owe?).
 *   **Sticky Action Bar**: The primary action button ("Next" or "Save Changes") is pinned to the bottom using `.safeAreaInset`. This creates a floating effect that keeps the primary goal reachable regardless of scroll depth.
 *   **Validation States**: The action bar backgrounds dim and the text changes to `.secondary` when requirements (like selecting at least one person) aren't met, providing silent but clear guidance.
+*   **Identity Consistency**: Users and Groups appear with the *exact* same visual identity (colors, icons) as they do in the Social Tab, reducing cognitive load when selecting recipients.
 
 ### **C. GroupCreationWizardView (The Identity Builder)**
 Created to make group onboarding feel like creating a "Brand."
