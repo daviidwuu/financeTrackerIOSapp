@@ -15,10 +15,11 @@ struct TransactionDetailView: View {
     var onSave: ((FirestoreModels.Transaction, Transaction) -> Void)?
     
     // Repositories
-    @StateObject private var transactionRepo = TransactionRepository()
-    @StateObject private var requestRepo = RequestRepository()
-    @StateObject private var friendRepo = FriendRepository()
-    @StateObject private var budgetRepo = BudgetRepository()
+    // Repositories moved to AppState
+    var transactionRepo: TransactionRepository { appState.transactionRepo }
+    var requestRepo: RequestRepository { appState.requestRepo }
+    var friendRepo: FriendRepository { appState.friendRepo }
+    var budgetRepo: BudgetRepository { appState.budgetRepo }
     
     // Error Handling
     @State private var showErrorAlert = false
@@ -290,8 +291,8 @@ struct TransactionDetailView: View {
             }
         }
         .onAppear {
-            transactionRepo.startListening(userId: transaction.userId)
-            budgetRepo.startListening(userId: transaction.userId)
+            // Repos are handled in AppState
+            // Assuming transaction.userId == appState.currentUserId
         }
         .sheet(isPresented: $showEditSheet) {
             AddTransactionView(transactionToEdit: transaction, onSave: { updatedTransaction in

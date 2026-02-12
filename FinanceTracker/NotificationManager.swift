@@ -402,24 +402,22 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
                 let calendar = Calendar.current
                 let tomorrow = calendar.date(byAdding: .day, value: 1, to: Date())!
                 
-                for doc in documents {
-                    do {
-                        let recurring = try doc.data(as: FirestoreModels.RecurringTransaction.self)
-                        // Simple check: Is the start date day-of-month == tomorrow's day-of-month?
-                        // A robust implementation would calculate the exact next occurrence.
-                        
-                        // Using a simplified logic: If day matches tomorrow.
-                        let dayOfStart = calendar.component(.day, from: recurring.startDate)
-                        let dayOfTomorrow = calendar.component(.day, from: tomorrow)
-                        
-                        if dayOfStart == dayOfTomorrow {
-                            self.sendBillReminder(recurring: recurring)
+                Task { @MainActor in
+                    for doc in documents {
+                        do {
+                            let recurring = try doc.data(as: FirestoreModels.RecurringTransaction.self)
+                            let dayOfStart = calendar.component(.day, from: recurring.startDate)
+                            let dayOfTomorrow = calendar.component(.day, from: tomorrow)
+                            
+                            if dayOfStart == dayOfTomorrow {
+                                self.sendBillReminder(recurring: recurring)
+                            }
+                        } catch {
+                            continue
                         }
-                    } catch {
-                        continue
                     }
+                    completion()
                 }
-                completion()
             }
     }
     

@@ -11,8 +11,9 @@ struct AddTransactionView: View {
     var requestToAccept: FirestoreModels.SplitRequest?
     var onSave: ((Transaction) -> Void)?
     
-    @StateObject private var budgetRepo = BudgetRepository()
-    @StateObject private var transactionRepo = TransactionRepository()
+    // Repositories moved to AppState
+    var budgetRepo: BudgetRepository { appState.budgetRepo }
+    var transactionRepo: TransactionRepository { appState.transactionRepo }
     
     @State private var currentStep = 1
     @State private var amount: String = ""
@@ -92,10 +93,8 @@ struct AddTransactionView: View {
             if currencyManager.isTravelModeEnabled && currencyManager.mainCurrency != currencyManager.travelCurrency && transactionToEdit == nil {
                 isUsingTravelCurrency = true
             }
-            if !appState.currentUserId.isEmpty {
-                budgetRepo.startListening(userId: appState.currentUserId)
-                transactionRepo.startListening(userId: appState.currentUserId)
-            }
+
+            // Repos are handled in AppState, no need to manually start listening
             
             // Delay setting initial category to allow repo to load
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -118,8 +117,7 @@ struct AddTransactionView: View {
             }
         }
         .onDisappear {
-            budgetRepo.stopListening()
-            transactionRepo.stopListening()
+            // Repos are handled in AppState
         }
     }
     
@@ -228,7 +226,7 @@ struct AddTransactionView: View {
         // Ensure amount handles income vs expense correctly if needed
         let type = category.type ?? "expense"
         var newTransaction = Transaction(
-            title: category.category,
+            title: !transactionNotes.isEmpty ? transactionNotes : category.category,
             subtitle: category.category,
             amount: (type == "income" ? "" : "-") + amount,
             icon: category.icon,

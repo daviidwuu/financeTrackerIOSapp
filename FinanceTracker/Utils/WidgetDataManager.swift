@@ -14,17 +14,24 @@ class WidgetDataManager {
     // MARK: - Keys
     private struct Keys {
         static let dailySpend = "widget_dailySpend"
-        static let dailySpendDate = "widget_dailySpend_date" // New key
+        static let dailyVault = "widget_dailyVault" // New key
+        static let dailySpendDate = "widget_dailySpend_date"
         static let monthlySpend = "widget_monthlySpend"
         static let monthlyBudget = "widget_monthlyBudget"
         static let lastUpdated = "widget_lastUpdated"
     }
     
     // MARK: - Save Methods
-    func saveDailySpend(_ amount: Double) {
-        userDefaults?.set(amount, forKey: Keys.dailySpend)
-        userDefaults?.set(Date(), forKey: Keys.dailySpendDate) // Save date
+    func saveDailyData(expense: Double, vault: Double) {
+        userDefaults?.set(expense, forKey: Keys.dailySpend)
+        userDefaults?.set(vault, forKey: Keys.dailyVault)
+        userDefaults?.set(Date(), forKey: Keys.dailySpendDate)
         updateTimestamp()
+    }
+    
+    // Deprecated but kept for compatibility if needed (or just remove)
+    func saveDailySpend(_ amount: Double) {
+        saveDailyData(expense: amount, vault: 0)
     }
     
     func saveMonthlySpend(_ amount: Double) {
@@ -48,13 +55,18 @@ class WidgetDataManager {
     
     // MARK: - Fetch Methods (For Widget)
     func getDailySpend() -> Double {
-        // Check date validity
-        if let lastDate = userDefaults?.object(forKey: Keys.dailySpendDate) as? Date {
-            if !Calendar.current.isDateInToday(lastDate) {
-                return 0.0 // Reset if not today
-            }
-        }
+        if !isToday() { return 0.0 }
         return userDefaults?.double(forKey: Keys.dailySpend) ?? 0.0
+    }
+    
+    func getDailyVault() -> Double {
+        if !isToday() { return 0.0 }
+        return userDefaults?.double(forKey: Keys.dailyVault) ?? 0.0
+    }
+    
+    private func isToday() -> Bool {
+        guard let lastDate = userDefaults?.object(forKey: Keys.dailySpendDate) as? Date else { return false }
+        return Calendar.current.isDateInToday(lastDate)
     }
     
     func getMonthlySpend() -> Double {

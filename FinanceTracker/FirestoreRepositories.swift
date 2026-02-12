@@ -99,17 +99,26 @@ class TransactionRepository: ObservableObject {
         let today = Date()
         
         // Calculate Daily Spend (Net)
-        let dailySpend = transactions
-            .filter { $0.subtitle != "Income" && calendar.isDateInToday($0.date) }
-            .reduce(0) { $0 + $1.amount }
+        // Calculate Daily Breakdown
+        let dailyTransactions = transactions.filter { $0.subtitle != "Income" && calendar.isDateInToday($0.date) }
+        
+        // Expense: Sum of negative amounts (e.g. -10, -20 = -30). We store as positive (30).
+        let dailyExpense = abs(dailyTransactions.filter { $0.amount < 0 }.reduce(0) { $0 + $1.amount })
+        
+        // Vault: Sum of positive amounts (Reimbursements/Income).
+        let dailyVault = dailyTransactions.filter { $0.amount > 0 }.reduce(0) { $0 + $1.amount }
+        
+        // Save separately
+        // Save separately
+        WidgetDataManager.shared.saveDailyData(expense: dailyExpense, vault: dailyVault)
         
         // Calculate Monthly Spend (Net)
         let monthlySpend = transactions
              .filter { $0.subtitle != "Income" && calendar.isDate($0.date, equalTo: today, toGranularity: .month) }
              .reduce(0) { $0 + $1.amount }
-             
-        // Save absolute values (if net is negative, it's spend)
-        WidgetDataManager.shared.saveDailySpend(dailySpend < 0 ? abs(dailySpend) : 0)
+        
+        // Monthly: Keep original logic for now (Absolute expense only? Or should we fix this too?)
+        // The plan specifically prioritized Daily. Let's stick to Daily for this user request.
         WidgetDataManager.shared.saveMonthlySpend(monthlySpend < 0 ? abs(monthlySpend) : 0)
         
         // Force reload to ensure widget updates immediately

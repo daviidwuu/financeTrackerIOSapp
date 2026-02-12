@@ -23,7 +23,6 @@ service cloud.firestore {
       }
     }
     
-    // ✅ NEW: Root collection for split requests
     match /split_requests/{requestId} {
       allow create: if request.auth.uid == request.resource.data.fromUid
                     && (request.resource.data.status == 'pending' 
@@ -37,6 +36,10 @@ service cloud.firestore {
       // Allow receiver to update (accept/decline) OR sender to update (cancel/delete/mark paid)
       allow update: if request.auth.uid == resource.data.toUid 
                     || request.auth.uid == resource.data.fromUid;
+                    
+      // ✅ Allow sender OR receiver to delete
+      allow delete: if request.auth.uid == resource.data.fromUid 
+                    || request.auth.uid == resource.data.toUid;
     }
     
     // ✅ NEW: Root collection for friend requests
@@ -45,6 +48,8 @@ service cloud.firestore {
       allow read: if request.auth.uid == resource.data.fromUid 
                   || request.auth.uid == resource.data.toUid;
       allow update: if request.auth.uid == resource.data.toUid;
+      allow delete: if request.auth.uid == resource.data.fromUid
+                    || request.auth.uid == resource.data.toUid;
     }
     
     // ✅ NEW: Root collection for group invitations
@@ -53,6 +58,8 @@ service cloud.firestore {
       allow read: if request.auth.uid == resource.data.fromUid 
                   || request.auth.uid == resource.data.toUid;
       allow update: if request.auth.uid == resource.data.toUid;
+      allow delete: if request.auth.uid == resource.data.fromUid
+                    || request.auth.uid == resource.data.toUid;
     }
 
     match /users {

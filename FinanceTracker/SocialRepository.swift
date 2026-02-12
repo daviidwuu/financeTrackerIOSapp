@@ -516,8 +516,8 @@ class SocialRepository: ObservableObject {
         let snapshot = try await requestRef.getDocument()
         
         if let request = try? snapshot.data(as: FirestoreModels.SplitRequest.self) {
-            if request.fromUid == currentUserId {
-                // We are the creator, we can delete the request
+            if request.fromUid == currentUserId || request.toUid == currentUserId {
+                // We are the creator OR receiver, we can delete the request
                 try await requestRef.delete()
                 
                 // Note: We are NOT deleting the original transaction here as it implies 1-on-1 specific logic 
@@ -534,5 +534,10 @@ class SocialRepository: ObservableObject {
             .getDocuments()
         
         return snapshot.documents.compactMap { try? $0.data(as: FirestoreModels.SplitRequest.self) }
+    }
+    
+    /// OPTIMISTIC UPDATE: Removes a transaction from the local list immediately
+    func removeLocalTransaction(id: String) {
+        self.friendTransactions.removeAll { $0.id == id }
     }
 }

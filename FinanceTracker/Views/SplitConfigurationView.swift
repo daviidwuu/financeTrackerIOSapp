@@ -712,12 +712,13 @@ struct SplitConfigurationView: View {
                 Text(currentStep == 1 ? "Next" : "Save Changes")
             }
             .buttonStyle(PrimaryButtonStyle())
-            .disabled(false)
+            .disabled(currentStep == 1 && splits.isEmpty)
         }
         .padding(.horizontal, AppSpacing.margin)
         .padding(.top, AppSpacing.compact)
         .padding(.bottom, 8)
         .background(Color.backgroundPrimary)
+        .ignoresSafeArea(.keyboard) 
     }
 }
 

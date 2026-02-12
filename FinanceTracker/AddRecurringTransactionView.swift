@@ -8,8 +8,9 @@ struct AddRecurringTransactionView: View {
     var recurringToEdit: FirestoreModels.RecurringTransaction?
     var onSave: ((RecurringTransaction) -> Void)?
     
-    @StateObject private var budgetRepo = BudgetRepository()
-    @StateObject private var transactionRepo = TransactionRepository()
+    // Repositories moved to AppState
+    var budgetRepo: BudgetRepository { appState.budgetRepo }
+    var transactionRepo: TransactionRepository { appState.transactionRepo }
     
     @State private var currentStep = 1
     @State private var amount: String = ""
@@ -78,10 +79,11 @@ struct AddRecurringTransactionView: View {
         .onAppear {
             populateData()
             
-            if !appState.currentUserId.isEmpty {
-                budgetRepo.startListening(userId: appState.currentUserId)
-                transactionRepo.startListening(userId: appState.currentUserId)
-            }
+            // Repos are handled in AppState
+            // if !appState.currentUserId.isEmpty {
+            //    budgetRepo.startListening(userId: appState.currentUserId)
+            //    transactionRepo.startListening(userId: appState.currentUserId)
+            // }
             
             // Delay setting initial category to allow repo to load
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -94,8 +96,7 @@ struct AddRecurringTransactionView: View {
             }
         }
         .onDisappear {
-            budgetRepo.stopListening()
-            transactionRepo.stopListening()
+            // Repos are handled in AppState
         }
     }
     

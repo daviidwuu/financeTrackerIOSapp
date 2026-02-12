@@ -13,6 +13,12 @@ class AppState: ObservableObject {
     @Published var currentUserUsername = ""
     
     // Repositories
+    // Repositories
+    @Published var transactionRepo = TransactionRepository()
+    @Published var budgetRepo = BudgetRepository()
+    @Published var recurringRepo = RecurringTransactionRepository()
+    @Published var savingGoalRepo = SavingGoalRepository() // Also centralizing this as it's used in WalletView
+    @Published var requestRepo = RequestRepository() // Centralizing RequestRepository
     @Published var groupRepo = GroupRepository()
     @Published var friendRepo = FriendRepository() // ✅ NEW: Global friendship cache
     @Published var friendRequestRepo = FriendRequestRepository() // ✅ NEW: For incoming/outgoing requests
@@ -59,6 +65,11 @@ class AppState: ObservableObject {
                         await self?.loadUserProfile(userId: userId)
                     }
                     // Start listening to groups for this user
+                    self?.transactionRepo.startListening(userId: userId)
+                    self?.budgetRepo.startListening(userId: userId)
+                    self?.recurringRepo.startListening(userId: userId)
+                    self?.savingGoalRepo.startListening(userId: userId)
+                    self?.requestRepo.startListening(userId: userId)
                     self?.groupRepo.startListening(userId: userId)
                     self?.friendRepo.startListening(userId: userId) // ✅ NEW
                     self?.friendRequestRepo.startListening(userId: userId) // ✅ NEW
@@ -66,6 +77,11 @@ class AppState: ObservableObject {
                     self?.guestRepo.startListening(userId: userId) // ✅ NEW
                 } else {
                     // User logged out or is anonymous - stop group listener
+                    self?.transactionRepo.stopListening()
+                    self?.budgetRepo.stopListening()
+                    self?.recurringRepo.stopListening()
+                    self?.savingGoalRepo.stopListening()
+                    self?.requestRepo.stopListening()
                     self?.groupRepo.stopListening()
                     self?.friendRepo.stopListening()
                     self?.friendRequestRepo.stopListening()
@@ -112,6 +128,36 @@ class AppState: ObservableObject {
             .sink { [weak self] _ in
                 self?.objectWillChange.send()
             }
+            .store(in: &cancellables)
+            
+        // Monitor TransactionRepository changes
+        transactionRepo.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+            
+        // Monitor BudgetRepository changes
+        budgetRepo.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+            
+        // Monitor RecurringTransactionRepository changes
+        recurringRepo.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+            
+        // Monitor SavingGoalRepository changes
+        savingGoalRepo.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+            
+        // Monitor RequestRepository changes
+        requestRepo.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
     }
     

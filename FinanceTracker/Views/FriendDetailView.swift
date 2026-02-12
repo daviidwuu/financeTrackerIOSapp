@@ -135,12 +135,11 @@ struct FriendDetailView: View {
                                     }
                                     .contextMenu {
                                         // Only allow deleting if we created the request (indicated by "income" type in this view's Logic)
-                                        if transaction.type == "income" {
-                                            Button(role: .destructive) {
-                                                deleteTransaction(transaction)
-                                            } label: {
-                                                Label("Delete", systemImage: "trash")
-                                            }
+                                        // Allow deleting both sent (income) and received (expense) requests
+                                        Button(role: .destructive) {
+                                            deleteTransaction(transaction)
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
                                         }
                                     }
                                 }
@@ -302,13 +301,28 @@ struct FriendDetailView: View {
     }
     
     private func deleteTransaction(_ transaction: FirestoreModels.Transaction) {
+        guard let id = transaction.id else { return }
         HapticManager.shared.light()
+        
+        // 1. Instant Feedback: Remove locally immediately
+        withAnimation {
+            repo.removeLocalTransaction(id: id)
+        }
+        
         Task {
             do {
+                // 2. Perform Network Delete
                 try await repo.deleteFriendTransaction(transaction: transaction, currentUserId: appState.currentUserId)
-                await MainActor.run { loadData() }
+                
+                // 3. Silent Balance Update (No Spinner)
+                let newBalances = await repo.calculateFriendBalance(currentUserId: appState.currentUserId, friendId: friend.id ?? "")
+                await MainActor.run {
+                    self.balances = newBalances
+                }
             } catch {
                 print("Error deleting friend transaction: \(error)")
+                // On error, reload to restore state
+                await MainActor.run { loadData() }
             }
         }
     }

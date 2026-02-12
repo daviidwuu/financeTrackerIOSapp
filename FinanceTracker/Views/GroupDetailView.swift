@@ -188,7 +188,7 @@ struct GroupDetailView: View {
                                         // If fromUid == current: "Someone owes You" (Green)
                                         // If toUid == current: "You owe Someone" (Red)
                                         let isOwed = split.fromUid == appState.currentUserId
-                                        let otherPartyName = isOwed ? "Friend" : (split.fromName ?? "Friend")
+                                        let _ = isOwed ? "Friend" : (split.fromName ?? "Friend")
                                         
                                         VStack(alignment: .leading, spacing: 4) {
                                             Text(split.note ?? "Split Expense")
@@ -409,7 +409,7 @@ struct GroupDetailView: View {
         
         Task {
             do {
-                try await repo.deleteGroupTransaction(groupTx: transaction, groupId: groupId, currentUserId: appState.currentUserId)
+                try await SocialTransactionManager.shared.deleteSocialTransaction(groupTransaction: transaction, groupId: groupId)
                 loadGroupData() // Refresh
             } catch {
                 print("Error deleting transaction: \(error)")

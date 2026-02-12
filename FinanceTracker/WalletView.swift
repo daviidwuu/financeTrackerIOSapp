@@ -3,10 +3,11 @@ import SwiftUI
 struct WalletView: View {
     @EnvironmentObject var appState: AppState
     
-    @StateObject private var savingGoalRepo = SavingGoalRepository()
-    @StateObject private var recurringRepo = RecurringTransactionRepository()
-    @StateObject private var budgetRepo = BudgetRepository()
-    @StateObject private var transactionRepo = TransactionRepository()
+    // Repositories moved to AppState
+    var savingGoalRepo: SavingGoalRepository { appState.savingGoalRepo }
+    var recurringRepo: RecurringTransactionRepository { appState.recurringRepo }
+    var budgetRepo: BudgetRepository { appState.budgetRepo }
+    var transactionRepo: TransactionRepository { appState.transactionRepo }
     
     @State private var showAddSavingGoal = false
     @State private var showAddRecurring = false
@@ -366,35 +367,11 @@ struct WalletView: View {
                 .scrollContentBackground(.hidden)
                 .scrollIndicators(.hidden)
                 .onAppear {
-                    if !appState.currentUserId.isEmpty {
-                        savingGoalRepo.startListening(userId: appState.currentUserId)
-                        recurringRepo.startListening(userId: appState.currentUserId)
-                        transactionRepo.startListening(userId: appState.currentUserId)
-                        budgetRepo.startListening(userId: appState.currentUserId)
-                    }
                     checkForNewMonth()
-                }
-                .onDisappear {
-                    savingGoalRepo.stopListening()
-                    recurringRepo.stopListening()
-                    budgetRepo.stopListening()
-                    transactionRepo.stopListening()
                 }
                 .onChange(of: appState.currentUserId) { _, newUserId in
                     if !newUserId.isEmpty {
-                        // Restart listeners
-                        savingGoalRepo.startListening(userId: newUserId)
-                        recurringRepo.startListening(userId: newUserId)
-                        transactionRepo.startListening(userId: newUserId)
-                        budgetRepo.startListening(userId: newUserId)
-                        
                         checkForNewMonth()
-                    } else {
-                        // Stop listeners
-                        savingGoalRepo.stopListening()
-                        recurringRepo.stopListening()
-                        budgetRepo.stopListening()
-                        transactionRepo.stopListening()
                     }
                 }
             }

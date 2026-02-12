@@ -321,11 +321,11 @@ struct AllTransactionsView: View {
                             ForEach(sortedTransactions) { transaction in
                                 TransactionRow(transaction: transaction)
                                     .background(Color(UIColor.secondarySystemBackground))
-                                    .cornerRadius(16)
-                                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                                    .cornerRadius(AppRadius.medium)
+                                    .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
                                     .listRowSeparator(.hidden)
                                     .listRowBackground(Color.clear)
-                                    .padding(.bottom, 8)
+                                    .padding(.bottom, AppSpacing.compact)
                                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                         Button(role: .destructive) {
                                             HapticManager.shared.heavy()
@@ -401,6 +401,18 @@ struct AllTransactionsView: View {
                 updatedTransaction.type = amount < 0 ? "expense" : "income"
                 
                 try await transactionRepo.updateTransaction(updatedTransaction)
+                
+                // Sync Social Data if splits exist
+                if let splits = updatedTransaction.splits, !splits.isEmpty {
+                    try await SocialTransactionManager.shared.createSocialTransaction(
+                        transaction: updatedTransaction,
+                        payerUid: appState.currentUserId,
+                        payerName: appState.userName,
+                        groupId: nil, // Group ID not available in this context
+                        friendCache: appState.friendRepo.friends,
+                        groupCache: appState.groupRepo.groups
+                    )
+                }
             } catch {
                 DebugLogger.log("Failed to update transaction: \(error)")
             }
@@ -411,7 +423,14 @@ struct AllTransactionsView: View {
         guard let id = transaction.id else { return }
         Task {
             do {
-                try await transactionRepo.deleteTransaction(id: id)
+                // Check if it has splits/social implications
+                if let splits = transaction.splits, !splits.isEmpty {
+                     // Use Social Manager for cascade delete
+                     try await SocialTransactionManager.shared.deleteSocialTransaction(transaction: transaction)
+                } else {
+                     // Standard Delete
+                     try await transactionRepo.deleteTransaction(id: id)
+                }
             } catch {
                 DebugLogger.log("Failed to delete transaction: \(error)")
             }

@@ -18,7 +18,8 @@ struct RequestCardView: View {
                 )
             
             VStack(alignment: .leading, spacing: 4) {
-                Text("Split Request")
+                // Title (Note or Fallback)
+                Text(request.note?.isEmpty == false ? request.note! : "Split Request")
                     .font(.body)
                     .fontWeight(.bold)
                     .foregroundColor(.primary)
@@ -34,16 +35,10 @@ struct RequestCardView: View {
                     return "Friend"
                 }()
                 
+                // Subtitle (Details)
                 Text("\(senderName) requests $\(String(format: "%.2f", abs(request.amount)))")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
-                
-                if let note = request.note, !note.isEmpty {
-                    Text(note)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
             }
             
             Spacer()

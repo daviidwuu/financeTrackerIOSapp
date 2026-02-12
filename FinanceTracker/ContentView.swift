@@ -1,9 +1,11 @@
 import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
-    @StateObject private var transactionRepo = TransactionRepository()
-    @StateObject private var budgetRepo = BudgetRepository()
-    @StateObject private var recurringRepo = RecurringTransactionRepository()
+    // Repositories moved to AppState
+    var transactionRepo: TransactionRepository { appState.transactionRepo }
+    var budgetRepo: BudgetRepository { appState.budgetRepo }
+    // RecurringRepo was unused in body, but removing state object ref
+    var recurringRepo: RecurringTransactionRepository { appState.recurringRepo }
     @State private var showAddTransaction = false
     @Environment(\.colorScheme) var colorScheme
     // @State private var selectedTab = 0 // Moved to AppState
@@ -41,10 +43,7 @@ struct ContentView: View {
             if appState.selectedTab == 0 {
                 Button(action: {
                     HapticManager.shared.medium()
-                    // Refresh budgets when opening add
-                    if !appState.currentUserId.isEmpty {
-                        budgetRepo.startListening(userId: appState.currentUserId)
-                    }
+                    // Refresh budgets when opening add - Repos are handled in AppState, no need to manually start listening
                     showAddTransaction = true
                 }) {
                     Circle()

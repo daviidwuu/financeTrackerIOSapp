@@ -4,13 +4,14 @@ import SwiftUI
 // MARK: - Data Provider
 struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), dailySpend: 45.0, monthlySpend: 1250.0, monthlyBudget: 2000.0)
+        SimpleEntry(date: Date(), dailyExpense: 45.0, dailyVault: 0.0, monthlySpend: 1250.0, monthlyBudget: 2000.0)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> ()) {
         let entry = SimpleEntry(
             date: Date(),
-            dailySpend: WidgetDataManager.shared.getDailySpend(),
+            dailyExpense: WidgetDataManager.shared.getDailySpend(),
+            dailyVault: WidgetDataManager.shared.getDailyVault(),
             monthlySpend: WidgetDataManager.shared.getMonthlySpend(),
             monthlyBudget: WidgetDataManager.shared.getMonthlyBudget()
         )
@@ -19,33 +20,63 @@ struct Provider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> ()) {
         let currentDate = Date()
-        let nextUpdateDate = Calendar.current.date(byAdding: .minute, value: 30, to: currentDate)!
+        let calendar = Calendar.current
         
-        let entry = SimpleEntry(
-            date: currentDate,
-            dailySpend: WidgetDataManager.shared.getDailySpend(),
-            monthlySpend: WidgetDataManager.shared.getMonthlySpend(),
-            monthlyBudget: WidgetDataManager.shared.getMonthlyBudget()
-        )
-
-        let timeline = Timeline(entries: [entry], policy: .after(nextUpdateDate))
+        // Data
+        let expense = WidgetDataManager.shared.getDailySpend()
+        let vault = WidgetDataManager.shared.getDailyVault()
+        let mSpend = WidgetDataManager.shared.getMonthlySpend()
+        let mBudget = WidgetDataManager.shared.getMonthlyBudget()
+        
+        // Create Entries
+        var entries: [SimpleEntry] = []
+        
+        // 1. Current State
+        entries.append(SimpleEntry(date: currentDate, dailyExpense: expense, dailyVault: vault, monthlySpend: mSpend, monthlyBudget: mBudget))
+        
+        // 2. Schedule 10 PM Unlock (if currently before 10 PM)
+        if let tenPM = calendar.date(bySettingHour: 22, minute: 0, second: 0, of: currentDate), currentDate < tenPM {
+            entries.append(SimpleEntry(date: tenPM, dailyExpense: expense, dailyVault: vault, monthlySpend: mSpend, monthlyBudget: mBudget))
+        }
+        
+        // Next refresh: Standard 30 mins or at 10 PM, whichever is sooner/appropriate
+        // WidgetKit handles the timeline, so just adding the 10PM entry ensures it refreshes then.
+        // We'll also request a standard refresh in 30 mins to keep data fresh.
+        let nextUpdateDate = calendar.date(byAdding: .minute, value: 30, to: currentDate)!
+        
+        let timeline = Timeline(entries: entries, policy: .after(nextUpdateDate))
         completion(timeline)
     }
 }
 
 struct SimpleEntry: TimelineEntry {
     let date: Date
-    let dailySpend: Double
+    let dailyExpense: Double // Raw expense
+    let dailyVault: Double   // Raw vault (income)
     let monthlySpend: Double
     let monthlyBudget: Double
     
-    // Derived Helper: Estimated Daily Budget based on Month length
+    // Logic: Vault Unlocks at 10:00 PM (22:00)
+    var isVaultUnlocked: Bool {
+        let calendar = Calendar.current
+        let hour = calendar.component(.hour, from: date)
+        return hour >= 22
+    }
+    
+    // Effective Daily Spend
+    var dailySpend: Double {
+        if isVaultUnlocked {
+            return dailyExpense - dailyVault // Apply Vault (Net Spend)
+        } else {
+            return dailyExpense // Ignore Vault (Raw Expense)
+        }
+    }
+    
     var dailyBudgetLimit: Double {
         let daysInMonth = Double(Calendar.current.range(of: .day, in: .month, for: date)?.count ?? 30)
         return monthlyBudget / daysInMonth
     }
     
-    // New Derived Helper: Amount Left for Today
     var dailyRemaining: Double {
         return dailyBudgetLimit - dailySpend
     }
@@ -72,9 +103,15 @@ struct LockScreenWidgetEntryView : View {
                             .font(.system(size: 10, weight: .bold))
                             .textCase(.uppercase)
                     }
-                    Text(formatShort(entry.dailyRemaining))
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(entry.dailyRemaining < 0 ? .red : .primary)
+                    if entry.dailySpend < 0 {
+                        Text("Credit")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundStyle(.green)
+                    } else {
+                        Text(formatShort(entry.dailyRemaining))
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundStyle(entry.dailyRemaining < 0 ? .red : .primary)
+                    }
                 }
                 
                 Divider()
@@ -108,20 +145,42 @@ struct LockScreenWidgetEntryView : View {
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .minimumScaleFactor(0.5)
                 )
+
                 .containerBackground(.clear, for: .widget)
             } else {
-                WidgetCircularProgressView(
-                    value: max(entry.dailyRemaining, 0),
-                    total: entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 100,
-                    color: .primary // System tint on Lock Screen
-                )
-                .padding(2)
-                .overlay(
-                    Text(formatShort(entry.dailyRemaining))
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .minimumScaleFactor(0.5)
-                )
-                .containerBackground(.clear, for: .widget)
+                // Remaining Mode
+                if entry.dailySpend < 0 {
+                    // Credit Mode (Full Green Circle)
+                    WidgetCircularProgressView(
+                        value: 1, // Full
+                        total: 1,
+                        color: .green
+                    )
+                    .padding(2)
+                    .overlay(
+                        VStack(spacing: 0) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 10, weight: .bold))
+                            Text(formatShort(abs(entry.dailySpend)))
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                        }
+                        .foregroundStyle(.green)
+                    )
+                    .containerBackground(.clear, for: .widget)
+                } else {
+                    WidgetCircularProgressView(
+                        value: max(entry.dailyRemaining, 0),
+                        total: entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 100,
+                        color: .primary // System tint
+                    )
+                    .padding(2)
+                    .overlay(
+                        Text(formatShort(entry.dailyRemaining))
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .minimumScaleFactor(0.5)
+                    )
+                    .containerBackground(.clear, for: .widget)
+                }
             }
             
         // MARK: Lock Screen - Inline (Monthly Left)
@@ -141,10 +200,23 @@ struct LockScreenWidgetEntryView : View {
                 VStack(alignment: .leading, spacing: 0) {
                     // Header Row: Label + Gauge
                     HStack(alignment: .top) {
-                        Text("Daily\nLimit")
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundStyle(Color(UIColor.systemGray))
-                            .lineSpacing(0)
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("Daily\nLimit")
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundStyle(Color(UIColor.systemGray))
+                                .lineSpacing(0)
+                            
+                            if !entry.isVaultUnlocked && entry.dailyVault > 0 {
+                                HStack(spacing: 2) {
+                                    Image(systemName: "lock.fill")
+                                        .font(.system(size: 8))
+                                    Text(formatShort(entry.dailyVault))
+                                        .font(.system(size: 8, weight: .bold))
+                                }
+                                .foregroundStyle(Color.green.opacity(0.8))
+                                .padding(.top, 2)
+                            }
+                        }
                         
                         Spacer()
                         
@@ -154,14 +226,24 @@ struct LockScreenWidgetEntryView : View {
                                 .stroke(Color(UIColor.darkGray).opacity(0.4), lineWidth: 3)
                                 .frame(width: 32, height: 32)
                             
-                            Circle()
-                                .trim(from: 0, to: min(max(entry.dailyRemaining / (entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 1), 0), 1))
-                                .stroke(
-                                    calculateColor(remaining: entry.dailyRemaining, limit: entry.dailyBudgetLimit),
-                                    style: StrokeStyle(lineWidth: 3, lineCap: .round)
-                                )
-                                .rotationEffect(.degrees(-90))
-                                .frame(width: 32, height: 32)
+                            if entry.dailySpend < 0 {
+                                // Credit: Full Green Ring
+                                Circle()
+                                    .stroke(
+                                        Color.green,
+                                        style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                                    )
+                                    .frame(width: 32, height: 32)
+                            } else {
+                                Circle()
+                                    .trim(from: 0, to: min(max(entry.dailyRemaining / (entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 1), 0), 1))
+                                    .stroke(
+                                        calculateColor(remaining: entry.dailyRemaining, limit: entry.dailyBudgetLimit),
+                                        style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                                    )
+                                    .rotationEffect(.degrees(-90))
+                                    .frame(width: 32, height: 32)
+                            }
                         }
                     }
                     
@@ -175,11 +257,19 @@ struct LockScreenWidgetEntryView : View {
                         .contentTransition(.numericText())
                     
                     // Footer
-                    Text(entry.dailyRemaining >= 0 ? "REMAINING" : "OVER")
-                        .font(.system(size: 10, weight: .bold))
-                        .tracking(1)
-                        .foregroundStyle(entry.dailyRemaining >= 0 ? Color(UIColor.systemGray2) : .red)
-                        .padding(.top, 2)
+                    if entry.dailySpend < 0 {
+                         Text("CREDIT")
+                            .font(.system(size: 10, weight: .bold))
+                            .tracking(1)
+                            .foregroundStyle(.green)
+                            .padding(.top, 2)
+                    } else {
+                        Text(entry.dailyRemaining >= 0 ? "REMAINING" : "OVER")
+                            .font(.system(size: 10, weight: .bold))
+                            .tracking(1)
+                            .foregroundStyle(entry.dailyRemaining >= 0 ? Color(UIColor.systemGray2) : .red)
+                            .padding(.top, 2)
+                    }
                 }
                 .padding(16)
             }
@@ -201,6 +291,9 @@ struct LockScreenWidgetEntryView : View {
                                 ? Color(UIColor.systemRed).opacity(0.15)
                                 : Color(UIColor.systemGray6).opacity(0.12)
                         } else {
+                           if entry.dailySpend < 0 {
+                               return Color.green.opacity(0.15)
+                           }
                            return entry.dailyRemaining < 0 
                                 ? Color(UIColor.systemRed).opacity(0.15) 
                                 : Color(UIColor.systemGray6).opacity(0.12)
@@ -214,14 +307,27 @@ struct LockScreenWidgetEntryView : View {
                                     .font(.system(size: 10))
                                     .foregroundStyle(abs(entry.dailySpend) > entry.dailyBudgetLimit ? .red : .orange)
                             } else {
-                                Image(systemName: entry.dailyRemaining < 0 ? "exclamationmark.triangle.fill" : "sun.max.fill")
+                                Image(systemName: entry.dailySpend < 0 ? "arrow.up.circle.fill" : (entry.dailyRemaining < 0 ? "exclamationmark.triangle.fill" : "sun.max.fill"))
                                     .font(.system(size: 10))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(entry.dailySpend < 0 ? .green : .white)
                             }
-                            Text("TODAY")
-                                .font(.system(size: 9, weight: .bold))
-                                .tracking(1)
-                                .foregroundStyle(Color(UIColor.systemGray))
+                            
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text("TODAY")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .tracking(1)
+                                    .foregroundStyle(Color(UIColor.systemGray))
+                                
+                                if !entry.isVaultUnlocked && entry.dailyVault > 0 {
+                                    HStack(spacing: 2) {
+                                        Image(systemName: "lock.fill")
+                                            .font(.system(size: 6))
+                                        Text(formatShort(entry.dailyVault))
+                                            .font(.system(size: 6, weight: .bold))
+                                    }
+                                    .foregroundStyle(Color.green.opacity(0.8))
+                                }
+                            }
                         }
                         
                         Spacer()
@@ -232,13 +338,13 @@ struct LockScreenWidgetEntryView : View {
                                 .stroke(Color.white.opacity(0.1), lineWidth: 6)
                             
                             // Ring Value
-                            let ringValue = mode == .spent ? abs(entry.dailySpend) : entry.dailyRemaining
+                            let ringValue = mode == .spent ? abs(entry.dailySpend) : (entry.dailySpend < 0 ? 1 : entry.dailyRemaining)
                             let ringColor = mode == .spent 
                                 ? calculateSpentColor(spent: abs(entry.dailySpend), limit: entry.dailyBudgetLimit)
-                                : calculateColor(remaining: entry.dailyRemaining, limit: entry.dailyBudgetLimit)
+                                : (entry.dailySpend < 0 ? .green : calculateColor(remaining: entry.dailyRemaining, limit: entry.dailyBudgetLimit))
                             
                             Circle()
-                                .trim(from: 0, to: min(max(ringValue / (entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 1), 0), 1))
+                                .trim(from: 0, to: min(max((mode == .spent ? ringValue : (entry.dailySpend < 0 ? 1 : ringValue)) / (entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 1), 0), 1))
                                 .stroke(
                                     ringColor,
                                     style: StrokeStyle(lineWidth: 6, lineCap: .round)
