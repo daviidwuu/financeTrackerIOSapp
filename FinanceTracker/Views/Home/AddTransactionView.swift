@@ -9,7 +9,7 @@ struct AddTransactionView: View {
     
     var transactionToEdit: FirestoreModels.Transaction?
     var requestToAccept: FirestoreModels.SplitRequest?
-    var onSave: ((Transaction) -> Void)?
+    var onSave: ((TransactionFormData) -> Void)?
     
     // Repositories moved to AppState
     var budgetRepo: BudgetRepository { appState.budgetRepo }
@@ -225,7 +225,7 @@ struct AddTransactionView: View {
         
         // Ensure amount handles income vs expense correctly if needed
         let type = category.type ?? "expense"
-        var newTransaction = Transaction(
+        var newTransaction = TransactionFormData(
             title: !transactionNotes.isEmpty ? transactionNotes : category.category,
             subtitle: category.category,
             amount: (type == "income" ? "" : "-") + amount,
@@ -268,7 +268,7 @@ struct AddTransactionView: View {
         }
         
         if isUsingTravelCurrency {
-            let rawAmount = Double(amount) ?? 0
+            let rawAmount = CurrencyInput.parseOrZero(amount)
             
             let mainAmount = currencyManager.convertToMain(amount: rawAmount, from: currencyManager.travelCurrency)
             
@@ -293,12 +293,7 @@ struct AddTransactionView: View {
     private var isStepValid: Bool {
         switch currentStep {
         case 1:
-            // Handle both dot and comma
-            let normalizedAmount = amount.replacingOccurrences(of: ",", with: ".")
-            if let value = Double(normalizedAmount), value > 0 {
-                return true
-            }
-            return false
+            return CurrencyInput.isValid(amount)
         case 2:
             return selectedCategory != nil
         case 3:
@@ -337,7 +332,7 @@ struct AddTransactionView: View {
                 .padding(.horizontal, AppSpacing.margin)
                 
                 if isUsingTravelCurrency {
-                    Text("Converting to approx \(String(format: "%.2f", currencyManager.convertToMain(amount: Double(amount) ?? 0, from: currencyManager.travelCurrency))) \(currencyManager.mainCurrency)")
+                    Text("Converting to approx \(String(format: "%.2f", currencyManager.convertToMain(amount: CurrencyInput.parseOrZero(amount), from: currencyManager.travelCurrency))) \(currencyManager.mainCurrency)")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

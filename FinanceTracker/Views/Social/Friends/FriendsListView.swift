@@ -11,6 +11,7 @@ struct FriendsListView: View {
     @Environment(\.colorScheme) var colorScheme
     @State private var showDeleteConfirmation = false
     @State private var friendToDelete: FirestoreModels.Friend?
+    @State private var errorState = ErrorState()
     
     // Smart Intercept State
     @State private var showSmartInterceptAlert = false
@@ -89,8 +90,15 @@ struct FriendsListView: View {
                                 HStack(spacing: 12) {
                                     Button {
                                         Task {
-                                            try? await appState.friendRequestRepo.acceptRequest(request)
-                                            await MainActor.run { HapticManager.shared.success() }
+                                            do {
+                                                try await appState.friendRequestRepo.acceptRequest(request)
+                                                await MainActor.run { HapticManager.shared.success() }
+                                            } catch {
+                                                await MainActor.run {
+                                                    errorState.show("Failed to accept request")
+                                                    HapticManager.shared.error()
+                                                }
+                                            }
                                         }
                                     } label: {
                                         Image(systemName: "checkmark.circle.fill")
@@ -101,8 +109,14 @@ struct FriendsListView: View {
                                     
                                     Button {
                                         Task {
-                                            try? await appState.friendRequestRepo.declineRequest(request)
-                                            await MainActor.run { HapticManager.shared.error() }
+                                            do {
+                                                try await appState.friendRequestRepo.declineRequest(request)
+                                                await MainActor.run { HapticManager.shared.error() }
+                                            } catch {
+                                                await MainActor.run {
+                                                    errorState.show("Failed to decline request")
+                                                }
+                                            }
                                         }
                                     } label: {
                                         Image(systemName: "xmark.circle.fill")
@@ -277,6 +291,7 @@ struct FriendsListView: View {
                     }
                 }
             }
+        .errorBanner(errorState)
         .onAppear {
                 if !appState.currentUserId.isEmpty {
                     friendRepo.startListening(userId: appState.currentUserId)
@@ -355,7 +370,7 @@ struct FriendsListView: View {
                     HapticManager.shared.success()
                 }
             } catch {
-                print("Error removing friend: \(error)")
+                errorState.show("Failed to remove friend")
                 await MainActor.run {
                     HapticManager.shared.error()
                 }
@@ -372,7 +387,7 @@ struct FriendsListView: View {
                     HapticManager.shared.success()
                 }
             } catch {
-                print("Error deleting group: \(error)")
+                errorState.show("Failed to delete group")
                 await MainActor.run {
                     HapticManager.shared.error()
                 }

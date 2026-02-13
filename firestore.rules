@@ -2,16 +2,45 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // --- Helper Functions ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Validation: Transactions
+    function isValidTransaction(data) {
+      return data.title is string && data.title.size() > 0
+          && data.amount is number
+          && data.date is timestamp
+          && data.type in ['income', 'expense'];
+    }
+    
+    // Validation: Groups
+    function isValidGroup(data) {
+      return data.name is string && data.name.size() > 0
+          && data.members is list
+          && data.createdBy is string;
+    }
+    
+    // Validation: Split Requests
+    function isValidSplitRequest(data) {
+        return data.amount is number && data.amount > 0
+            && data.fromUid is string
+            && data.toUid is string;
+    }
+
     // ✅ NEW: Root collection for groups (Wiki-style shared)
     match /groups/{groupId} {
-      allow create: if request.auth != null
+      allow create: if isSignedIn()
                     && request.resource.data.createdBy == request.auth.uid
-                    && request.resource.data.members.hasAll([request.auth.uid]);
+                    && request.resource.data.members.hasAll([request.auth.uid])
+                    && isValidGroup(request.resource.data);
       
       allow read: if request.auth.uid in resource.data.members;
       
       // Any member can update (wiki-style)
-      allow update: if request.auth.uid in resource.data.members;
+      allow update: if request.auth.uid in resource.data.members
+                    && isValidGroup(request.resource.data);
       
       // Any member can delete (wiki-style)
       // Any member can delete (wiki-style)
@@ -27,7 +56,8 @@ service cloud.firestore {
       allow create: if request.auth.uid == request.resource.data.fromUid
                     && (request.resource.data.status == 'pending' 
                         || request.resource.data.status == 'paid'
-                        || request.resource.data.status in ['blocked_by_group', 'blocked_by_friendship']);
+                        || request.resource.data.status in ['blocked_by_group', 'blocked_by_friendship'])
+                    && isValidSplitRequest(request.resource.data);
       
       allow read: if request.auth.uid == resource.data.fromUid 
                   || request.auth.uid == resource.data.toUid
@@ -76,7 +106,9 @@ service cloud.firestore {
         
         // 3. Subcollections
         match /transactions/{document=**} { 
-          allow read, write: if request.auth.uid == userId; 
+          allow read, write: if request.auth.uid == userId;
+          // Note: We don't enforce isValidTransaction() strictly here yet for backward compatibility 
+          // with existing user data that might miss fields, but generally recommended.
         }
         match /budgets/{document=**} { 
           allow read, write: if request.auth.uid == userId; 

@@ -1,4 +1,5 @@
 import SwiftUI
+import FirebaseFirestore
 
 struct HomeView: View {
     @Environment(\.colorScheme) var colorScheme
@@ -33,6 +34,9 @@ struct HomeView: View {
     @State private var isAnimating = false
     @State private var showMissions = false
     @ObservedObject private var gamificationManager = GamificationManager.shared
+    @State private var errorState = ErrorState()
+    @State private var undoState = UndoState()
+    @State private var hiddenTransactionIds: Set<String> = []
     
     var totalBudget: Double {
         // Exclude income budgets
@@ -214,10 +218,6 @@ struct HomeView: View {
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                         .padding(.bottom, AppSpacing.compact)
-                        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-                        .padding(.bottom, AppSpacing.compact)
                     }
                     
                     // Section 1.5: Pending Requests
@@ -391,13 +391,15 @@ struct HomeView: View {
                 }
             }
         }
+        .errorBanner(errorState)
+        .undoableBanner(undoState)
     }
     
-    private func addTransaction(_ transaction: Transaction) {
+    private func addTransaction(_ transaction: TransactionFormData) {
         Task {
             do {
                 // Convert UI Transaction to Firestore Transaction
-                let amount = Double(transaction.amount) ?? 0.0
+                let amount = CurrencyInput.parseOrZero(transaction.amount)
                 let firestoreTransaction = FirestoreModels.Transaction(
                     title: transaction.title,
                     subtitle: transaction.subtitle,
@@ -425,14 +427,15 @@ struct HomeView: View {
                 )
             } catch {
                 DebugLogger.log("Failed to add transaction: \(error)")
+                errorState.show("Failed to save transaction")
             }
         }
     }
     
-    private func updateTransaction(_ entity: FirestoreModels.Transaction, with transaction: Transaction) {
+    private func updateTransaction(_ entity: FirestoreModels.Transaction, with transaction: TransactionFormData) {
         Task {
             do {
-                let amount = Double(transaction.amount) ?? 0.0
+                let amount = CurrencyInput.parseOrZero(transaction.amount)
                 var updatedTransaction = entity
                 updatedTransaction.title = transaction.title
                 updatedTransaction.subtitle = transaction.subtitle
@@ -447,43 +450,63 @@ struct HomeView: View {
                 
                 // Sync Social Data if splits exist
                 if let splits = updatedTransaction.splits, !splits.isEmpty {
+                    // Derive groupId from existing SplitRequest (if any)
+                    var groupId: String? = nil
+                    if let firstRequestId = splits.compactMap({ $0.requestId }).first {
+                        let reqDoc = try? await Firestore.firestore().collection("split_requests").document(firstRequestId).getDocument()
+                        groupId = reqDoc?.get("groupId") as? String
+                    }
+                    
                     try await SocialTransactionManager.shared.createSocialTransaction(
                         transaction: updatedTransaction,
                         payerUid: appState.currentUserId,
                         payerName: appState.userName,
-                        groupId: nil, // Group ID not available in this context
+                        groupId: groupId,
                         friendCache: appState.friendRepo.friends,
                         groupCache: appState.groupRepo.groups
                     )
                 }
             } catch {
                 DebugLogger.log("Failed to update transaction: \(error)")
+                errorState.show("Failed to update transaction")
             }
         }
     }
     
     private func deleteTransaction(_ transaction: FirestoreModels.Transaction) {
         guard let id = transaction.id else { return }
-        Task {
-            do {
-                // Check if it has splits/social implications
-                if let splits = transaction.splits, !splits.isEmpty {
-                     // Use Social Manager for cascade delete
-                     try await SocialTransactionManager.shared.deleteSocialTransaction(transaction: transaction)
-                } else {
-                     // Standard Delete
-                     try await transactionRepo.deleteTransaction(id: id)
+        hiddenTransactionIds.insert(id)
+        HapticManager.shared.heavy()
+        
+        undoState.schedule(
+            label: "Transaction deleted",
+            onUndo: { [self] in
+                hiddenTransactionIds.remove(id)
+            },
+            onConfirm: { [self] in
+                hiddenTransactionIds.remove(id)
+                Task {
+                    do {
+                        let _ = await SocialTransactionManager.shared.revertLinkedSplitIfNeeded(transaction: transaction, currentUserId: appState.currentUserId)
+                        
+                        if let splits = transaction.splits, !splits.isEmpty {
+                            try await SocialTransactionManager.shared.deleteSocialTransaction(transaction: transaction)
+                        } else {
+                            try await transactionRepo.deleteTransaction(id: id)
+                        }
+                    } catch {
+                        DebugLogger.log("Failed to delete transaction: \(error)")
+                        errorState.show("Failed to delete transaction")
+                    }
                 }
-            } catch {
-                DebugLogger.log("Failed to delete transaction: \(error)")
             }
-        }
+        )
     }
 
     
     // MARK: - Request Logic
     
-    private func acceptRequest(_ request: FirestoreModels.SplitRequest, transaction: Transaction) {
+    private func acceptRequest(_ request: FirestoreModels.SplitRequest, transaction: TransactionFormData) {
         // 1. Add the transaction
         addTransaction(transaction)
         
@@ -494,6 +517,7 @@ struct HomeView: View {
                 try await requestRepo.updateRequestStatus(userId: appState.currentUserId, requestId: id, status: .accepted)
             } catch {
                 DebugLogger.log("Failed to accept request: \(error)")
+                errorState.show("Failed to accept request")
             }
         }
     }
@@ -506,6 +530,7 @@ struct HomeView: View {
                 // Optionally remove from list after delay or just let status update hide it
             } catch {
                 DebugLogger.log("Failed to decline request: \(error)")
+                errorState.show("Failed to decline request")
             }
         }
     }

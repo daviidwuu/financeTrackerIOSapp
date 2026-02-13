@@ -1,35 +1,38 @@
 import SwiftUI
 
-struct AddSavingGoalView: View {
+struct AddBudgetView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
     
-    var goalToEdit: FirestoreModels.SavingGoal?
-    var onSave: ((SavingGoal) -> Void)?
+    var budgetToEdit: FirestoreModels.CategoryBudget?
+    var onSave: ((BudgetFormData) -> Void)?
     
     @State private var currentStep = 1
     @State private var amount: String = ""
-    @State private var goalName: String = ""
-    @State private var selectedIcon: String = ""
-    @State private var selectedColor: Color = .clear
-    @State private var targetDate = Date()
+    @State private var name: String = ""
+    @State private var selectedIcon: String = "cart.fill"
+    @State private var selectedColor: Color = .orange
+    @State private var frequency: String = "Monthly"
+    @State private var type: String = "expense" // Added type
     @State private var direction: Edge = .trailing
     
     // Sticky Modal Logic
     @State private var presentationDetent: PresentationDetent = .medium
+    @State private var availableDetents: Set<PresentationDetent> = [.medium, .large]
     
     let icons = AppConstants.allIcons
     let colors = AppConstants.allColors
+    let frequencies = ["Weekly", "Bi-Weekly", "Monthly", "Yearly"]
     
     private func populateData() {
-        if let goal = goalToEdit {
-            if goal.targetAmount != 0 {
-                amount = String(format: "%.2f", goal.targetAmount)
+        if let budget = budgetToEdit {
+            if budget.totalAmount != 0 {
+                amount = String(format: "%.2f", budget.totalAmount)
             }
-            goalName = goal.name
-            selectedIcon = goal.icon
-            selectedColor = Color(hex: goal.colorHex)
-            targetDate = goal.targetDate
+            name = budget.category
+            selectedIcon = budget.icon
+            selectedColor = Color(hex: budget.colorHex)
+            frequency = budget.frequency
         }
     }
     
@@ -42,7 +45,7 @@ struct AddSavingGoalView: View {
             VStack(spacing: 20) {
                 // Header
                 ModalHeader(
-                    title: headerTitle,
+                    title: currentStep < 5 ? "Add Budget" : "Confirm",
                     currentStep: currentStep,
                     totalSteps: 5,
                     onBack: currentStep > 1 ? {
@@ -54,6 +57,8 @@ struct AddSavingGoalView: View {
                 .padding(.horizontal, AppSpacing.margin)
                 .padding(.top, 16)
                 
+                Spacer()
+                
                 // Content
                 ZStack(alignment: .top) {
                     currentStepView
@@ -63,7 +68,6 @@ struct AddSavingGoalView: View {
                     insertion: .move(edge: direction),
                     removal: .move(edge: direction == .leading ? .trailing : .leading)
                 ))
-                .frame(maxHeight: .infinity, alignment: .top)
                 
                 Spacer()
             }
@@ -71,8 +75,14 @@ struct AddSavingGoalView: View {
                 stickyActionBar
             }
         }
-        .presentationDetents([.medium, .large], selection: $presentationDetent)
+        .presentationDetents(availableDetents, selection: $presentationDetent)
         .presentationDragIndicator(.visible)
+        .onChange(of: presentationDetent) { _, newValue in
+            // Sticky Logic: Once expanded to large, lock it there.
+            if newValue == .large {
+                availableDetents = [.large]
+            }
+        }
         .onAppear {
             populateData()
         }
@@ -82,6 +92,7 @@ struct AddSavingGoalView: View {
         VStack {
             Button(action: {
                 // Sticky Logic: Enforce Large Detent
+                availableDetents = [.large]
                 presentationDetent = .large
                 
                 if currentStep < 5 {
@@ -90,10 +101,10 @@ struct AddSavingGoalView: View {
                     withAnimation { currentStep += 1 }
                 } else {
                     HapticManager.shared.success()
-                    saveGoal()
+                    saveBudget()
                 }
             }) {
-                Text(currentStep < 5 ? "Next" : (goalToEdit != nil ? "Update Goal" : "Save Goal"))
+                Text(currentStep < 5 ? "Next" : (budgetToEdit != nil ? "Update Budget" : "Save Budget"))
             }
             .buttonStyle(PrimaryButtonStyle())
             .disabled(!isStepValid)
@@ -101,48 +112,32 @@ struct AddSavingGoalView: View {
         }
         .padding(.horizontal, AppSpacing.margin)
         .padding(.top, AppSpacing.compact)
-        .padding(.bottom, 8) // Reduced bottom padding
+        .padding(.bottom, 8)
         .background(Color.backgroundPrimary)
         .animation(.easeInOut, value: currentStep) // Smooth transitions
     }
     
-    private var headerTitle: String {
-        switch currentStep {
-        case 1: return "Target Amount"
-        case 2: return "Goal Name"
-        case 3: return "Select Icon"
-        case 4: return "Select Color"
-        case 5: return "Target Date"
-        default: return ""
-        }
-    }
-    
-    private func saveGoal() {
-        guard let targetAmount = Double(amount) else { return }
+    private func saveBudget() {
+        guard let totalAmount = CurrencyInput.parse(amount) else { return }
         
-        let newGoal = SavingGoal(
-            name: goalName,
-            currentAmount: 0,
-            targetAmount: targetAmount,
+        let newBudget = BudgetFormData(
+            category: name,
+            remainingAmount: totalAmount, // Start full
+            totalAmount: totalAmount,
             icon: selectedIcon,
             color: selectedColor,
-            targetDate: targetDate
+            frequency: frequency,
+            type: type // Added type
         )
         
-        if let goal = goalToEdit {
-            let updatedGoal = SavingGoal(
-                name: goalName,
-                currentAmount: goal.currentAmount,
-                targetAmount: targetAmount,
-                icon: selectedIcon,
-                color: selectedColor,
-                targetDate: targetDate
-            )
-            onSave?(updatedGoal)
+        if let _ = budgetToEdit {
+            // Update logic handled by parent
+            onSave?(newBudget)
         } else {
-            onSave?(newGoal)
+            onSave?(newBudget)
             // Gamification
-            GamificationManager.shared.completeMission(id: "goal_getter")
+            GamificationManager.shared.completeMission(id: "budget_beginner")
+            GamificationManager.shared.completeMission(id: "personalizer")
         }
         dismiss()
     }
@@ -150,18 +145,13 @@ struct AddSavingGoalView: View {
     private var isStepValid: Bool {
         switch currentStep {
         case 1:
-            // Handle both dot and comma
-            let normalizedAmount = amount.replacingOccurrences(of: ",", with: ".")
-            if let value = Double(normalizedAmount), value > 0 {
-                return true
-            }
-            return false
+            return CurrencyInput.isValid(amount)
         case 2:
-            return !goalName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            return !name.isEmpty
         case 3:
-            return !selectedIcon.isEmpty
+            return true
         case 4:
-            return selectedColor != .clear
+            return true
         case 5:
             return true
         default:
@@ -172,7 +162,7 @@ struct AddSavingGoalView: View {
     @ViewBuilder
     private var currentStepView: some View {
         if currentStep == 1 {
-            amountStep
+            limitStep
         } else if currentStep == 2 {
             nameStep
         } else if currentStep == 3 {
@@ -180,15 +170,15 @@ struct AddSavingGoalView: View {
         } else if currentStep == 4 {
             colorStep
         } else {
-            dateStep
+            periodStep
         }
     }
     
-    private var amountStep: some View {
+
+    
+    private var limitStep: some View {
         VStack(spacing: 16) {
-            Spacer()
-            
-            Text("How much needed?")
+            Text("Budget Limit")
                 .font(.title2)
                 .fontWeight(.semibold)
                 .foregroundColor(.secondary)
@@ -198,111 +188,106 @@ struct AddSavingGoalView: View {
                 .multilineTextAlignment(.center)
                 .keyboardType(.decimalPad)
                 .foregroundColor(.primary)
-            
-            Spacer()
         }
         .padding(.horizontal, AppSpacing.margin)
     }
     
     private var nameStep: some View {
         VStack(spacing: 16) {
-            Spacer()
-            
-            Text("What are you saving for?")
+            Text("Category Name")
                 .font(.title2)
                 .fontWeight(.semibold)
                 .foregroundColor(.secondary)
             
-            TextField("e.g. New Car", text: $goalName)
-                .font(.system(size: 32, weight: .bold, design: .rounded))
+            TextField("e.g. Rent", text: $name) // Updated placeholder and binding to 'name'
+                .font(.title)
+                .fontWeight(.bold)
                 .multilineTextAlignment(.center)
-                .foregroundColor(.primary)
-                .submitLabel(.done)
-            
-            Spacer()
+                .foregroundColor(.white)
+                .padding()
+                .background(Color.backgroundPrimary)
+                .cornerRadius(AppRadius.medium)
         }
         .padding(.horizontal, AppSpacing.margin)
     }
     
     private var iconStep: some View {
-        ScrollView {
-            VStack(spacing: 24) {
+        VStack(spacing: 24) {
+            Text("Select Icon")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .foregroundColor(.secondary)
+            
+            ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 60))], spacing: 20) {
                     ForEach(icons, id: \.self) { icon in
-                        Button(action: {
-                            HapticManager.shared.light()
-                            selectedIcon = icon
-                        }) {
+                        Button(action: { selectedIcon = icon }) {
                             Circle()
-                                .fill(selectedIcon == icon ? selectedColor.opacity(0.2) : Color.secondary.opacity(0.1))
+                                .fill(selectedIcon == icon ? Color.primary : Color.secondary.opacity(0.1))
                                 .frame(width: 60, height: 60)
                                 .overlay(
                                     Image(systemName: icon)
                                         .font(.title2)
-                                        .foregroundColor(selectedIcon == icon ? selectedColor : .primary)
-                                )
-                                .overlay(
-                                    Circle()
-                                        .stroke(selectedColor, lineWidth: selectedIcon == icon ? 2 : 0)
+                                        .foregroundColor(selectedIcon == icon ? (colorScheme == .dark ? .black : .white) : .primary)
                                 )
                         }
                     }
                 }
+                .padding(.horizontal, AppSpacing.compact)
             }
-            .padding(.bottom, 100)
-            .padding(.horizontal, AppSpacing.compact)
         }
     }
     
     private var colorStep: some View {
-        ScrollView {
-            VStack(spacing: 24) {
+        VStack(spacing: 24) {
+            Text("Select Color")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .foregroundColor(.secondary)
+            
+            ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 60))], spacing: 20) {
                     ForEach(colors, id: \.self) { color in
-                        Button(action: {
-                            HapticManager.shared.light()
-                            selectedColor = color
-                        }) {
+                        Button(action: { selectedColor = color }) {
                             Circle()
                                 .fill(color)
                                 .frame(width: 60, height: 60)
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.primary, lineWidth: selectedColor == color ? 3 : 0)
+                                )
                                 .overlay(
                                     Image(systemName: "checkmark")
                                         .font(.title3)
                                         .foregroundColor(.white)
                                         .opacity(selectedColor == color ? 1 : 0)
                                 )
-                                .overlay(
-                                    Circle()
-                                        .stroke(Color.primary, lineWidth: selectedColor == color ? 3 : 0)
-                                )
                         }
                     }
                 }
+                .padding(.horizontal, AppSpacing.margin)
             }
-            .padding(.bottom, 100)
-            .padding(.horizontal, AppSpacing.compact)
         }
     }
     
-    private var dateStep: some View {
+    private var periodStep: some View {
         VStack(spacing: 16) {
-            Text("When do you need it?")
+            Text("Budget Period")
                 .font(.title2)
                 .fontWeight(.semibold)
                 .foregroundColor(.secondary)
             
-            DatePicker("", selection: $targetDate, displayedComponents: .date)
-                .datePickerStyle(.graphical)
-                .padding()
-                .background(Color(UIColor.secondarySystemBackground))
-                .cornerRadius(AppRadius.medium)
-                .tint(selectedColor)
+            Picker("Frequency", selection: $frequency) { // Updated Picker label
+                ForEach(frequencies, id: \.self) { p in
+                    Text(p).tag(p)
+                }
+            }
+            .pickerStyle(.wheel)
         }
         .padding(.horizontal, AppSpacing.margin)
     }
 }
 
 #Preview {
-    AddSavingGoalView()
+    AddBudgetView()
 }

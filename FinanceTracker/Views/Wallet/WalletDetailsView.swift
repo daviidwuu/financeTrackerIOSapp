@@ -121,7 +121,7 @@ struct WalletDetailsView: View {
     }
     
     private func saveBalance() {
-        if let value = Double(amount) {
+        if let value = CurrencyInput.parse(amount) {
             initialBalance = value
             HapticManager.shared.success()
             dismiss()

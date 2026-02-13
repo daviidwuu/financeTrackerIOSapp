@@ -14,8 +14,7 @@ struct SpendingCard: View {
                         .fill(color.opacity(0.1))
                         .frame(width: 32, height: 32)
                     Image(systemName: icon)
-                        .font(.caption)
-                        .fontWeight(.bold)
+                        .font(.system(size: 16, weight: .semibold)) // Larger and cleaner
                         .foregroundColor(color)
                 }
                 Spacer()
@@ -27,7 +26,7 @@ struct SpendingCard: View {
                     .foregroundColor(.secondary)
                     .fontWeight(.medium)
                 
-                Text("$\(String(format: "%.2f", amount))")
+                Text(String(format: "$%.2f", amount))
                     .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
             }
@@ -35,6 +34,6 @@ struct SpendingCard: View {
         .padding(16)
         .frame(maxWidth: .infinity)
         .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(16)
+        .cornerRadius(AppRadius.medium) // Use AppRadius
     }
 }

@@ -22,8 +22,7 @@ class FirebaseManager: ObservableObject {
         
         // Configure Firestore with persistence enabled
         let settings = FirestoreSettings()
-        settings.isPersistenceEnabled = true
-        settings.cacheSizeBytes = FirestoreCacheSizeUnlimited
+        settings.cacheSettings = PersistentCacheSettings(sizeBytes: NSNumber(value: FirestoreCacheSizeUnlimited))
         
         let db = Firestore.firestore()
         db.settings = settings
@@ -156,7 +155,7 @@ class FirebaseManager: ObservableObject {
         do {
             let cachedDoc = try await db.collection("users").document(userId).getDocument(source: .cache)
             if let data = cachedDoc.data() {
-                await self.updateLocalUser(data: data)
+                self.updateLocalUser(data: data)
                 DebugLogger.log("Loaded user profile from cache")
             }
         } catch {
@@ -167,7 +166,7 @@ class FirebaseManager: ObservableObject {
         // 2. Fetch from server to ensure fresh data
         let serverDoc = try await db.collection("users").document(userId).getDocument(source: .server)
         if let data = serverDoc.data() {
-            await self.updateLocalUser(data: data)
+            self.updateLocalUser(data: data)
             DebugLogger.log("Refreshed user profile from server")
         }
     }

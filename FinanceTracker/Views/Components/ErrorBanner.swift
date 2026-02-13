@@ -1,0 +1,95 @@
+import SwiftUI
+
+// MARK: - ErrorState
+
+/// Observable state for managing error banner display.
+/// Inject as @State in a parent view and pass to child views via environment or binding.
+@Observable
+class ErrorState {
+    var message: String?
+    private var dismissTask: Task<Void, Never>?
+    
+    func show(_ message: String, duration: TimeInterval = 3.0) {
+        dismissTask?.cancel()
+        self.message = message
+        HapticManager.shared.error()
+        dismissTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
+            if !Task.isCancelled {
+                withAnimation(.easeOut(duration: 0.3)) {
+                    self.message = nil
+                }
+            }
+        }
+    }
+    
+    func dismiss() {
+        dismissTask?.cancel()
+        withAnimation(.easeOut(duration: 0.3)) {
+            message = nil
+        }
+    }
+}
+
+// MARK: - ErrorBanner View
+
+struct ErrorBanner: View {
+    let message: String
+    let onDismiss: () -> Void
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.body)
+                .foregroundColor(.white)
+            
+            Text(message)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundColor(.white)
+                .lineLimit(2)
+            
+            Spacer()
+            
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white.opacity(0.8))
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.red.opacity(0.9))
+                .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+        )
+        .padding(.horizontal, AppSpacing.margin)
+    }
+}
+
+// MARK: - View Modifier
+
+struct ErrorBannerModifier: ViewModifier {
+    @Bindable var errorState: ErrorState
+    
+    func body(content: Content) -> some View {
+        content
+            .overlay(alignment: .top) {
+                if let message = errorState.message {
+                    ErrorBanner(message: message, onDismiss: { errorState.dismiss() })
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .padding(.top, 8)
+                        .zIndex(999)
+                }
+            }
+            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: errorState.message)
+    }
+}
+
+extension View {
+    func errorBanner(_ errorState: ErrorState) -> some View {
+        modifier(ErrorBannerModifier(errorState: errorState))
+    }
+}

@@ -33,7 +33,7 @@ struct FriendSearchView: View {
                 }
                 .padding()
                 .background(Color(UIColor.secondarySystemBackground))
-                .cornerRadius(10)
+                .cornerRadius(AppRadius.small) // Use AppRadius
                 .padding()
                 
                 // Results or Empty State
@@ -44,18 +44,19 @@ struct FriendSearchView: View {
                 } else if !searchResults.isEmpty {
                     List {
                         ForEach(searchResults) { user in
-                            HStack {
+                            HStack(spacing: AppSpacing.element) {
                                 ProfileAvatar(
                                     text: String(user.name.prefix(1)),
                                     color: Color.random(seed: user.name),
                                     size: 40
                                 )
                                 
-                                VStack(alignment: .leading) {
+                                VStack(alignment: .leading, spacing: 2) {
                                     Text(user.name)
                                         .font(.headline)
+                                        .foregroundColor(.primary)
                                     Text("@\(user.username)")
-                                        .font(.caption)
+                                        .font(.subheadline)
                                         .foregroundColor(.secondary)
                                 }
                                 
@@ -72,8 +73,11 @@ struct FriendSearchView: View {
                                         .background(Color.blue)
                                         .foregroundColor(.white)
                                         .clipShape(Capsule())
+                                        .shadow(color: Color.blue.opacity(0.3), radius: 4, x: 0, y: 2)
                                 }
+                                .buttonStyle(.plain) // Ensure row doesn't capture tap
                             }
+                            .padding(.vertical, 4)
                         }
                     }
                     .listStyle(.plain)

@@ -5,8 +5,7 @@ struct SplitRequestDetailView: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.dismiss) var dismiss
     
-    // Repositories
-    @StateObject private var socialRepo = SocialRepository()
+    @State private var errorState = ErrorState()
     
     // State
     @State private var relatedSplits: [FirestoreModels.SplitRequest] = []
@@ -72,6 +71,7 @@ struct SplitRequestDetailView: View {
                 .padding(.bottom, 40)
             }
         }
+        .errorBanner(errorState)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -84,14 +84,14 @@ struct SplitRequestDetailView: View {
         HapticManager.shared.medium()
         Task {
             do {
-                try await socialRepo.markSplitAsPaid(
+                try await SocialTransactionManager.shared.markSplitAsPaid(
                     request: request,
                     currentUserId: appState.currentUserId,
                     currentUserName: appState.userName
                 )
-                dismiss() // Return to group view
+                dismiss()
             } catch {
-                print("Error marking as paid: \(error)")
+                errorState.show("Failed to mark as paid")
                 HapticManager.shared.error()
             }
         }
@@ -134,6 +134,7 @@ struct StatusBadge: View {
         case .paid: return .green
         case .blocked_by_group: return .gray
         case .blocked_by_friendship: return .gray
+        case .unknown: return .gray
         }
     }
     
@@ -160,14 +161,10 @@ extension FirestoreModels.SplitRequest {
     
     var groupName: String? {
         // This is a bit of a hack since SplitRequest doesn't store groupName directly usually,
-        // but we might want to fetch it or pass it in. 
+        // but we might want to fetch it or pass it in.
         // For now, return nil or rely on parent view passing it if we change init.
         // Assuming we might add it to the model later or look it up.
-        return nil 
+        return nil
     }
     
-    var toName: String? {
-        // Should query user or friend repo, but for now specific ID check or passed name
-        return nil // Placeholder
-    }
 }

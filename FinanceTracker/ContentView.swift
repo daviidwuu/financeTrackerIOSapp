@@ -144,7 +144,7 @@ struct ContentView: View {
         }
     }
     
-    private func addTransaction(_ transaction: Transaction) {
+    private func addTransaction(_ transaction: TransactionFormData) {
         Task {
             do {
                 // Convert UI Transaction to Firestore Transaction

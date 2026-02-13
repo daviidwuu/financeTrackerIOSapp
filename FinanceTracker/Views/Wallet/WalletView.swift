@@ -12,6 +12,9 @@ struct WalletView: View {
     @State private var showAddSavingGoal = false
     @State private var showAddRecurring = false
     @State private var showAddBudget = false
+    @State private var errorState = ErrorState()
+    @State private var undoState = UndoState()
+    @State private var hiddenItemIds: Set<String> = []
     
     @State private var goalToEdit: FirestoreModels.SavingGoal?
     @State private var recurringToEdit: FirestoreModels.RecurringTransaction?
@@ -43,7 +46,17 @@ struct WalletView: View {
     }
     
     var totalBudget: Double {
-        budgetRepo.budgets.reduce(0) { $0 + $1.totalAmount }
+        // Exclude income budgets and normalize to monthly
+        budgetRepo.budgets.filter { $0.type != "income" }.reduce(0) { sum, budget in
+            var monthlyAmount = budget.totalAmount
+            switch budget.frequency {
+            case "Weekly": monthlyAmount = budget.totalAmount * 52.0 / 12.0
+            case "Bi-Weekly": monthlyAmount = budget.totalAmount * 26.0 / 12.0
+            case "Yearly": monthlyAmount = budget.totalAmount / 12.0
+            default: break
+            }
+            return sum + monthlyAmount
+        }
     }
     
     var incomeLeft: Double {
@@ -424,6 +437,8 @@ struct WalletView: View {
                 }
             }
         }
+        .errorBanner(errorState)
+        .undoableBanner(undoState)
     }
     
     private func handleWalletAction(_ action: String) {
@@ -527,12 +542,13 @@ struct WalletView: View {
             let goal = goals[i]
             let needed = goal.targetAmount
             let allocation = min(remainingPool, needed)
+            let clamped = max(0, min(allocation, goal.targetAmount - goal.currentAmount))
             
             if i == index {
-                return allocation
+                return clamped
             }
             
-            remainingPool -= allocation
+            remainingPool -= clamped
             if remainingPool <= 0 { break }
         }
         return 0
@@ -540,22 +556,71 @@ struct WalletView: View {
     
     private func deleteSavingGoal(_ goal: FirestoreModels.SavingGoal) {
         guard let id = goal.id else { return }
-        Task {
-            try? await savingGoalRepo.deleteSavingGoal(id: id)
-        }
+        hiddenItemIds.insert(id)
+        HapticManager.shared.heavy()
+        
+        undoState.schedule(
+            label: "Goal deleted",
+            onUndo: { [self] in
+                hiddenItemIds.remove(id)
+            },
+            onConfirm: { [self] in
+                hiddenItemIds.remove(id)
+                Task {
+                    do {
+                        try await savingGoalRepo.deleteSavingGoal(id: id)
+                    } catch {
+                        errorState.show("Failed to delete saving goal")
+                    }
+                }
+            }
+        )
     }
     
     private func deleteRecurringTransaction(_ transaction: FirestoreModels.RecurringTransaction) {
         guard let id = transaction.id else { return }
-        Task {
-            try? await recurringRepo.deleteRecurringTransaction(id: id)
-        }
+        hiddenItemIds.insert(id)
+        HapticManager.shared.heavy()
+        
+        undoState.schedule(
+            label: "Recurring item deleted",
+            onUndo: { [self] in
+                hiddenItemIds.remove(id)
+            },
+            onConfirm: { [self] in
+                hiddenItemIds.remove(id)
+                Task {
+                    do {
+                        try await recurringRepo.deleteRecurringTransaction(id: id)
+                    } catch {
+                        errorState.show("Failed to delete recurring transaction")
+                    }
+                }
+            }
+        )
     }
     
     private func deleteBudget(_ budget: FirestoreModels.CategoryBudget) {
-        Task {
-            try? await budgetRepo.deleteBudget(budget)
-        }
+        let id = budget.id ?? UUID().uuidString
+        hiddenItemIds.insert(id)
+        HapticManager.shared.heavy()
+        
+        undoState.schedule(
+            label: "Budget deleted",
+            onUndo: { [self] in
+                hiddenItemIds.remove(id)
+            },
+            onConfirm: { [self] in
+                hiddenItemIds.remove(id)
+                Task {
+                    do {
+                        try await budgetRepo.deleteBudget(budget)
+                    } catch {
+                        errorState.show("Failed to delete budget")
+                    }
+                }
+            }
+        )
     }
     
     private func moveSavingGoals(from source: IndexSet, to destination: Int) {
@@ -572,23 +637,27 @@ struct WalletView: View {
     }
     
     
-    private func addSavingGoal(_ goal: SavingGoal) {
+    private func addSavingGoal(_ goal: SavingGoalFormData) {
         Task {
-            let firestoreGoal = FirestoreModels.SavingGoal(
-                name: goal.name,
-                targetAmount: goal.targetAmount,
-                currentAmount: goal.currentAmount,
-                targetDate: goal.targetDate,
-                icon: goal.icon,
-                colorHex: goal.color.toHex() ?? "#000000",
-                userId: appState.currentUserId,
-                createdAt: Date()
-            )
-            try? await savingGoalRepo.addSavingGoal(firestoreGoal)
+            do {
+                let firestoreGoal = FirestoreModels.SavingGoal(
+                    name: goal.name,
+                    targetAmount: goal.targetAmount,
+                    currentAmount: goal.currentAmount,
+                    targetDate: goal.targetDate,
+                    icon: goal.icon,
+                    colorHex: goal.color.toHex() ?? "#000000",
+                    userId: appState.currentUserId,
+                    createdAt: Date()
+                )
+                try await savingGoalRepo.addSavingGoal(firestoreGoal)
+            } catch {
+                errorState.show("Failed to save goal")
+            }
         }
     }
     
-    private func updateSavingGoal(_ entity: FirestoreModels.SavingGoal, with goal: SavingGoal) {
+    private func updateSavingGoal(_ entity: FirestoreModels.SavingGoal, with goal: SavingGoalFormData) {
         var updatedGoal = entity
         updatedGoal.name = goal.name
         updatedGoal.targetAmount = goal.targetAmount
@@ -598,29 +667,37 @@ struct WalletView: View {
         updatedGoal.colorHex = goal.color.toHex() ?? "#000000"
         
         Task {
-            try? await savingGoalRepo.updateSavingGoal(updatedGoal)
+            do {
+                try await savingGoalRepo.updateSavingGoal(updatedGoal)
+            } catch {
+                errorState.show("Failed to update goal")
+            }
         }
     }
     
-    private func addRecurringTransaction(_ transaction: RecurringTransaction) {
+    private func addRecurringTransaction(_ transaction: RecurringTransactionFormData) {
         Task {
-            let firestoreTransaction = FirestoreModels.RecurringTransaction(
-                name: transaction.name,
-                amount: transaction.amount,
-                frequency: transaction.frequency,
-                startDate: transaction.startDate,
-                icon: transaction.icon,
-                colorHex: transaction.color.toHex() ?? "#000000",
-                note: transaction.notes,
-                type: transaction.type,
-                userId: appState.currentUserId,
-                createdAt: Date()
-            )
-            try? await recurringRepo.addRecurringTransaction(firestoreTransaction)
+            do {
+                let firestoreTransaction = FirestoreModels.RecurringTransaction(
+                    name: transaction.name,
+                    amount: transaction.amount,
+                    frequency: transaction.frequency,
+                    startDate: transaction.startDate,
+                    icon: transaction.icon,
+                    colorHex: transaction.color.toHex() ?? "#000000",
+                    note: transaction.notes,
+                    type: transaction.type,
+                    userId: appState.currentUserId,
+                    createdAt: Date()
+                )
+                try await recurringRepo.addRecurringTransaction(firestoreTransaction)
+            } catch {
+                errorState.show("Failed to save recurring transaction")
+            }
         }
     }
     
-    private func updateRecurringTransaction(_ entity: FirestoreModels.RecurringTransaction, with transaction: RecurringTransaction) {
+    private func updateRecurringTransaction(_ entity: FirestoreModels.RecurringTransaction, with transaction: RecurringTransactionFormData) {
         var updatedTransaction = entity
         updatedTransaction.name = transaction.name
         updatedTransaction.amount = transaction.amount
@@ -632,41 +709,53 @@ struct WalletView: View {
         updatedTransaction.type = transaction.type
         
         Task {
-            try? await recurringRepo.updateRecurringTransaction(updatedTransaction)
+            do {
+                try await recurringRepo.updateRecurringTransaction(updatedTransaction)
+            } catch {
+                errorState.show("Failed to update recurring transaction")
+            }
         }
     }
     
-    private func addBudget(_ budget: Budget) {
+    private func addBudget(_ budget: BudgetFormData) {
         let calendar = Calendar.current
         let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
         
         Task {
-            let firestoreBudget = FirestoreModels.CategoryBudget(
-                category: budget.category,
-                totalAmount: budget.totalAmount,
-                icon: budget.icon,
-                colorHex: budget.color.toHex() ?? "#000000",
-                frequency: budget.frequency,
-                type: budget.type, // Pass type
-                userId: appState.currentUserId,
-                monthStartDate: startOfMonth,
-                createdAt: Date()
-            )
-            try? await budgetRepo.addBudget(firestoreBudget)
+            do {
+                let firestoreBudget = FirestoreModels.CategoryBudget(
+                    category: budget.category,
+                    totalAmount: budget.totalAmount,
+                    icon: budget.icon,
+                    colorHex: budget.color.toHex() ?? "#000000",
+                    frequency: budget.frequency,
+                    type: budget.type,
+                    userId: appState.currentUserId,
+                    monthStartDate: startOfMonth,
+                    createdAt: Date()
+                )
+                try await budgetRepo.addBudget(firestoreBudget)
+            } catch {
+                errorState.show("Failed to save budget")
+            }
         }
     }
     
-    private func updateBudget(_ entity: FirestoreModels.CategoryBudget, with budget: Budget) {
+    private func updateBudget(_ entity: FirestoreModels.CategoryBudget, with budget: BudgetFormData) {
         var updatedBudget = entity
         updatedBudget.category = budget.category
         updatedBudget.totalAmount = budget.totalAmount
         updatedBudget.icon = budget.icon
         updatedBudget.colorHex = budget.color.toHex() ?? "#000000"
         updatedBudget.frequency = budget.frequency
-        updatedBudget.type = budget.type // Pass type
+        updatedBudget.type = budget.type
             
         Task {
-            try? await budgetRepo.updateBudget(updatedBudget)
+            do {
+                try await budgetRepo.updateBudget(updatedBudget)
+            } catch {
+                errorState.show("Failed to update budget")
+            }
         }
     }
     

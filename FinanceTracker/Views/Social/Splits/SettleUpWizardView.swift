@@ -18,6 +18,7 @@ struct SettleUpWizardView: View {
     
     // Step 2: Amount
     @State private var amount: String = ""
+    @State private var isSubmitting = false
     
     @FocusState private var isAmountFocused: Bool
     
@@ -294,7 +295,12 @@ struct SettleUpWizardView: View {
                     submit()
                 }
             }) {
-                Text(currentStep == 1 ? "Next" : "Record Payment")
+                if isSubmitting {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                } else {
+                    Text(currentStep == 1 ? "Next" : "Record Payment")
+                }
             }
             .buttonStyle(PrimaryButtonStyle())
             .disabled(!isValid)
@@ -310,7 +316,7 @@ struct SettleUpWizardView: View {
         if currentStep == 1 {
             return !payerId.isEmpty && !receiverId.isEmpty && payerId != receiverId
         } else {
-            return (Double(amount) ?? 0) > 0
+            return CurrencyInput.isValid(amount)
         }
     }
     
@@ -324,7 +330,8 @@ struct SettleUpWizardView: View {
     }
     
     private func submit() {
-        guard let amountVal = Double(amount) else { return }
+        guard let amountVal = CurrencyInput.parse(amount) else { return }
+        isSubmitting = true
         
         Task {
             do {
@@ -333,13 +340,16 @@ struct SettleUpWizardView: View {
                     receiverId: receiverId,
                     groupId: group?.id,
                     amount: amountVal,
+                    payerName: getName(for: payerId),
                     method: "Payment"
                 )
                 HapticManager.shared.success()
+                isSubmitting = false
                 dismiss()
             } catch {
                 print("Failed to settle up: \(error)")
                 HapticManager.shared.error()
+                isSubmitting = false
             }
         }
     }

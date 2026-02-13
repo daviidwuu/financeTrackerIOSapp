@@ -40,6 +40,9 @@ struct GroupCreationWizardView: View {
     @State private var selectedColor = "#007AFF" // Default Blue
     @State private var selectedIcon = "person.3.fill"
     
+    @State private var showError = false
+    @State private var errorMessage = ""
+    
     let availableColors = [
         "#007AFF", "#34C759", "#FF9500", "#FF2D55", "#AF52DE", "#5856D6", "#FFCC00", "#5AC8FA"
     ]
@@ -142,6 +145,11 @@ struct GroupCreationWizardView: View {
                 createGuest(name: name)
             }
             .presentationDetents([.fraction(0.4)])
+        }
+        .alert("Error", isPresented: $showError) {
+             Button("OK", role: .cancel) { }
+        } message: {
+             Text(errorMessage)
         }
         }
     
@@ -596,8 +604,11 @@ struct GroupCreationWizardView: View {
                     }
                 }
             } catch {
-                print("Error adding friend: \(error)")
-                HapticManager.shared.error()
+                await MainActor.run {
+                    errorMessage = "Failed to add friend: \(error.localizedDescription)"
+                    showError = true
+                    HapticManager.shared.error()
+                }
             }
         }
     }
@@ -646,8 +657,11 @@ struct GroupCreationWizardView: View {
                     }
                 }
             } catch {
-                print("Error saving group: \(error)")
-                HapticManager.shared.error()
+                await MainActor.run {
+                    errorMessage = "Failed to save group: \(error.localizedDescription)"
+                    showError = true
+                    HapticManager.shared.error()
+                }
             }
         }
     }

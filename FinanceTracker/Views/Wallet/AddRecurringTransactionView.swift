@@ -6,7 +6,7 @@ struct AddRecurringTransactionView: View {
     @EnvironmentObject var appState: AppState
     
     var recurringToEdit: FirestoreModels.RecurringTransaction?
-    var onSave: ((RecurringTransaction) -> Void)?
+    var onSave: ((RecurringTransactionFormData) -> Void)?
     
     // Repositories moved to AppState
     var budgetRepo: BudgetRepository { appState.budgetRepo }
@@ -135,11 +135,9 @@ struct AddRecurringTransactionView: View {
     }
     
     private func saveRecurring() {
-        // Handle both dot and comma
-        let normalizedAmount = amount.replacingOccurrences(of: ",", with: ".")
-        guard let amountValue = Double(normalizedAmount), let category = selectedCategory else { return }
+        guard let amountValue = CurrencyInput.parse(amount), let category = selectedCategory else { return }
         
-        let newRecurring = RecurringTransaction(
+        let newRecurring = RecurringTransactionFormData(
             name: category.category,
             amount: amountValue,
             icon: category.icon,
@@ -163,10 +161,7 @@ struct AddRecurringTransactionView: View {
     private var isStepValid: Bool {
         switch currentStep {
         case 1:
-            if let value = Double(amount), value > 0 {
-                return true
-            }
-            return false
+            return CurrencyInput.isValid(amount)
         case 2:
             return selectedCategory != nil
         case 3:

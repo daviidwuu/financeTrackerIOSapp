@@ -12,7 +12,7 @@ struct TransactionDetailView: View {
     @EnvironmentObject var appState: AppState
     
     // Callback for saving changes
-    var onSave: ((FirestoreModels.Transaction, Transaction) -> Void)?
+    var onSave: ((FirestoreModels.Transaction, TransactionFormData) -> Void)?
     
     // Repositories
     // Repositories moved to AppState
@@ -25,7 +25,10 @@ struct TransactionDetailView: View {
     @State private var showErrorAlert = false
     @State private var errorMessage = ""
     
-    init(transaction: FirestoreModels.Transaction, onSave: ((FirestoreModels.Transaction, Transaction) -> Void)? = nil) {
+    // Cached groupId for split re-editing (Fix #2)
+    @State private var cachedGroupId: String? = nil
+    
+    init(transaction: FirestoreModels.Transaction, onSave: ((FirestoreModels.Transaction, TransactionFormData) -> Void)? = nil) {
         _transaction = State(initialValue: transaction)
         self.onSave = onSave
     }
@@ -291,8 +294,24 @@ struct TransactionDetailView: View {
             }
         }
         .onAppear {
-            // Repos are handled in AppState
-            // Assuming transaction.userId == appState.currentUserId
+            // Refresh data to ensure sync when returning from other views
+            Task {
+                if let id = transaction.id, let fresh = try? await transactionRepo.fetchTransaction(id: id) {
+                    await MainActor.run {
+                        self.transaction = fresh
+                    }
+                }
+                
+                // Look up groupId from existing SplitRequest for re-editing context
+                if cachedGroupId == nil,
+                   let firstRequestId = transaction.splits?.compactMap({ $0.requestId }).first {
+                    let reqDoc = try? await Firestore.firestore().collection("split_requests").document(firstRequestId).getDocument()
+                    let groupId = reqDoc?.get("groupId") as? String
+                    await MainActor.run {
+                        self.cachedGroupId = groupId
+                    }
+                }
+            }
         }
         .sheet(isPresented: $showEditSheet) {
             AddTransactionView(transactionToEdit: transaction, onSave: { updatedTransaction in
@@ -300,7 +319,7 @@ struct TransactionDetailView: View {
             })
         }
         .fullScreenCover(isPresented: $showSplitSheet) {
-            SplitConfigurationView(transactionAmount: abs(transaction.amount), existingSplits: transaction.splits ?? []) { newSplits, groupId in
+            SplitConfigurationView(transactionAmount: abs(transaction.amount), existingSplits: transaction.splits ?? [], initialGroupId: cachedGroupId) { newSplits, groupId in
                 updateSplits(newSplits, groupId: groupId)
             }
         }
@@ -318,8 +337,9 @@ struct TransactionDetailView: View {
     
     // Logic remains same ...
     
-    private func handleEdit(_ updatedTransaction: Transaction) {
+    private func handleEdit(_ updatedTransaction: TransactionFormData) {
         let amount = Double(updatedTransaction.amount) ?? 0.0
+        let oldAmount = transaction.amount
         var newModel = transaction
         newModel.title = updatedTransaction.title
         newModel.subtitle = updatedTransaction.subtitle
@@ -332,6 +352,49 @@ struct TransactionDetailView: View {
         newModel.latitude = updatedTransaction.latitude
         newModel.longitude = updatedTransaction.longitude
         newModel.locationName = updatedTransaction.locationName
+        
+        // Auto-recalculate splits proportionally if amount changed
+        if let splits = newModel.splits, !splits.isEmpty, abs(abs(amount) - abs(oldAmount)) > 0.01 {
+            let oldTotal = splits.reduce(0.0) { $0 + $1.amount }
+            if oldTotal > 0 {
+                let ratio = abs(amount) / (abs(oldAmount))
+                var updatedSplits = splits
+                for i in updatedSplits.indices {
+                    updatedSplits[i].amount = (updatedSplits[i].amount * ratio * 100).rounded() / 100
+                }
+                newModel.splits = updatedSplits
+                
+                // Sync updated splits with Firestore (SplitRequests + GroupTransaction)
+                self.transaction = newModel
+                Task {
+                    do {
+                        // Derive groupId from existing SplitRequest (if any)
+                        var groupId: String? = nil
+                        if let firstRequestId = splits.compactMap({ $0.requestId }).first {
+                            let reqDoc = try? await Firestore.firestore().collection("split_requests").document(firstRequestId).getDocument()
+                            groupId = reqDoc?.get("groupId") as? String
+                        }
+                        
+                        let finalTx = try await SocialTransactionManager.shared.createSocialTransaction(
+                            transaction: newModel,
+                            payerUid: appState.currentUserId,
+                            payerName: !appState.userName.isEmpty ? appState.userName : (UserDefaults.standard.string(forKey: "user_name") ?? "Friend"),
+                            groupId: groupId,
+                            friendCache: friendRepo.friends,
+                            groupCache: appState.groupRepo.groups
+                        )
+                        await MainActor.run {
+                            self.transaction = finalTx
+                        }
+                    } catch {
+                        print("DEBUG: Error syncing recalculated splits: \(error)")
+                    }
+                }
+                onSave?(newModel, updatedTransaction)
+                return
+            }
+        }
+        
         self.transaction = newModel
         onSave?(transaction, updatedTransaction)
     }
@@ -339,10 +402,16 @@ struct TransactionDetailView: View {
     private func updateSplits(_ newSplits: [FirestoreModels.Split], groupId: String?) {
         var updatedTransaction = transaction
         updatedTransaction.splits = newSplits
+        // Optimistic update
         self.transaction = updatedTransaction
+        // Cache groupId for future re-edits
+        if let groupId = groupId {
+            self.cachedGroupId = groupId
+        }
+        
         Task {
             do {
-                try await SocialTransactionManager.shared.createSocialTransaction(
+                let finalTx = try await SocialTransactionManager.shared.createSocialTransaction(
                     transaction: updatedTransaction,
                     payerUid: appState.currentUserId,
                     payerName: !appState.userName.isEmpty ? appState.userName : (UserDefaults.standard.string(forKey: "user_name") ?? "Friend"),
@@ -350,6 +419,10 @@ struct TransactionDetailView: View {
                     friendCache: friendRepo.friends,
                     groupCache: appState.groupRepo.groups
                 )
+                // Update with server-authoritative version (contains requestIds)
+                await MainActor.run {
+                    self.transaction = finalTx
+                }
             } catch {
                 await MainActor.run {
                     self.errorMessage = "Failed to save splits: \(error.localizedDescription)"
@@ -360,57 +433,87 @@ struct TransactionDetailView: View {
     }
     
     private func toggleSplitPayment(_ split: FirestoreModels.Split) {
-        guard var splits = transaction.splits,
-              let index = splits.firstIndex(where: { $0.id == split.id }) else { return }
-        var updatedSplit = split
-        updatedSplit.isPaid.toggle()
+        var targetUid: String?
+        if let fid = split.friendId {
+             targetUid = fid
+        } else if let gid = split.guestId {
+             targetUid = gid
+        }
+        
+        print("DEBUG: Toggling split. GuestID: \(split.guestId ?? "nil"), FriendID: \(split.friendId ?? "nil"), TargetUID: \(targetUid ?? "nil")")
+        
+        guard let friendId = targetUid else {
+            print("DEBUG: targetUid is nil, aborting")
+            return
+        }
+        guard let transactionId = transaction.id else { return }
+        
+        // Optimistic UI toggle
+        if let index = transaction.splits?.firstIndex(where: { $0.id == split.id }) {
+            transaction.splits?[index].isPaid.toggle()
+        }
+        
         Task {
-            // 1. Update Personal Transaction (Reimbursement)
-            if updatedSplit.isPaid {
-                updatedSplit.paidDate = Date()
+            do {
+                // 1. Fetch Request
+                var request: FirestoreModels.SplitRequest?
                 let db = Firestore.firestore()
-                let ref = db.collection("users").document(transaction.userId).collection("transactions").document()
-                let description = transaction.note?.isEmpty == false ? transaction.note! : transaction.title
-                let incomeTransaction = FirestoreModels.Transaction(
-                    id: ref.documentID,
-                    title: "Split Reimbursement",
-                    subtitle: transaction.subtitle ?? "Income",
-                    amount: split.amount,
-                    date: Date(),
-                    icon: transaction.icon,
-                    colorHex: "#34C759",
-                    note: "Split Received: \(split.name) for \(description)",
-                    type: "income",
-                    source: "splitwise",
-                    userId: transaction.userId,
-                    createdAt: Date()
-                )
-                try? ref.setData(from: incomeTransaction)
-                updatedSplit.incomeTransactionId = ref.documentID
                 
-                // 2. Update Social SplitRequest to .paid (Resolved)
-                if let requestId = split.requestId {
-                    try? await requestRepo.updateRequestStatus(userId: transaction.userId, requestId: requestId, status: .paid)
+                if let reqId = split.requestId {
+                    let doc = try await db.collection("split_requests").document(reqId).getDocument()
+                    request = try? doc.data(as: FirestoreModels.SplitRequest.self)
                 }
-            } else {
-                if let incomeId = split.incomeTransactionId {
-                    try? await transactionRepo.deleteTransaction(id: incomeId)
-                }
-                updatedSplit.incomeTransactionId = nil
-                updatedSplit.paidDate = nil
                 
-                // 2. Revert Social SplitRequest to .accepted (Active)
-                if let requestId = split.requestId {
-                    // We default to .accepted as it was likely already active. 
-                    // Or we could check if it was .pending? Assuming .accepted for simplicity of "Undo Pay".
-                    try? await requestRepo.updateRequestStatus(userId: transaction.userId, requestId: requestId, status: .accepted)
+                // Fallback if no requestId or not found
+                if request == nil {
+                    let snapshot = try await db.collection("split_requests")
+                        .whereField("transactionId", isEqualTo: transactionId)
+                        .whereField("toUid", isEqualTo: friendId)
+                        .getDocuments()
+                    request = try? snapshot.documents.first?.data(as: FirestoreModels.SplitRequest.self)
+                }
+                
+                guard request != nil else {
+                    print("DEBUGGING: Could not find split request for split: \(split.id). TransactionID: \(transactionId), ToUid: \(friendId)")
+                    // Revert UI if failed
+                    await MainActor.run {
+                        if let index = transaction.splits?.firstIndex(where: { $0.id == split.id }) {
+                            transaction.splits?[index].isPaid.toggle()
+                        }
+                    }
+                    return
+                }
+                
+                // 2. Toggle using Manager
+                // Fetch FRESH split status from the request to be sure
+                // Actually, manager takes the request object. 
+                // We should check the REQUEST status.
+                let currentStatus = request!.status
+                
+                if currentStatus == .pending || currentStatus == .accepted || currentStatus == .blocked_by_group {
+                    // Mark as Paid
+                     try await SocialTransactionManager.shared.markSplitAsPaid(request: request!, currentUserId: appState.currentUserId, currentUserName: appState.userName)
+                } else if currentStatus == .paid {
+                    // Unmark
+                     try await SocialTransactionManager.shared.unmarkSplitAsPaid(request: request!, currentUserId: appState.currentUserId)
+                }
+                
+                // 3. Refresh Transaction to ensure sync (incomeTransactionId etc)
+                let freshTx = try await transactionRepo.fetchTransaction(id: transactionId)
+                 if let fresh = freshTx {
+                     await MainActor.run {
+                         self.transaction = fresh
+                     }
+                 }
+            } catch {
+                print("Error toggling split payment: \(error)")
+                // Revert UI
+                await MainActor.run {
+                    if let index = transaction.splits?.firstIndex(where: { $0.id == split.id }) {
+                        transaction.splits?[index].isPaid.toggle()
+                    }
                 }
             }
-            splits[index] = updatedSplit
-            var updatedTransaction = transaction
-            updatedTransaction.splits = splits
-            await MainActor.run { self.transaction = updatedTransaction }
-            try? await transactionRepo.updateTransaction(updatedTransaction)
         }
     }
 }

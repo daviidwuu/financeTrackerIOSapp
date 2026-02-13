@@ -88,7 +88,7 @@ struct SettleUpView: View {
     }
     
     func settleUp() {
-        guard let amountDouble = Double(amount), !selectedReceiverId.isEmpty else { return }
+        guard let amountDouble = CurrencyInput.parse(amount), !selectedReceiverId.isEmpty else { return }
         
         Task {
             do {

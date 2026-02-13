@@ -41,7 +41,7 @@ struct SplitConfigurationView: View {
     // Search
     @State private var searchText = ""
     
-    init(transactionAmount: Double, existingSplits: [FirestoreModels.Split], onSave: @escaping ([FirestoreModels.Split], String?) -> Void) {
+    init(transactionAmount: Double, existingSplits: [FirestoreModels.Split], initialGroupId: String? = nil, onSave: @escaping ([FirestoreModels.Split], String?) -> Void) {
         self.transactionAmount = transactionAmount
         self._splits = State(initialValue: existingSplits)
         self.onSave = onSave
@@ -53,6 +53,7 @@ struct SplitConfigurationView: View {
             }
         }
         self._selectedFriendIds = State(initialValue: initialSelection)
+        self._selectedGroupId = State(initialValue: initialGroupId)
     }
     
     var body: some View {

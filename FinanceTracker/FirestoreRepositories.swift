@@ -42,6 +42,8 @@ class TransactionRepository: ObservableObject {
     func stopListening() {
         listener?.remove()
         userId = nil
+        transactions = []
+        isLoading = true
     }
     
     /// Add a new transaction
@@ -96,6 +98,13 @@ class TransactionRepository: ObservableObject {
     func deleteTransaction(id: String) async throws {
         guard let userId = userId else { return }
         try await db.collection("users").document(userId).collection("transactions").document(id).delete()
+    }
+    
+    /// Fetch a single transaction by ID
+    func fetchTransaction(id: String) async throws -> FirestoreModels.Transaction? {
+        guard let userId = userId else { return nil }
+        let doc = try await db.collection("users").document(userId).collection("transactions").document(id).getDocument()
+        return try? doc.data(as: FirestoreModels.Transaction.self)
     }
     
     private func updateWidgetData(transactions: [FirestoreModels.Transaction]) {
@@ -210,6 +219,7 @@ class BudgetRepository: ObservableObject {
     func stopListening() {
         listener?.remove()
         userId = nil
+        budgets = []
     }
     
     func addBudget(_ budget: FirestoreModels.CategoryBudget) async throws {
@@ -379,6 +389,7 @@ class SavingGoalRepository: ObservableObject {
     func stopListening() {
         listener?.remove()
         userId = nil
+        savingGoals = []
     }
     
     func addSavingGoal(_ goal: FirestoreModels.SavingGoal) async throws {
@@ -486,6 +497,7 @@ class RecurringTransactionRepository: ObservableObject {
     func stopListening() {
         listener?.remove()
         userId = nil
+        recurringTransactions = []
     }
     
     func addRecurringTransaction(_ transaction: FirestoreModels.RecurringTransaction) async throws {

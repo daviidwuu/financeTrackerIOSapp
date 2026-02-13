@@ -191,7 +191,7 @@ struct CalendarView: View {
     func dailyBudget() -> Double {
         let days = Calendar.current.range(of: .day, in: .month, for: currentDate)?.count ?? 30
         // Use totalBudget if provided, otherwise fallback to monthlyIncome (legacy)
-        let baseAmount = totalBudget > 0 ? totalBudget : 5000.0 
+        let baseAmount = totalBudget > 0 ? totalBudget : monthlyIncome
         return baseAmount / Double(days)
     }
     
@@ -297,7 +297,6 @@ struct CalendarView: View {
     }
     
     // Check if can navigate to previous month based on signup date
-    // Check if can navigate to previous month based on signup date
     func canGoToPreviousMonth() -> Bool {
         let targetSignupDate: Date
         
@@ -314,7 +313,6 @@ struct CalendarView: View {
         return currentMonth > signupMonth
     }
     
-    // Check if date is before user signup
     // Check if date is before user signup
     func isDateBeforeSignup(_ date: Date) -> Bool {
         let calendar = Calendar.current

@@ -1,6 +1,11 @@
 import SwiftUI
 
-struct Transaction: Identifiable {
+// MARK: - Form Data Transfer Objects
+// These types are used exclusively as intermediary DTOs between Add/Edit sheets
+// and the calling views. They are NOT persisted — see FirestoreModels.swift for
+// the Codable Firestore types.
+
+struct TransactionFormData: Identifiable {
     let id = UUID()
     var title: String
     var subtitle: String
@@ -22,7 +27,7 @@ struct Transaction: Identifiable {
     var locationName: String?
 }
 
-struct SavingGoal: Identifiable {
+struct SavingGoalFormData: Identifiable {
     let id = UUID()
     var name: String
     var currentAmount: Double
@@ -32,7 +37,7 @@ struct SavingGoal: Identifiable {
     var targetDate: Date = Date()
 }
 
-struct RecurringTransaction: Identifiable {
+struct RecurringTransactionFormData: Identifiable {
     let id = UUID()
     var name: String
     var amount: Double
@@ -44,7 +49,7 @@ struct RecurringTransaction: Identifiable {
     var type: String = "expense"
 }
 
-struct Budget: Identifiable {
+struct BudgetFormData: Identifiable {
     let id = UUID()
     var category: String
     var remainingAmount: Double

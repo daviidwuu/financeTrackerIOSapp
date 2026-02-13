@@ -78,6 +78,7 @@ struct FinanceTrackerApp: App {
             }
         }
         .onChange(of: appState.isUserLoggedIn) { _, isLoggedIn in
+                guard isLoggedIn else { return }
                 NotificationManager.shared.syncTokenWithServer()
                 MigrationManager.shared.checkForMigrations()
             }

@@ -9,6 +9,7 @@ struct SocialDashboardView: View {
     
     @State private var searchText = ""
     @State private var selectedSegment = 0 // 0: Groups, 1: Friends
+    @State private var errorState = ErrorState()
     @State private var showingAddSheet = false
     
     var body: some View {
@@ -78,10 +79,14 @@ struct SocialDashboardView: View {
                 }
             }
         }
+        .errorBanner(errorState)
         .onAppear {
             if !appState.currentUserId.isEmpty {
                  guestRepo.startListening(userId: appState.currentUserId)
             }
+        }
+        .onDisappear {
+            guestRepo.stopListening()
         }
     }
     
@@ -93,7 +98,7 @@ struct SocialDashboardView: View {
                     HapticManager.shared.success()
                 }
             } catch {
-                print("Error creating guest: \(error)")
+                errorState.show("Failed to create guest")
                 HapticManager.shared.error()
             }
         }

@@ -1,4 +1,5 @@
 import SwiftUI
+import FirebaseFirestore
 
 struct AllTransactionsView: View {
     @Environment(\.dismiss) var dismiss
@@ -18,6 +19,9 @@ struct AllTransactionsView: View {
     
     @State private var selectedTransaction: FirestoreModels.Transaction?
     @State private var transactionToEdit: FirestoreModels.Transaction?
+    @State private var errorState = ErrorState()
+    @State private var undoState = UndoState()
+    @State private var hiddenTransactionIds: Set<String> = []
     
     init(transactionRepo: TransactionRepository, budgetRepo: BudgetRepository, initialDate: Date? = nil) {
         self.transactionRepo = transactionRepo
@@ -27,6 +31,7 @@ struct AllTransactionsView: View {
     
     var filteredTransactions: [FirestoreModels.Transaction] {
         transactionRepo.transactions.filter { transaction in
+            guard !hiddenTransactionIds.contains(transaction.id ?? "") else { return false }
             // Month filter
             // Month filter (only if no specific date is selected)
             let matchesMonth: Bool
@@ -364,6 +369,8 @@ struct AllTransactionsView: View {
                     .fontWeight(.semibold)
                 }
             }
+            .errorBanner(errorState)
+            .undoableBanner(undoState)
             .sheet(item: $selectedTransaction) { transaction in
                 TransactionDetailView(transaction: transaction) { original, updated in
                     updateTransaction(original, with: updated)
@@ -386,10 +393,10 @@ struct AllTransactionsView: View {
         return formatter.string(from: date)
     }
     
-    private func updateTransaction(_ entity: FirestoreModels.Transaction, with transaction: Transaction) {
+    private func updateTransaction(_ entity: FirestoreModels.Transaction, with transaction: TransactionFormData) {
         Task {
             do {
-                let amount = Double(transaction.amount) ?? 0.0
+                let amount = CurrencyInput.parseOrZero(transaction.amount)
                 var updatedTransaction = entity
                 updatedTransaction.title = transaction.title
                 updatedTransaction.subtitle = transaction.subtitle
@@ -404,37 +411,60 @@ struct AllTransactionsView: View {
                 
                 // Sync Social Data if splits exist
                 if let splits = updatedTransaction.splits, !splits.isEmpty {
+                    // Derive groupId from existing SplitRequest (if any)
+                    var groupId: String? = nil
+                    if let firstRequestId = splits.compactMap({ $0.requestId }).first {
+                        let reqDoc = try? await Firestore.firestore().collection("split_requests").document(firstRequestId).getDocument()
+                        groupId = reqDoc?.get("groupId") as? String
+                    }
+                    
                     try await SocialTransactionManager.shared.createSocialTransaction(
                         transaction: updatedTransaction,
                         payerUid: appState.currentUserId,
                         payerName: appState.userName,
-                        groupId: nil, // Group ID not available in this context
+                        groupId: groupId,
                         friendCache: appState.friendRepo.friends,
                         groupCache: appState.groupRepo.groups
                     )
                 }
             } catch {
                 DebugLogger.log("Failed to update transaction: \(error)")
+                errorState.show("Failed to update transaction")
             }
         }
     }
     
     private func deleteTransaction(_ transaction: FirestoreModels.Transaction) {
         guard let id = transaction.id else { return }
-        Task {
-            do {
-                // Check if it has splits/social implications
-                if let splits = transaction.splits, !splits.isEmpty {
-                     // Use Social Manager for cascade delete
-                     try await SocialTransactionManager.shared.deleteSocialTransaction(transaction: transaction)
-                } else {
-                     // Standard Delete
-                     try await transactionRepo.deleteTransaction(id: id)
+        
+        // Soft-delete: hide immediately, defer actual delete
+        hiddenTransactionIds.insert(id)
+        
+        undoState.schedule(
+            label: "Transaction deleted",
+            onUndo: {
+                hiddenTransactionIds.remove(id)
+            },
+            onConfirm: {
+                Task {
+                    do {
+                        let _ = await SocialTransactionManager.shared.revertLinkedSplitIfNeeded(transaction: transaction, currentUserId: appState.currentUserId)
+                        
+                        if let splits = transaction.splits, !splits.isEmpty {
+                            try await SocialTransactionManager.shared.deleteSocialTransaction(transaction: transaction)
+                        } else {
+                            try await transactionRepo.deleteTransaction(id: id)
+                        }
+                    } catch {
+                        DebugLogger.log("Failed to delete transaction: \(error)")
+                        await MainActor.run {
+                            hiddenTransactionIds.remove(id)
+                            errorState.show("Failed to delete transaction")
+                        }
+                    }
                 }
-            } catch {
-                DebugLogger.log("Failed to delete transaction: \(error)")
             }
-        }
+        )
     }
     
     private func generateCSV() -> String {

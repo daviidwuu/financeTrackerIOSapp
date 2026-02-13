@@ -322,6 +322,10 @@ enum FirestoreModels {
         var date: Date
         var type: String // "expense" or "income" (reimbursement)
         var currencyCode: String?
+        var note: String? // ✅ NEW: Separated from title
+        var category: String? // ✅ NEW: For icon lookup
+        var icon: String? // ✅ NEW
+        var colorHex: String? // ✅ NEW
         var originalTransactionId: String? // Linked to the user's private transaction
         
         enum CodingKeys: String, CodingKey {
@@ -333,6 +337,8 @@ enum FirestoreModels {
             case date
             case type
             case currencyCode
+            case note
+            case category
             case originalTransactionId
         }
     }
@@ -345,6 +351,7 @@ enum FirestoreModels {
         var fromUid: String // ✅ RENAMED from requesterId
         var toUid: String // ✅ NEW: Explicit receiver
         var fromName: String? // Denormalized sender name
+        var toName: String? // ✅ NEW: Denormalized receiver name (Friend or Guest)
         var amount: Double
         var currency: String? // ✅ NEW: Multi-currency support
         var note: String?
@@ -360,6 +367,13 @@ enum FirestoreModels {
             case paid
             case blocked_by_group
             case blocked_by_friendship
+            case unknown
+            
+            init(from decoder: Decoder) throws {
+                let container = try decoder.singleValueContainer()
+                let rawValue = try container.decode(String.self)
+                self = RequestStatus(rawValue: rawValue) ?? .unknown
+            }
         }
         
         enum CodingKeys: String, CodingKey {
@@ -369,6 +383,7 @@ enum FirestoreModels {
             case fromUid
             case toUid
             case fromName
+            case toName
             case amount
             case currency
             case note
