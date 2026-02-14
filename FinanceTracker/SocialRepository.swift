@@ -13,13 +13,44 @@ class SocialRepository: ObservableObject {
     }
 
     @Published var friendBalances: [String: Double] = [:] // Real-time balance
+    @Published var groupBalances: [String: Double] = [:] // ✅ NEW: Real-time group balances
     @Published var groupTransactions: [FirestoreModels.GroupTransaction] = []
-    @Published var friendTransactions: [FirestoreModels.Transaction] = [] // Shared history
+    @Published var friendTransactions: [FirestoreModels.TransactionModel] = [] // Shared history
     @Published var leaderboardData: [LeaderboardEntry] = []
     @Published var isLoading = false
     
     private var cancellables = Set<AnyCancellable>()
     
+    // MARK: - Group Management
+    
+    // MARK: - Group Management
+    
+    func addMembersToGroup(groupId: String, newMembers: [(id: String, name: String)]) async throws {
+        let groupRef = db.collection("groups").document(groupId)
+        
+        let newIds = newMembers.map { $0.id }
+        
+        // Prepare the dictionary update
+        // Firestore doesn't support "merging" a map field easily with arrayUnion. 
+        // We have to use dot notation for nested fields like "memberNames.UID" = "Name", 
+        // OR read-modify-write if we want to be safe, BUT "memberNames.UID" works if memberNames exists!
+        // If memberNames doesn't exist, we might need to set it.
+        // Safer approach given we might add multiple: Use a WriteBatch if we were doing many writes, 
+        // but for a single document update, we can pass a map.
+        
+        // However, `updateData` with dot notation ` "memberNames.\(uid)" : name ` works for updating map entries.
+        
+        var updateData: [String: Any] = [
+            "members": FieldValue.arrayUnion(newIds)
+        ]
+        
+        for member in newMembers {
+            updateData["memberNames.\(member.id)"] = member.name
+        }
+        
+        try await groupRef.updateData(updateData)
+    }
+
     // MARK: - Group Data
     
     func fetchGroupTransactions(groupId: String) {
@@ -82,22 +113,22 @@ class SocialRepository: ObservableObject {
             let allRequests = sentRequests + receivedRequests
             
             // 1. Map Transactions
-            let combined = allRequests.map { req -> FirestoreModels.Transaction in
+            let combined = allRequests.map { req -> FirestoreModels.TransactionModel in
                 let isPayer = req.fromUid == currentUserId
                 
-                return FirestoreModels.Transaction(
+                return FirestoreModels.TransactionModel(
                     id: req.id,
+                    userId: currentUserId,
                     title: req.note ?? "Split Request",
                     subtitle: isPayer ? "You requested" : "\(req.fromName ?? "Friend") requested",
                     amount: req.amount,
                     date: req.createdAt,
+                    type: isPayer ? "income" : "expense",
+                    createdAt: req.createdAt,
                     icon: "arrow.left.arrow.right",
                     colorHex: isPayer ? "#34C759" : "#FF3B30",
                     note: req.status.rawValue,
-                    type: isPayer ? "income" : "expense",
-                    source: req.transactionId, // ✅ Pass Original Transaction ID here for reconstruction
-                    userId: currentUserId,
-                    createdAt: req.createdAt
+                    source: req.transactionId // ✅ Pass Original Transaction ID
                 )
             }
             
@@ -216,29 +247,85 @@ class SocialRepository: ObservableObject {
     /// Returns: Dictionary of [MemberID: NetBalance] relative to Current User (or total logic?)
     /// Actually, for Group View, we usually want "Who owes what in total".
     /// Simplified View: How much *Current User* owes or is owed in this group context.
-    func calculateGroupBalances(groupId: String, currentUserId: String) async -> [String: Double] {
-        // We fetch all non-settled requests tagged with this groupId
+    private var groupBalancesListener: ListenerRegistration?
+    
+    func listenToGroupBalances(groupId: String, currentUserId: String) {
+        let requestsRef = db.collection("split_requests")
         
-        let q = try? await db.collection("split_requests")
+        // We need to listen to ALL requests in the group to calculate the full debt graph
+        // Filtering by status 'pending' or 'accepted' is correct for active debts.
+        
+        groupBalancesListener?.remove()
+        
+        groupBalancesListener = requestsRef
             .whereField("groupId", isEqualTo: groupId)
-            //.whereField("status", in: ["pending", "accepted"])
-            .getDocuments()
+            .whereField("status", in: ["pending", "accepted"])
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self = self else { return }
+                if let error = error {
+                    print("Error listening to group balances: \(error)")
+                    return
+                }
+                
+                guard let documents = snapshot?.documents else { return }
+                let activeRequests = documents.compactMap { try? $0.data(as: FirestoreModels.SplitRequest.self) }
+                
+                var balances: [String: Double] = [:]
+                
+                // Net Position = Total Paid (Requests Sent) - Total Consumed (Requests Received)
+                for req in activeRequests {
+                    // Payer (Credential) gains positive balance
+                    balances[req.fromUid, default: 0] += req.amount
+                    // Receiver (Debtor) gets negative balance
+                    balances[req.toUid, default: 0] -= req.amount
+                }
+                
+                // ✅ Filter for "My Pending Splits" (Real-time)
+                // We want: status == pending AND (toUid == Me OR fromUid == Me)
+                let mySplits = activeRequests.filter { req in
+                    return req.status == .pending && (req.toUid == currentUserId || req.fromUid == currentUserId)
+                }.sorted(by: { $0.createdAt > $1.createdAt })
+                
+                DispatchQueue.main.async {
+                    self.groupBalances = balances
+                    self.myPendingGroupSplits = mySplits
+                }
+            }
+    }
+    
+    /// Calculates balances for all members in a group (One-shot)
+    func calculateGroupBalances(groupId: String, currentUserId: String) async -> [String: Double] {
+        let requestsRef = db.collection("split_requests")
+        
+        do {
+            // 1. You owe someone (Incoming) - Status: Pending or Accepted
+            let snapshot = try await requestsRef
+                .whereField("groupId", isEqualTo: groupId)
+                .getDocuments()
+                
+            let activeRequests = snapshot.documents.compactMap { try? $0.data(as: FirestoreModels.SplitRequest.self) }
+                .filter { $0.status == .pending || $0.status == .accepted }
             
-        let requests = q?.documents.compactMap { try? $0.data(as: FirestoreModels.SplitRequest.self) } ?? []
-        let activeRequests = requests.filter { $0.status == .pending || $0.status == .accepted }
-        
-        var balances: [String: Double] = [:]
-        
-        // Initialize for current user context is tricky.
-        // Let's just calculate "Net Position" for everyone in the group?
-        // Net Position = Total Paid (Requests Sent) - Total Consumed (Requests Received)
-        
-        for req in activeRequests {
-            balances[req.fromUid, default: 0] += req.amount // They paid, so they are +
-            balances[req.toUid, default: 0] -= req.amount   // They consumed, so they are -
+            var balances: [String: Double] = [:]
+            
+            // Net Position = Total Paid (Requests Sent) - Total Consumed (Requests Received)
+            for req in activeRequests {
+                // Payer (Credential) gains positive balance
+                balances[req.fromUid, default: 0] += req.amount
+                // Receiver (Debtor) gets negative balance
+                balances[req.toUid, default: 0] -= req.amount
+            }
+            
+            return balances
+        } catch {
+            print("Error calculating group balances: \(error)")
+            return [:]
         }
-        
-        return balances
+    }
+    
+    // Derived Debt Instructions (Helper)
+    func getDebtInstructions() -> [DebtInstruction] {
+        return calculateDebtResolution(balances: groupBalances)
     }
     
     struct DebtInstruction: Identifiable {
@@ -332,24 +419,26 @@ class SocialRepository: ObservableObject {
     // MARK: - Actions
     
     func settleUp(payerId: String, receiverId: String, groupId: String?, amount: Double, payerName: String = "Member", method: String = "Cash") async throws {
+        // Payer Side (Expense)
+        let payerRef = db.collection("users").document(payerId).collection("transactions").document()
+        
         // 1. Create a "Payment" transaction
-        let paymentTransaction = FirestoreModels.Transaction(
+        let paymentTransaction = FirestoreModels.TransactionModel(
+            id: payerRef.documentID,
+            userId: payerId,
             title: "Payment to \(method)",
             subtitle: "Settle Up",
             amount: -amount, // Expense for payer
             date: Date(),
+            type: "expense",
+            createdAt: Date(),
             icon: "banknote.fill",
             colorHex: "#34C759", // Green
-            note: "Settled up via \(method)",
-            type: "expense",
-            userId: payerId,
-            createdAt: Date()
+            note: "Settled up via \(method)"
         )
         
         let batch = db.batch()
         
-        // Payer Side (Expense)
-        let payerRef = db.collection("users").document(payerId).collection("transactions").document()
         try batch.setData(from: paymentTransaction, forDocument: payerRef)
         
         // Receiver Side (Income)
@@ -376,10 +465,11 @@ class SocialRepository: ObservableObject {
              fromUid: payerId,
              toUid: receiverId,
              fromName: "Settlement",
+             toName: nil, // ✅ Fix: Added missing argument
              amount: amount,
              currency: nil,
              note: "Settled via \(method)",
-             status: .accepted, 
+             status: .paid, // ✅ Fix: Mark as PAID immediately so it doesn't count as "Active Credit" in balance calc
              dependencyId: nil,
              lastNudgedAt: nil,
              createdAt: Date()
@@ -422,7 +512,7 @@ class SocialRepository: ObservableObject {
                     let txRef = db.collection("users").document(receiverId).collection("transactions").document(originalTxId)
                     do {
                         let txSnapshot = try await txRef.getDocument()
-                        if let txData = try? txSnapshot.data(as: FirestoreModels.Transaction.self), var splits = txData.splits {
+                        if let txData = try? txSnapshot.data(as: FirestoreModels.TransactionModel.self), var splits = txData.splits {
                             if let index = splits.firstIndex(where: {
                                 $0.requestId == doc.documentID ||
                                 ($0.friendId == payerId && !$0.isPaid) ||
@@ -446,30 +536,58 @@ class SocialRepository: ObservableObject {
     }
     // MARK: - Group Split Management
     
+    @Published var myPendingGroupSplits: [FirestoreModels.SplitRequest] = []
+    private var myGroupSplitsListener: ListenerRegistration?
+    
+    /// Listens to all active splits in a group involving the current user (Real-time)
+    func listenToMyGroupSplits(groupId: String, currentUserId: String) {
+
+        
+        // We need two queries (incoming/outgoing) or one complex one.
+        // Firestore OR queries are limited. 
+        // Better to listen to all group splits (which we do for balances anyway?) 
+        // and filter in memory? 
+        // No, `listenToGroupBalances` listens to ALL.
+        // We can just reuse that stream or filter from `groupTransactions`?
+        // No, `groupTransactions` are GroupTransaction objects, not SplitRequests.
+        
+        // Let's implement a merged listener pattern like `fetchFriendTransactions`
+        
+        myGroupSplitsListener?.remove()
+        
+        // Query: Splits in this Group where (toUid == Me OR fromUid == Me) AND status == pending
+        // Firestore doesn't support OR across different fields well in one listener without composite index.
+        // But we can listen to "groupId == K" and filter locally if the group isn't Huge.
+        // Given `listenToGroupBalances` already listens to ALL active splits in group...
+        // We can actually just derive `myPendingGroupSplits` from that same listener!
+        
+        // Let's modify `listenToGroupBalances` to also populate `myPendingGroupSplits`.
+        // That saves a listener and reads.
+    }
+    
     /// Fetches all active splits in a group involving the current user (either Payer or Payee)
+    /// MARK: - This is now deprecated in favor of `listenToGroupBalances` updates
     func fetchMyGroupSplits(groupId: String, currentUserId: String) async -> [FirestoreModels.SplitRequest] {
-        let requestsRef = db.collection("split_requests")
-        
-        // 1. You owe someone (Incoming)
-        let q1: QuerySnapshot? = try? await requestsRef
-            .whereField("groupId", isEqualTo: groupId)
-            .whereField("toUid", isEqualTo: currentUserId)
-            .whereField("status", isEqualTo: "pending") // Only show pending for "Tick to Pay"
-            .getDocuments()
-            
-        // 2. Someone owes you (Outgoing) - Optional: Do we want to show these?
-        // User asked: "Clear outstanding... check tickbox when friend pays".
-        // So yes, if I am David, and John owes me, I want to check it off.
-        let q2: QuerySnapshot? = try? await requestsRef
-            .whereField("groupId", isEqualTo: groupId)
-            .whereField("fromUid", isEqualTo: currentUserId)
-            .whereField("status", isEqualTo: "pending")
-            .getDocuments()
-            
-        let incoming = q1?.documents.compactMap { try? $0.data(as: FirestoreModels.SplitRequest.self) } ?? []
-        let outgoing = q2?.documents.compactMap { try? $0.data(as: FirestoreModels.SplitRequest.self) } ?? []
-        
-        return (incoming + outgoing).sorted(by: { $0.createdAt > $1.createdAt })
+         let requestsRef = db.collection("split_requests")
+         
+         // 1. You owe someone (Incoming)
+         let q1 = try? await requestsRef
+             .whereField("groupId", isEqualTo: groupId)
+             .whereField("toUid", isEqualTo: currentUserId)
+             .whereField("status", isEqualTo: "pending")
+             .getDocuments()
+             
+         // 2. Someone owes you (Outgoing)
+         let q2 = try? await requestsRef
+             .whereField("groupId", isEqualTo: groupId)
+             .whereField("fromUid", isEqualTo: currentUserId)
+             .whereField("status", isEqualTo: "pending")
+             .getDocuments()
+             
+         let incoming = q1?.documents.compactMap { try? $0.data(as: FirestoreModels.SplitRequest.self) } ?? []
+         let outgoing = q2?.documents.compactMap { try? $0.data(as: FirestoreModels.SplitRequest.self) } ?? []
+         
+         return (incoming + outgoing).sorted(by: { $0.createdAt > $1.createdAt })
     }
     
     // markSplitAsPaid and unmarkSplitAsPaid are consolidated in SocialTransactionManager.shared
@@ -498,7 +616,7 @@ class SocialRepository: ObservableObject {
             // A. Fetch original transaction to find income transaction IDs from paid splits
             do {
                 let txSnapshot = try await originalRef.getDocument()
-                if let txData = try? txSnapshot.data(as: FirestoreModels.Transaction.self), let splits = txData.splits {
+                if let txData = try? txSnapshot.data(as: FirestoreModels.TransactionModel.self), let splits = txData.splits {
                     for split in splits {
                         if let incomeId = split.incomeTransactionId {
                             // Delete the "Payment Received" income transaction
@@ -528,7 +646,7 @@ class SocialRepository: ObservableObject {
     }
     
     /// Deletes a friend transaction (Split Request) and cascades to Group feed
-    func deleteFriendTransaction(transaction: FirestoreModels.Transaction, currentUserId: String) async throws {
+    func deleteFriendTransaction(transaction: FirestoreModels.TransactionModel, currentUserId: String) async throws {
         // transaction.id corresponds to the SplitRequest ID in the Friend Feed
         guard let requestId = transaction.id else { return }
         
@@ -550,7 +668,7 @@ class SocialRepository: ObservableObject {
         
         do {
             let txSnapshot = try await txRef.getDocument()
-            if let txData = try? txSnapshot.data(as: FirestoreModels.Transaction.self), var splits = txData.splits {
+            if let txData = try? txSnapshot.data(as: FirestoreModels.TransactionModel.self), var splits = txData.splits {
                 // Find and remove the matching split
                 if let index = splits.firstIndex(where: {
                     $0.requestId == requestId ||
@@ -610,5 +728,11 @@ class SocialRepository: ObservableObject {
     /// OPTIMISTIC UPDATE: Removes a transaction from the local list immediately
     func removeLocalTransaction(id: String) {
         self.friendTransactions.removeAll { $0.id == id }
+    }
+    
+    /// Fetches the original transaction to get details like location
+    func fetchOriginalTransaction(userId: String, transactionId: String) async throws -> FirestoreModels.TransactionModel {
+        let docRef = db.collection("users").document(userId).collection("transactions").document(transactionId)
+        return try await docRef.getDocument(as: FirestoreModels.TransactionModel.self)
     }
 }

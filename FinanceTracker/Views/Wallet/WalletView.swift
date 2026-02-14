@@ -185,12 +185,14 @@ struct WalletView: View {
                                 let currentAmount = calculateGoalAllocation(for: index, in: sortedGoals, pool: pool)
                                 
                                 HStack {
-                                    Image(systemName: goal.icon)
-                                        .font(.title2)
-                                        .foregroundColor(.white)
-                                        .frame(width: 48, height: 48)
-                                        .background(Color(hex: goal.colorHex))
-                                        .clipShape(Circle())
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color(hex: goal.colorHex).opacity(0.15))
+                                            .frame(width: 48, height: 48)
+                                        Image(systemName: goal.icon)
+                                            .font(.system(size: 20))
+                                            .foregroundColor(Color(hex: goal.colorHex))
+                                    }
                                     
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(goal.name)
@@ -336,17 +338,29 @@ struct WalletView: View {
                         } else {
                             ForEach(budgetRepo.budgets.filter { $0.category != "Income" }) { budget in
                                 HStack(spacing: AppSpacing.element) {
-                                    Image(systemName: budget.icon)
-                                        .frame(width: 48, height: 48)
-                                        .background(Color(hex: budget.colorHex).opacity(0.2))
-                                        .foregroundColor(Color(hex: budget.colorHex))
-                                        .clipShape(Circle())
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color(hex: budget.colorHex).opacity(0.15))
+                                            .frame(width: 48, height: 48)
+                                        Image(systemName: budget.icon)
+                                            .font(.system(size: 20))
+                                            .foregroundColor(Color(hex: budget.colorHex))
+                                    }
                                     Text(budget.category)
                                         .font(.headline)
                                     Spacer()
-                                    Text("$\(Int(budget.remainingAmount(transactions: transactionRepo.transactions))) left")
-                                        .font(.system(.subheadline, design: .rounded))
-                                        .foregroundColor(.secondary)
+                                    if budget.totalAmount == 0 {
+                                        // Infinite Budget: Show "Spent" instead of "Left"
+                                        // remaining = 0 - spent => spent = -remaining
+                                        let spent = abs(budget.remainingAmount(transactions: transactionRepo.transactions))
+                                        Text("$\(Int(spent)) spent")
+                                            .font(.system(.subheadline, design: .rounded))
+                                            .foregroundColor(.secondary)
+                                    } else {
+                                        Text("$\(Int(budget.remainingAmount(transactions: transactionRepo.transactions))) left")
+                                            .font(.system(.subheadline, design: .rounded))
+                                            .foregroundColor(.secondary)
+                                    }
                                 }
                                 .padding()
                                 .background(Color(UIColor.secondarySystemBackground))

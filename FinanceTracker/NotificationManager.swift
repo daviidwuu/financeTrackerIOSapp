@@ -339,7 +339,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
                      
                      for doc in documents {
                          do {
-                            let transaction = try doc.data(as: FirestoreModels.Transaction.self)
+                            let transaction = try doc.data(as: FirestoreModels.TransactionModel.self)
                             if let splits = transaction.splits, !splits.isEmpty {
                                 let unpaidSplits = splits.filter { !$0.isPaid }
                                 if !unpaidSplits.isEmpty {

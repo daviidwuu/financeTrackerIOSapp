@@ -8,12 +8,12 @@ struct CalendarView: View {
     let daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     let columns = Array(repeating: GridItem(.flexible()), count: 7)
     
-    var transactions: [FirestoreModels.Transaction] = []
+    var transactions: [FirestoreModels.TransactionModel] = []
     var totalBudget: Double = 0.0
     var monthlyIncome: Double = 0.0
     var signupDate: Date?
     
-    init(transactions: [FirestoreModels.Transaction] = [], totalBudget: Double = 0.0, monthlyIncome: Double = 0.0, signupDate: Date? = nil) {
+    init(transactions: [FirestoreModels.TransactionModel] = [], totalBudget: Double = 0.0, monthlyIncome: Double = 0.0, signupDate: Date? = nil) {
         self.transactions = transactions
         self.totalBudget = totalBudget
         self.monthlyIncome = monthlyIncome

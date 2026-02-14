@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct SettleUpWizardView: View {
-    let group: FirestoreModels.Group? // Optional, can be used for pre-filtering or group context
-    let preSelectedFriend: FirestoreModels.Friend? // Entry from friend detail
+    let group: FirestoreModels.Group? // Optional
+    let preSelectedFriend: FirestoreModels.Friend? // Optional
     
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
@@ -10,7 +10,6 @@ struct SettleUpWizardView: View {
     @StateObject private var repo = SocialRepository()
     
     @State private var currentStep = 1
-    @State private var direction: Edge = .trailing
     
     // Step 1: Participants
     @State private var payerId: String = ""
@@ -23,36 +22,35 @@ struct SettleUpWizardView: View {
     @FocusState private var isAmountFocused: Bool
     
     var body: some View {
-        ZStack {
-            (colorScheme == .dark ? Color.black : Color.white)
-                .ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                // Header
-                ModalHeader(
-                    title: stepTitle,
-                    currentStep: currentStep,
-                    totalSteps: 2,
-                    onBack: currentStep > 1 ? {
-                        withAnimation { currentStep -= 1 }
-                    } : nil,
-                    onClose: { dismiss() }
-                )
-                .padding(.horizontal, AppSpacing.margin)
-                .padding(.top, 16)
+        NavigationStack {
+            ZStack {
+                (colorScheme == .dark ? Color.black : Color(UIColor.systemBackground))
+                    .ignoresSafeArea()
                 
-                // Content
-                TabView(selection: $currentStep) {
-                    stepOneView.tag(1)
-                    stepTwoView.tag(2)
+                VStack(spacing: 0) {
+                    // Content
+                    if currentStep == 1 {
+                        stepOneView
+                            .transition(.asymmetric(insertion: .move(edge: .leading), removal: .move(edge: .leading)))
+                    } else {
+                        stepTwoView
+                            .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .trailing)))
+                    }
+                    
+                    // Sticky Action Bar
+                    stickyActionBar
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .animation(.easeInOut, value: currentStep)
-                
-                Spacer()
-                
-                // Sticky Action Bar
-                stickyActionBar
+            }
+            .navigationTitle(stepTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.secondary.opacity(0.5))
+                    }
+                }
             }
         }
         .onAppear {
@@ -63,29 +61,25 @@ struct SettleUpWizardView: View {
     private var stepTitle: String {
         switch currentStep {
         case 1: return "Who is settling?"
-        case 2: return "Amount & Method"
+        case 2: return "How much?"
         default: return "Settle Up"
         }
     }
     
     private func initializeDefaults() {
-        // Initial Default: Me paying someone
         payerId = appState.currentUserId
         
         if let friend = preSelectedFriend, let fid = friend.id {
             receiverId = fid
-            
-            // Check real balance to see who owes whom
             Task {
                 let balances = await repo.calculateFriendBalance(currentUserId: appState.currentUserId, friendId: fid)
-                // Pick the currency with the absolute largest balance for the default view
                 if let (_, balanceVal) = balances.max(by: { abs($0.value) < abs($1.value) }) {
                     await MainActor.run {
-                        if balanceVal > 0.01 { // They owe me (Positive)
+                        if balanceVal > 0.01 { // They owe me
                             payerId = fid
                             receiverId = appState.currentUserId
                             amount = String(format: "%.2f", abs(balanceVal))
-                        } else if balanceVal < -0.01 { // I owe them (Negative)
+                        } else if balanceVal < -0.01 { // I owe them
                             payerId = appState.currentUserId
                             receiverId = fid
                             amount = String(format: "%.2f", abs(balanceVal))
@@ -94,25 +88,18 @@ struct SettleUpWizardView: View {
                 }
             }
         } else if let group = group, let gid = group.id {
-            // Default to first other member initially
             if let firstOther = group.members.first(where: { $0 != appState.currentUserId }) {
                 receiverId = firstOther
             }
-            
-            // Check debt graph
             Task {
                 let balances = await repo.calculateGroupBalances(groupId: gid, currentUserId: appState.currentUserId)
                 let instructions = repo.calculateDebtResolution(balances: balances)
-                
                 await MainActor.run {
-                    // 1. Do I owe anyone? (Priority)
-                    if let debtToPay = instructions.first(where: { $0.debtorId == appState.currentUserId }) {
+                   if let debtToPay = instructions.first(where: { $0.debtorId == appState.currentUserId }) {
                         payerId = debtToPay.debtorId
                         receiverId = debtToPay.creditorId
                         amount = String(format: "%.2f", debtToPay.amount)
-                    } 
-                    // 2. Does anyone owe me?
-                    else if let debtToReceive = instructions.first(where: { $0.creditorId == appState.currentUserId }) {
+                    } else if let debtToReceive = instructions.first(where: { $0.creditorId == appState.currentUserId }) {
                         payerId = debtToReceive.debtorId
                         receiverId = debtToReceive.creditorId
                         amount = String(format: "%.2f", debtToReceive.amount)
@@ -125,155 +112,155 @@ struct SettleUpWizardView: View {
     // MARK: - Step 1: Participants
     private var stepOneView: some View {
         ScrollView {
-            VStack(spacing: 24) {
-                
-                // Payer Selection
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("PAYER (Who paid?)")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal)
+            VStack(spacing: 32) {
+                // Visualizer
+                HStack(spacing: 20) {
+                    VStack {
+                        ProfileAvatar(text: String(getName(for: payerId).prefix(1)), color: .green, size: 60)
+                        Text("Payer")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                     
-                    participantRow(id: payerId, label: "Payer")
-                        .onTapGesture {
-                            // Toggle between self and receiver if only 2 people, or show picker
-                            // For simplicity, let's assume Payer is usually Self, but allow swap
-                            if normalizeId(payerId) == normalizeId(appState.currentUserId) {
-                                // Swap
-                                payerId = receiverId
-                                receiverId = appState.currentUserId
-                            } else {
-                                payerId = appState.currentUserId
-                                // Reset receiver if needed, or keep
-                                if receiverId == appState.currentUserId {
-                                    // Receiver cannot be self if payer is self
-                                    receiverId = "" 
-                                }
-                            }
-                        }
+                    Image(systemName: "arrow.right")
+                        .font(.title2)
+                        .foregroundColor(.secondary)
+                    
+                    VStack {
+                        ProfileAvatar(text: String(getName(for: receiverId).prefix(1)), color: .blue, size: 60)
+                        Text("Receiver")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
+                .padding(.top, 20)
                 
-                Image(systemName: "arrow.down")
-                    .font(.title2)
-                    .foregroundColor(.secondary.opacity(0.5))
+                Divider()
                 
-                // Receiver Selection
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("RECEIVER (Who got paid?)")
+                // Payer Selector
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("FROM (PAYER)")
                         .font(.caption)
                         .fontWeight(.bold)
                         .foregroundColor(.secondary)
-                        .padding(.horizontal)
+                        .padding(.horizontal, AppSpacing.margin)
                     
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 12) {
                             if let group = group {
-                                ForEach(group.members.filter { $0 != payerId }, id: \.self) { memberId in
-                                    participantOption(id: memberId, isSelected: receiverId == memberId)
+                                ForEach(group.members, id: \.self) { memberId in
+                                    participantCard(id: memberId, isSelected: payerId == memberId, isPayer: true)
                                         .onTapGesture {
-                                            receiverId = memberId
+                                            payerId = memberId
+                                            if receiverId == memberId { receiverId = "" }
                                             HapticManager.shared.light()
                                         }
                                 }
-                            } else if let friend = preSelectedFriend, let fid = friend.id {
-                                participantOption(id: fid, isSelected: receiverId == fid)
-                                    .onTapGesture { receiverId = fid }
                             } else {
-                                // Show all friends?
-                                ForEach(appState.friendRepo.friends) { friend in
-                                    if let fid = friend.id, fid != payerId {
-                                        participantOption(id: fid, isSelected: receiverId == fid)
-                                            .onTapGesture { receiverId = fid }
-                                    }
+                                // Friend Context: Just Me or Friend
+                                participantCard(id: appState.currentUserId, isSelected: payerId == appState.currentUserId, isPayer: true)
+                                    .onTapGesture { payerId = appState.currentUserId; if receiverId == payerId { receiverId = "" } }
+                                
+                                if let friend = preSelectedFriend, let fid = friend.id {
+                                    participantCard(id: fid, isSelected: payerId == fid, isPayer: true)
+                                        .onTapGesture { payerId = fid; if receiverId == payerId { receiverId = "" } }
                                 }
                             }
                         }
-                        .padding(.horizontal)
+                        .padding(.horizontal, AppSpacing.margin)
+                    }
+                }
+                
+                // Receiver Selector
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("TO (RECEIVER)")
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, AppSpacing.margin)
+                    
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            if let group = group {
+                                ForEach(group.members, id: \.self) { memberId in
+                                    participantCard(id: memberId, isSelected: receiverId == memberId, isPayer: false)
+                                        .onTapGesture {
+                                            receiverId = memberId
+                                            if payerId == memberId { payerId = "" }
+                                            HapticManager.shared.light()
+                                        }
+                                }
+                            } else {
+                                // Friend Context
+                                participantCard(id: appState.currentUserId, isSelected: receiverId == appState.currentUserId, isPayer: false)
+                                    .onTapGesture { receiverId = appState.currentUserId; if payerId == receiverId { payerId = "" } }
+                                
+                                if let friend = preSelectedFriend, let fid = friend.id {
+                                    participantCard(id: fid, isSelected: receiverId == fid, isPayer: false)
+                                        .onTapGesture { receiverId = fid; if payerId == receiverId { payerId = "" } }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, AppSpacing.margin)
                     }
                 }
             }
-            .padding(.top)
         }
     }
     
-    private func participantRow(id: String, label: String) -> some View {
-        HStack(spacing: 16) {
+    private func participantCard(id: String, isSelected: Bool, isPayer: Bool) -> some View {
+        VStack(spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(Color.blue.opacity(0.1))
-                    .frame(width: 48, height: 48)
-                Text(String(getName(for: id).prefix(1)).uppercased())
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(.blue)
-            }
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(getName(for: id))
-                    .font(.body)
-                    .fontWeight(.medium)
-                Text(label)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            if label == "Payer" {
-                Image(systemName: "arrow.up.arrow.down")
-                    .foregroundColor(.secondary)
-            }
-        }
-        .padding()
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(12)
-        .padding(.horizontal)
-    }
-    
-    private func participantOption(id: String, isSelected: Bool) -> some View {
-        VStack(spacing: 8) {
-            ZStack {
-                Circle()
-                    .fill(isSelected ? Color.blue : Color(UIColor.secondarySystemBackground))
-                    .frame(width: 60, height: 60)
+                    .fill(isSelected ? (isPayer ? Color.green : Color.blue) : Color(UIColor.secondarySystemBackground))
+                    .frame(width: 64, height: 64)
+                    .shadow(color: isSelected ? (isPayer ? Color.green.opacity(0.4) : Color.blue.opacity(0.4)) : Color.clear, radius: 8, y: 4)
                 
                 Text(String(getName(for: id).prefix(1)).uppercased())
-                    .font(.title3)
+                    .font(.title2)
                     .fontWeight(.bold)
                     .foregroundColor(isSelected ? .white : .primary)
             }
             .overlay(
-                 Circle().stroke(Color.blue, lineWidth: isSelected ? 0 : 0) // Optional border
+                Circle()
+                    .strokeBorder(isSelected ? Color.white : Color.clear, lineWidth: 2)
             )
+            .scaleEffect(isSelected ? 1.1 : 1.0)
+            .animation(.spring(response: 0.3), value: isSelected)
             
             Text(getName(for: id))
-                .font(.caption)
+                .font(.footnote)
                 .fontWeight(.medium)
-                .foregroundColor(isSelected ? .blue : .primary)
+                .foregroundColor(isSelected ? .primary : .secondary)
                 .lineLimit(1)
         }
-        .frame(width: 70)
-        .scaleEffect(isSelected ? 1.05 : 1.0)
-        .animation(.spring, value: isSelected)
+        .frame(width: 80)
     }
     
     // MARK: - Step 2: Amount
     private var stepTwoView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 24) {
             Spacer()
             
-            Text("Amount")
-                .font(.title2)
-                .fontWeight(.semibold)
-                .foregroundColor(.secondary)
-            
-            TextField("0.00", text: $amount)
-                .font(AppTypography.heroInput)
-                .multilineTextAlignment(.center)
-                .keyboardType(.decimalPad)
-                .foregroundColor(.primary)
-                .focused($isAmountFocused)
+            VStack(spacing: 8) {
+                Text("Enter Amount")
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("$") // Currency Symbol
+                        .font(.largeTitle)
+                        .foregroundColor(.secondary)
+                    
+                    TextField("0.00", text: $amount)
+                        .font(.system(size: 64, weight: .bold, design: .rounded))
+                        .multilineTextAlignment(.center)
+                        .keyboardType(.decimalPad)
+                        .foregroundColor(.primary)
+                        .focused($isAmountFocused)
+                        .fixedSize(horizontal: true, vertical: false) // Grow with text
+                }
+            }
             
             Spacer()
         }
@@ -287,50 +274,54 @@ struct SettleUpWizardView: View {
                 if currentStep == 1 {
                     HapticManager.shared.light()
                     withAnimation { currentStep = 2 }
-                    // Auto focus after a delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                         isAmountFocused = true
                     }
                 } else {
                     submit()
                 }
             }) {
-                if isSubmitting {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                } else {
-                    Text(currentStep == 1 ? "Next" : "Record Payment")
+                HStack {
+                    if isSubmitting {
+                        ProgressView().tint(.white)
+                    } else {
+                        Text(currentStep == 1 ? "Next" : "Pay \(amount.isEmpty ? "0.00" : amount)")
+                            .fontWeight(.bold)
+                    }
                 }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(isValid ? (currentStep == 1 ? Color.blue : Color.green) : Color.gray.opacity(0.3))
+                .foregroundColor(.white)
+                .cornerRadius(16)
+                .shadow(color: isValid ? (currentStep == 1 ? Color.blue.opacity(0.3) : Color.green.opacity(0.3)) : Color.clear, radius: 10, y: 5)
             }
-            .buttonStyle(PrimaryButtonStyle())
-            .disabled(!isValid)
+            .disabled(!isValid || isSubmitting)
         }
         .padding(.horizontal, AppSpacing.margin)
-        .padding(.top, AppSpacing.compact)
-        .padding(.bottom)
-        .background(Color.backgroundPrimary)
-        .ignoresSafeArea(.keyboard)
+        .padding(.bottom, AppSpacing.margin)
     }
     
     private var isValid: Bool {
         if currentStep == 1 {
             return !payerId.isEmpty && !receiverId.isEmpty && payerId != receiverId
         } else {
-            return CurrencyInput.isValid(amount)
+            return (Double(amount) ?? 0) > 0
         }
     }
     
     private func getName(for id: String) -> String {
-        if normalizeId(id) == normalizeId(appState.currentUserId) { return "You" }
-        return appState.friendRepo.friends.first(where: { $0.id == id })?.name ?? "Member"
-    }
-    
-    private func normalizeId(_ id: String) -> String {
-        return id.trimmingCharacters(in: .whitespacesAndNewlines)
+        if id == appState.currentUserId { return "You" }
+        if let friend = appState.friendRepo.friends.first(where: { $0.id == id }) { return friend.name }
+        if let guest = appState.guestRepo.guests.first(where: { $0.id == id }) { return guest.name }
+        // Fallback to Group Denormalization
+        if let group = group, let name = group.memberNames?[id] { return name }
+        
+        return "Member"
     }
     
     private func submit() {
-        guard let amountVal = CurrencyInput.parse(amount) else { return }
+        guard let amountVal = Double(amount) else { return }
         isSubmitting = true
         
         Task {

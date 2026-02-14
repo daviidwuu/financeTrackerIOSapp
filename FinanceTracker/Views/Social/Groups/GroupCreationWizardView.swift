@@ -618,12 +618,42 @@ struct GroupCreationWizardView: View {
         
         let members = Array(selectedFriendIds) + addedGuests.compactMap { $0.id }
         
+        // Calculate Denormalized Names
+        var memberNames: [String: String] = [:]
+        
+        // Preserve existing names if editing
+        if let existing = groupToEdit?.memberNames {
+            memberNames = existing
+        }
+        
+        // 1. Current User
+        if !appState.currentUserId.isEmpty {
+             memberNames[appState.currentUserId] = appState.userName
+        }
+        
+        // 2. Friends
+        for fid in selectedFriendIds {
+            if let friend = friendRepo.friends.first(where: { $0.id == fid }) {
+                memberNames[fid] = friend.name
+            } else if let user = friendRepo.searchResults.first(where: { $0.id == fid }) {
+                 memberNames[fid] = user.name
+            }
+        }
+        
+        // 3. Guests
+        for guest in addedGuests {
+            if let gid = guest.id {
+                memberNames[gid] = guest.name
+            }
+        }
+        
         var groupToSave: FirestoreModels.Group
         
         if let existingGroup = groupToEdit {
             groupToSave = existingGroup
             groupToSave.name = groupName
             groupToSave.members = members
+            groupToSave.memberNames = memberNames // ✅ Update names
             groupToSave.icon = selectedIcon
             groupToSave.color = selectedColor
             groupToSave.updatedAt = Date()
@@ -633,12 +663,13 @@ struct GroupCreationWizardView: View {
                 name: groupName,
                 normalizedName: "", // Handled by Repository
                 members: members,
+                memberNames: memberNames, // ✅ New Group with Names
                 createdBy: appState.currentUserId,
                 icon: selectedIcon,
                 color: selectedColor,
                 createdAt: Date(),
                 updatedAt: Date(),
-                defaultCurrency: CurrencyManager.shared.mainCurrency // ✅ Set Master Currency
+                defaultCurrency: CurrencyManager.shared.mainCurrency
             )
         }
         

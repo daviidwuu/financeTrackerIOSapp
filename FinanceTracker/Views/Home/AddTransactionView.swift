@@ -7,7 +7,7 @@ struct AddTransactionView: View {
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var appState: AppState
     
-    var transactionToEdit: FirestoreModels.Transaction?
+    var transactionToEdit: FirestoreModels.TransactionModel?
     var requestToAccept: FirestoreModels.SplitRequest?
     var onSave: ((TransactionFormData) -> Void)?
     
@@ -146,11 +146,11 @@ struct AddTransactionView: View {
             
             // Icon
             if let t = transactionToEdit {
-                Image(systemName: t.icon)
+                Image(systemName: t.icon ?? "dollarsign.circle.fill")
                     .font(.system(size: 48))
-                    .foregroundColor(Color(hex: t.colorHex))
+                    .foregroundColor(Color(hex: t.colorHex ?? "#000000"))
                     .padding()
-                    .background(Color(hex: t.colorHex).opacity(0.1))
+                    .background(Color(hex: t.colorHex ?? "#000000").opacity(0.1))
                     .clipShape(Circle())
             }
             
@@ -224,16 +224,28 @@ struct AddTransactionView: View {
         guard let category = selectedCategory else { return }
         
         // Ensure amount handles income vs expense correctly if needed
-        let type = category.type ?? "expense"
+        let categoryType = category.type ?? "expense"
+        
+        // CRITICAL FIX: Preserve "settlement" type if editing a settlement
+        // Also preserve "income" if it was originally income (though category usually handles this)
+        var finalType = categoryType
+        if let existing = transactionToEdit {
+             if existing.type == "settlement" {
+                 finalType = "settlement"
+             } else if existing.type == "income" {
+                 finalType = "income"
+             }
+        }
+        
         var newTransaction = TransactionFormData(
             title: !transactionNotes.isEmpty ? transactionNotes : category.category,
             subtitle: category.category,
-            amount: (type == "income" ? "" : "-") + amount,
+            amount: (finalType == "income" || finalType == "settlement" ? "" : "-") + amount,
             icon: category.icon,
             color: Color(hex: category.colorHex),
             date: selectedDate,
             notes: transactionNotes,
-            type: type
+            type: finalType
         )
         
         // --- Location Logic ---
@@ -273,7 +285,8 @@ struct AddTransactionView: View {
             let mainAmount = currencyManager.convertToMain(amount: rawAmount, from: currencyManager.travelCurrency)
             
             // Re-assign amount in MAIN currency
-            newTransaction.amount = String(format: "%.2f", (type == "income" ? 1 : -1) * mainAmount)
+            let signedAmount = (finalType == "income" ? 1.0 : -1.0) * mainAmount
+            newTransaction.amount = String(format: "%.2f", signedAmount)
             
             // Store original details
             newTransaction.currencyCode = currencyManager.travelCurrency

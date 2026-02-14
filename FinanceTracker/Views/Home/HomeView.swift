@@ -27,8 +27,8 @@ struct HomeView: View {
     @State private var showAddTransaction = false
     // showProfile moved to AppState
     @State private var showAllTransactions = false
-    @State private var selectedTransaction: FirestoreModels.Transaction?
-    @State private var transactionToEdit: FirestoreModels.Transaction?
+    @State private var selectedTransaction: FirestoreModels.TransactionModel?
+    @State private var transactionToEdit: FirestoreModels.TransactionModel?
     @State private var requestToAccept: FirestoreModels.SplitRequest?
     @State private var showRemainingBudget = false
     @State private var isAnimating = false
@@ -57,31 +57,27 @@ struct HomeView: View {
         let calendar = Calendar.current
         let currentMonthTransactions = transactionRepo.transactions.filter { transaction in
             // Filter by current month
-            guard calendar.isDate(transaction.date, equalTo: Date(), toGranularity: .month) else { return false }
-            
-            // Exclude explicit "Income" category (Salary, etc.)
-            // But INCLUDE "Expense" categories even if amount is positive (Reimbursements)
-            return transaction.subtitle != "Income"
+            return calendar.isDate(transaction.date, equalTo: Date(), toGranularity: .month)
         }
         
-        // Sum signed amounts:
-        // Expense: -50
-        // Reimbursement: +25
-        // Sum: -25
-        // Result: abs(-25) = 25 (Net Spent)
-        let netSpend = currentMonthTransactions.reduce(0) { $0 + $1.amount }
+        // 1. Calculate pure expenses (Type == expense)
+        let expenses = currentMonthTransactions
+            .filter { $0.type == "expense" }
+            .reduce(0) { $0 + abs($1.amount) }
         
-        // Return absolute value (spending is usually displayed as positive number)
-        // If net is positive (made profit on dining?), treat as 0 spend or show negative spend? 
-        // For "Spent" label, 0 makes most sense if we made money, but let's stick to abs() for now 
-        // effectively treating net income in an expense category as "negative spending" (which abs makes positive... wait)
-        
-        // Correct Logic:
-        // If Sum is -25 (Net Expense), Abs is 25. Correct.
-        // If Sum is +10 (Net Profit), Abs is 10. incorrectly shows as 10 spent.
-        // We should probably only count it as spend if it's negative.
-        
-        return netSpend < 0 ? abs(netSpend) : 0
+        // 2. Calculate reimbursements (Type == income BUT not Salary/Income category)
+        // Reimbursements are things like friends paying you back, so they OFFSET your spending.
+        // We filter out explicit "Income" category or "Salary" to avoid subtracting your paycheck from your spending (which would be weird).
+        let reimbursements = currentMonthTransactions
+            .filter {
+                $0.type == "income" &&
+                ($0.subtitle != "Income" && $0.subtitle != "Salary")
+            }
+            .reduce(0) { $0 + abs($1.amount) }
+            
+        // Net Spent = Total Out - Total Back
+        // ex: Spent 100 on Dinner. Friend sent 50. Net Spent = 50.
+        return max(0, expenses - reimbursements)
     }
     
     var body: some View {
@@ -400,20 +396,20 @@ struct HomeView: View {
             do {
                 // Convert UI Transaction to Firestore Transaction
                 let amount = CurrencyInput.parseOrZero(transaction.amount)
-                let firestoreTransaction = FirestoreModels.Transaction(
+                let firestoreTransaction = FirestoreModels.TransactionModel(
+                    userId: appState.currentUserId, // Use global user ID
                     title: transaction.title,
                     subtitle: transaction.subtitle,
                     amount: amount,
                     date: transaction.date,
+                    type: amount < 0 ? "expense" : "income",
+                    createdAt: Date(),
                     icon: transaction.icon,
                     colorHex: transaction.color.toHex() ?? "#000000",
                     note: transaction.notes,
-                    type: amount < 0 ? "expense" : "income",
-                    userId: appState.currentUserId, // Use global user ID
-                    createdAt: Date(),
+                    originalAmount: transaction.originalAmount,
                     currencyCode: transaction.currencyCode,
-                    exchangeRate: transaction.exchangeRate,
-                    originalAmount: transaction.originalAmount
+                    exchangeRate: transaction.exchangeRate
                 )
                 try await transactionRepo.addTransaction(firestoreTransaction)
                 
@@ -432,7 +428,7 @@ struct HomeView: View {
         }
     }
     
-    private func updateTransaction(_ entity: FirestoreModels.Transaction, with transaction: TransactionFormData) {
+    private func updateTransaction(_ entity: FirestoreModels.TransactionModel, with transaction: TransactionFormData) {
         Task {
             do {
                 let amount = CurrencyInput.parseOrZero(transaction.amount)
@@ -473,7 +469,7 @@ struct HomeView: View {
         }
     }
     
-    private func deleteTransaction(_ transaction: FirestoreModels.Transaction) {
+    private func deleteTransaction(_ transaction: FirestoreModels.TransactionModel) {
         guard let id = transaction.id else { return }
         hiddenTransactionIds.insert(id)
         HapticManager.shared.heavy()

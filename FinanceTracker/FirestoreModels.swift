@@ -4,56 +4,7 @@ import FirebaseFirestore
 enum FirestoreModels {
 
 
-    // MARK: - Transaction Model
-    struct Transaction: Identifiable, Codable {
-        @DocumentID var id: String?
-        var title: String
-        var subtitle: String? // category name
-        var amount: Double
-        var date: Date
-        var icon: String
-        var colorHex: String
-        var note: String?
-        var type: String // "expense" or "income"
-        var source: String? // "shortcuts", "manual", etc.
-        var userId: String
-        var createdAt: Date
-        
-        // Travel / Currency Support
-        var currencyCode: String? = nil // e.g., "USD", "JPY"
-        var exchangeRate: Double? = nil // e.g., 100.0 (1 Main = 100 Travel) or 0.01
-        var originalAmount: Double? = nil // Amount in original currency
-        
-        // Splits
-        var splits: [Split]? = nil
-        
-        // Location
-        var latitude: Double? = nil
-        var longitude: Double? = nil
-        var locationName: String? = nil
-        
-        enum CodingKeys: String, CodingKey {
-            case id
-            case title
-            case subtitle
-            case amount
-            case date
-            case icon
-            case colorHex
-            case note
-            case type
-            case source
-            case userId
-            case createdAt
-            case currencyCode
-            case exchangeRate
-            case originalAmount
-            case splits
-            case latitude
-            case longitude
-            case locationName
-        }
-    }
+
     
     // MARK: - Split Model
     struct Split: Identifiable, Codable {
@@ -69,6 +20,7 @@ enum FirestoreModels {
         var paidDate: Date? // When they paid back
         var incomeTransactionId: String? // Linked ID to the "Income" transaction created when they pay
         var requestId: String? // Linked ID of the SplitRequest sent to the friend
+        var status: String? = nil // ✅ NEW: "pending", "accepted", "declined", "paid"
     }
 
     // MARK: - Guest Model
@@ -161,7 +113,7 @@ enum FirestoreModels {
         }
         
         // Computed property for remaining amount (calculated from transactions)
-        func remainingAmount(transactions: [Transaction]) -> Double {
+        func remainingAmount(transactions: [TransactionModel]) -> Double {
             let calendar = Calendar.current
             let now = Date()
             
@@ -281,12 +233,118 @@ enum FirestoreModels {
             case lastProcessedDate
         }
     }
+
+    struct EditRecord: Codable, Identifiable {
+        var id: String = UUID().uuidString
+        var date: Date
+        var editorId: String
+        var editorName: String
+        var field: String
+        var oldValue: String
+        var newValue: String
+    }
+
+    struct TransactionModel: Codable, Identifiable {
+        @DocumentID var id: String?
+        var userId: String
+        var title: String
+        var subtitle: String? // Category
+        var amount: Double
+        var date: Date
+        var type: String // "income" or "expense"
+        var createdAt: Date
+        var icon: String?
+        var colorHex: String?
+        var note: String?
+        var source: String? // ✅ Restored field
+        
+        // Location
+        var latitude: Double?
+        var longitude: Double?
+        var locationName: String?
+        
+        // Splits
+        var splits: [Split]?
+        var originalAmount: Double? // Before split
+        var currencyCode: String?
+        var exchangeRate: Double? // ✅ Restored field
+        
+        var editHistory: [EditRecord]? // ✅ NEW: Track changes
+
+        init(
+            id: String? = nil,
+            userId: String,
+            title: String,
+            subtitle: String? = nil,
+            amount: Double,
+            date: Date,
+            type: String,
+            createdAt: Date,
+            icon: String? = nil,
+            colorHex: String? = nil,
+            note: String? = nil,
+            source: String? = nil,
+            latitude: Double? = nil,
+            longitude: Double? = nil,
+            locationName: String? = nil,
+            splits: [Split]? = nil,
+            originalAmount: Double? = nil,
+            currencyCode: String? = nil,
+            exchangeRate: Double? = nil,
+            editHistory: [EditRecord]? = nil
+        ) {
+            self.id = id
+            self.userId = userId
+            self.title = title
+            self.subtitle = subtitle
+            self.amount = amount
+            self.date = date
+            self.type = type
+            self.createdAt = createdAt
+            self.icon = icon
+            self.colorHex = colorHex
+            self.note = note
+            self.source = source
+            self.latitude = latitude
+            self.longitude = longitude
+            self.locationName = locationName
+            self.splits = splits
+            self.originalAmount = originalAmount
+            self.currencyCode = currencyCode
+            self.exchangeRate = exchangeRate
+            self.editHistory = editHistory
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case id
+            case userId
+            case title
+            case subtitle
+            case amount
+            case date
+            case type
+            case createdAt
+            case icon
+            case colorHex
+            case note
+            case source
+            case latitude
+            case longitude
+            case locationName
+            case splits
+            case originalAmount
+            case currencyCode
+            case exchangeRate
+            case editHistory
+        }
+    }
     // MARK: - Group Model
     struct Group: Identifiable, Codable {
         @DocumentID var id: String?
         var name: String
         var normalizedName: String? // ✅ NEW: For duplicate detection
         var members: [String] // ✅ RENAMED from memberIds
+        var memberNames: [String: String]? // ✅ NEW: Denormalized map [UID: Name]
         var createdBy: String // ✅ NEW: Track creator
         var icon: String
         var color: String // ✅ RENAMED from colorHex
@@ -299,6 +357,7 @@ enum FirestoreModels {
             case name
             case normalizedName
             case members
+            case memberNames
             case createdBy
             case icon
             case color
@@ -327,6 +386,7 @@ enum FirestoreModels {
         var icon: String? // ✅ NEW
         var colorHex: String? // ✅ NEW
         var originalTransactionId: String? // Linked to the user's private transaction
+        var editHistory: [EditRecord]? // ✅ NEW: Track changes
         
         enum CodingKeys: String, CodingKey {
             case id
@@ -340,6 +400,7 @@ enum FirestoreModels {
             case note
             case category
             case originalTransactionId
+            case editHistory
         }
     }
 

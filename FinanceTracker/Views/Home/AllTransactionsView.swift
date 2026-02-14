@@ -17,8 +17,8 @@ struct AllTransactionsView: View {
     @State private var sortBy: String = "Date" // "Date", "Amount", "Category"
     @State private var sortAscending: Bool = false // false = newest/highest first
     
-    @State private var selectedTransaction: FirestoreModels.Transaction?
-    @State private var transactionToEdit: FirestoreModels.Transaction?
+    @State private var selectedTransaction: FirestoreModels.TransactionModel?
+    @State private var transactionToEdit: FirestoreModels.TransactionModel?
     @State private var errorState = ErrorState()
     @State private var undoState = UndoState()
     @State private var hiddenTransactionIds: Set<String> = []
@@ -29,7 +29,7 @@ struct AllTransactionsView: View {
         _selectedDate = State(initialValue: initialDate)
     }
     
-    var filteredTransactions: [FirestoreModels.Transaction] {
+    var filteredTransactions: [FirestoreModels.TransactionModel] {
         transactionRepo.transactions.filter { transaction in
             guard !hiddenTransactionIds.contains(transaction.id ?? "") else { return false }
             // Month filter
@@ -59,7 +59,7 @@ struct AllTransactionsView: View {
         }
     }
     
-    var sortedTransactions: [FirestoreModels.Transaction] {
+    var sortedTransactions: [FirestoreModels.TransactionModel] {
         filteredTransactions.sorted { t1, t2 in
             switch sortBy {
             case "Amount":
@@ -393,7 +393,7 @@ struct AllTransactionsView: View {
         return formatter.string(from: date)
     }
     
-    private func updateTransaction(_ entity: FirestoreModels.Transaction, with transaction: TransactionFormData) {
+    private func updateTransaction(_ entity: FirestoreModels.TransactionModel, with transaction: TransactionFormData) {
         Task {
             do {
                 let amount = CurrencyInput.parseOrZero(transaction.amount)
@@ -434,7 +434,7 @@ struct AllTransactionsView: View {
         }
     }
     
-    private func deleteTransaction(_ transaction: FirestoreModels.Transaction) {
+    private func deleteTransaction(_ transaction: FirestoreModels.TransactionModel) {
         guard let id = transaction.id else { return }
         
         // Soft-delete: hide immediately, defer actual delete

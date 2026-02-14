@@ -3,7 +3,7 @@ import FirebaseFirestore
 import MapKit
 
 struct TransactionDetailView: View {
-    @State private var transaction: FirestoreModels.Transaction
+    @State private var transaction: FirestoreModels.TransactionModel
     @State private var showEditSheet = false
     @State private var showSplitSheet = false
     @State private var showFullMap = false
@@ -12,7 +12,7 @@ struct TransactionDetailView: View {
     @EnvironmentObject var appState: AppState
     
     // Callback for saving changes
-    var onSave: ((FirestoreModels.Transaction, TransactionFormData) -> Void)?
+    var onSave: ((FirestoreModels.TransactionModel, TransactionFormData) -> Void)?
     
     // Repositories
     // Repositories moved to AppState
@@ -28,7 +28,7 @@ struct TransactionDetailView: View {
     // Cached groupId for split re-editing (Fix #2)
     @State private var cachedGroupId: String? = nil
     
-    init(transaction: FirestoreModels.Transaction, onSave: ((FirestoreModels.Transaction, TransactionFormData) -> Void)? = nil) {
+    init(transaction: FirestoreModels.TransactionModel, onSave: ((FirestoreModels.TransactionModel, TransactionFormData) -> Void)? = nil) {
         _transaction = State(initialValue: transaction)
         self.onSave = onSave
     }
@@ -38,7 +38,7 @@ struct TransactionDetailView: View {
     }
     
     private var categoryColor: String {
-        budgetRepo.budgets.first(where: { $0.category.lowercased() == (transaction.subtitle?.lowercased() ?? "") })?.colorHex ?? transaction.colorHex
+        budgetRepo.budgets.first(where: { $0.category.lowercased() == (transaction.subtitle?.lowercased() ?? "") })?.colorHex ?? transaction.colorHex ?? "#808080"
     }
     
     // Computed property for display logic
@@ -99,7 +99,7 @@ struct TransactionDetailView: View {
                             .shadow(color: Color(hex: categoryColor).opacity(0.2), radius: 15, y: 8)
                             
                             VStack(spacing: 4) {
-                                Text(transaction.title)
+                                Text((transaction.note?.isEmpty == false) ? transaction.note! : transaction.title)
                                     .font(.title3)
                                     .fontWeight(.bold)
                                     .foregroundColor(.primary)
@@ -176,12 +176,19 @@ struct TransactionDetailView: View {
                                                 
                                                 VStack(alignment: .trailing, spacing: 2) {
                                                     Text(String(format: "$%.2f", split.amount))
-                                                        .font(.system(.body, design: .monospaced))
+                                                        .font(.body.monospacedDigit())
                                                         .fontWeight(.semibold)
                                                     
-                                                    Text(split.isPaid ? "Paid" : "Pending")
-                                                        .font(.caption2)
-                                                        .foregroundColor(split.isPaid ? .green : .orange)
+                                                    if let status = split.status {
+                                                        Text(status.capitalized)
+                                                            .font(.caption2)
+                                                            .fontWeight(.bold)
+                                                            .foregroundColor(status == "paid" ? .green : (status == "declined" ? .red : (status == "accepted" ? .blue : .orange)))
+                                                    } else {
+                                                        Text(split.isPaid ? "Paid" : "Pending")
+                                                            .font(.caption2)
+                                                            .foregroundColor(split.isPaid ? .green : .orange)
+                                                    }
                                                 }
                                                 
                                                 // Inline Paid Toggle
@@ -210,7 +217,7 @@ struct TransactionDetailView: View {
                                         Spacer()
                                         let reimbursed = splits.filter { $0.isPaid }.reduce(0) { $0 + $1.amount }
                                         Text(String(format: "$%.2f", abs(transaction.amount) - reimbursed))
-                                            .font(.headline)
+                                            .font(.headline.monospacedDigit())
                                             .foregroundColor(.primary)
                                     }
                                     .padding(16)
@@ -353,6 +360,66 @@ struct TransactionDetailView: View {
         newModel.longitude = updatedTransaction.longitude
         newModel.locationName = updatedTransaction.locationName
         
+        // Generate Edit History
+        var edits: [FirestoreModels.EditRecord] = []
+        let editorName = !appState.userName.isEmpty ? appState.userName : "You"
+        
+        if abs(amount - oldAmount) > 0.01 {
+            edits.append(FirestoreModels.EditRecord(
+                date: Date(),
+                editorId: appState.currentUserId,
+                editorName: editorName,
+                field: "Amount",
+                oldValue: String(format: "%.2f", oldAmount),
+                newValue: String(format: "%.2f", amount)
+            ))
+        }
+        
+        if newModel.title != transaction.title {
+            edits.append(FirestoreModels.EditRecord(
+                date: Date(),
+                editorId: appState.currentUserId,
+                editorName: editorName,
+                field: "Title",
+                oldValue: transaction.title,
+                newValue: newModel.title
+            ))
+        }
+        
+        if newModel.subtitle != transaction.subtitle {
+            edits.append(FirestoreModels.EditRecord(
+                date: Date(),
+                editorId: appState.currentUserId,
+                editorName: editorName,
+                field: "Category",
+                oldValue: transaction.subtitle ?? "None",
+                newValue: newModel.subtitle ?? "None"
+            ))
+        }
+        
+        if newModel.note != transaction.note {
+            // Only record if not just nil vs empty
+            let oldNote = transaction.note ?? ""
+            let newNote = newModel.note ?? ""
+            if oldNote != newNote {
+                edits.append(FirestoreModels.EditRecord(
+                    date: Date(),
+                    editorId: appState.currentUserId,
+                    editorName: editorName,
+                    field: "Note",
+                    oldValue: oldNote.isEmpty ? "(Empty)" : oldNote,
+                    newValue: newNote.isEmpty ? "(Empty)" : newNote
+                ))
+            }
+        }
+        
+        // Append to existing history
+        if !edits.isEmpty {
+            var history = newModel.editHistory ?? []
+            history.append(contentsOf: edits)
+            newModel.editHistory = history
+        }
+        
         // Auto-recalculate splits proportionally if amount changed
         if let splits = newModel.splits, !splits.isEmpty, abs(abs(amount) - abs(oldAmount)) > 0.01 {
             let oldTotal = splits.reduce(0.0) { $0 + $1.amount }
@@ -490,7 +557,7 @@ struct TransactionDetailView: View {
                 // We should check the REQUEST status.
                 let currentStatus = request!.status
                 
-                if currentStatus == .pending || currentStatus == .accepted || currentStatus == .blocked_by_group {
+                if currentStatus == .pending || currentStatus == .accepted || currentStatus == .blocked_by_group || currentStatus == .declined {
                     // Mark as Paid
                      try await SocialTransactionManager.shared.markSplitAsPaid(request: request!, currentUserId: appState.currentUserId, currentUserName: appState.userName)
                 } else if currentStatus == .paid {

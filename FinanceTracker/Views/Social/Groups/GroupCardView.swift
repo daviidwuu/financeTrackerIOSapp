@@ -10,7 +10,7 @@ struct GroupCardView: View {
     }
     
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppSpacing.element) {
             // Gradient Icon
             ZStack {
                 Circle()

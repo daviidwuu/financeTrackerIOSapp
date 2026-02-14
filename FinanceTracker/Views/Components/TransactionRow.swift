@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct TransactionRow: View {
-    let transaction: FirestoreModels.Transaction
+    let transaction: FirestoreModels.TransactionModel
     // Use shared repo from AppState
     var budgetRepo: BudgetRepository { appState.budgetRepo }
     @EnvironmentObject var appState: AppState
@@ -70,30 +70,19 @@ struct TransactionRow: View {
                 )
             
             VStack(alignment: .leading, spacing: 4) {
-                // For Income, always show Category Name (subtitle) or "Income" as title
-                Text(transaction.type == "income" ? (transaction.subtitle ?? "Income") : transaction.title)
+                // NEW: Show Category as Title
+                Text(transaction.subtitle ?? "Uncategorized")
                     .font(.body)
                     .fontWeight(.semibold)
-                    .foregroundColor(transaction.type == "income" ? Color(hex: transaction.colorHex) : .primary)
+                    .foregroundColor(transaction.amount > 0 ? Color(hex: "#34C759") : .primary)
                 
-                // Subtitle logic
-                if transaction.type != "income" {
-                    if let subtitle = transaction.subtitle, !subtitle.isEmpty, subtitle != transaction.title {
-                        Text(subtitle)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                // Show note (or original title if it was hijackng description in legacy income)
-                // Travel Mode: Show (Note) Currency$Amount
-                if let subtitleText = getSubtitleText() {
-                    Text(subtitleText)
+                // NEW: Show Note or Merchant (Title) as Subtitle
+                if let note = transaction.note, !note.isEmpty {
+                    Text(note)
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
-                } else if transaction.type == "income" && transaction.title != (transaction.subtitle ?? "Income") {
-                     // Fallback for legacy data where title was description
+                } else {
                     Text(transaction.title)
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -107,10 +96,17 @@ struct TransactionRow: View {
             
             Spacer()
             
+            // Split Indicator (Left of Amount)
+            if let splits = transaction.splits, !splits.isEmpty {
+                Image(systemName: "person.2.fill")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            
             Text(String(format: "%@$%.2f", transaction.amount > 0 ? "+" : "", abs(transaction.amount)))
-                .font(.headline) // 17pt, slightly more prominent than body
+                .font(.headline)
                 .fontWeight(.bold)
-                .foregroundColor(transaction.amount > 0 ? Color(hex: "#34C759") : .primary) // Strict Guidelines Color
+                .foregroundColor(transaction.amount > 0 ? Color(hex: "#34C759") : .primary)
         }
         .padding(AppSpacing.element)
         .contentShape(Rectangle())

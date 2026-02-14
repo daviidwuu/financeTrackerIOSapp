@@ -6,14 +6,14 @@ struct RequestCardView: View {
     let onDecline: () -> Void
     
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: AppSpacing.element) {
             // "Red Card" Icon
             Circle()
                 .fill(Color.red.opacity(0.1))
                 .frame(width: 48, height: 48)
                 .overlay(
                     Image(systemName: "exclamationmark.circle.fill")
-                        .font(.system(size: 24))
+                        .font(.system(size: 20))
                         .foregroundColor(.red)
                 )
             

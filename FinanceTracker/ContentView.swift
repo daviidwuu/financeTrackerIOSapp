@@ -149,27 +149,30 @@ struct ContentView: View {
             do {
                 // Convert UI Transaction to Firestore Transaction
                 let amount = Double(transaction.amount) ?? 0.0
-                let firestoreTransaction = FirestoreModels.Transaction(
+                let firestoreTransaction = FirestoreModels.TransactionModel(
+                    userId: appState.currentUserId, // Use global user ID
                     title: transaction.title,
                     subtitle: transaction.subtitle,
                     amount: amount,
                     date: transaction.date,
+                    type: amount < 0 ? "expense" : "income",
+                    createdAt: Date(),
                     icon: transaction.icon,
                     colorHex: transaction.color.toHex() ?? "#000000",
                     note: transaction.notes,
-                    type: amount < 0 ? "expense" : "income",
-                    userId: appState.currentUserId, // Use global user ID
-                    createdAt: Date(),
                     
                     // Travel / Currency Support
-                    currencyCode: transaction.currencyCode,
-                    exchangeRate: transaction.exchangeRate,
-                    originalAmount: transaction.originalAmount,
-                    
+                    source: nil, // Add explicitly or skip if defaulted
                     // Location
                     latitude: transaction.latitude,
                     longitude: transaction.longitude,
-                    locationName: transaction.locationName
+                    locationName: transaction.locationName,
+                    
+                    splits: nil,
+                     
+                    originalAmount: transaction.originalAmount,
+                    currencyCode: transaction.currencyCode,
+                    exchangeRate: transaction.exchangeRate
                 )
                 try await transactionRepo.addTransaction(firestoreTransaction)
                 

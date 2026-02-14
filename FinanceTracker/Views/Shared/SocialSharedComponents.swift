@@ -48,13 +48,15 @@ struct BalanceCard: View {
                     .foregroundColor(isOwed ? .functionalSuccess : .functionalError)
             }
         }
-        .padding(12)
-        .frame(width: 130)
+
+        .padding(16)
+        .frame(width: 140) // ✅ Slightly wider for better text fit
         .background(isSelf ? Color(UIColor.systemBackground) : Color(UIColor.secondarySystemBackground))
         .cornerRadius(AppRadius.medium)
         .overlay(
             RoundedRectangle(cornerRadius: AppRadius.medium)
-                .stroke(isSelf ? Color.secondary.opacity(0.2) : Color.clear, lineWidth: 1)
+                .stroke(isSelf ? Color.blue.opacity(0.3) : Color.clear, lineWidth: 1) // ✅ Blue border for self
         )
+        .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2) // ✅ Soft shadow
     }
 }

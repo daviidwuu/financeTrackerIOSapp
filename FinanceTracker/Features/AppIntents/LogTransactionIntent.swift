@@ -94,22 +94,22 @@ struct LogTransactionIntent: AppIntent {
         let absAmount = abs(finalAmount)
         let signedAmount = (type == "income" ? absAmount : -absAmount)
 
-        var newTransaction = FirestoreModels.Transaction(
+        var newTransaction = FirestoreModels.TransactionModel(
             id: nil,
+            userId: user.uid,
             title: title,
             subtitle: budgetData.category,
             amount: signedAmount,
             date: Date(),
+            type: type,
+            createdAt: Date(),
             icon: budgetData.icon,
             colorHex: budgetData.colorHex,
             note: finalNote,
-            type: type,
             source: "shortcuts",
-            userId: user.uid,
-            createdAt: Date(),
+            originalAmount: originalAmount,
             currencyCode: currencyCode,
-            exchangeRate: exchangeRate,
-            originalAmount: originalAmount
+            exchangeRate: exchangeRate
         )
         
         // Automatic Location Capture (matching AddTransactionView behavior)

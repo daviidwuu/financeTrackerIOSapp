@@ -8,12 +8,14 @@ struct RecurringTransactionCard: View {
     var body: some View {
         HStack(spacing: AppSpacing.element) {
             // Icon
-            Image(systemName: transaction.icon)
-                .font(.title2)
-                .frame(width: 48, height: 48)
-                .background(Color(hex: transaction.colorHex).opacity(0.2))
-                .foregroundColor(Color(hex: transaction.colorHex))
-                .clipShape(Circle())
+            ZStack {
+                Circle()
+                    .fill(Color(hex: transaction.colorHex).opacity(0.15))
+                    .frame(width: 48, height: 48)
+                Image(systemName: transaction.icon)
+                    .font(.system(size: 20))
+                    .foregroundColor(Color(hex: transaction.colorHex))
+            }
             
             // Content
             VStack(alignment: .leading, spacing: 4) {

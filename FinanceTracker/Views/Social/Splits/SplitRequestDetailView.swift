@@ -1,15 +1,28 @@
 import SwiftUI
+import MapKit
+import FirebaseFirestore
 
 struct SplitRequestDetailView: View {
     let request: FirestoreModels.SplitRequest
     @EnvironmentObject var appState: AppState
     @Environment(\.dismiss) var dismiss
     
+    @StateObject private var repo = SocialRepository()
     @State private var errorState = ErrorState()
+    @State private var originalTransaction: FirestoreModels.TransactionModel?
     
-    // State
-    @State private var relatedSplits: [FirestoreModels.SplitRequest] = []
-    @State private var isLoading = true
+    // Derived Properties
+    private var isIncoming: Bool { request.toUid == appState.currentUserId }
+    private var statusColor: Color {
+        switch request.status {
+        case .pending: return .orange
+        case .accepted: return .blue
+        case .declined: return .red
+        case .paid: return .green
+        case .blocked_by_group: return .secondary
+        default: return .gray
+        }
+    }
     
     var body: some View {
         ZStack {
@@ -17,71 +30,265 @@ struct SplitRequestDetailView: View {
             
             ScrollView {
                 VStack(spacing: 24) {
-                    // 1. Hero Section (Amount)
-                    VStack(spacing: 8) {
-                        Text(request.note ?? "Split Expense")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .multilineTextAlignment(.center)
-                        
-                        Text(request.dateString)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        
-                        Text(String(format: "$%.2f", request.amount))
-                            .font(.system(size: 48, weight: .bold, design: .rounded))
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-                        
-                        // Status Badge
-                        StatusBadge(status: request.status)
-                            .padding(.top, 8)
-                    }
-                    .padding(.top, 40)
-                    
-                    // 2. Info Card
-                    VStack(spacing: 16) {
-                        InfoRow(icon: "person.fill", title: "Payer", value: request.fromName ?? "Unknown")
-                        Divider()
-                        InfoRow(icon: "arrow.right", title: "Recipient", value: request.toName ?? "Unknown")
-                        if let groupName = request.groupName {
-                            Divider()
-                            InfoRow(icon: "person.3.fill", title: "Group", value: groupName)
-                        }
-                    }
-                    .padding()
-                    .background(Color(UIColor.secondarySystemBackground))
-                    .cornerRadius(16)
-                    .padding(.horizontal, AppSpacing.margin)
-                    
-                    // 3. Actions
-                    if request.toUid == appState.currentUserId && request.status == .pending {
-                        Button(action: markAsPaid) {
-                            HStack {
-                                Image(systemName: "checkmark.circle.fill")
-                                Text("Mark as Paid")
+                    // 1. Custom Header & Hero
+                    VStack(spacing: 0) {
+                        // Nav Bar
+                        HStack {
+                            Button(action: { dismiss() }) {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(.primary)
+                                    .frame(width: 36, height: 36)
+                                    .background(Color.secondary.opacity(0.1))
+                                    .clipShape(Circle())
                             }
-                            .frame(maxWidth: .infinity)
+                            Spacer()
                         }
-                        .buttonStyle(PrimaryButtonStyle())
                         .padding(.horizontal, AppSpacing.margin)
                         .padding(.top, 16)
+                        
+                        // Hero Content
+                        VStack(spacing: 16) {
+                            // Icon
+                            ZStack {
+                                Circle()
+                                    .fill(statusColor.opacity(0.15))
+                                    .frame(width: 80, height: 80)
+                                    .shadow(color: statusColor.opacity(0.2), radius: 15, y: 8)
+                                
+                                Image(systemName: isIncoming ? "arrow.down.left" : "arrow.up.right")
+                                    .font(.system(size: 32, weight: .bold))
+                                    .foregroundColor(statusColor)
+                            }
+                            
+                            VStack(spacing: 4) {
+                                Text(request.note ?? "Split Expense")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .multilineTextAlignment(.center)
+                                    .foregroundColor(.primary)
+                                
+                                Text(request.createdAt.formatted(date: .long, time: .shortened))
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                
+                                Text(String(format: "$%.2f", request.amount))
+                                    .font(AppTypography.prominentBalance)
+                                    .foregroundColor(.primary)
+                                    .padding(.top, 8)
+                                
+                                // Status Pill
+                                Text(request.status.rawValue.capitalized)
+                                    .font(.caption)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(statusColor)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(statusColor.opacity(0.1))
+                                    .clipShape(Capsule())
+                                    .padding(.top, 8)
+                            }
+                        }
+                        .padding(.top, 10)
                     }
+                    
+                    // 2. Info Card
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("DETAILS")
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .foregroundColor(.secondary)
+                            .padding(.leading, 8)
+                        
+                        VStack(spacing: 0) {
+                            RequestDetailRow(
+                                title: "Payer",
+                                value: resolveName(uid: request.fromUid, name: request.fromName),
+                                icon: "person.fill",
+                                color: .blue
+                            )
+                            
+                            Divider().padding(.leading, 52)
+                            
+                            RequestDetailRow(
+                                title: "Recipient",
+                                value: resolveName(uid: request.toUid, name: request.toName),
+                                icon: "person.2.fill",
+                                color: .purple
+                            )
+                            
+                            if let groupId = request.groupId, 
+                               let group = appState.groupRepo.groups.first(where: { $0.id == groupId }) {
+                                Divider().padding(.leading, 52)
+                                RequestDetailRow(title: "Group", value: group.name, icon: "person.3.fill", color: .orange)
+                            }
+                            
+                            Divider().padding(.leading, 52)
+                            RequestDetailRow(title: "Category", value: originalTransaction?.subtitle ?? "General", icon: "tag.fill", color: .teal)
+                            
+                            if let total = originalTransaction?.amount {
+                                Divider().padding(.leading, 52)
+                                RequestDetailRow(
+                                    title: "Total Expense",
+                                    value: String(format: "$%.2f", abs(total)),
+                                    icon: "sum",
+                                    color: .indigo
+                                )
+                            }
+                            
+                            Divider().padding(.leading, 52)
+                            RequestDetailRow(
+                                title: "Your Share",
+                                value: String(format: "$%.2f", request.amount),
+                                icon: "person.crop.circle",
+                                color: .mint
+                            )
+                        }
+                        .background(Color(UIColor.secondarySystemBackground))
+                        .cornerRadius(AppRadius.medium)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: AppRadius.medium)
+                                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+                        )
+                    }
+                    .padding(.horizontal, AppSpacing.margin)
+
+                    // 2.5 Map (If available)
+                    if let tx = originalTransaction, let lat = tx.latitude, let long = tx.longitude {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("LOCATION")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(.secondary)
+                                .padding(.leading, 8)
+                            
+                            Map(initialPosition: .region(MKCoordinateRegion(
+                                center: CLLocationCoordinate2D(latitude: lat, longitude: long),
+                                span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                            ))) {
+                                Marker("Location", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: long))
+                                    .tint(.red)
+                            }
+                            .frame(height: 200)
+                            .cornerRadius(AppRadius.medium)
+                            
+                            if let name = tx.locationName {
+                                Text(name)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.primary)
+                                    .padding(.leading, 8)
+                            }
+                        }
+                        .padding(.horizontal, AppSpacing.margin)
+                    }
+                    
+                    // 3. Actions
+                    VStack(spacing: 16) {
+                        if isIncoming && request.status == .pending {
+                            Button(action: markAsPaid) {
+                                HStack {
+                                    Image(systemName: "checkmark.circle.fill")
+                                    Text("Mark as Paid")
+                                }
+                                .font(.headline)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(Color.green)
+                                .cornerRadius(AppRadius.large)
+                                .shadow(color: Color.green.opacity(0.3), radius: 8, y: 4)
+                            }
+                            
+                            Button(action: declineRequest) {
+                                Text("Decline Request")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.red)
+                            }
+                        } else if request.fromUid == appState.currentUserId {
+                            
+                            // ✅ NEW: Resend feature for Declined requests
+                            if request.status == .declined {
+                                Button(action: resendRequest) {
+                                    HStack {
+                                        Image(systemName: "arrow.clockwise")
+                                        Text("Resend Request")
+                                    }
+                                    .font(.headline)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 16)
+                                    .background(Color.blue)
+                                    .cornerRadius(AppRadius.large)
+                                    .shadow(color: Color.blue.opacity(0.3), radius: 8, y: 4)
+                                }
+                            }
+                            
+                            // Allow canceling even if declined (to clean up)
+                            if request.status == .pending || request.status == .declined {
+                                Button(action: cancelRequest) {
+                                    HStack {
+                                        Image(systemName: "trash")
+                                        Text("Cancel Request")
+                                    }
+                                    .font(.headline)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.red)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 16)
+                                    .background(Color.red.opacity(0.1))
+                                    .cornerRadius(AppRadius.large)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, AppSpacing.margin)
+                    .padding(.top, 16)
                 }
                 .padding(.bottom, 40)
             }
         }
         .errorBanner(errorState)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Close") { dismiss() }
+        .navigationBarHidden(true)
+        .onAppear {
+            loadOriginalTransaction()
+        }
+    }
+
+    private func loadOriginalTransaction() {
+        let payerId = request.fromUid
+        let txId = request.transactionId
+        Task {
+            do {
+                originalTransaction = try await repo.fetchOriginalTransaction(userId: payerId, transactionId: txId)
+            } catch {
+                print("Error loading original transaction for map: \(error)")
+            }
+        }
+    }
+
+    private func resendRequest() {
+        HapticManager.shared.medium()
+        Task {
+            do {
+                guard let id = request.id else { return }
+                // Reset status to pending and update timestamp to bump it up
+                try await Firestore.firestore().collection("split_requests").document(id).updateData([
+                    "status": "pending",
+                    "createdAt": Date() // Bump to top
+                ])
+                dismiss()
+            } catch {
+                errorState.show("Failed to resend request")
             }
         }
     }
     
     private func markAsPaid() {
-        HapticManager.shared.medium()
+        HapticManager.shared.heavy()
         Task {
             do {
                 try await SocialTransactionManager.shared.markSplitAsPaid(
@@ -96,75 +303,76 @@ struct SplitRequestDetailView: View {
             }
         }
     }
+    
+    private func declineRequest() {
+        HapticManager.shared.medium()
+        Task {
+            do {
+                // Using RequestRepository directly properly via AppState if possible, or SocialTransactionManager if it had it.
+                // RequestRepository is in AppState.
+                try await appState.requestRepo.updateRequestStatus(userId: appState.currentUserId, requestId: request.id!, status: .declined)
+                dismiss()
+            } catch {
+                errorState.show("Failed to decline request")
+            }
+        }
+    }
+    
+    private func cancelRequest() {
+        HapticManager.shared.warning()
+        Task {
+            do {
+                try await SocialTransactionManager.shared.deleteSplitRequestAndSync(request: request)
+                dismiss()
+            } catch {
+                errorState.show("Failed to cancel request")
+            }
+        }
+    }
+    
+    private func resolveName(uid: String, name: String?) -> String {
+        if uid == appState.currentUserId { return "You" }
+        if let name = name, !name.isEmpty, name != "Unknown" { return name }
+        // Fallback lookup
+        if let friend = appState.friendRepo.friends.first(where: { $0.id == uid }) { return friend.name }
+        if let guest = appState.guestRepo.guests.first(where: { $0.id == uid }) { return guest.name }
+        return "Unknown"
+    }
 }
 
-// MARK: - Subviews
-
-struct InfoRow: View {
-    let icon: String
+// Reuse DetailRow or define simpler one here
+struct RequestDetailRow: View {
     let title: String
     let value: String
+    let icon: String
+    let color: Color
     
     var body: some View {
-        HStack {
-            Image(systemName: icon)
-                .foregroundColor(.secondary)
-                .frame(width: 24)
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.1))
+                    .frame(width: 32, height: 32)
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(color)
+            }
             
-            Text(title)
-                .foregroundColor(.secondary)
-            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.secondary)
+                Text(value)
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+            }
             Spacer()
-            
-            Text(value)
-                .fontWeight(.medium)
-                .foregroundColor(.primary)
         }
+        .padding(16)
     }
 }
 
-struct StatusBadge: View {
-    let status: FirestoreModels.SplitRequest.RequestStatus
-    
-    var color: Color {
-        switch status {
-        case .pending: return .orange
-        case .accepted: return .blue
-        case .declined: return .red
-        case .paid: return .green
-        case .blocked_by_group: return .gray
-        case .blocked_by_friendship: return .gray
-        case .unknown: return .gray
-        }
-    }
-    
-    var body: some View {
-        Text(status.rawValue.capitalized)
-            .font(.caption)
-            .fontWeight(.bold)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(color.opacity(0.15))
-            .foregroundColor(color)
-            .clipShape(Capsule())
-    }
-}
 
-// Helper extension for date display
-extension FirestoreModels.SplitRequest {
-    var dateString: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        return formatter.string(from: createdAt)
-    }
-    
-    var groupName: String? {
-        // This is a bit of a hack since SplitRequest doesn't store groupName directly usually,
-        // but we might want to fetch it or pass it in.
-        // For now, return nil or rely on parent view passing it if we change init.
-        // Assuming we might add it to the model later or look it up.
-        return nil
-    }
-    
-}
+

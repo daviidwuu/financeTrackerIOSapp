@@ -145,7 +145,8 @@ struct AddBudgetView: View {
     private var isStepValid: Bool {
         switch currentStep {
         case 1:
-            return CurrencyInput.isValid(amount)
+            // Allow 0 for "No Limit"
+            return CurrencyInput.parse(amount) != nil
         case 2:
             return !name.isEmpty
         case 3:
@@ -203,7 +204,7 @@ struct AddBudgetView: View {
                 .font(.title)
                 .fontWeight(.bold)
                 .multilineTextAlignment(.center)
-                .foregroundColor(.white)
+                .foregroundColor(.primary)
                 .padding()
                 .background(Color.backgroundPrimary)
                 .cornerRadius(AppRadius.medium)
