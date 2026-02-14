@@ -251,7 +251,7 @@ struct AddGroupMemberView: View {
                .padding(.top, AppSpacing.compact)
                .padding(.bottom, 8)
                .background(Color.backgroundPrimary)
-               .ignoresSafeArea(.keyboard)
+               // Removed ignoresSafeArea(.keyboard) to allow button to move up
             }
         }
         .onAppear {

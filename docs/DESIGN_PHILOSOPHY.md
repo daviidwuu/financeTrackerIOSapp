@@ -1,12 +1,12 @@
-# Spendi Design Philosophy & Component Standards
+# wym Design Philosophy & Component Standards
 
-This document outlines the core design philosophy and specific implementation patterns used in the high-interaction views of the Spendi app.
+This document outlines the core design philosophy and specific implementation patterns used in the high-interaction views of the wym app.
 
 ---
 
 ## 1. Core Philosophy: "Premium Utility"
 
-The Spendi design system is built on the principle of **Premium Utility**. We avoid standard iOS "Form" and "List" styles (which can feel utility-heavy and uninspired) in favor of **Custom Card-Based Architectures**.
+The wym design system is built on the principle of **Premium Utility**. We avoid standard iOS "Form" and "List" styles (which can feel utility-heavy and uninspired) in favor of **Custom Card-Based Architectures**.
 
 ### Key Pillars:
 1.  **Monochromatic Foundation**: Using `Black`, `White`, and customized `SystemGrays` for structural elements.
@@ -55,7 +55,7 @@ Created to make group onboarding feel like creating a "Brand."
 ---
 
 ## 4. Dark Mode Strategy
-Spendi does not simply invert colors.
+wym does not simply invert colors.
 *   **Backgrounds**: Truly `Black` (`#000000`) for OLED efficiency.
 *   **Surfaces**: `SecondarySystemBackground` for card elevation.
 *   **Text**: High-contrast white for primary, 60% opacity for metadata.

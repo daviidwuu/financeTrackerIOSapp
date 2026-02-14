@@ -10,25 +10,19 @@ struct FriendCardView: View {
     var body: some View {
         HStack(spacing: AppSpacing.element) {
             // Gradient Icon / Avatar
-            ZStack {
-                Circle()
-                    .fill(Color.random(seed: friend.name))
-                    .frame(width: 48, height: 48)
-                    .shadow(color: Color.random(seed: friend.name).opacity(0.3), radius: 4, x: 0, y: 2)
-                
-                Text(String(friend.name.prefix(1)).uppercased())
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(.white)
-            }
+            ProfileAvatar(
+                text: String(friend.name.prefix(1)),
+                color: Color.random(seed: friend.name),
+                size: AppSize.avatarList
+            )
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(friend.name)
-                    .font(.body)
-                    .fontWeight(.medium)
+                    .font(.headline)
                     .foregroundColor(.primary)
                 
                 Text("@" + friend.username)
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundColor(.secondary)
             }
             
@@ -36,9 +30,11 @@ struct FriendCardView: View {
             
             Image(systemName: "chevron.right")
                 .font(.caption)
-                .foregroundColor(Color.tertiaryLabel)
+                .foregroundColor(Color(UIColor.tertiaryLabel))
+                .accessibilityHidden(true)
         }
-        .padding(.vertical, AppSpacing.compact)
-        .contentShape(Rectangle()) // Ensures tap area is good
+        .padding(AppSpacing.element)
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(AppRadius.medium)
     }
 }

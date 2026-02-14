@@ -159,7 +159,7 @@ struct ProfileView: View {
                     
                     // Version info footer
                     VStack(spacing: 4) {
-                        Text("FinanceTracker for iOS")
+                        Text("wym for iOS")
                             .font(.caption2)
                             .foregroundColor(.secondary)
                         Text("Version 1.0.0 (Build 1)")

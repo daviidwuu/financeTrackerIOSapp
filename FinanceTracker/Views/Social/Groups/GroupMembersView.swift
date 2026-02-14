@@ -14,23 +14,10 @@ struct GroupMembersView: View {
             
             VStack(spacing: 0) {
                 // Custom Header
-                // Custom Header
-                ZStack {
-                    Text("Group Members")
-                        .font(.headline)
-                        .fontWeight(.bold)
-                    
-                    HStack {
-                        Button(action: { dismiss() }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.title2)
-                                .foregroundColor(.secondary.opacity(0.5))
-                        }
-                        Spacer()
-                    }
-                }
-                .padding(AppSpacing.margin)
-                .background(Color.backgroundPrimary.opacity(0.95))
+                ModalHeader(
+                    title: "Group Members",
+                    onClose: { dismiss() }
+                )
                 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
@@ -123,7 +110,7 @@ struct GroupMembersView: View {
         HapticManager.shared.success()
         Task {
             do {
-                try await repo.addMembersToGroup(groupId: groupId, newMembers: newMembers)
+                try await appState.groupRepo.addMembersToGroup(groupId: groupId, newMembers: newMembers)
             } catch {
                 print("Error adding members: \(error)")
                 HapticManager.shared.error()

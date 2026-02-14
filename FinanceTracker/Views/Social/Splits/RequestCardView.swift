@@ -85,12 +85,17 @@ struct RequestCardView: View {
         request: FirestoreModels.SplitRequest(
             id: "1",
             transactionId: "tx1",
+            groupId: nil,
             fromUid: "user1",
             toUid: "user2",
             fromName: "Alice",
+            toName: "Bob",
             amount: 25.0,
+            currency: "USD",
             note: "Dinner",
             status: .pending,
+            dependencyId: nil,
+            lastNudgedAt: nil,
             createdAt: Date()
         ),
         onAccept: {},

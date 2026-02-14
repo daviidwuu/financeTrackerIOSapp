@@ -6,6 +6,7 @@ struct FriendDetailView: View {
     
     @EnvironmentObject var appState: AppState
     @Environment(\.dismiss) var dismiss
+    @Environment(\.colorScheme) var colorScheme
     @StateObject private var repo = SocialRepository()
     
     // UI State
@@ -23,55 +24,97 @@ struct FriendDetailView: View {
             
             ScrollView {
                 VStack(spacing: AppSpacing.section) {
-                    // 1. New Custom Header
-                    FriendHeaderView(
-                        friend: friend,
-                        balance: repo.friendBalances.values.reduce(0, +),
-                        onSettleUp: { showingSettleUp = true },
-                        onNudge: sendNudge
-                    )
-                    
-                    // 1.5 Spending Summary
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Summary")
-                            .font(.headline)
-                            .padding(.horizontal, AppSpacing.margin)
-                        
-                        if !repo.friendBalances.isEmpty {
-                            // Multi-currency support
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 12) {
-                                    ForEach(repo.friendBalances.sorted(by: { $0.value > $1.value }), id: \.key) { currency, amount in
-                                        SpendingCard(
-                                            title: amount > 0 ? "Owed to You" : "You Owe",
-                                            amount: abs(amount),
-                                            icon: amount > 0 ? "arrow.down.left" : "arrow.up.right",
-                                            color: amount > 0 ? .green : .red
-                                        )
-                                    }
+                    // 1. Header
+                    DetailHeaderView(
+                        title: friend.name,
+                        subtitle: "@\(friend.username)",
+                        onBack: { dismiss() },
+                        onMenu: nil,
+                        backgroundColor: Color.backgroundPrimary,
+                        textColor: .primary
+                    ) {
+                        ProfileAvatar(
+                            text: String(friend.name.prefix(1)),
+                            color: Color.random(seed: friend.name),
+                            size: AppSize.avatarHero
+                        )
+                    } actions: {
+                        HStack(spacing: 16) {
+                            Button(action: { showingSettleUp = true }) {
+                                HStack {
+                                    Image(systemName: "banknote.fill")
+                                        .foregroundColor(colorScheme == .dark ? .black : .white)
+                                    Text("Settle Up")
+                                        .foregroundColor(colorScheme == .dark ? .black : .white)
                                 }
-                                .padding(.horizontal, AppSpacing.margin)
+                                .font(.headline)
+                                .fontWeight(.bold)
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 12)
+                                .background(colorScheme == .dark ? Color.white : Color.black)
+                                .clipShape(Capsule())
+                                .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
                             }
-                        } else {
-                            // All Settled
-                            HStack {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.title2)
-                                    .foregroundColor(.green)
-                                Text("All settled up!")
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(.secondary)
+                            
+                            let balance = repo.friendBalances.values.reduce(0, +)
+                            if balance > 0.01 {
+                                Button(action: sendNudge) {
+                                    Image(systemName: "hand.wave.fill")
+                                        .font(.system(size: 20))
+                                        .foregroundColor(.primary)
+                                        .padding(14)
+                                        .background(Color.primary.opacity(0.1))
+                                        .clipShape(Circle())
+                                }
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color(UIColor.secondarySystemBackground))
-                            .cornerRadius(AppRadius.medium)
-                            .padding(.horizontal, AppSpacing.margin)
                         }
                     }
                     
-                    // 2. Transactions List
+                    // 2. Overview & Net Balance
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Overview")
+                            .font(.headline)
+                            .padding(.horizontal, AppSpacing.margin)
+                        
+                        let balance = repo.friendBalances.values.reduce(0, +)
+                        
+                        HStack(spacing: 0) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(balance >= 0 ? "Owed to You" : "You Owe")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                Text(String(format: "$%.2f", abs(balance)))
+                                    .font(AppTypography.titleDisplay)
+                                    .foregroundColor(balance >= 0 ? .green : .red)
+                                
+                                if balance == 0 {
+                                    Text("All settled up")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            
+                            Spacer()
+                            
+                            // Mini Chart or Icon
+                            ZStack {
+                                Circle()
+                                    .fill(balance >= 0 ? Color.green.opacity(0.1) : Color.red.opacity(0.1))
+                                    .frame(width: 56, height: 56)
+                                Image(systemName: balance >= 0 ? "arrow.down.left" : "arrow.up.right")
+                                    .font(.title2)
+                                    .foregroundColor(balance >= 0 ? .green : .red)
+                            }
+                        }
+                        .padding(20)
+                        .background(Color(UIColor.secondarySystemBackground))
+                        .cornerRadius(AppRadius.medium)
+                        .padding(.horizontal, AppSpacing.margin)
+                    }
+                    
+                    // 3. Transactions List
                     VStack(alignment: .leading, spacing: AppSpacing.element) {
                         Text("History")
                             .font(.headline)
@@ -83,14 +126,18 @@ struct FriendDetailView: View {
                             } else if repo.friendTransactions.isEmpty {
                                 ContentUnavailableView("No history", systemImage: "clock.arrow.circlepath", description: Text("Shared expenses will appear here."))
                             } else {
-                                LazyVStack(spacing: 16) { // ✅ LazyVStack
+                                LazyVStack(spacing: 8) {
                                     ForEach(repo.friendTransactions) { transaction in
                                         FriendCardRow(transaction: transaction, friendName: friend.name)
-                                            .background(Color(UIColor.secondarySystemBackground)) // Card BG
+                                            .background(Color(UIColor.secondarySystemBackground))
                                             .cornerRadius(AppRadius.medium)
-                                            .shadow(color: Color.black.opacity(0.02), radius: 2, x: 0, y: 1)
                                             .onTapGesture { selectedTransaction = transaction }
                                             .contextMenu {
+                                                Button { toggleTransactionStatus(transaction) } label: {
+                                                    let isPaid = (transaction.note ?? "").lowercased() == "paid"
+                                                    Label(isPaid ? "Mark as Pending" : "Mark as Paid", systemImage: isPaid ? "arrow.uturn.backward" : "checkmark.circle")
+                                                }
+                                                
                                                  Button(role: .destructive) { deleteTransaction(transaction) } label: {
                                                      Label("Delete", systemImage: "trash")
                                                  }
@@ -113,27 +160,8 @@ struct FriendDetailView: View {
                     .zIndex(100)
             }
         }
-        .overlay(
-            // ✅ Sticky Back Button
-            GeometryReader { geo in
-                HStack {
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .frame(width: 44, height: 44)
-                            .background(.ultraThinMaterial, in: Circle())
-                    }
-                    Spacer()
-                }
-                .padding(.horizontal, AppSpacing.margin)
-                .padding(.top, geo.safeAreaInsets.top + 8)
-            }
-            .ignoresSafeArea(edges: .top),
-            alignment: .top
-        )
+        .navigationBarBackButtonHidden(true)
         .navigationBarHidden(true)
-        .ignoresSafeArea(edges: .top)
         .onAppear { loadData() }
         .sheet(isPresented: $showingSettleUp) {
             SettleUpWizardView(group: nil, preSelectedFriend: friend)
@@ -162,7 +190,7 @@ struct FriendDetailView: View {
         HapticManager.shared.medium()
         Task {
             do {
-                try await repo.sendNudge(to: fid, currentUserId: appState.currentUserId)
+                try await repo.sendNudge(friendId: fid)
             } catch { print("Error sending nudge: \(error)") }
         }
     }
@@ -195,7 +223,59 @@ struct FriendDetailView: View {
         )
     }
     
-    private func undoToggle() {}
+    private func undoToggle() {
+        guard let tx = recentlyToggledTx, let req = reconstructRequest(from: tx) else { return }
+        let targetStatus = (tx.note ?? "").lowercased()
+        
+        HapticManager.shared.medium()
+        
+        Task {
+            do {
+                if targetStatus == "paid" {
+                    try await SocialTransactionManager.shared.markSplitAsPaid(request: req, currentUserId: appState.currentUserId, currentUserName: appState.userName)
+                } else {
+                    try await SocialTransactionManager.shared.unmarkSplitAsPaid(request: req, currentUserId: appState.currentUserId)
+                }
+                
+                await MainActor.run {
+                    showUndoToast = false // Hide toast immediately on undo
+                    loadData()
+                }
+            } catch {
+                print("Error undoing toggle: \(error)")
+            }
+        }
+    }
+    
+    private func toggleTransactionStatus(_ transaction: FirestoreModels.TransactionModel) {
+        guard let req = reconstructRequest(from: transaction) else { return }
+        let isPaid = (transaction.note ?? "").lowercased() == "paid"
+        
+        HapticManager.shared.medium()
+        recentlyToggledTx = transaction
+        
+        Task {
+            do {
+                if !isPaid {
+                    try await SocialTransactionManager.shared.markSplitAsPaid(request: req, currentUserId: appState.currentUserId, currentUserName: appState.userName)
+                } else {
+                    try await SocialTransactionManager.shared.unmarkSplitAsPaid(request: req, currentUserId: appState.currentUserId)
+                }
+                
+                await MainActor.run {
+                    showUndoToast = true
+                    loadData()
+                    
+                    undoWorkItem?.cancel()
+                    let workItem = DispatchWorkItem { withAnimation { showUndoToast = false } }
+                    undoWorkItem = workItem
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 4, execute: workItem)
+                }
+            } catch {
+                print("Error toggling: \(error)")
+            }
+        }
+    }
     
     private func deleteTransaction(_ transaction: FirestoreModels.TransactionModel) {
          guard let id = transaction.id else { return }
@@ -203,97 +283,13 @@ struct FriendDetailView: View {
         withAnimation { repo.removeLocalTransaction(id: id) }
         Task {
             do {
-                try await repo.deleteFriendTransaction(transaction: transaction, currentUserId: appState.currentUserId)
+                try await repo.deleteFriendTransaction(transactionId: id)
             } catch { await MainActor.run { loadData() } }
         }
     }
 }
 
 // MARK: - Subviews
-
-struct FriendHeaderView: View {
-    let friend: FirestoreModels.Friend
-    let balance: Double
-    let onSettleUp: () -> Void
-    let onNudge: () -> Void
-    @Environment(\.dismiss) var dismiss
-    
-    var body: some View {
-        ZStack(alignment: .bottom) {
-            // Background with Black
-            Color.black
-                .frame(height: 280)
-                .overlay(Color.black.opacity(0.2))
-            
-            VStack(spacing: 0) {
-                // Nav Bar Removed (Floating)
-                
-                Spacer()
-                
-                // Profile Info
-                VStack(spacing: 16) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.white.opacity(0.2))
-                            .frame(width: 80, height: 80)
-                            .overlay(Circle().stroke(Color.white.opacity(0.5), lineWidth: 1))
-                        
-                        Text(String(friend.name.prefix(1)).uppercased())
-                            .font(.system(size: 36, weight: .bold))
-                            .foregroundColor(.white)
-                            .shadow(color: Color.black.opacity(0.3), radius: 10, x: 0, y: 5) // ✅ Enhanced Shadow
-                    }
-                    
-                    VStack(spacing: 4) {
-                        Text(friend.name)
-                            .font(.system(size: 28, weight: .bold))
-                            .foregroundColor(.white)
-                            .shadow(radius: 4)
-                        
-                        Text(friend.username)
-                            .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.9))
-                    }
-                    
-                    // Actions
-                    HStack(spacing: 16) {
-                        Button(action: onSettleUp) {
-                            HStack {
-                                Image(systemName: "banknote.fill")
-                                Text("Settle Up")
-                            }
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(Color.random(seed: friend.id ?? friend.name))
-                            .frame(maxWidth: .infinity) // ✅ Full Width
-                            .padding(.vertical, 16)
-                            .background(Color.white)
-                            .clipShape(Capsule())
-                            .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
-                        }
-                        .padding(.horizontal, balance > 0.01 ? 0 : 48) // Adjust if button is alone
-                        
-                        if balance > 0.01 {
-                            Button(action: onNudge) {
-                                Image(systemName: "hand.wave.fill")
-                                    .font(.system(size: 20))
-                                    .foregroundColor(.white)
-                                    .padding(14)
-                                    .background(Color.white.opacity(0.2))
-                                    .clipShape(Circle())
-                            }
-                        }
-                    }
-
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 32)
-                }
-            }
-        }
-        .frame(height: 280)
-        .mask(Rectangle())
-    }
-}
 
 struct FriendCardRow: View {
     let transaction: FirestoreModels.TransactionModel
@@ -364,4 +360,3 @@ struct FriendCardRow: View {
         }
     }
 }
-

@@ -47,73 +47,43 @@ struct TransactionDetailView: View {
     }
     
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             // 1. Background
-            (colorScheme == .dark ? Color.black : Color(UIColor.systemGroupedBackground))
+            (colorScheme == .dark ? Color.black : Color.white)
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // 2. Custom Header
-                HStack {
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(colorScheme == .dark ? .white : .black)
-                            .frame(width: 44, height: 44)
-                            .background(Color.primary.opacity(0.05))
-                            .clipShape(Circle())
-                    }
-                    Spacer()
-                    Button(action: {
+                DetailHeaderView(
+                    title: (transaction.note?.isEmpty == false) ? transaction.note! : transaction.title,
+                    subtitle: transaction.date.formatted(date: .long, time: .shortened),
+                    onBack: { dismiss() },
+                    onMenu: {
                         HapticManager.shared.light()
                         showEditSheet = true
-                    }) {
-                        Text("Edit")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.primary)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color.primary.opacity(0.05))
-                            .cornerRadius(20)
+                    },
+                    backgroundColor: colorScheme == .dark ? Color.black : Color.white,
+                    textColor: colorScheme == .dark ? .white : .black,
+                    avatar: {
+                        Image(systemName: categoryIcon)
+                            .font(.system(size: 32, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(width: 80, height: 80)
+                            .background(Color(hex: categoryColor))
+                            .clipShape(Circle())
+                    },
+                    actions: {
+                        // Amount Display in Header
+                        Text(String(format: "$%.2f", displayAmount))
+                            .font(AppTypography.prominentBalance)
+                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .padding(.top, 0)
+                            .padding(.bottom, 0)
                     }
-                }
-                .padding(.horizontal, AppSpacing.margin)
-                .padding(.top, 16)
+                )
                 
                 ScrollView {
                     VStack(spacing: AppSpacing.section) {
-                        
-                        // Section A: Hero Area (Amount & Category)
-                        VStack(spacing: 12) {
-                            // Category Icon Circle
-                            ZStack {
-                                Circle()
-                                    .fill(Color(hex: categoryColor).opacity(0.15))
-                                    .frame(width: 80, height: 80)
-                                
-                                Image(systemName: categoryIcon)
-                                    .font(.system(size: 32, weight: .bold))
-                                    .foregroundColor(Color(hex: categoryColor))
-                            }
-                            .shadow(color: Color(hex: categoryColor).opacity(0.2), radius: 15, y: 8)
-                            
-                            VStack(spacing: 4) {
-                                Text((transaction.note?.isEmpty == false) ? transaction.note! : transaction.title)
-                                    .font(.title3)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.primary)
-                                
-                                Text(String(format: "$%.2f", displayAmount))
-                                    .font(AppTypography.prominentBalance)
-                                    .foregroundColor(transaction.type == "income" ? .functionalSuccess : .primary)
-                                
-                                Text(transaction.date.formatted(date: .long, time: .shortened))
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        .padding(.top, 12)
                         
                         // Section B: Split / Actions
                         if transaction.type != "income" {
@@ -127,12 +97,11 @@ struct TransactionDetailView: View {
                                 }
                                 .font(.headline)
                                 .fontWeight(.bold)
-                                .foregroundColor(.black)
+                                .foregroundColor(colorScheme == .dark ? .black : .white)
                                 .padding(.horizontal, 24)
                                 .padding(.vertical, 12)
-                                .background(Color.white)
+                                .background(colorScheme == .dark ? Color.white : Color.black)
                                 .clipShape(Capsule())
-                                .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
                             }
                         }
 
@@ -274,11 +243,6 @@ struct TransactionDetailView: View {
                             }
                             .background(Color(UIColor.secondarySystemBackground))
                             .cornerRadius(AppRadius.medium)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: AppRadius.medium)
-                                    .stroke(Color.primary.opacity(0.05), lineWidth: 1)
-                                    .shadow(color: Color.black.opacity(0.02), radius: 10, y: 4)
-                            )
                         }
                         .padding(.horizontal, AppSpacing.margin)
                         

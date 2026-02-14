@@ -12,25 +12,19 @@ struct GroupCardView: View {
     var body: some View {
         HStack(spacing: AppSpacing.element) {
             // Gradient Icon
-            ZStack {
-                Circle()
-                    .fill(gradient)
-                    .frame(width: 48, height: 48)
-                    .shadow(color: Color(hex: group.color).opacity(0.3), radius: 4, x: 0, y: 2)
-                
-                Image(systemName: group.icon)
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(.white)
-            }
+            GroupAvatar(
+                icon: group.icon,
+                color: group.color,
+                size: AppSize.avatarList
+            )
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(group.name)
-                    .font(.body)
-                    .fontWeight(.medium)
+                    .font(.headline)
                     .foregroundColor(.primary)
                 
                 Text("\(group.members.count) members")
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundColor(.secondary)
             }
             
@@ -39,26 +33,11 @@ struct GroupCardView: View {
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundColor(Color(UIColor.tertiaryLabel))
+                .accessibilityHidden(true)
         }
-        .contentShape(Rectangle()) // Ensures tap area is good
-    }
-}
-
-// Preview Helper
-struct GroupCardView_Previews: PreviewProvider {
-    static var previews: some View {
-        GroupCardView(group: FirestoreModels.Group(
-            name: "Travel Crew",
-            normalizedName: "travel crew",
-            members: ["1", "2", "3"],
-            createdBy: "user1",
-            icon: "airplane",
-            color: "#FF5733",
-            createdAt: Date(),
-            updatedAt: Date()
-        ))
-        .padding()
-        .background(Color.systemBackground)
-        .previewLayout(.sizeThatFits)
+        .padding(AppSpacing.element) // Inner padding
+        .background(Color(UIColor.secondarySystemBackground)) // Card Background
+        .cornerRadius(AppRadius.medium) // Card Radius
+        // Shadow is optional per guide ("None by default... ScaleEffect on press")
     }
 }

@@ -9,6 +9,17 @@ class SocialTransactionManager: ObservableObject {
     
     private init() {}
     
+    /// Nudges a user for a pending split request.
+    func nudgeSplitRequest(request: FirestoreModels.SplitRequest) async throws {
+        guard let requestId = request.id else { return }
+        
+        let requestRef = db.collection("split_requests").document(requestId)
+        try await requestRef.updateData([
+            "lastNudgedAt": Date()
+        ])
+    }
+
+    
     /// Creates a social transaction with all necessary dependent documents in a single atomic batch.
     /// - Parameters:
     ///   - transaction: The transaction to save (transaction.splits should be populated).
@@ -45,20 +56,14 @@ class SocialTransactionManager: ObservableObject {
         finalTransaction.source = "social_v2" // ✅ Mark as v2.1 to prevent legacy trigger duplication
         
         // --- 1.5. Prepare Existing Data for UPSERT (Avoid Delete-All) ---
-        var existingRequestsMap: [String: DocumentSnapshot] = [:] // toUid -> Document
-        let existingRequests = try? await db.collection("split_requests")
+        // Fetch all existing requests for this transaction
+        var existingRequestsDocs: [QueryDocumentSnapshot] = []
+        if let snapshot = try? await db.collection("split_requests")
             .whereField("transactionId", isEqualTo: transactionRef.documentID)
-            .getDocuments()
-            
-        for doc in existingRequests?.documents ?? [] {
-            if let toUid = doc.get("toUid") as? String { // Safe cast attempt, fallback handled
-                existingRequestsMap[toUid] = doc
-            } else if let toUid = doc.data()["toUid"] as? String {
-                existingRequestsMap[toUid] = doc
-            }
+            .whereField("fromUid", isEqualTo: payerUid)
+            .getDocuments() {
+            existingRequestsDocs = snapshot.documents
         }
-        
-        var participatingFriendUids: Set<String> = []
         
         // 2. Process Splits & Requests
         let updatedSplits = finalTransaction.splits ?? []
@@ -105,7 +110,6 @@ class SocialTransactionManager: ObservableObject {
             }
             
             guard let friendUid = targetUid else { continue }
-            participatingFriendUids.insert(friendUid)
             
             // --- Step B: Group Invitation Logic ---
             let dependencyId: String? = nil
@@ -127,9 +131,17 @@ class SocialTransactionManager: ObservableObject {
             // --- Step C: Create/Update Split Request ---
             let requestRef: DocumentReference
             
-            if let existingDoc = existingRequestsMap[friendUid] {
-                // UPDATE existing
+            // Look for a matching document in our fetched list
+            if let index = existingRequestsDocs.firstIndex(where: { doc in
+                let docToUid = (doc.get("toUid") as? String) ?? (doc.data()["toUid"] as? String)
+                return docToUid == friendUid
+            }) {
+                // FOUND: Reuse this document
+                let existingDoc = existingRequestsDocs[index]
                 requestRef = existingDoc.reference
+                
+                // Remove from list so we don't delete it later
+                existingRequestsDocs.remove(at: index)
                 
                 // Preserve status if amount is same
                 if let existingAmount = existingDoc.get("amount") as? Double, abs(existingAmount - split.amount) < 0.01 {
@@ -138,7 +150,7 @@ class SocialTransactionManager: ObservableObject {
                     }
                 }
             } else {
-                // CREATE new
+                // NOT FOUND: Create new
                 requestRef = db.collection("split_requests").document()
             }
             
@@ -169,12 +181,61 @@ class SocialTransactionManager: ObservableObject {
         
         // 3. Save the Transaction Itself
         
-        // --- PRE-SAVE MERGE (Race Condition Fix) ---
+        // --- PRE-SAVE MERGE & CHANGE TRACKING ---
         // Fetch latest version from server to ensure we don't overwrite a concurrent "Mark as Paid"
+        var remoteSplits: [FirestoreModels.Split]? = nil
+        
         if let existingTxSnapshot = try? await transactionRef.getDocument(),
            existingTxSnapshot.exists,
-           let remoteTx = try? existingTxSnapshot.data(as: FirestoreModels.TransactionModel.self),
-           let remoteSplits = remoteTx.splits {
+           let remoteTx = try? existingTxSnapshot.data(as: FirestoreModels.TransactionModel.self) {
+            
+            remoteSplits = remoteTx.splits
+            
+            // --- 1. Track Changes (Audit Trail) ---
+            var history = remoteTx.editHistory ?? []
+            var hasChanges = false
+            
+            // Check Amount
+            if abs(remoteTx.amount - finalTransaction.amount) > 0.01 {
+                let oldVal = String(format: "%.2f", remoteTx.amount)
+                let newVal = String(format: "%.2f", finalTransaction.amount)
+                history.append(FirestoreModels.EditRecord(
+                    date: Date(),
+                    editorId: payerUid,
+                    editorName: payerName,
+                    field: "amount",
+                    oldValue: oldVal,
+                    newValue: newVal
+                ))
+                hasChanges = true
+            }
+            
+            // Check Title
+            if remoteTx.title != finalTransaction.title {
+                history.append(FirestoreModels.EditRecord(
+                    date: Date(),
+                    editorId: payerUid,
+                    editorName: payerName,
+                    field: "title",
+                    oldValue: remoteTx.title,
+                    newValue: finalTransaction.title
+                ))
+                hasChanges = true
+            }
+            
+            if hasChanges {
+                // Limit history to last 5 entries to save space
+                if history.count > 5 {
+                    history = Array(history.suffix(5))
+                }
+                finalTransaction.editHistory = history
+            } else {
+                // Keep existing history if no new changes
+                finalTransaction.editHistory = remoteTx.editHistory
+            }
+
+            // --- 2. Merge Remote Splits (Safety Merge) ---
+            if let remoteSplits = remoteTx.splits {
             
             // Merge remote status into local splits
             if var localSplits = finalTransaction.splits {
@@ -204,23 +265,24 @@ class SocialTransactionManager: ObservableObject {
                 finalTransaction.splits = localSplits
             }
         }
+        }
         // -------------------------------------------
 
         try batch.setData(from: finalTransaction, forDocument: transactionRef)
         
-        // 4. Cleanup Removed Splits (if any)
-        for (uid, doc) in existingRequestsMap {
-            if !participatingFriendUids.contains(uid) {
-                batch.deleteDocument(doc.reference)
-                
-                // Also clean up any income transaction created for this removed split
-                if let originalSplits = transaction.splits {
-                    if let removedSplit = originalSplits.first(where: {
-                        $0.friendId == uid || $0.guestId == uid
-                    }), let incomeId = removedSplit.incomeTransactionId {
-                        let incomeRef = db.collection("users").document(payerUid).collection("transactions").document(incomeId)
-                        batch.deleteDocument(incomeRef)
-                    }
+        // 4. Cleanup Removed Splits (Any docs left in existingRequestsDocs are orphans)
+        for doc in existingRequestsDocs {
+            batch.deleteDocument(doc.reference)
+            
+            // Also clean up any income transaction created for this removed split
+            let uid = (doc.get("toUid") as? String) ?? (doc.data()["toUid"] as? String)
+            
+            if let uid = uid, let originalSplits = remoteSplits {
+                 if let removedSplit = originalSplits.first(where: {
+                    $0.friendId == uid || $0.guestId == uid
+                }), let incomeId = removedSplit.incomeTransactionId {
+                    let incomeRef = db.collection("users").document(payerUid).collection("transactions").document(incomeId)
+                    batch.deleteDocument(incomeRef)
                 }
             }
         }
@@ -267,6 +329,8 @@ class SocialTransactionManager: ObservableObject {
                     currencyCode: targetCurrency, // ✅ Store Target Currency
                     note: finalTransaction.note, // ✅ NEW: Store Note ("Burger King")
                     category: finalTransaction.subtitle, // ✅ NEW: Store Category ("Food & Dining")
+                    icon: finalTransaction.icon, // ✅ NEW
+                    colorHex: finalTransaction.colorHex, // ✅ NEW
                     originalTransactionId: finalTransaction.id,
                     editHistory: finalTransaction.editHistory // ✅ Sync Edit History
                 )
@@ -287,18 +351,33 @@ class SocialTransactionManager: ObservableObject {
         
         let batch = db.batch()
         
-        // 1. Delete Group Transaction
+        // 1. Delete Group Transaction (Archive First)
         if let txId = groupTransaction.id {
              let ref = db.collection("groups").document(groupId).collection("transactions").document(txId)
+             // Archive
+             let archiveRef = db.collection("groups").document(groupId).collection("archived_transactions").document(txId)
+             _ = try? batch.setData(from: groupTransaction, forDocument: archiveRef)
+             
              batch.deleteDocument(ref)
         }
         
-        // 2. Delete Split Requests
+        // 2. Delete Split Requests (Archive First)
         let requests = try await db.collection("split_requests")
             .whereField("transactionId", isEqualTo: originalTxId)
+            .whereField("fromUid", isEqualTo: groupTransaction.payerId)
             .getDocuments()
             
+        // 2b. If no requests found with fromUid, try finding by toUid if we are deleting someone else's request? 
+        // But for deleting the whole transaction, we usually only do it if we are the payer.
+        // If the query returns empty, we might be missing requests where we are the receiver?
+        // But the split requests associated with a group transaction are usually created by the payer.
+        
         for doc in requests.documents {
+            // Archive
+            let archiveRef = db.collection("archived_split_requests").document(doc.documentID)
+            let data = doc.data()
+            batch.setData(data, forDocument: archiveRef)
+            
             batch.deleteDocument(doc.reference)
         }
         
@@ -320,7 +399,14 @@ class SocialTransactionManager: ObservableObject {
             print("DEBUG: Error fetching original transaction for income cleanup: \(error)")
         }
         
-        // 4. Delete Original User Transaction
+        // 4. Delete Original User Transaction (Archive First)
+        let archiveTxRef = db.collection("users").document(payerId).collection("archived_transactions").document(originalTxId)
+        do {
+            if let txData = try? await userTxRef.getDocument().data(as: FirestoreModels.TransactionModel.self) {
+                 try batch.setData(from: txData, forDocument: archiveTxRef)
+            }
+        } catch {}
+        
         batch.deleteDocument(userTxRef)
         
         try await batch.commit()
@@ -333,10 +419,11 @@ class SocialTransactionManager: ObservableObject {
         
         let batch = db.batch()
         
-        // 1. Find and Delete Split Requests
+        // 1. Find and Delete Split Requests (Archive)
         // We also need to find the groupId from these requests to delete the GroupTransaction
         let requestsSnapshot = try await db.collection("split_requests")
             .whereField("transactionId", isEqualTo: transactionId)
+            .whereField("fromUid", isEqualTo: transaction.userId)
             .getDocuments()
             
         var groupId: String? = nil
@@ -346,16 +433,24 @@ class SocialTransactionManager: ObservableObject {
             if groupId == nil, let gid = doc.data()["groupId"] as? String {
                 groupId = gid
             }
+            // Archive
+            let archiveRef = db.collection("archived_split_requests").document(doc.documentID)
+            batch.setData(doc.data(), forDocument: archiveRef)
+            
             batch.deleteDocument(doc.reference)
         }
         
-        // 2. Delete Group Transaction (if we found a groupId)
+        // 2. Delete Group Transaction (if we found a groupId) (Archive)
         if let groupId = groupId {
             let groupTxsSnapshot = try await db.collection("groups").document(groupId).collection("transactions")
                 .whereField("originalTransactionId", isEqualTo: transactionId)
                 .getDocuments()
                 
             for doc in groupTxsSnapshot.documents {
+                // Archive
+                let archiveRef = db.collection("groups").document(groupId).collection("archived_transactions").document(doc.documentID)
+                batch.setData(doc.data(), forDocument: archiveRef)
+                
                 batch.deleteDocument(doc.reference)
             }
         }
@@ -580,5 +675,194 @@ class SocialTransactionManager: ObservableObject {
             print("DEBUG: Error reverting linked split: \(error)")
             return false
         }
+    }
+
+    /// Merges a Guest's history into a newly added Friend
+    func mergeGuestToFriend(guestId: String, friend: FirestoreModels.Friend, currentUserId: String) async throws {
+        // 1. Fetch all transactions for the current user (Payer)
+        // We need to find transactions where we split with this guest.
+        // Since we can't query sub-fields of array easily without index, we might need to scan.
+        // Or if we have a lot, this is expensive. But for now, client-side scan is acceptable for MVP.
+        
+        let snapshot = try await db.collection("users").document(currentUserId).collection("transactions")
+            .getDocuments()
+            
+        let batch = db.batch()
+        var updateCount = 0
+        
+        for doc in snapshot.documents {
+            if let tx = try? doc.data(as: FirestoreModels.TransactionModel.self), var splits = tx.splits {
+                var needsUpdate = false
+                
+                for i in 0..<splits.count {
+                    if splits[i].guestId == guestId {
+                        // Found match! Update to Friend
+                        splits[i].guestId = nil
+                        splits[i].isGuest = false
+                        splits[i].friendId = friend.id
+                        splits[i].name = friend.name
+                        splits[i].username = friend.username
+                        needsUpdate = true
+                    }
+                }
+                
+                if needsUpdate {
+                    // Update the transaction
+                    var updatedTx = tx
+                    updatedTx.splits = splits
+                    try batch.setData(from: updatedTx, forDocument: doc.reference)
+                    updateCount += 1
+                }
+            }
+        }
+        
+        // 2. Delete the Guest
+        let guestRef = db.collection("users").document(currentUserId).collection("guests").document(guestId)
+        batch.deleteDocument(guestRef)
+        
+        if updateCount > 0 {
+            try await batch.commit()
+            print("✅ Merged \(updateCount) transactions from guest \(guestId) to friend \(friend.name)")
+        } else {
+            // Even if no transactions, delete the guest
+            try await guestRef.delete()
+            print("✅ Guest \(guestId) deleted (no transactions to merge)")
+        }
+    }
+
+    /// Settles up a debt between two users
+    func settleUp(payerId: String, receiverId: String, groupId: String?, amount: Double, payerName: String = "Member", method: String = "Cash") async throws {
+        // Payer Side (Expense)
+        let payerRef = db.collection("users").document(payerId).collection("transactions").document()
+        
+        // 1. Create a "Payment" transaction
+        let paymentTransaction = FirestoreModels.TransactionModel(
+            id: payerRef.documentID,
+            userId: payerId,
+            title: "Payment to \(method)",
+            subtitle: "Settle Up",
+            amount: -amount, // Expense for payer
+            date: Date(),
+            type: "expense",
+            createdAt: Date(),
+            icon: "banknote.fill",
+            colorHex: "#34C759", // Green
+            note: "Settled up via \(method)"
+        )
+        
+        let batch = db.batch()
+        
+        try batch.setData(from: paymentTransaction, forDocument: payerRef)
+        
+        // Receiver Side (Income)
+        // CRITICAL FIX: Do NOT write to receiver's transaction collection directly (Security Rules Violation).
+        // Instead, we rely on the Cloud Function `v2_onSplitRequestUpdated` to detect the 'paid' status
+        // and create the "Payment Received" transaction for the receiver securely.
+        
+        // 3. Counter-Request (Settlement)
+        // Settlement Request acts as a Credit to offset the Debt.
+        // It is FROM Payer TO Reciever, status .paid immediately.
+        
+        let requestRef = db.collection("split_requests").document()
+        let settlementRequest = FirestoreModels.SplitRequest(
+             id: nil,
+             transactionId: payerRef.documentID,
+             groupId: groupId,
+             fromUid: payerId,
+             toUid: receiverId,
+             fromName: "Settlement",
+             toName: nil, // Will be filled by receiver logic or ignored
+             amount: amount,
+             currency: nil,
+             note: "Settled via \(method)",
+             status: .paid, // Mark as PAID immediately so it triggers the Cloud Function
+             dependencyId: nil,
+             lastNudgedAt: nil,
+             createdAt: Date()
+        )
+        
+        try batch.setData(from: settlementRequest, forDocument: requestRef)
+        
+        // Group Feed
+        if let groupId = groupId {
+            let groupRef = db.collection("groups").document(groupId).collection("transactions").document()
+            let groupTx = FirestoreModels.GroupTransaction(
+                id: nil,
+                title: "Settlement: \(method)",
+                amount: amount,
+                payerId: payerId,
+                payerName: payerName, 
+                date: Date(),
+                type: "settlement", // Special type
+                currencyCode: nil,
+                note: nil,
+                category: "Settlement",
+                icon: "banknote.fill",
+                colorHex: "#34C759",
+                originalTransactionId: nil,
+                editHistory: nil
+            )
+            try batch.setData(from: groupTx, forDocument: groupRef)
+        }
+        
+        // 4. Mark existing pending splits between these users as paid
+        // Find splits where the receiver (creditor) split bills with the payer (debtor)
+        let pendingSplits = try await db.collection("split_requests")
+            .whereField("fromUid", isEqualTo: receiverId)
+            .whereField("toUid", isEqualTo: payerId)
+            .whereField("status", isEqualTo: FirestoreModels.SplitRequest.RequestStatus.pending.rawValue)
+            .getDocuments()
+        
+        for doc in pendingSplits.documents {
+             // Mark the split request as paid
+             // This update is allowed by security rules (as 'toUid' == me)
+             batch.updateData(["status": FirestoreModels.SplitRequest.RequestStatus.paid.rawValue], forDocument: doc.reference)
+             
+             // NOTE: We do NOT update the original transaction here. 
+             // The Cloud Function will pick up this status change and sync it to the Creditor's transaction.
+        }
+        
+        try await batch.commit()
+    }
+
+    /// Adds new members to a group
+    func addMembersToGroup(groupId: String, newMembers: [(id: String, name: String)]) async throws {
+        let groupRef = db.collection("groups").document(groupId)
+        
+        let newIds = newMembers.map { $0.id }
+        
+        var updateData: [String: Any] = [
+            "members": FieldValue.arrayUnion(newIds)
+        ]
+        
+        for member in newMembers {
+            updateData["memberNames.\(member.id)"] = member.name
+        }
+        
+        try await groupRef.updateData(updateData)
+    }
+
+    /// Sends a nudge notification to a friend for unpaid debts
+    func sendNudge(to friendId: String, currentUserId: String) async throws {
+        // 1. Find pending requests from current user to friend
+        let snapshot = try await db.collection("split_requests")
+            .whereField("fromUid", isEqualTo: currentUserId)
+            .whereField("toUid", isEqualTo: friendId)
+            .whereField("status", isEqualTo: FirestoreModels.SplitRequest.RequestStatus.pending.rawValue)
+            .getDocuments()
+            
+        let batch = db.batch()
+        let now = Date()
+        
+        // 2. Update lastNudgedAt timestamp
+        for doc in snapshot.documents {
+            batch.updateData(["lastNudgedAt": now], forDocument: doc.reference)
+        }
+        
+        // 3. Commit update
+        try await batch.commit()
+        
+        // Note: Real push notification would be triggered via Cloud Functions watching this field update
+        // or a separate notifications collection.
     }
 }

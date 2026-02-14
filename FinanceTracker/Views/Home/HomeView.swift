@@ -6,16 +6,7 @@ struct HomeView: View {
     @EnvironmentObject var appState: AppState
     
     var monthlyIncome: Double {
-        recurringRepo.recurringTransactions
-            .filter { $0.type == "income" }
-            .reduce(0) { sum, transaction in
-                switch transaction.frequency {
-                case "Weekly": return sum + (transaction.amount * 52.0 / 12.0)
-                case "Bi-Weekly": return sum + (transaction.amount * 26.0 / 12.0)
-                case "Yearly": return sum + (transaction.amount / 12.0)
-                default: return sum + transaction.amount
-                }
-            }
+        WalletLogic.calculateMonthlyIncome(recurringTransactions: recurringRepo.recurringTransactions)
     }
     
     // Repositories moved to AppState
@@ -39,45 +30,11 @@ struct HomeView: View {
     @State private var hiddenTransactionIds: Set<String> = []
     
     var totalBudget: Double {
-        // Exclude income budgets
-        budgetRepo.budgets.filter { $0.type != "income" }.reduce(0) { sum, budget in
-            // Normalize to monthly
-            var monthlyAmount = budget.totalAmount
-            switch budget.frequency {
-            case "Weekly": monthlyAmount = budget.totalAmount * 52.0 / 12.0
-            case "Bi-Weekly": monthlyAmount = budget.totalAmount * 26.0 / 12.0
-            case "Yearly": monthlyAmount = budget.totalAmount / 12.0
-            default: break
-            }
-            return sum + monthlyAmount
-        }
+        WalletLogic.calculateTotalBudget(budgets: budgetRepo.budgets)
     }
     
     var totalSpent: Double {
-        let calendar = Calendar.current
-        let currentMonthTransactions = transactionRepo.transactions.filter { transaction in
-            // Filter by current month
-            return calendar.isDate(transaction.date, equalTo: Date(), toGranularity: .month)
-        }
-        
-        // 1. Calculate pure expenses (Type == expense)
-        let expenses = currentMonthTransactions
-            .filter { $0.type == "expense" }
-            .reduce(0) { $0 + abs($1.amount) }
-        
-        // 2. Calculate reimbursements (Type == income BUT not Salary/Income category)
-        // Reimbursements are things like friends paying you back, so they OFFSET your spending.
-        // We filter out explicit "Income" category or "Salary" to avoid subtracting your paycheck from your spending (which would be weird).
-        let reimbursements = currentMonthTransactions
-            .filter {
-                $0.type == "income" &&
-                ($0.subtitle != "Income" && $0.subtitle != "Salary")
-            }
-            .reduce(0) { $0 + abs($1.amount) }
-            
-        // Net Spent = Total Out - Total Back
-        // ex: Spent 100 on Dinner. Friend sent 50. Net Spent = 50.
-        return max(0, expenses - reimbursements)
+        WalletLogic.calculateNetSpent(transactions: transactionRepo.transactions)
     }
     
     var body: some View {
@@ -294,7 +251,13 @@ struct HomeView: View {
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                         } else {
-                            ForEach(transactionRepo.transactions.prefix(5)) { transaction in
+                            // Filter hidden transactions (Undo logic)
+                            let visibleTransactions = transactionRepo.transactions.filter { transaction in
+                                guard let id = transaction.id else { return true }
+                                return !hiddenTransactionIds.contains(id)
+                            }
+                            
+                            ForEach(visibleTransactions.prefix(5)) { transaction in
                                 TransactionRow(transaction: transaction)
                                     .background(Color(uiColor: .secondarySystemBackground))
                                     .cornerRadius(AppRadius.medium)
@@ -480,19 +443,28 @@ struct HomeView: View {
                 hiddenTransactionIds.remove(id)
             },
             onConfirm: { [self] in
-                hiddenTransactionIds.remove(id)
                 Task {
                     do {
+                        // 1. Cleanup Linked Splits (Revert payments if needed)
                         let _ = await SocialTransactionManager.shared.revertLinkedSplitIfNeeded(transaction: transaction, currentUserId: appState.currentUserId)
                         
+                        // 2. Delete Transaction
                         if let splits = transaction.splits, !splits.isEmpty {
+                            // Social Delete
+                            // Optimistic Update: Remove locally first
+                            await transactionRepo.removeLocalTransaction(id: id)
                             try await SocialTransactionManager.shared.deleteSocialTransaction(transaction: transaction)
                         } else {
+                            // Personal Delete (Repo handles optimistic update)
                             try await transactionRepo.deleteTransaction(id: id)
                         }
+                        
+                        // 3. Cleanup Hidden ID (Item is now gone from source)
+                        hiddenTransactionIds.remove(id)
                     } catch {
                         DebugLogger.log("Failed to delete transaction: \(error)")
                         errorState.show("Failed to delete transaction")
+                        hiddenTransactionIds.remove(id) // Restore on error
                     }
                 }
             }

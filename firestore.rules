@@ -50,6 +50,11 @@ service cloud.firestore {
       match /transactions/{transactionId} {
         allow read, write: if request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.members;
       }
+      
+      // ✅ NEW: Archived Group Transactions
+      match /archived_transactions/{transactionId} {
+        allow read, write: if request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.members;
+      }
     }
     
     match /split_requests/{requestId} {
@@ -80,6 +85,14 @@ service cloud.firestore {
       allow update: if request.auth.uid == resource.data.toUid;
       allow delete: if request.auth.uid == resource.data.fromUid
                     || request.auth.uid == resource.data.toUid;
+    }
+
+    // ✅ NEW: Archived Split Requests
+    match /archived_split_requests/{requestId} {
+      allow create: if request.auth.uid == request.resource.data.fromUid 
+                    || request.auth.uid == request.resource.data.toUid;
+      allow read: if request.auth.uid == resource.data.fromUid 
+                  || request.auth.uid == resource.data.toUid;
     }
     
     // ✅ NEW: Root collection for group invitations
@@ -125,6 +138,11 @@ service cloud.firestore {
         
         // ✅ NEW: Private guest subcollection
         match /guests/{guestId} {
+          allow read, write: if request.auth.uid == userId;
+        }
+        
+        // ✅ NEW: Archived Transactions
+        match /archived_transactions/{document=**} {
           allow read, write: if request.auth.uid == userId;
         }
         

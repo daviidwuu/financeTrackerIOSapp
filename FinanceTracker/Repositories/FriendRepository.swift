@@ -6,6 +6,7 @@ class FriendRepository: ObservableObject {
     private let db = Firestore.firestore()
     @Published var friends: [FirestoreModels.Friend] = []
     @Published var searchResults: [UserSearchResult] = [] // Using the User struct from FirebaseManager (or defining a lightweight one)
+    @Published var isLoading = true // ✅ NEW: Loading state
     private var userId: String?
     private var listener: ListenerRegistration?
     
@@ -14,20 +15,24 @@ class FriendRepository: ObservableObject {
         @DocumentID var id: String?
         var name: String
         var username: String
-        var email: String
+        var email: String? // ✅ Fixed: Optional email
     }
     
     func startListening(userId: String) {
         self.userId = userId
+        self.isLoading = true
         listener = db.collection("users").document(userId).collection("friends")
             .order(by: "name")
             .addSnapshotListener { [weak self] snapshot, error in
+                guard let self = self else { return }
+                self.isLoading = false
+                
                 guard let documents = snapshot?.documents else {
                     DebugLogger.log("Error fetching friends: \(error?.localizedDescription ?? "Unknown error")")
                     return
                 }
                 
-                self?.friends = documents.compactMap { document in
+                self.friends = documents.compactMap { document in
                     try? document.data(as: FirestoreModels.Friend.self)
                 }
             }
@@ -81,20 +86,10 @@ class FriendRepository: ObservableObject {
     func deleteFriend(friendId: String) async throws {
         guard let userId = userId else { return }
         
-        // remove batch to prevent one failure from blocking the other
         // 1. Remove from my list (Primary Action)
+        // The Cloud Function `v2_onFriendDeleted` will handle removing me from their list.
         let myRef = db.collection("users").document(userId).collection("friends").document(friendId)
         try await myRef.delete()
-        
-        // 2. Remove me from their list (Best Effort)
-        Task {
-            do {
-                let theirRef = db.collection("users").document(friendId).collection("friends").document(userId)
-                try await theirRef.delete()
-            } catch {
-                print("Warning: Could not remove self from friend's list: \(error)")
-            }
-        }
     }
     
     /// Create bidirectional friendship (Client-side fallback for Phase 6 Cloud Functions)

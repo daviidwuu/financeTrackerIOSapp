@@ -37,59 +37,19 @@ struct AddBudgetView: View {
     }
     
     var body: some View {
-        ZStack {
-            // Background
-            (colorScheme == .dark ? Color.black : Color.white)
-                .ignoresSafeArea()
-            
-            VStack(spacing: 20) {
-                // Header
-                ModalHeader(
-                    title: currentStep < 5 ? "Add Budget" : "Confirm",
-                    currentStep: currentStep,
-                    totalSteps: 5,
-                    onBack: currentStep > 1 ? {
-                        direction = .leading
-                        withAnimation { currentStep -= 1 }
-                    } : nil,
-                    onClose: { dismiss() }
-                )
-                .padding(.horizontal, AppSpacing.margin)
-                .padding(.top, 16)
-                
-                Spacer()
-                
-                // Content
-                ZStack(alignment: .top) {
-                    currentStepView
-                }
-                .id(currentStep)
-                .transition(.asymmetric(
-                    insertion: .move(edge: direction),
-                    removal: .move(edge: direction == .leading ? .trailing : .leading)
-                ))
-                
-                Spacer()
-            }
-            .safeAreaInset(edge: .bottom) {
-                stickyActionBar
-            }
-        }
-        .presentationDetents(availableDetents, selection: $presentationDetent)
-        .presentationDragIndicator(.visible)
-        .onChange(of: presentationDetent) { _, newValue in
-            // Sticky Logic: Once expanded to large, lock it there.
-            if newValue == .large {
-                availableDetents = [.large]
-            }
-        }
-        .onAppear {
-            populateData()
-        }
-    }
-    
-    private var stickyActionBar: some View {
-        VStack {
+        WizardLayout(
+            title: currentStep < 5 ? "Add Budget" : "Confirm",
+            currentStep: currentStep,
+            totalSteps: 5,
+            onBack: currentStep > 1 ? {
+                direction = .leading
+                withAnimation { currentStep -= 1 }
+            } : nil,
+            onClose: { dismiss() },
+            direction: direction
+        ) {
+            currentStepView
+        } actionBar: {
             Button(action: {
                 // Sticky Logic: Enforce Large Detent
                 availableDetents = [.large]
@@ -110,11 +70,17 @@ struct AddBudgetView: View {
             .disabled(!isStepValid)
             .animation(.easeInOut, value: isStepValid) // Smooth color transition
         }
-        .padding(.horizontal, AppSpacing.margin)
-        .padding(.top, AppSpacing.compact)
-        .padding(.bottom, 8)
-        .background(Color.backgroundPrimary)
-        .animation(.easeInOut, value: currentStep) // Smooth transitions
+        .presentationDetents(availableDetents, selection: $presentationDetent)
+        .presentationDragIndicator(.visible)
+        .onChange(of: presentationDetent) { _, newValue in
+            // Sticky Logic: Once expanded to large, lock it there.
+            if newValue == .large {
+                availableDetents = [.large]
+            }
+        }
+        .onAppear {
+            populateData()
+        }
     }
     
     private func saveBudget() {

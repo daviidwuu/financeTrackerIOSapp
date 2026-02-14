@@ -81,12 +81,12 @@ struct UndoableBanner: View {
         HStack(spacing: 12) {
             Image(systemName: "trash.fill")
                 .font(.body)
-                .foregroundColor(.white.opacity(0.8))
+                .foregroundColor(.red)
             
             Text(label)
                 .font(.subheadline)
                 .fontWeight(.medium)
-                .foregroundColor(.white)
+                .foregroundColor(.primary)
             
             Spacer()
             
@@ -94,16 +94,14 @@ struct UndoableBanner: View {
                 Text("Undo")
                     .font(.subheadline)
                     .fontWeight(.bold)
-                    .foregroundColor(.yellow)
+                    .foregroundColor(.blue)
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(UIColor.darkGray))
-                .shadow(color: .black.opacity(0.2), radius: 8, y: -2)
-        )
+        .background(.regularMaterial)
+        .clipShape(Capsule())
+        .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 5)
         .padding(.horizontal, AppSpacing.margin)
     }
 }

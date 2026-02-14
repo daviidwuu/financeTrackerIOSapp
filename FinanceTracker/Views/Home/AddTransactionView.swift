@@ -46,44 +46,45 @@ struct AddTransactionView: View {
     }
     
     var body: some View {
-        ZStack {
-            // Background
-            (colorScheme == .dark ? Color.black : Color.white)
-                .ignoresSafeArea()
-            
+        Group {
             if isReimbursement {
-                readOnlyView
-            } else {
-                VStack(spacing: 20) {
-                    // Header
-                    ModalHeader(
-                        title: currentStep < 3 ? "Add Transaction" : "Details",
-                        currentStep: currentStep,
-                        totalSteps: 3,
-                        onBack: currentStep > 1 ? {
-                            direction = .leading
-                            withAnimation { currentStep -= 1 }
-                        } : nil,
-                        onClose: { dismiss() }
-                    )
-                    .padding(.horizontal, AppSpacing.margin)
-                    .padding(.top, 16)
-                    
-                    // Content
-                    ZStack(alignment: .top) {
-                        currentStepView
-                    }
-                    .id(currentStep)
-                    .transition(.asymmetric(
-                        insertion: .move(edge: direction),
-                        removal: .move(edge: direction == .leading ? .trailing : .leading)
-                    ))
-                    .frame(maxHeight: .infinity, alignment: .top)
-                    
-                    Spacer()
+                ZStack {
+                    (colorScheme == .dark ? Color.black : Color.white)
+                        .ignoresSafeArea()
+                    readOnlyView
                 }
-                .safeAreaInset(edge: .bottom) {
-                    stickyActionBar
+            } else {
+                WizardLayout(
+                    title: currentStep < 3 ? "Add Transaction" : "Details",
+                    currentStep: currentStep,
+                    totalSteps: 3,
+                    onBack: currentStep > 1 ? {
+                        direction = .leading
+                        withAnimation { currentStep -= 1 }
+                    } : nil,
+                    onClose: { dismiss() },
+                    direction: direction
+                ) {
+                    currentStepView
+                } actionBar: {
+                    Button(action: {
+                        // Sticky Logic: Enforce Large Detent on Interaction
+                        availableDetents = [.large]
+                        presentationDetent = .large
+                        
+                        if currentStep < 3 {
+                            HapticManager.shared.light()
+                            direction = .trailing
+                            withAnimation { currentStep += 1 }
+                        } else {
+                            HapticManager.shared.success()
+                            saveTransaction()
+                        }
+                    }) {
+                        Text(currentStep < 3 ? "Next" : (transactionToEdit != nil ? "Update Transaction" : "Save Transaction"))
+                    }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .disabled(!isStepValid)
                 }
             }
         }
@@ -128,7 +129,6 @@ struct AddTransactionView: View {
     
     private var readOnlyView: some View {
         VStack(spacing: 24) {
-            // Header
             // Header
             HStack {
                 Spacer()
@@ -190,34 +190,6 @@ struct AddTransactionView: View {
             
             Spacer()
         }
-    }
-    
-    private var stickyActionBar: some View {
-        VStack {
-            Button(action: {
-                // Sticky Logic: Enforce Large Detent on Interaction
-                availableDetents = [.large]
-                presentationDetent = .large
-                
-                if currentStep < 3 {
-                    HapticManager.shared.light()
-                    direction = .trailing
-                    withAnimation { currentStep += 1 }
-                } else {
-                    HapticManager.shared.success()
-                    saveTransaction()
-                }
-            }) {
-                Text(currentStep < 3 ? "Next" : (transactionToEdit != nil ? "Update Transaction" : "Save Transaction"))
-            }
-            .buttonStyle(PrimaryButtonStyle())
-            .disabled(!isStepValid)
-        }
-        .padding(.horizontal, AppSpacing.margin)
-        .padding(.top, AppSpacing.compact)
-        .padding(.bottom, 8) // Reduced bottom padding
-        .background(Color.backgroundPrimary)
-        .animation(.easeInOut, value: currentStep) // Smooth transitions
     }
     
     private func saveTransaction() {

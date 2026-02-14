@@ -32,20 +32,25 @@ struct GroupCreationWizardView: View {
     
     // Data - Step 2
     @State private var searchText = ""
-    @State private var selectedFriendIds: Set<String> = []
+    
+    struct WizardUser: Identifiable, Hashable {
+        let id: String
+        let name: String
+        let isGuest: Bool
+    }
+    
+    @State private var selectedUsers: Set<WizardUser> = []
     @State private var addedGuests: [FirestoreModels.Guest] = [] // Local temporary guests
     @State private var showGuestInput = false
     
     // Data - Step 3
-    @State private var selectedColor = "#007AFF" // Default Blue
+    @State private var selectedColor = AppColors.selectionPalette.first ?? "#007AFF"
     @State private var selectedIcon = "person.3.fill"
     
     @State private var showError = false
     @State private var errorMessage = ""
     
-    let availableColors = [
-        "#007AFF", "#34C759", "#FF9500", "#FF2D55", "#AF52DE", "#5856D6", "#FFCC00", "#5AC8FA"
-    ]
+    let availableColors = AppColors.selectionPalette
     
     let availableIcons = [
         "person.3.fill", "house.fill", "airplane", "cart.fill", "fork.knife", "gamecontroller.fill",
@@ -213,7 +218,7 @@ struct GroupCreationWizardView: View {
                         .textInputAutocapitalization(.never)
                         .onChange(of: searchText) { _, newValue in
                             Task {
-                                try? await friendRepo.searchUsers(username: newValue)
+                                try? await friendRepo.searchUsers(username: newValue.lowercased())
                             }
                         }
                 }
@@ -224,50 +229,26 @@ struct GroupCreationWizardView: View {
                 .padding(.horizontal)
                 
                 // 2. Selected Members Chips (Summary)
-                if !selectedFriendIds.isEmpty || !addedGuests.isEmpty {
+                if !selectedUsers.isEmpty || !addedGuests.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
-                            ForEach(Array(selectedFriendIds), id: \.self) { fid in
-                                if let friend = friendRepo.friends.first(where: { $0.id == fid }) {
-                                    HStack(spacing: 4) {
-                                        Text(friend.name)
-                                            .font(.caption)
-                                            .fontWeight(.bold)
-                                        Button(action: { toggleFriend(friend) }) {
-                                            Image(systemName: "xmark")
-                                                .font(.caption2)
-                                        }
-                                    }
-                                    .padding(.vertical, 6)
-                                    .padding(.horizontal, 12)
-                                    .background(Color.primary.opacity(0.1))
-                                    .foregroundColor(.primary)
-                                    .clipShape(Capsule())
-                                } else {
-                                    // Handle pending/search result users who are selected
-                                    // Since we don't have them in 'friends' list, we might need a local look up or just show ID?
-                                    // Ideally we should add them to a local 'pendingUsers' list to show names.
-                                    // For now, let's assume they might appear if we fetch them?
-                                    // Actually, if we add them to selectedFriendIds, we need their name.
-                                    // We can check searchResults.
-                                    if let user = friendRepo.searchResults.first(where: { $0.id == fid }) {
-                                        HStack(spacing: 4) {
-                                            Text(user.name)
-                                                .font(.caption)
-                                                .fontWeight(.bold)
-                                            Button(action: { selectedFriendIds.remove(fid) }) {
-                                                Image(systemName: "xmark")
-                                                    .font(.caption2)
-                                            }
-                                        }
-                                        .padding(.vertical, 6)
-                                        .padding(.horizontal, 12)
-                                        .background(Color.primary.opacity(0.1))
-                                        .foregroundColor(.primary)
-                                        .clipShape(Capsule())
+                            ForEach(Array(selectedUsers), id: \.self) { user in
+                                HStack(spacing: 4) {
+                                    Text(user.name)
+                                        .font(.caption)
+                                        .fontWeight(.bold)
+                                    Button(action: { selectedUsers.remove(user) }) {
+                                        Image(systemName: "xmark")
+                                            .font(.caption2)
                                     }
                                 }
+                                .padding(.vertical, 6)
+                                .padding(.horizontal, 12)
+                                .background(Color.primary.opacity(0.1))
+                                .foregroundColor(.primary)
+                                .clipShape(Capsule())
                             }
+                            
                             ForEach(addedGuests) { guest in
                                 HStack(spacing: 4) {
                                     Text(guest.name)
@@ -302,18 +283,15 @@ struct GroupCreationWizardView: View {
                         }
                         
                         ForEach(filteredFriends) { friend in
+                            let isSelected = selectedUsers.contains { $0.id == friend.id }
                             Button(action: { toggleFriend(friend) }) {
                                 HStack(spacing: 16) {
                                     // Avatar
-                                    ZStack {
-                                        Circle()
-                                            .fill(Color.random(seed: friend.name))
-                                            .frame(width: 48, height: 48)
-                                            .shadow(color: Color.random(seed: friend.name).opacity(0.3), radius: 4, x: 0, y: 2)
-                                        Text(String(friend.name.prefix(1)).uppercased())
-                                            .font(.headline)
-                                            .foregroundColor(.white)
-                                    }
+                                    ProfileAvatar(
+                                        text: String(friend.name.prefix(1)),
+                                        color: Color.random(seed: friend.name),
+                                        size: AppSize.avatarList
+                                    )
                                     
                                     Text(friend.name)
                                         .font(.body)
@@ -323,9 +301,9 @@ struct GroupCreationWizardView: View {
                                     Spacer()
                                     
                                     // Checkbox
-                                    Image(systemName: selectedFriendIds.contains(friend.id ?? "") ? "checkmark.circle.fill" : "circle")
+                                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                                         .font(.title2)
-                                        .foregroundColor(selectedFriendIds.contains(friend.id ?? "") ? .primary : (colorScheme == .dark ? .white.opacity(0.3) : .secondary.opacity(0.3)))
+                                        .foregroundColor(isSelected ? .primary : (colorScheme == .dark ? .white.opacity(0.3) : .secondary.opacity(0.3)))
                                 }
                                 .padding(.vertical, 12)
                                 .padding(.horizontal)
@@ -337,7 +315,7 @@ struct GroupCreationWizardView: View {
                         if !searchText.isEmpty {
                             let nonFriends = friendRepo.searchResults.filter { user in
                                 !friendRepo.friends.contains { $0.id == user.id } &&
-                                !selectedFriendIds.contains(user.id ?? "")
+                                !selectedUsers.contains { $0.id == user.id }
                             }
                             
                             if !nonFriends.isEmpty {
@@ -351,14 +329,11 @@ struct GroupCreationWizardView: View {
                                 ForEach(nonFriends) { user in
                                     Button(action: { addPendingFriend(user) }) {
                                         HStack(spacing: 16) {
-                                            ZStack {
-                                                Circle()
-                                                    .fill(Color.blue.opacity(0.1))
-                                                    .frame(width: 48, height: 48)
-                                                Image(systemName: "person.badge.plus")
-                                                    .font(.headline)
-                                                    .foregroundColor(.blue)
-                                            }
+                                            ProfileAvatar(
+                                                text: String(user.name.prefix(1)),
+                                                color: Color.blue.opacity(0.7),
+                                                size: AppSize.avatarList
+                                            )
                                             
                                             VStack(alignment: .leading) {
                                                 Text(user.name)
@@ -389,7 +364,7 @@ struct GroupCreationWizardView: View {
                                 Circle()
                                     .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
                                     .foregroundColor(.primary)
-                                    .frame(width: 48, height: 48)
+                                    .frame(width: AppSize.avatarList, height: AppSize.avatarList)
                                     .overlay(
                                         Image(systemName: "plus")
                                             .font(.headline)
@@ -563,10 +538,12 @@ struct GroupCreationWizardView: View {
     
     private func toggleFriend(_ friend: FirestoreModels.Friend) {
         guard let fid = friend.id else { return }
-        if selectedFriendIds.contains(fid) {
-            selectedFriendIds.remove(fid)
+        let user = WizardUser(id: fid, name: friend.name, isGuest: false)
+        
+        if selectedUsers.contains(user) {
+            selectedUsers.remove(user)
         } else {
-            selectedFriendIds.insert(fid)
+            selectedUsers.insert(user)
         }
         HapticManager.shared.light()
     }
@@ -598,7 +575,8 @@ struct GroupCreationWizardView: View {
                     )
                     
                     await MainActor.run {
-                        selectedFriendIds.insert(uid)
+                        let wUser = WizardUser(id: uid, name: user.name, isGuest: false)
+                        selectedUsers.insert(wUser)
                         HapticManager.shared.success()
                         searchText = ""
                     }
@@ -616,7 +594,7 @@ struct GroupCreationWizardView: View {
     private func saveGroup() {
         guard !groupName.isEmpty else { return }
         
-        let members = Array(selectedFriendIds) + addedGuests.compactMap { $0.id }
+        let memberIds = selectedUsers.map { $0.id } + addedGuests.compactMap { $0.id }
         
         // Calculate Denormalized Names
         var memberNames: [String: String] = [:]
@@ -631,13 +609,9 @@ struct GroupCreationWizardView: View {
              memberNames[appState.currentUserId] = appState.userName
         }
         
-        // 2. Friends
-        for fid in selectedFriendIds {
-            if let friend = friendRepo.friends.first(where: { $0.id == fid }) {
-                memberNames[fid] = friend.name
-            } else if let user = friendRepo.searchResults.first(where: { $0.id == fid }) {
-                 memberNames[fid] = user.name
-            }
+        // 2. Friends/Users
+        for user in selectedUsers {
+            memberNames[user.id] = user.name
         }
         
         // 3. Guests
@@ -649,10 +623,16 @@ struct GroupCreationWizardView: View {
         
         var groupToSave: FirestoreModels.Group
         
+        // Ensure current user is in members list if not already
+        var finalMembers = memberIds
+        if !appState.currentUserId.isEmpty && !finalMembers.contains(appState.currentUserId) {
+            finalMembers.append(appState.currentUserId)
+        }
+        
         if let existingGroup = groupToEdit {
             groupToSave = existingGroup
             groupToSave.name = groupName
-            groupToSave.members = members
+            groupToSave.members = finalMembers
             groupToSave.memberNames = memberNames // ✅ Update names
             groupToSave.icon = selectedIcon
             groupToSave.color = selectedColor
@@ -662,7 +642,7 @@ struct GroupCreationWizardView: View {
                 id: nil,
                 name: groupName,
                 normalizedName: "", // Handled by Repository
-                members: members,
+                members: finalMembers,
                 memberNames: memberNames, // ✅ New Group with Names
                 createdBy: appState.currentUserId,
                 icon: selectedIcon,
@@ -735,15 +715,14 @@ struct GroupCreationWizardView: View {
         groupName = group.name
         selectedIcon = group.icon
         selectedColor = group.color
-        // Filter out current user from members to toggle correctly?
-        // Actually selectedFriendIds usually tracks *other* members.
-        // Assuming 'members' contains IDs.
-        let friendIds = group.members.filter { $0 != appState.currentUserId }
-        selectedFriendIds = Set(friendIds)
         
-        // Handling Guests is trickier if they aren't separated in the model, 
-        // but if they are just in members (as logic implies they might be just strings?), 
-        // we might leave them be or need to fetch them. 
-        // For now, simple ID matching.
+        let friendIds = group.members.filter { $0 != appState.currentUserId }
+        
+        var users: Set<WizardUser> = []
+        for fid in friendIds {
+             let name = group.memberNames?[fid] ?? "Unknown"
+             users.insert(WizardUser(id: fid, name: name, isGuest: false))
+        }
+        selectedUsers = users
     }
 }

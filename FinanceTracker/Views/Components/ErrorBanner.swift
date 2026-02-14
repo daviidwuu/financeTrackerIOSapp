@@ -41,30 +41,27 @@ struct ErrorBanner: View {
         HStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.body)
-                .foregroundColor(.white)
+                .foregroundColor(.red)
             
             Text(message)
                 .font(.subheadline)
                 .fontWeight(.medium)
-                .foregroundColor(.white)
+                .foregroundColor(.primary)
                 .lineLimit(2)
             
             Spacer()
             
             Button(action: onDismiss) {
-                Image(systemName: "xmark")
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white.opacity(0.8))
+                Image(systemName: "xmark.circle.fill")
+                    .font(.body)
+                    .foregroundColor(.secondary)
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.red.opacity(0.9))
-                .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
-        )
+        .background(.regularMaterial)
+        .clipShape(Capsule())
+        .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 5)
         .padding(.horizontal, AppSpacing.margin)
     }
 }

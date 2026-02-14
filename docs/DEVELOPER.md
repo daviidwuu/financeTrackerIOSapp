@@ -55,6 +55,8 @@ FinanceTracker/
 │   ├── Wallet/           # Budget & Savings interfaces
 │   └── ...
 ├── ViewModels/           # (Optional) Specific business logic
+├── Repositories/         # Data Access Layer (TransactionRepository, etc.)
+├── Managers/             # System Services (CurrencyManager, HapticManager)
 ├── Models/               # Data structures (Transaction, Mission, etc.)
 ├── Utilities/            # Helper Managers (MigrationManager)
 ├── Utils/                # Core Utilities (WidgetDataManager, Extensions)

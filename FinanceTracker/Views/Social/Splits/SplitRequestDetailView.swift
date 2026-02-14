@@ -28,71 +28,56 @@ struct SplitRequestDetailView: View {
         ZStack {
             Color.backgroundPrimary.ignoresSafeArea()
             
-            ScrollView {
-                VStack(spacing: 24) {
-                    // 1. Custom Header & Hero
-                    VStack(spacing: 0) {
-                        // Nav Bar
-                        HStack {
-                            Button(action: { dismiss() }) {
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 16, weight: .bold))
-                                    .foregroundColor(.primary)
-                                    .frame(width: 36, height: 36)
-                                    .background(Color.secondary.opacity(0.1))
-                                    .clipShape(Circle())
-                            }
-                            Spacer()
-                        }
-                        .padding(.horizontal, AppSpacing.margin)
-                        .padding(.top, 16)
-                        
-                        // Hero Content
-                        VStack(spacing: 16) {
-                            // Icon
-                            ZStack {
-                                Circle()
-                                    .fill(statusColor.opacity(0.15))
-                                    .frame(width: 80, height: 80)
-                                    .shadow(color: statusColor.opacity(0.2), radius: 15, y: 8)
-                                
-                                Image(systemName: isIncoming ? "arrow.down.left" : "arrow.up.right")
-                                    .font(.system(size: 32, weight: .bold))
-                                    .foregroundColor(statusColor)
-                            }
+            VStack(spacing: 0) {
+                // 1. Standard Header
+                DetailHeaderView(
+                    title: request.note ?? "Split Expense",
+                    onBack: { dismiss() },
+                    backIcon: "xmark",
+                    onMenu: nil,
+                    backgroundColor: Color.backgroundPrimary,
+                    textColor: .primary,
+                    avatar: {
+                        ZStack {
+                            Circle()
+                                .fill(statusColor.opacity(0.15))
+                                .frame(width: 80, height: 80)
+                                .shadow(color: statusColor.opacity(0.2), radius: 15, y: 8)
                             
-                            VStack(spacing: 4) {
-                                Text(request.note ?? "Split Expense")
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                    .multilineTextAlignment(.center)
-                                    .foregroundColor(.primary)
-                                
-                                Text(request.createdAt.formatted(date: .long, time: .shortened))
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                
-                                Text(String(format: "$%.2f", request.amount))
-                                    .font(AppTypography.prominentBalance)
-                                    .foregroundColor(.primary)
-                                    .padding(.top, 8)
-                                
-                                // Status Pill
-                                Text(request.status.rawValue.capitalized)
-                                    .font(.caption)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(statusColor)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(statusColor.opacity(0.1))
-                                    .clipShape(Capsule())
-                                    .padding(.top, 8)
-                            }
+                            Image(systemName: isIncoming ? "arrow.down.left" : "arrow.up.right")
+                                .font(.system(size: 32, weight: .bold))
+                                .foregroundColor(statusColor)
                         }
-                        .padding(.top, 10)
+                    },
+                    subtitle: {
+                        Text(request.createdAt.formatted(date: .long, time: .shortened))
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    },
+                    actions: {
+                        VStack(spacing: 4) {
+                            Text(String(format: "$%.2f", request.amount))
+                                .font(AppTypography.prominentBalance)
+                                .foregroundColor(.primary)
+                            
+                            // Status Pill
+                            Text(request.status.rawValue.capitalized)
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(statusColor)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(statusColor.opacity(0.1))
+                                .clipShape(Capsule())
+                        }
                     }
-                    
-                    // 2. Info Card
+                )
+                
+                ScrollView {
+                    VStack(spacing: 24) {
+                        Spacer().frame(height: AppSpacing.element)
+                        
+                        // 2. Info Card
                     VStack(alignment: .leading, spacing: 16) {
                         Text("DETAILS")
                             .font(.caption)
@@ -251,7 +236,8 @@ struct SplitRequestDetailView: View {
                 .padding(.bottom, 40)
             }
         }
-        .errorBanner(errorState)
+    }
+    .errorBanner(errorState)
         .navigationBarHidden(true)
         .onAppear {
             loadOriginalTransaction()

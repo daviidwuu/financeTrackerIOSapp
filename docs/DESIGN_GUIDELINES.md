@@ -1,6 +1,6 @@
 # Design Guidelines & UI/UX Standards
 
-This document establishes the visual consistency standards for the FinanceTracker app. Adhere to these guidelines when creating new views or refactoring existing ones.
+This document establishes the visual consistency standards for the wym app. Adhere to these guidelines when creating new views or refactoring existing ones.
 
 
 ## 1. UX Philosophy: User-First & Intuitive
@@ -97,3 +97,20 @@ The app relies on a clean, monochromatic foundation (Black/White/Gray) to feel p
 ### Headers
 *   **Structure**: `VStack(spacing: 4)` for Title + Subtitle.
 *   **Navigation**: Use standard `NavigationStack` titles where possible, or `ProfileHeaderView` style for custom top-level dashboards.
+
+## 8. Social & Detail View Patterns
+
+### Premium Detail Headers
+*   **Background**: Use `Color.black` (or extremely dark gray) for the header background in Detail views (`GroupDetailView`, `FriendDetailView`).
+*   **Navigation**: Use **Floating Buttons** (Back, Settings) with a glassmorphism background (`.ultraThinMaterial` + Circle) to allow content to scroll underneath while maintaining reachability.
+*   **Hero Content**:
+    *   Large, centered avatars/icons with outer glows/shadows.
+    *   White text for names/titles on the dark background.
+    *   **Action Bar**: Floating action buttons (e.g., "Settle Up") anchored at the bottom of the header.
+
+### Selection Cards (Wizards)
+*   **Style**: Use **Horizontal Scrolling Cards** for picking items (e.g., Payers/Receivers) instead of standard lists.
+*   **Selection State**:
+    *   **Selected**: High contrast border (Brand Color) + Background Highlight.
+    *   **Unselected**: Neutral background + grayscale content.
+*   **Flow**: Use visual connectors (e.g., "Avatar -> Arrow -> Avatar") to explain complex relationships like debt settlement.

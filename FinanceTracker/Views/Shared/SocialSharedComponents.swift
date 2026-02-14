@@ -5,10 +5,15 @@ struct UndoToast: View {
     let onUndo: () -> Void
     
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.body)
+                .foregroundColor(.green)
+            
             Text(text)
                 .font(.subheadline)
-                .foregroundColor(.white)
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
             
             Spacer()
             
@@ -16,14 +21,15 @@ struct UndoToast: View {
                 Text("Undo")
                     .font(.subheadline)
                     .fontWeight(.bold)
-                    .foregroundColor(Color(hex: "#FFCC00"))
+                    .foregroundColor(.blue)
             }
         }
-        .padding()
-        .background(Color.black.opacity(0.8))
-        .cornerRadius(AppRadius.medium)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.regularMaterial)
+        .clipShape(Capsule())
+        .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 5)
         .padding(.horizontal, 24)
-        .shadow(radius: 10)
     }
 }
 

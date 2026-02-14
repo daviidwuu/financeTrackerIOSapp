@@ -10,82 +10,73 @@ struct GroupTransactionDetailView: View {
     @State private var splits: [FirestoreModels.SplitRequest] = []
     @State private var originalTransaction: FirestoreModels.TransactionModel?
     @State private var isLoading = true
+    @State private var showHistory = false
     
     var body: some View {
         ZStack {
             Color.backgroundPrimary.ignoresSafeArea()
             
-            ScrollView {
-                VStack(spacing: 24) {
-                    // 1. Custom Header & Hero
-                    VStack(spacing: 0) {
-                        // Nav Bar
-                        HStack {
-                            Button(action: { dismiss() }) {
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 16, weight: .bold))
-                                    .foregroundColor(.primary)
-                                    .frame(width: 36, height: 36)
-                                    .background(Color.secondary.opacity(0.1))
-                                    .clipShape(Circle())
-                            }
-                            Spacer()
-                        }
-                        .padding(.horizontal, AppSpacing.margin)
-                        .padding(.top, 16)
-                        
-                        // Hero Content
-                        VStack(spacing: 16) {
-                            // Icon
-                            ZStack {
-                                Circle()
-                                    .fill(Color(hex: transaction.colorHex ?? "#007AFF").opacity(0.15))
-                                    .frame(width: 80, height: 80)
-                                    .shadow(color: Color(hex: transaction.colorHex ?? "#007AFF").opacity(0.2), radius: 15, y: 8)
-                                
-                                Image(systemName: transaction.type == "settlement" ? "banknote.fill" : (transaction.icon ?? "cart.fill"))
-                                    .font(.system(size: 32, weight: .bold))
-                                    .foregroundColor(Color(hex: transaction.colorHex ?? "#007AFF"))
-                            }
+            VStack(spacing: 0) {
+                // 1. Standard Header
+                DetailHeaderView(
+                    title: transaction.note?.isEmpty == false ? transaction.note! : transaction.title,
+                    onBack: { dismiss() },
+                    backIcon: "xmark",
+                    onMenu: nil,
+                    backgroundColor: Color.backgroundPrimary,
+                    textColor: .primary,
+                    avatar: {
+                        ZStack {
+                            Circle()
+                                .fill(Color(hex: transaction.colorHex ?? "#007AFF").opacity(0.15))
+                                .frame(width: 80, height: 80)
+                                .shadow(color: Color(hex: transaction.colorHex ?? "#007AFF").opacity(0.2), radius: 15, y: 8)
                             
-                            VStack(spacing: 4) {
-                                Text(transaction.note?.isEmpty == false ? transaction.note! : transaction.title)
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                    .multilineTextAlignment(.center)
-                                    .foregroundColor(.primary)
-                                
-                                HStack(spacing: 4) {
-                                    Text(transaction.date.formatted(date: .long, time: .shortened))
-                                    if let history = transaction.editHistory, !history.isEmpty {
-                                        Text("(Edited)")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
+                            Image(systemName: transaction.type == "settlement" ? "banknote.fill" : (transaction.icon ?? "cart.fill"))
+                                .font(.system(size: 32, weight: .bold))
+                                .foregroundColor(Color(hex: transaction.colorHex ?? "#007AFF"))
+                        }
+                    },
+                    subtitle: {
+                        HStack(spacing: 4) {
+                            Text(transaction.date.formatted(date: .long, time: .shortened))
+                            if let history = transaction.editHistory, !history.isEmpty {
+                                Button {
+                                    showHistory = true
+                                } label: {
+                                    Text("(Edited)")
+                                        .font(.caption)
+                                        .foregroundColor(.blue)
+                                        .underline()
                                 }
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                                
-                                Text(String(format: "$%.2f", abs(transaction.amount)))
-                                    .font(AppTypography.prominentBalance)
-                                    .foregroundColor(.primary)
-                                    .padding(.top, 8)
-                                
-                                HStack(spacing: 4) {
-                                    Text("Paid by")
-                                        .foregroundColor(.secondary)
+                            }
+                        }
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    },
+                    actions: {
+                        VStack(spacing: 4) {
+                            Text(String(format: "$%.2f", abs(transaction.amount)))
+                                .font(AppTypography.prominentBalance)
+                                .foregroundColor(.primary)
+                            
+                            HStack(spacing: 4) {
+                                Text("Paid by")
+                                    .foregroundColor(.secondary)
                                     Text(transaction.payerId == appState.currentUserId ? "You" : transaction.payerName)
                                         .fontWeight(.semibold)
                                         .foregroundColor(.primary)
-                                }
-                                .font(.caption)
-                                .padding(.top, 4)
                             }
+                            .font(.caption)
                         }
-                        .padding(.top, 10)
                     }
-                    
-                    // 2. Splits List
+                )
+                
+                ScrollView {
+                    VStack(spacing: 24) {
+                        Spacer().frame(height: AppSpacing.element)
+                        
+                        // 2. Splits List
                     VStack(alignment: .leading, spacing: 16) {
                         Text("SPLIT BREAKDOWN")
                             .font(.caption)
@@ -102,6 +93,10 @@ struct GroupTransactionDetailView: View {
                             .padding()
                             .background(Color(UIColor.secondarySystemBackground))
                             .cornerRadius(AppRadius.medium)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppRadius.medium)
+                                    .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+                            )
                         } else if splits.isEmpty {
                             HStack {
                                 Spacer()
@@ -146,6 +141,21 @@ struct GroupTransactionDetailView: View {
                                             .font(.body)
                                             .fontWeight(.semibold)
                                             .foregroundColor(.primary)
+                                            
+                                        // Nudge Button
+                                        if transaction.payerId == appState.currentUserId && (split.status == .pending || split.status == .accepted) {
+                                            Button {
+                                                nudgeUser(split: split)
+                                            } label: {
+                                                Image(systemName: "bell.fill")
+                                                    .foregroundColor(.orange)
+                                                    .frame(width: 32, height: 32)
+                                                    .background(Color.orange.opacity(0.1))
+                                                    .clipShape(Circle())
+                                            }
+                                            .disabled(isNudgedRecently(split))
+                                            .opacity(isNudgedRecently(split) ? 0.5 : 1.0)
+                                        }
                                     }
                                     .padding(16)
                                     .background(Color(UIColor.secondarySystemBackground))
@@ -188,6 +198,10 @@ struct GroupTransactionDetailView: View {
                             }
                             .background(Color(UIColor.secondarySystemBackground))
                             .cornerRadius(AppRadius.medium)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppRadius.medium)
+                                    .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+                            )
                         }
                         .padding(.horizontal, AppSpacing.margin)
                         
@@ -224,12 +238,45 @@ struct GroupTransactionDetailView: View {
                 }
                 .padding(.bottom, 40)
             }
-
         }
-        .navigationBarHidden(true)
+    }
+    .navigationBarHidden(true)
         .onAppear {
             loadSplits()
             loadOriginalTransaction()
+        }
+        .sheet(isPresented: $showHistory) {
+            NavigationView {
+                List(transaction.editHistory ?? []) { record in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(record.field.capitalized) Changed")
+                            .font(.headline)
+                        HStack {
+                            Text(record.oldValue)
+                                .strikethrough()
+                                .foregroundColor(.red)
+                            Image(systemName: "arrow.right")
+                                .font(.caption)
+                            Text(record.newValue)
+                                .fontWeight(.bold)
+                                .foregroundColor(.green)
+                        }
+                        .font(.subheadline)
+                        
+                        Text("by \(record.editorName) on \(record.date.formatted(date: .abbreviated, time: .shortened))")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 4)
+                }
+                .navigationTitle("Edit History")
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") { showHistory = false }
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
         }
     }
     
@@ -265,6 +312,33 @@ struct GroupTransactionDetailView: View {
                 originalTransaction = try await repo.fetchOriginalTransaction(userId: payerId, transactionId: originalId)
             } catch {
                 print("Error loading original transaction: \(error)")
+            }
+        }
+    }
+    
+    // MARK: - Nudge Logic
+    private func isNudgedRecently(_ split: FirestoreModels.SplitRequest) -> Bool {
+        guard let lastNudged = split.lastNudgedAt else { return false }
+        // Disable if nudged within last 24 hours
+        return Date().timeIntervalSince(lastNudged) < 24 * 60 * 60
+    }
+    
+    private func nudgeUser(split: FirestoreModels.SplitRequest) {
+        // Optimistic Update
+        let originalDate = split.lastNudgedAt
+        if let index = splits.firstIndex(where: { $0.id == split.id }) {
+            splits[index].lastNudgedAt = Date()
+        }
+        
+        Task {
+            do {
+                try await SocialTransactionManager.shared.nudgeSplitRequest(request: split)
+            } catch {
+                print("Error nudging user: \(error)")
+                // Revert if failed
+                if let index = splits.firstIndex(where: { $0.id == split.id }) {
+                    splits[index].lastNudgedAt = originalDate
+                }
             }
         }
     }

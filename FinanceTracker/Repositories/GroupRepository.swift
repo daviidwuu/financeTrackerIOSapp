@@ -5,22 +5,27 @@ import Combine
 class GroupRepository: ObservableObject {
     private let db = Firestore.firestore()
     @Published var groups: [FirestoreModels.Group] = []
+    @Published var isLoading = true // ✅ NEW: Loading state
     private var userId: String?
     private var listener: ListenerRegistration?
     
     func startListening(userId: String) {
         self.userId = userId
+        self.isLoading = true // Reset loading state
         // v2.1: Query Root Collection where user is a member
         listener = db.collection("groups")
             .whereField("members", arrayContains: userId)
             .order(by: "updatedAt", descending: true)
             .addSnapshotListener { [weak self] snapshot, error in
+                guard let self = self else { return }
+                self.isLoading = false // Loading complete
+                
                 guard let documents = snapshot?.documents else {
                     DebugLogger.log("Error fetching groups: \(error?.localizedDescription ?? "Unknown error")")
                     return
                 }
                 
-                self?.groups = documents.compactMap { document in
+                self.groups = documents.compactMap { document in
                     try? document.data(as: FirestoreModels.Group.self)
                 }
             }
@@ -87,5 +92,33 @@ class GroupRepository: ObservableObject {
     func isMember(groupId: String, uid: String) -> Bool {
         guard let group = groups.first(where: { $0.id == groupId }) else { return false }
         return group.members.contains(uid)
+    }
+    
+    /// Add multiple members to a group
+    func addMembersToGroup(groupId: String, newMembers: [(id: String, name: String)]) async throws {
+        let groupRef = db.collection("groups").document(groupId)
+        
+        let newMemberIds = newMembers.map { $0.id }
+        var newMemberNames: [String: String] = [:]
+        for member in newMembers {
+            newMemberNames[member.id] = member.name
+        }
+        
+        // Atomically add to members array and merge names map
+        // Note: FieldValue.arrayUnion only works for arrays. For maps, we need SetOptions.merge
+        // But we can't do both easily in one atomic update call if one is a field value and other is a map merge on a specific field without dot notation?
+        // Actually, we can update "memberNames.uid" using dot notation.
+        
+        var updateData: [String: Any] = [
+            "members": FieldValue.arrayUnion(newMemberIds),
+            "updatedAt": Date()
+        ]
+        
+        // Add names to denormalized map
+        for (uid, name) in newMemberNames {
+            updateData["memberNames.\(uid)"] = name
+        }
+        
+        try await groupRef.updateData(updateData)
     }
 }

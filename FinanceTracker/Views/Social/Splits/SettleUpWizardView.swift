@@ -20,38 +20,43 @@ struct SettleUpWizardView: View {
     @State private var isSubmitting = false
     
     @FocusState private var isAmountFocused: Bool
+    @State private var direction: Edge = .trailing
     
     var body: some View {
-        NavigationStack {
-            ZStack {
-                (colorScheme == .dark ? Color.black : Color(UIColor.systemBackground))
-                    .ignoresSafeArea()
-                
-                VStack(spacing: 0) {
-                    // Content
-                    if currentStep == 1 {
-                        stepOneView
-                            .transition(.asymmetric(insertion: .move(edge: .leading), removal: .move(edge: .leading)))
-                    } else {
-                        stepTwoView
-                            .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .trailing)))
-                    }
-                    
-                    // Sticky Action Bar
-                    stickyActionBar
-                }
+        WizardLayout(
+            title: stepTitle,
+            currentStep: currentStep,
+            totalSteps: 2,
+            onBack: currentStep > 1 ? {
+                direction = .leading
+                withAnimation { currentStep = 1 }
+                isAmountFocused = false
+            } : nil,
+            onClose: { dismiss() },
+            direction: direction
+        ) {
+            if currentStep == 1 {
+                stepOneView
+            } else {
+                stepTwoView
             }
-            .navigationTitle(stepTitle)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.secondary.opacity(0.5))
+        } actionBar: {
+            Button(action: {
+                if currentStep == 1 {
+                    HapticManager.shared.light()
+                    direction = .trailing
+                    withAnimation { currentStep = 2 }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                        isAmountFocused = true
                     }
+                } else {
+                    submit()
                 }
+            }) {
+                Text(currentStep == 1 ? "Next" : "Pay \(amount.isEmpty ? "0.00" : amount)")
             }
+            .buttonStyle(PrimaryButtonStyle(isLoading: isSubmitting))
+            .disabled(!isValid || isSubmitting)
         }
         .onAppear {
             initializeDefaults()
@@ -216,11 +221,16 @@ struct SettleUpWizardView: View {
                     .frame(width: 64, height: 64)
                     .shadow(color: isSelected ? (isPayer ? Color.green.opacity(0.4) : Color.blue.opacity(0.4)) : Color.clear, radius: 8, y: 4)
                 
+                // Show Name instead of Initial inside circle if selected or always? 
+                // Request says "include name underneath the icon", which is already there.
+                // Request says "increase padding for icon".
+                
                 Text(String(getName(for: id).prefix(1)).uppercased())
                     .font(.title2)
                     .fontWeight(.bold)
                     .foregroundColor(isSelected ? .white : .primary)
             }
+            .padding(8) // Increased padding for icon
             .overlay(
                 Circle()
                     .strokeBorder(isSelected ? Color.white : Color.clear, lineWidth: 2)
@@ -234,7 +244,7 @@ struct SettleUpWizardView: View {
                 .foregroundColor(isSelected ? .primary : .secondary)
                 .lineLimit(1)
         }
-        .frame(width: 80)
+        .frame(width: 90) // Slightly wider to accommodate padding/scale
     }
     
     // MARK: - Step 2: Amount
@@ -268,39 +278,7 @@ struct SettleUpWizardView: View {
     }
     
     // MARK: - Helpers
-    private var stickyActionBar: some View {
-        VStack {
-            Button(action: {
-                if currentStep == 1 {
-                    HapticManager.shared.light()
-                    withAnimation { currentStep = 2 }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                        isAmountFocused = true
-                    }
-                } else {
-                    submit()
-                }
-            }) {
-                HStack {
-                    if isSubmitting {
-                        ProgressView().tint(.white)
-                    } else {
-                        Text(currentStep == 1 ? "Next" : "Pay \(amount.isEmpty ? "0.00" : amount)")
-                            .fontWeight(.bold)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(isValid ? (currentStep == 1 ? Color.blue : Color.green) : Color.gray.opacity(0.3))
-                .foregroundColor(.white)
-                .cornerRadius(16)
-                .shadow(color: isValid ? (currentStep == 1 ? Color.blue.opacity(0.3) : Color.green.opacity(0.3)) : Color.clear, radius: 10, y: 5)
-            }
-            .disabled(!isValid || isSubmitting)
-        }
-        .padding(.horizontal, AppSpacing.margin)
-        .padding(.bottom, AppSpacing.margin)
-    }
+    // stickyActionBar removed (logic moved to body actionBar)
     
     private var isValid: Bool {
         if currentStep == 1 {

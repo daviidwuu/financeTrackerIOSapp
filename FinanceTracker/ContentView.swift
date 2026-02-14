@@ -13,54 +13,44 @@ struct ContentView: View {
     @AppStorage("budgetAlertThreshold") private var budgetAlertThreshold: Double = 0.8
     
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
-            TabView(selection: $appState.selectedTab) {
-                HomeView()
-                    .tag(0)
-                    .tabItem {
-                        Image(systemName: "square.grid.2x2.fill")
-                        Text("Home")
-                    }
+        TabView(selection: $appState.selectedTab) {
+            TabSection {
+                Tab("Home", systemImage: "square.grid.2x2.fill", value: 0) {
+                    HomeView()
+                }
                 
-                SocialDashboardView()
-                    .tag(1)
-                    .tabItem {
-                        Image(systemName: "person.2.fill")
-                        Text("Social")
-                    }
+                Tab("Social", systemImage: "person.2.fill", value: 1) {
+                    SocialDashboardView()
+                }
                 
-                WalletView()
-                    .tag(2)
-                    .tabItem {
-                        Image(systemName: "creditcard.fill")
-                        Text("Wallet")
-                    }
+                Tab("Wallet", systemImage: "creditcard.fill", value: 2) {
+                    WalletView()
+                }
             }
             
-            // .preferredColorScheme(.none) removed to respect app-level setting
-            
-            // Floating Action Button
-            if appState.selectedTab == 0 {
-                Button(action: {
-                    HapticManager.shared.medium()
-                    // Refresh budgets when opening add - Repos are handled in AppState, no need to manually start listening
-                    showAddTransaction = true
-                }) {
-                    Circle()
-                    .fill(Color.primary)
-                    .frame(width: 56, height: 56)
-                    .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
-                    .overlay(
-                        Image(systemName: "plus")
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundColor(colorScheme == .dark ? .black : .white)
-                    )
-                }
-                .padding(.trailing, 24)
-                .padding(.bottom, 24)
+            // Repurposed Search Tab as Action Button
+            Tab("Add", systemImage: "plus", value: 3, role: .search) {
+                // This view appears when the tab is selected
+                // We use it to trigger the sheet and immediately switch back or stay
+                Color.clear
+                    .onAppear {
+                        // Trigger the add transaction flow
+                        showAddTransaction = true
+                        
+                        // Optional: Switch back to the previous tab so we don't stay on a blank "Add" page
+                        // For now, we keep it simple. The sheet will cover this.
+                        // When sheet dismisses, we might want to go back to Home or stay.
+                        // Ideally, we'd switch back immediately:
+                        if let previous = appState.selectedTab as? Int {
+                             // This might be tricky if selection updated.
+                             // Actually, since we can't easily track "previous" without extra state,
+                             // let's just default to Home (0) if we end up here.
+                             appState.selectedTab = 0
+                        }
+                    }
             }
         }
-        .ignoresSafeArea(.container, edges: .bottom)
+        .tabViewStyle(.sidebarAdaptable)
         .sheet(isPresented: $appState.showDailySummary) {
             AllTransactionsView(
                 transactionRepo: transactionRepo,
@@ -97,7 +87,7 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SwitchTab"))) { notification in
             if let tabName = notification.userInfo?["tab"] as? String {
                 if tabName == "wallet" {
-                    appState.selectedTab = 1
+                    appState.selectedTab = 2 // Fixed index from 1 to 2 based on previous tag
                 }
             }
         }

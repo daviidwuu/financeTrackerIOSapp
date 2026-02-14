@@ -2,8 +2,8 @@ import SwiftUI
 
 struct ModalHeader: View {
     let title: String
-    let currentStep: Int
-    let totalSteps: Int
+    var currentStep: Int? = nil
+    var totalSteps: Int? = nil
     var onBack: (() -> Void)?
     var onClose: () -> Void
     
@@ -44,20 +44,22 @@ struct ModalHeader: View {
             .padding(.horizontal, AppSpacing.compact) // Tighter outer padding for header
             
             // Progress Bar
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.secondary.opacity(0.1))
-                        .frame(height: 4)
-                    
-                    Capsule()
-                        .fill(Color.primary)
-                        .frame(width: (geometry.size.width / CGFloat(totalSteps)) * CGFloat(currentStep), height: 4)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.7), value: currentStep)
+            if let current = currentStep, let total = totalSteps, total > 0 {
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color.secondary.opacity(0.1))
+                            .frame(height: 4)
+                        
+                        Capsule()
+                            .fill(Color.primary)
+                            .frame(width: (geometry.size.width / CGFloat(total)) * CGFloat(current), height: 4)
+                            .animation(.spring(response: 0.5, dampingFraction: 0.7), value: current)
+                    }
                 }
+                .frame(height: 4)
+                .padding(.horizontal, AppSpacing.margin)
             }
-            .frame(height: 4)
-            .padding(.horizontal, AppSpacing.margin)
         }
         .padding(.bottom, AppSpacing.element)
         .background(Color.backgroundPrimary) // Matches the true black background of the view

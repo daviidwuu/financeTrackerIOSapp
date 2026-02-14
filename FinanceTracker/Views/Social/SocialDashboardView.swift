@@ -4,13 +4,12 @@ struct SocialDashboardView: View {
     @EnvironmentObject var appState: AppState
     @StateObject private var repo = SocialRepository() // In a real app, might be shared
     @StateObject private var guestRepo = GuestRepository()
-    // Use the existing GroupRepository/FriendRepository from AppState for the lists,
-    // but SocialRepository for the advanced feeds/stats.
     
     @State private var searchText = ""
     @State private var selectedSegment = 0 // 0: Groups, 1: Friends
     @State private var errorState = ErrorState()
     @State private var showingAddSheet = false
+    @State private var showArchived = false // ✅ NEW: Toggle archived view
     
     var body: some View {
         NavigationStack {
@@ -21,51 +20,56 @@ struct SocialDashboardView: View {
                     }
                 
                 VStack(spacing: 0) {
-                    // Header
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Social")
-                            .font(AppTypography.titleDisplay)
-                            .foregroundColor(.primary)
-                        Text("Split bills and track shared expenses")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                    // 1. Custom Header
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Social")
+                                .font(AppTypography.titleDisplay)
+                                .foregroundColor(.primary)
+                            Text("Split bills and track shared expenses")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, AppSpacing.margin)
                     .padding(.top, 16)
                     .padding(.bottom, 16)
                     
-                    // Segmented Control
-                    Picker("View", selection: $selectedSegment) {
-                        Text("Groups").tag(0)
-                        Text("Friends").tag(1)
-                        Text("Leaderboard").tag(2)
-                    }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal, AppSpacing.margin)
-                    
-                    // Search Bar
-                    // Search Bar
-                    SearchBar(text: $searchText, onSearch: performSearch, isLoading: isSearching)
-                        .padding(.top, 12)
-                        .padding(.horizontal, AppSpacing.margin)
-                        .padding(.bottom, 16)
-                    
                     ScrollView {
-                        VStack(spacing: 16) {
-                            if selectedSegment == 0 {
-                                groupsList
-                            } else if selectedSegment == 1 {
-                                friendsList
+                        VStack(spacing: 24) {
+                            // 2. Custom Segmented Control
+                            CustomSegmentedControl(selection: $selectedSegment, options: ["Groups", "Friends", "Leaderboard"])
+                                .padding(.horizontal, AppSpacing.margin)
+                            
+                            // 3. Search Bar
+                            SearchBar(text: $searchText, onSearch: performSearch, isLoading: isSearching)
+                                .padding(.horizontal, AppSpacing.margin)
+                            
+                            // 4. Content List
+                            if (selectedSegment == 0 && appState.groupRepo.isLoading) ||
+                               (selectedSegment == 1 && appState.friendRepo.isLoading) ||
+                               (selectedSegment == 2 && repo.isLoading) {
+                                ProgressView()
+                                    .padding(.top, 40)
                             } else {
-                                LeaderboardView(repo: repo, filter: searchText) // update LeaderboardView to accept filter
+                                VStack(spacing: 16) {
+                                    if selectedSegment == 0 {
+                                        groupsList
+                                    } else if selectedSegment == 1 {
+                                        friendsList
+                                    } else {
+                                        LeaderboardView(repo: repo, filter: searchText)
+                                    }
+                                }
+                                .padding(.bottom, 100) // Space for bottom area
                             }
                         }
                         .padding(.top, 8)
-                        .padding(.bottom, 24)
                     }
                 }
-                .background(alerts()) // Attach alerts to the main view hierarchy
+                .background(alerts())
             }
             .navigationBarHidden(true)
             .sheet(isPresented: $showingAddSheet) {
@@ -79,10 +83,17 @@ struct SocialDashboardView: View {
                 }
             }
         }
+        .onReceive(repo.$errorMessage) { msg in
+            if let msg = msg {
+                errorState.show(msg)
+            }
+        }
         .errorBanner(errorState)
         .onAppear {
             if !appState.currentUserId.isEmpty {
                  guestRepo.startListening(userId: appState.currentUserId)
+                 // ✅ Start listening to global balances
+                 repo.listenToGlobalBalances(currentUserId: appState.currentUserId)
             }
         }
         .onDisappear {
@@ -139,7 +150,11 @@ struct SocialDashboardView: View {
         }
         .alert("Found Existing Guest", isPresented: $showingMergeAlert) {
             Button("Merge & Add") {
-                searchAndSendRequest(username: searchText)
+                if let guest = detectedGuest {
+                    searchAndSendRequest(username: searchText, mergeGuestId: guest.id)
+                } else {
+                    searchAndSendRequest(username: searchText)
+                }
             }
             Button("Just Add") {
                 searchAndSendRequest(username: searchText)
@@ -155,92 +170,25 @@ struct SocialDashboardView: View {
     }
 
     var groupsList: some View {
+        // ✅ Filter logic: Search + Archive + Soft Delete Pending
         let filteredGroups = appState.groupRepo.groups.filter { group in
-            (searchText.isEmpty || group.name.localizedCaseInsensitiveContains(searchText)) &&
-            !pendingDeletedGroupIds.contains(group.id ?? "")
+            let matchesSearch = searchText.isEmpty || group.name.localizedCaseInsensitiveContains(searchText)
+            let isNotDeleted = !pendingDeletedGroupIds.contains(group.id ?? "")
+            return matchesSearch && isNotDeleted
         }
         
-        return LazyVStack(spacing: 16) {
+        return LazyVStack(spacing: 0) {
             // Priority: Group Invitations
             if !appState.groupInvitationRepo.incomingInvitations.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("GROUP INVITATIONS")
+                    Text("INVITATIONS")
                         .font(.caption)
                         .fontWeight(.bold)
                         .foregroundColor(.secondary)
                         .padding(.horizontal, AppSpacing.margin)
                     
                     ForEach(appState.groupInvitationRepo.incomingInvitations) { invite in
-                        HStack(spacing: 12) {
-                            // Icon Placeholder
-                            Circle()
-                                .fill(Color.orange.opacity(0.1))
-                                .frame(width: 48, height: 48)
-                                .overlay(
-                                    Image(systemName: "envelope.fill")
-                                        .font(.headline)
-                                        .foregroundColor(.orange)
-                                )
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Join \"\(invite.groupName)\"")
-                                    .font(.body)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(.primary)
-                                
-                                Text("Invited by you know who") // We might need to fetch sender name
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            Spacer()
-                            
-                            // Accept/Decline Buttons
-                            HStack(spacing: 8) {
-                                Button(action: {
-                                    Task {
-                                        do {
-                                            try await appState.groupInvitationRepo.declineInvitation(invite)
-                                            HapticManager.shared.light()
-                                        } catch {
-                                            print("Error declining: \(error)")
-                                            HapticManager.shared.error()
-                                        }
-                                    }
-                                }) {
-                                    Image(systemName: "xmark")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundColor(.secondary)
-                                        .frame(width: 32, height: 32)
-                                        .background(Color(UIColor.secondarySystemBackground))
-                                        .clipShape(Circle())
-                                }
-                                
-                                Button(action: {
-                                    Task {
-                                        do {
-                                            try await appState.groupInvitationRepo.acceptInvitation(invite)
-                                            HapticManager.shared.success()
-                                        } catch {
-                                            print("Error accepting: \(error)")
-                                            HapticManager.shared.error()
-                                        }
-                                    }
-                                }) {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundColor(Color.backgroundPrimary)
-                                        .frame(width: 32, height: 32)
-                                        .background(Color.functionalSuccess)
-                                        .clipShape(Circle())
-                                }
-                            }
-                        }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, AppSpacing.margin)
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .cornerRadius(12)
-                        .padding(.horizontal, AppSpacing.margin)
+                        InvitationCard(invite: invite)
                     }
                 }
                 .padding(.bottom, 8)
@@ -270,6 +218,7 @@ struct SocialDashboardView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
+            .padding(.bottom, AppSpacing.compact)
 
             ForEach(filteredGroups) { group in
                 NavigationLink(destination: GroupDetailView(group: group)) {
@@ -282,16 +231,25 @@ struct SocialDashboardView: View {
                         groupToDelete = group
                         showGroupDeleteAlert = true
                     } label: {
+                        Label("Delete Group", systemImage: "trash")
+                    }
+                }
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        groupToDelete = group
+                        showGroupDeleteAlert = true
+                    } label: {
                         Label("Delete", systemImage: "trash")
                     }
                 }
+                .padding(.bottom, AppSpacing.compact)
             }
             
             if filteredGroups.isEmpty {
                 EmptyStateView(
                     icon: "person.3.fill",
-                    title: searchText.isEmpty ? "No Groups Yet" : "No Groups Found",
-                    message: searchText.isEmpty ? "Create a group to split bills with roommates, trips, or friends." : "Try a different search term."
+                    title: searchText.isEmpty ? "No Groups" : "No Groups Found",
+                    message: searchText.isEmpty ? "Create a group to start splitting expenses." : "Try a different search term."
                 )
                 .padding(.top, 40)
             }
@@ -316,110 +274,10 @@ struct SocialDashboardView: View {
                         .padding(.top, 8)
                     
                     ForEach(appState.friendRequestRepo.incomingRequests) { request in
-                        HStack(spacing: 12) {
-                            // Avatar Placeholder
-                            Circle()
-                                .fill(Color.blue.opacity(0.1))
-                                .frame(width: 48, height: 48)
-                                .overlay(
-                                    Text(String((request.fromName ?? "?").prefix(1)).uppercased())
-                                        .font(.headline)
-                                        .foregroundColor(.blue)
-                                )
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(request.fromName ?? "Unknown User")
-                                    .font(.body)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(.primary)
-                                
-                                Text("wants to be friends")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            Spacer()
-                            
-                            // Accept/Decline Buttons
-                            HStack(spacing: 8) {
-                                Button(action: {
-                                    Task {
-                                        do {
-                                            try await appState.friendRequestRepo.declineRequest(request)
-                                            HapticManager.shared.light()
-                                        } catch {
-                                            print("Error declining: \(error)")
-                                            HapticManager.shared.error()
-                                        }
-                                    }
-                                }) {
-                                    Image(systemName: "xmark")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundColor(.secondary)
-                                        .frame(width: 32, height: 32)
-                                        .background(Color(UIColor.secondarySystemBackground))
-                                        .clipShape(Circle())
-                                }
-                                
-                                Button(action: {
-                                    Task {
-                                        do {
-                                            // Fallback: Create friendship client-side until Cloud Functions are deployed
-                                            try await appState.friendRepo.createFriendship(
-                                                requestId: request.id ?? "",
-                                                fromUser: (
-                                                    uid: request.fromUid,
-                                                    name: request.fromName ?? "Unknown",
-                                                    username: request.fromUsername ?? ""
-                                                ),
-                                                toUser: (
-                                                    uid: appState.currentUserId,
-                                                    name: appState.userName,
-                                                    username: appState.currentUserUsername,
-                                                    email: appState.userEmail
-                                                )
-                                            )
-                                            HapticManager.shared.success()
-                                        } catch {
-                                            print("Error accepting: \(error)")
-                                            HapticManager.shared.error()
-                                        }
-                                    }
-                                }) {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundColor(Color.backgroundPrimary)
-                                        .frame(width: 32, height: 32)
-                                        .background(Color.functionalSuccess)
-                                        .clipShape(Circle())
-                                }
-                            }
-                        }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, AppSpacing.margin)
-                        .background(Color(UIColor.secondarySystemBackground)) // Distinct background
-                        .cornerRadius(12)
-                        .padding(.horizontal, AppSpacing.margin)
+                        FriendRequestCard(request: request)
                     }
                 }
                 .padding(.bottom, 16)
-            }
-            
-            ForEach(filteredFriends, id: \.id) { friend in
-                NavigationLink(destination: FriendDetailView(friend: friend)) {
-                    FriendCardView(friend: friend)
-                        .padding(.vertical, 8) // Add some vertical padding for the card
-                        .padding(.horizontal, AppSpacing.margin)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .contextMenu {
-                    Button(role: .destructive) {
-                        friendToDelete = friend
-                        showFriendDeleteAlert = true
-                    } label: {
-                        Label("Remove", systemImage: "trash")
-                    }
-                }
             }
             
             // Add Guest Button (Bottom)
@@ -448,12 +306,38 @@ struct SocialDashboardView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
+            .padding(.bottom, AppSpacing.compact)
+            
+            ForEach(filteredFriends, id: \.id) { friend in
+                NavigationLink(destination: FriendDetailView(friend: friend)) {
+                    FriendCardView(friend: friend)
+                        .padding(.horizontal, AppSpacing.margin)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .contextMenu {
+                    Button(role: .destructive) {
+                        friendToDelete = friend
+                        showFriendDeleteAlert = true
+                    } label: {
+                        Label("Remove Friend", systemImage: "trash")
+                    }
+                }
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        friendToDelete = friend
+                        showFriendDeleteAlert = true
+                    } label: {
+                        Label("Remove", systemImage: "trash")
+                    }
+                }
+                .padding(.bottom, AppSpacing.compact)
+            }
             
             if filteredFriends.isEmpty {
                 EmptyStateView(
                      icon: "person.2.fill",
-                     title: searchText.isEmpty ? "No Friends Added" : "No Friends Found",
-                     message: searchText.isEmpty ? "Add guests or friends to start splitting." : "Try a different search term."
+                     title: searchText.isEmpty ? "No Friends" : "No Friends Found",
+                     message: searchText.isEmpty ? "Add friends to split bills 1-on-1." : "Try a different search term."
                 )
                 .padding(.top, 40)
             }
@@ -483,12 +367,9 @@ struct SocialDashboardView: View {
         Task {
             do {
                 try await appState.groupRepo.deleteGroup(groupId: groupId)
-                // Don't remove from pendingDeletedGroupIds immediately. 
-                // Let it stay there until the view reloads or standard sync removes it from the source list.
             } catch {
                 print("Error deleting group: \(error)")
                 await MainActor.run {
-                    // Revert optimistic update on error
                     _ = withAnimation {
                         pendingDeletedGroupIds.remove(groupId)
                     }
@@ -501,7 +382,6 @@ struct SocialDashboardView: View {
     private func removeFriend(_ friend: FirestoreModels.Friend) {
         guard let friendId = friend.id else { return }
         
-        // Optimistic Update: Hide immediately
         _ = withAnimation {
             pendingDeletedFriendIds.insert(friendId)
         }
@@ -510,7 +390,6 @@ struct SocialDashboardView: View {
         Task {
             do {
                 try await appState.friendRepo.deleteFriend(friendId: friendId)
-                // Same here: Keep in pending until repo updates
             } catch {
                 print("Error removing friend: \(error)")
                 await MainActor.run {
@@ -536,7 +415,6 @@ struct SocialDashboardView: View {
     private func performSearch() {
         guard !searchText.isEmpty else { return }
         
-        // 1. Smart Intercept: Check for existing guests
         let matches = guestRepo.findMatchingGuests(friendName: searchText)
         if let match = matches.first {
             detectedGuest = match
@@ -544,17 +422,15 @@ struct SocialDashboardView: View {
             return
         }
         
-        // 2. No guest match, proceed to search users
         searchAndSendRequest(username: searchText)
     }
     
-    private func searchAndSendRequest(username: String) {
+    private func searchAndSendRequest(username: String, mergeGuestId: String? = nil) {
         guard !isSearching else { return }
         isSearching = true
         
         Task {
             do {
-                // Check if already friend
                 if appState.friendRepo.friends.contains(where: { 
                     $0.username.localizedCaseInsensitiveCompare(username) == .orderedSame 
                 }) {
@@ -567,7 +443,6 @@ struct SocialDashboardView: View {
                     return
                 }
                 
-                // Search for user
                 let results = try await appState.friendRepo.searchUsers(username: username)
                 
                 guard let user = results.first else {
@@ -580,17 +455,18 @@ struct SocialDashboardView: View {
                     return
                 }
                 
-                // Optimistic Success: Show alert immediately
                 await MainActor.run {
                     resultTitle = "Request Sent"
                     resultMessage = "Friend request sent to \(user.username)."
+                    if mergeGuestId != nil {
+                         resultMessage += " Guest history will be merged once accepted."
+                    }
                     showingResultAlert = true
                     searchText = ""
                     isSearching = false
                     HapticManager.shared.success()
                 }
                 
-                // Perform actual send in background
                 Task {
                     do {
                         try await appState.friendRequestRepo.sendFriendRequest(
@@ -599,9 +475,20 @@ struct SocialDashboardView: View {
                             fromUsername: appState.currentUserUsername,
                             toUid: user.id ?? ""
                         )
+                        
+                        if let guestId = mergeGuestId, let uid = user.id {
+                             let friend = FirestoreModels.Friend(
+                                 id: uid,
+                                 username: user.username,
+                                 name: user.name,
+                                 email: user.email,
+                                 addedAt: Date()
+                             )
+                             try await repo.mergeGuestToFriend(guestId: guestId, friend: friend, currentUserId: appState.currentUserId)
+                        }
+                        
                     } catch {
                         print("Error sending request in background: \(error)")
-                        // Silent fail or retry logic could go here
                     }
                 }
                 
@@ -618,5 +505,175 @@ struct SocialDashboardView: View {
     }
 }
 
+// MARK: - Components
 
+struct CustomSegmentedControl: View {
+    @Binding var selection: Int
+    let options: [String]
+    @Namespace private var ns
+    
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(options.indices, id: \.self) { index in
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        selection = index
+                    }
+                    HapticManager.shared.selection()
+                }) {
+                    ZStack {
+                        if selection == index {
+                            Capsule()
+                                .fill(Color.primary)
+                                .matchedGeometryEffect(id: "bg", in: ns)
+                        }
+                        
+                        Text(options[index])
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(selection == index ? Color.backgroundPrimary : .secondary)
+                            .padding(.vertical, 10)
+                            .padding(.horizontal, 16)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(4)
+        .background(Color(UIColor.secondarySystemBackground))
+        .clipShape(Capsule())
+    }
+}
 
+// Extracted Subviews for cleaner code
+struct InvitationCard: View {
+    let invite: FirestoreModels.GroupInvitation
+    @EnvironmentObject var appState: AppState
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(Color.orange.opacity(0.1))
+                .frame(width: 48, height: 48)
+                .overlay(
+                    Image(systemName: "envelope.fill")
+                        .font(.headline)
+                        .foregroundColor(.orange)
+                )
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Join \"\(invite.groupName)\"")
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                
+                Text("Invited by friend")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            HStack(spacing: 8) {
+                Button(action: { decline() }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.secondary)
+                        .frame(width: 32, height: 32)
+                        .background(Color(UIColor.secondarySystemBackground))
+                        .clipShape(Circle())
+                }
+                
+                Button(action: { accept() }) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(Color.backgroundPrimary)
+                        .frame(width: 32, height: 32)
+                        .background(Color.functionalSuccess)
+                        .clipShape(Circle())
+                }
+            }
+        }
+        .padding(AppSpacing.element)
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(AppRadius.medium)
+        .padding(.horizontal, AppSpacing.margin)
+    }
+    
+    func accept() {
+        Task { try? await appState.groupInvitationRepo.acceptInvitation(invite); HapticManager.shared.success() }
+    }
+    func decline() {
+        Task { try? await appState.groupInvitationRepo.declineInvitation(invite); HapticManager.shared.light() }
+    }
+}
+
+struct FriendRequestCard: View {
+    let request: FirestoreModels.FriendRequest
+    @EnvironmentObject var appState: AppState
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(Color.blue.opacity(0.1))
+                .frame(width: 48, height: 48)
+                .overlay(
+                    Text(String((request.fromName ?? "?").prefix(1)).uppercased())
+                        .font(.headline)
+                        .foregroundColor(.blue)
+                )
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(request.fromName ?? "Unknown User")
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                
+                Text("wants to be friends")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            HStack(spacing: 8) {
+                Button(action: { decline() }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.secondary)
+                        .frame(width: 32, height: 32)
+                        .background(Color(UIColor.secondarySystemBackground))
+                        .clipShape(Circle())
+                }
+                
+                Button(action: { accept() }) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(Color.backgroundPrimary)
+                        .frame(width: 32, height: 32)
+                        .background(Color.functionalSuccess)
+                        .clipShape(Circle())
+                }
+            }
+        }
+        .padding(AppSpacing.element)
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(AppRadius.medium)
+        .padding(.horizontal, AppSpacing.margin)
+    }
+    
+    func accept() {
+        Task {
+            // MVP: Client-side accept
+            try? await appState.friendRepo.createFriendship(
+                requestId: request.id ?? "",
+                fromUser: (uid: request.fromUid, name: request.fromName ?? "Unknown", username: request.fromUsername ?? ""),
+                toUser: (uid: appState.currentUserId, name: appState.userName, username: appState.currentUserUsername, email: appState.userEmail)
+            )
+            HapticManager.shared.success()
+        }
+    }
+    func decline() {
+        Task { try? await appState.friendRequestRepo.declineRequest(request); HapticManager.shared.light() }
+    }
+}

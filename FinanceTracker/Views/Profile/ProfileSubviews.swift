@@ -595,7 +595,7 @@ struct NotificationsSettingsView: View {
                     }
                 }
             } else {
-                DebugLogger.log("❌ Notifications are DENIED. Go to Settings → FinanceTracker → Notifications")
+                DebugLogger.log("❌ Notifications are DENIED. Go to Settings → wym → Notifications")
             }
         }
     }
@@ -721,7 +721,7 @@ struct AboutView: View {
                         .foregroundColor(.blue)
                         .padding(.top, 20)
                     
-                    Text("FinanceTracker")
+                    Text("wym")
                         .font(.title2)
                         .fontWeight(.bold)
                     
