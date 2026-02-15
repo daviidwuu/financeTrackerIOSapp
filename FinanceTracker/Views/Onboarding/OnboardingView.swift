@@ -927,7 +927,7 @@ struct EditCategorySheet: View {
                     }
                 }
                 .padding(.horizontal)
-                .padding(.bottom, 20)
+                .padding(.vertical, 20)
             }
         }
     }

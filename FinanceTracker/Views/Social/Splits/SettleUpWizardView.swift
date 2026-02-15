@@ -173,6 +173,7 @@ struct SettleUpWizardView: View {
                             }
                         }
                         .padding(.horizontal, AppSpacing.margin)
+                        .padding(.vertical, 20)
                     }
                 }
                 
@@ -207,6 +208,7 @@ struct SettleUpWizardView: View {
                             }
                         }
                         .padding(.horizontal, AppSpacing.margin)
+                        .padding(.vertical, 20)
                     }
                 }
             }

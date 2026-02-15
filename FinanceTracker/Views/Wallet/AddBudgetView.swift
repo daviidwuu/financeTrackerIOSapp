@@ -233,6 +233,7 @@ struct AddBudgetView: View {
                     }
                 }
                 .padding(.horizontal, AppSpacing.margin)
+                .padding(.top, 20)
             }
         }
     }

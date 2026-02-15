@@ -41,16 +41,12 @@ struct ContentView: View {
                         // For now, we keep it simple. The sheet will cover this.
                         // When sheet dismisses, we might want to go back to Home or stay.
                         // Ideally, we'd switch back immediately:
-                        if let previous = appState.selectedTab as? Int {
-                             // This might be tricky if selection updated.
-                             // Actually, since we can't easily track "previous" without extra state,
-                             // let's just default to Home (0) if we end up here.
-                             appState.selectedTab = 0
-                        }
+                        appState.selectedTab = 0
                     }
             }
         }
         .tabViewStyle(.sidebarAdaptable)
+        .tint(.primary)
         .sheet(isPresented: $appState.showDailySummary) {
             AllTransactionsView(
                 transactionRepo: transactionRepo,

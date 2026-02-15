@@ -214,6 +214,7 @@ struct SocialDashboardView: View {
                     
                     Spacer()
                 }
+                .padding(AppSpacing.element)
                 .padding(.horizontal, AppSpacing.margin)
                 .contentShape(Rectangle())
             }
@@ -241,6 +242,7 @@ struct SocialDashboardView: View {
                     } label: {
                         Label("Delete", systemImage: "trash")
                     }
+                    .tint(.red)
                 }
                 .padding(.bottom, AppSpacing.compact)
             }
@@ -282,27 +284,26 @@ struct SocialDashboardView: View {
             
             // Add Guest Button (Bottom)
             Button(action: { showingAddSheet = true }) {
-                VStack(spacing: 0) {
-                    HStack(spacing: 12) {
-                        Circle()
-                            .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
-                            .foregroundColor(.secondary)
-                            .frame(width: 48, height: 48)
-                            .overlay(
-                                Image(systemName: "plus")
-                                    .font(.system(size: 20, weight: .semibold))
-                                    .foregroundColor(.secondary)
-                            )
-                        
-                        Text("Add Guest")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.primary)
-                        
-                        Spacer()
-                    }
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, AppSpacing.margin)
+                HStack(spacing: 12) {
+                    Circle()
+                        .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
+                        .foregroundColor(.secondary)
+                        .frame(width: 48, height: 48)
+                        .overlay(
+                            Image(systemName: "plus")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(.secondary)
+                        )
+                    
+                    Text("Add Guest")
+                        .font(.body)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
                 }
+                .padding(AppSpacing.element)
+                .padding(.horizontal, AppSpacing.margin)
                 .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
@@ -329,6 +330,7 @@ struct SocialDashboardView: View {
                     } label: {
                         Label("Remove", systemImage: "trash")
                     }
+                    .tint(.red)
                 }
                 .padding(.bottom, AppSpacing.compact)
             }

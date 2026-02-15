@@ -317,6 +317,55 @@ exports.v2_onUserUpdated = onDocumentUpdated('users/{userId}', async (event) => 
   console.log(`Profile update complete for ${userId}`);
 });
 
+// 6. Group Member Added (Direct Add Notification)
+exports.v2_onGroupMemberAdded = onDocumentUpdated('groups/{groupId}', async (event) => {
+  const after = event.data.after.data();
+  const before = event.data.before.data();
+  const groupId = event.params.groupId;
+
+  // Find new members
+  const oldMembers = new Set(before.members || []);
+  const newMembers = (after.members || []).filter(uid => !oldMembers.has(uid));
+
+  if (newMembers.length === 0) return;
+
+  const groupName = after.name || "Group";
+  
+  // Try to find who added them by checking 'updatedBy' if you add that field in the client update,
+  // otherwise default to generic message.
+  // Ideally, update the client to set 'updatedBy' or similar.
+  // For now, we'll check if we can infer or just use generic.
+  
+  console.log(`New members added to group ${groupId}: ${newMembers.join(', ')}`);
+
+  const promises = newMembers.map(async (uid) => {
+    // We don't have the "adder" ID easily available unless we store it in the group doc on update.
+    // However, if we look at who triggered the write... functions v2 doesn't expose auth context easily in triggers yet.
+    // We'll use a generic "You have been added" or try to find a recent log? No, keep it simple.
+    
+    // Improvement: Client sets 'lastUpdatedBy' field on group update.
+    // If available, fetch that user.
+    let adderName = "A friend";
+    if (after.lastUpdatedBy) {
+         const adder = await getUserInfo(after.lastUpdatedBy);
+         adderName = adder.name;
+    } else if (after.createdBy && oldMembers.size === 0) {
+         // New group creation
+         const creator = await getUserInfo(after.createdBy);
+         adderName = creator.name;
+    }
+
+    await sendNotification(
+      uid, 
+      'New Group', 
+      `You have been added into ${groupName} by ${adderName}`, 
+      { type: 'group_add', id: groupId }
+    );
+  });
+
+  await Promise.all(promises);
+});
+
 // --- LEGACY TRIGGERS (Backward Compatibility) ---
 
 exports.onSplitRequestCreatedLegacy = onDocumentCreated('users/{userId}/requests/{requestId}', async (event) => {

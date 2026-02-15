@@ -98,7 +98,9 @@ class TransactionRepository: ObservableObject {
         guard let userId = userId else { return }
         
         // 1. Optimistic Update
-        await removeLocalTransaction(id: id)
+        await MainActor.run {
+             removeLocalTransaction(id: id)
+        }
         
         let batch = db.batch()
         let txRef = db.collection("users").document(userId).collection("transactions").document(id)

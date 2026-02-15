@@ -377,7 +377,7 @@ class SocialRepository: ObservableObject {
         let settlementId = UUID().uuidString
         let timestamp = Date()
         
-        // Create a settlement transaction (SplitRequest with type 'settlement')
+        // 1. Create a settlement transaction (SplitRequest with type 'settlement')
         let settlement = FirestoreModels.SplitRequest(
             id: settlementId,
             transactionId: settlementId, // Self-reference for settlements
@@ -396,6 +396,28 @@ class SocialRepository: ObservableObject {
         )
         
         try db.collection("split_requests").document(settlementId).setData(from: settlement)
+        
+        // 2. If Group Context, Add to Group History
+        if let groupId = groupId {
+            let groupTx = FirestoreModels.GroupTransaction(
+                id: settlementId,
+                title: "Settlement",
+                amount: amount,
+                payerId: payerId,
+                payerName: payerName ?? "User",
+                date: timestamp,
+                type: "settlement", // Special type for UI
+                currencyCode: CurrencyManager.shared.mainCurrency,
+                note: "Paid via \(method)",
+                category: "Transfer",
+                icon: "banknote.fill",
+                colorHex: "#34C759", // Green
+                originalTransactionId: nil,
+                editHistory: nil
+            )
+            
+            try db.collection("groups").document(groupId).collection("transactions").document(settlementId).setData(from: groupTx)
+        }
     }
     
     func mergeGuestToFriend(guestId: String, friend: FirestoreModels.Friend, currentUserId: String) async throws {

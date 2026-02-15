@@ -133,12 +133,6 @@ struct TransactionDetailView: View {
                                                         .font(.body)
                                                         .fontWeight(.medium)
                                                         .foregroundColor(.primary)
-                                                    
-                                                    if split.isAccepted {
-                                                        Text("Request Accepted")
-                                                            .font(.caption2)
-                                                            .foregroundColor(.green)
-                                                    }
                                                 }
                                                 
                                                 Spacer()

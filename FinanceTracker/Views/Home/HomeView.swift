@@ -272,6 +272,7 @@ struct HomeView: View {
                                         } label: {
                                             Label("Delete", systemImage: "trash")
                                         }
+                                        .tint(.red)
                                     }
                                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
                                         Button {
@@ -452,7 +453,7 @@ struct HomeView: View {
                         if let splits = transaction.splits, !splits.isEmpty {
                             // Social Delete
                             // Optimistic Update: Remove locally first
-                            await transactionRepo.removeLocalTransaction(id: id)
+                            transactionRepo.removeLocalTransaction(id: id)
                             try await SocialTransactionManager.shared.deleteSocialTransaction(transaction: transaction)
                         } else {
                             // Personal Delete (Repo handles optimistic update)

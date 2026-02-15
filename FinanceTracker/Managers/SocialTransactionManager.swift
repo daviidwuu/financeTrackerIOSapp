@@ -830,9 +830,12 @@ class SocialTransactionManager: ObservableObject {
         let groupRef = db.collection("groups").document(groupId)
         
         let newIds = newMembers.map { $0.id }
+        let currentUserId = AppState.shared.currentUserId // Assuming this is available
         
         var updateData: [String: Any] = [
-            "members": FieldValue.arrayUnion(newIds)
+            "members": FieldValue.arrayUnion(newIds),
+            "lastUpdatedBy": currentUserId, // ✅ NEW: Track who added them for notifications
+            "updatedAt": Date()
         ]
         
         for member in newMembers {

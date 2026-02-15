@@ -65,9 +65,7 @@ struct GroupDetailView: View {
                         actions: {
                             Button(action: { showingSettleUp = true }) {
                                 HStack {
-                                    Image(systemName: "banknote.fill")
-                                        .foregroundColor(colorScheme == .dark ? .black : .white)
-                                    Text("Settle Up")
+                                    Text("Settle")
                                         .foregroundColor(colorScheme == .dark ? .black : .white)
                                 }
                                 .font(.headline)
@@ -368,12 +366,12 @@ struct DebtInstructionRow: View {
     var body: some View {
         HStack(spacing: 12) {
             HStack(spacing: 8) {
-                ProfileAvatar(text: String(debtorName.prefix(1)), color: .red.opacity(0.7), size: 32)
+                ProfileAvatar(text: String(debtorName.prefix(1)), color: .secondary, size: 32)
                 Text(debtorName).font(.subheadline).fontWeight(.medium).lineLimit(1)
             }
             Image(systemName: "arrow.right").font(.caption).foregroundColor(.secondary)
             HStack(spacing: 8) {
-                ProfileAvatar(text: String(creditorName.prefix(1)), color: .green.opacity(0.7), size: 32)
+                ProfileAvatar(text: String(creditorName.prefix(1)), color: .secondary, size: 32)
                 Text(creditorName).font(.subheadline).fontWeight(.medium).lineLimit(1)
             }
             Spacer()
@@ -395,7 +393,7 @@ struct PendingSplitCard: View {
     var body: some View {
         HStack(spacing: AppSpacing.element) {
             Circle()
-                .fill(isOwed ? Color.green.opacity(0.15) : Color.red.opacity(0.15))
+                .fill(Color.primary.opacity(0.05))
                 .frame(width: 48, height: 48)
                 .overlay(
                     Image(systemName: isOwed ? "arrow.down.left" : "arrow.up.right")
@@ -448,7 +446,7 @@ struct PendingSplitCard: View {
         .cornerRadius(AppRadius.medium)
         .overlay(
             RoundedRectangle(cornerRadius: AppRadius.medium)
-                .stroke(isOwed ? Color.green.opacity(0.3) : Color.red.opacity(0.3), lineWidth: 1)
+                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
         )
     }
 }
@@ -461,7 +459,7 @@ struct GroupTransactionRow: View {
         HStack(spacing: AppSpacing.element) {
             ZStack {
                 Circle()
-                    .fill(Color(hex: transaction.colorHex ?? "#808080").opacity(0.15))
+                    .fill(Color.primary.opacity(0.05))
                     .frame(width: 48, height: 48)
                 
                 if transaction.type == "settlement" {

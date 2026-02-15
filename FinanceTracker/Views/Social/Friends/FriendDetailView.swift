@@ -42,9 +42,7 @@ struct FriendDetailView: View {
                         HStack(spacing: 16) {
                             Button(action: { showingSettleUp = true }) {
                                 HStack {
-                                    Image(systemName: "banknote.fill")
-                                        .foregroundColor(colorScheme == .dark ? .black : .white)
-                                    Text("Settle Up")
+                                    Text("Settle")
                                         .foregroundColor(colorScheme == .dark ? .black : .white)
                                 }
                                 .font(.headline)
@@ -101,7 +99,7 @@ struct FriendDetailView: View {
                             // Mini Chart or Icon
                             ZStack {
                                 Circle()
-                                    .fill(balance >= 0 ? Color.green.opacity(0.1) : Color.red.opacity(0.1))
+                                    .fill(Color.primary.opacity(0.05))
                                     .frame(width: 56, height: 56)
                                 Image(systemName: balance >= 0 ? "arrow.down.left" : "arrow.up.right")
                                     .font(.title2)
@@ -169,6 +167,7 @@ struct FriendDetailView: View {
                 .onDisappear { loadData() }
         }
         .sheet(item: $selectedTransaction, onDismiss: { loadData() }) { tx in
+             // Always show SplitRequestDetailView if we can reconstruct the request
              if let req = reconstructRequest(from: tx) {
                 SplitRequestDetailView(request: req)
                     .presentationDetents([.medium, .large])
@@ -205,9 +204,12 @@ struct FriendDetailView: View {
         let toUid = isIncome ? appState.currentUserId : (friend.id ?? "")
         let toName = isIncome ? "You" : friend.name
         
+        // Use the 'source' field if available, which holds the original transaction ID
+        let originalTxId = tx.source ?? id
+        
         return FirestoreModels.SplitRequest(
             id: id,
-            transactionId: id,
+            transactionId: originalTxId,
             groupId: nil,
             fromUid: fromUid,
             toUid: toUid,
@@ -295,11 +297,13 @@ struct FriendCardRow: View {
     let transaction: FirestoreModels.TransactionModel
     let friendName: String
     
+    @State private var fetchedOriginalAmount: Double?
+    
     var body: some View {
         HStack(spacing: AppSpacing.element) {
             ZStack {
                 Circle()
-                    .fill(Color(hex: transaction.colorHex ?? "#000000").opacity(0.15))
+                    .fill(Color.primary.opacity(0.05))
                     .frame(width: 48, height: 48)
                 Image(systemName: transaction.icon ?? "dollarsign.circle.fill")
                     .font(.system(size: 20))
@@ -313,13 +317,29 @@ struct FriendCardRow: View {
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)
                 
-                let isYouPaid = transaction.type == "income"
-                // Simplify: Just "You paid" or "David paid"
-                let payerText = isYouPaid ? "You paid" : "\(friendName) paid"
+                // Logic:
+                // 1. If I paid (Income), 'amount' is what Friend owes me ($51). 
+                //    I want to show "You paid $100" (Total) or if not available, at least "You lent $51".
+                // 2. If Friend paid (Expense), 'amount' is what I owe Friend ($51).
+                //    I want to show "Friend paid $100" (Total) or "Friend lent you $51".
                 
-                Text(payerText)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                let totalAmount = transaction.originalAmount ?? fetchedOriginalAmount
+                let isYouPaid = transaction.type == "income"
+                
+                if let total = totalAmount {
+                    // We have the full original bill amount
+                    let formattedTotal = String(format: "$%.2f", total)
+                    Text(isYouPaid ? "You paid \(formattedTotal)" : "\(friendName) paid \(formattedTotal)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else {
+                    // Fallback: We only have the split share amount
+                    let shareAmount = abs(transaction.amount)
+                    let formattedShare = String(format: "$%.2f", shareAmount)
+                    Text(isYouPaid ? "You lent \(formattedShare)" : "\(friendName) lent you \(formattedShare)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
                 
                 // Status Badge
                 if let status = transaction.note, !status.isEmpty, ["pending", "paid", "accepted", "declined"].contains(status) {
@@ -349,6 +369,21 @@ struct FriendCardRow: View {
             }
         }
         .padding(AppSpacing.element)
+        .task {
+            // Fetch original amount if missing
+            if transaction.originalAmount == nil, let sourceId = transaction.source {
+                do {
+                    let doc = try await Firestore.firestore().collection("transactions").document(sourceId).getDocument()
+                    if let tx = try? doc.data(as: FirestoreModels.TransactionModel.self) {
+                        await MainActor.run {
+                            self.fetchedOriginalAmount = abs(tx.amount)
+                        }
+                    }
+                } catch {
+                    print("Error fetching original transaction: \(error)")
+                }
+            }
+        }
     }
     
     func statusColor(_ status: String) -> Color {

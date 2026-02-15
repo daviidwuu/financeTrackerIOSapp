@@ -105,7 +105,7 @@ struct AllTransactionsView: View {
                         }
                     }
                     .padding(12)
-                    .background(Color(UIColor.secondarySystemBackground))
+                    .background(Color(UIColor.secondarySystemGroupedBackground))
                     .cornerRadius(12)
                     .padding(.horizontal)
                     .padding(.top, 8)
@@ -157,7 +157,7 @@ struct AllTransactionsView: View {
                                 .foregroundColor(.primary)
                                 .padding(.horizontal, 12)
                                 .frame(height: 36)
-                                .background(Color(UIColor.secondarySystemBackground))
+                                .background(Color(UIColor.secondarySystemGroupedBackground))
                                 .cornerRadius(10)
                             }
                             
@@ -189,7 +189,7 @@ struct AllTransactionsView: View {
                                 .foregroundColor(.primary)
                                 .padding(.horizontal, 12)
                                 .frame(height: 36)
-                                .background(Color(UIColor.secondarySystemBackground))
+                                .background(Color(UIColor.secondarySystemGroupedBackground))
                                 .cornerRadius(10)
                             }
                             
@@ -219,7 +219,7 @@ struct AllTransactionsView: View {
                                         .font(.system(size: 16))
                                         .foregroundColor(.primary)
                                         .frame(width: 36, height: 36)
-                                        .background(Color(UIColor.secondarySystemBackground))
+                                        .background(Color(UIColor.secondarySystemGroupedBackground))
                                         .cornerRadius(10)
                                 }
                             }
@@ -231,7 +231,7 @@ struct AllTransactionsView: View {
                                         .font(.system(size: 16))
                                         .foregroundColor(.primary)
                                         .frame(width: 36, height: 36)
-                                        .background(Color(UIColor.secondarySystemBackground))
+                                        .background(Color(UIColor.secondarySystemGroupedBackground))
                                         .cornerRadius(10)
                                 }
                             }
@@ -263,7 +263,7 @@ struct AllTransactionsView: View {
                                     .font(.system(size: 16))
                                     .foregroundColor(.primary)
                                     .frame(width: 36, height: 36)
-                                    .background(Color(UIColor.secondarySystemBackground))
+                                    .background(Color(UIColor.secondarySystemGroupedBackground))
                                     .cornerRadius(10)
                             }
                         }
@@ -325,7 +325,7 @@ struct AllTransactionsView: View {
                         List {
                             ForEach(sortedTransactions) { transaction in
                                 TransactionRow(transaction: transaction)
-                                    .background(Color(UIColor.secondarySystemBackground))
+                                    .background(Color(UIColor.secondarySystemGroupedBackground))
                                     .cornerRadius(AppRadius.medium)
                                     .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
                                     .listRowSeparator(.hidden)
@@ -338,6 +338,7 @@ struct AllTransactionsView: View {
                                         } label: {
                                             Label("Delete", systemImage: "trash")
                                         }
+                                        .tint(.red)
                                     }
                                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
                                         Button {
@@ -504,10 +505,10 @@ struct FilterChip: View {
                     .font(.system(size: 10, weight: .semibold))
             }
         }
-        .foregroundColor(.white)
+        .foregroundColor(.primary)
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .background(Color.white.opacity(0.2))
+        .background(Color(UIColor.secondarySystemGroupedBackground))
         .cornerRadius(16)
     }
 }
@@ -531,7 +532,7 @@ struct StatCard: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(Color(UIColor.secondarySystemGroupedBackground))
         .cornerRadius(12)
     }
 }

@@ -56,7 +56,12 @@ class GroupRepository: ObservableObject {
             newGroup.members.append(userId)
         }
         
-        try ref.setData(from: newGroup)
+        // We do NOT set 'lastUpdatedBy' here because for creation, the trigger uses 'createdBy'
+        // But to be consistent with updates:
+        var data = try Firestore.Encoder().encode(newGroup)
+        data["lastUpdatedBy"] = userId
+        
+        try await ref.setData(data)
         return ref.documentID
     }
     

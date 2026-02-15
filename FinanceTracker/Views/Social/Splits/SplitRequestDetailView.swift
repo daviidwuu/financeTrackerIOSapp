@@ -138,6 +138,96 @@ struct SplitRequestDetailView: View {
                     }
                     .padding(.horizontal, AppSpacing.margin)
 
+                    // 2.5 Split Status Card
+                    if let tx = originalTransaction, tx.type != "income", let splits = tx.splits, !splits.isEmpty {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("SPLIT STATUS")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(.secondary)
+                                .padding(.leading, 8)
+                            
+                            VStack(spacing: 0) {
+                                ForEach(splits) { split in
+                                    HStack(spacing: 12) {
+                                        // Mini Avatar
+                                        ZStack {
+                                            Circle()
+                                                .fill(Color.primary.opacity(0.05))
+                                                .frame(width: 36, height: 36)
+                                            Text(String(split.name.prefix(1)).uppercased())
+                                                .font(.system(size: 14, weight: .bold))
+                                                .foregroundColor(.primary)
+                                        }
+                                        
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(split.name)
+                                                .font(.body)
+                                                .fontWeight(.medium)
+                                                .foregroundColor(.primary)
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        VStack(alignment: .trailing, spacing: 2) {
+                                            Text(String(format: "$%.2f", split.amount))
+                                                .font(.body.monospacedDigit())
+                                                .fontWeight(.semibold)
+                                            
+                                            if let status = split.status {
+                                                Text(status.capitalized)
+                                                    .font(.caption2)
+                                                    .fontWeight(.bold)
+                                                    .foregroundColor(status == "paid" ? .green : (status == "declined" ? .red : (status == "accepted" ? .blue : .orange)))
+                                            } else {
+                                                Text(split.isPaid ? "Paid" : "Pending")
+                                                    .font(.caption2)
+                                                    .foregroundColor(split.isPaid ? .green : .orange)
+                                            }
+                                        }
+                                        
+                                        // Inline Paid Toggle (Only if user is owner)
+                                        if tx.userId == appState.currentUserId {
+                                            Button(action: { toggleSplitPayment(split) }) {
+                                                Image(systemName: split.isPaid ? "checkmark.circle.fill" : "circle")
+                                                    .font(.title3)
+                                                    .foregroundColor(split.isPaid ? .green : .secondary.opacity(0.3))
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                    .padding(.vertical, 14)
+                                    .padding(.horizontal, 16)
+                                    
+                                    if split.id != splits.last?.id {
+                                        Divider().padding(.horizontal, 16)
+                                    }
+                                }
+                                
+                                // Net Cost Row
+                                HStack {
+                                    Text("Net Cost")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    let reimbursed = splits.filter { $0.isPaid }.reduce(0) { $0 + $1.amount }
+                                    Text(String(format: "$%.2f", abs(tx.amount) - reimbursed))
+                                        .font(.headline.monospacedDigit())
+                                        .foregroundColor(.primary)
+                                }
+                                .padding(16)
+                                .background(Color.primary.opacity(0.03))
+                            }
+                            .background(Color(UIColor.secondarySystemBackground))
+                            .cornerRadius(AppRadius.medium)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppRadius.medium)
+                                    .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+                            )
+                        }
+                        .padding(.horizontal, AppSpacing.margin)
+                    }
+
                     // 2.5 Map (If available)
                     if let tx = originalTransaction, let lat = tx.latitude, let long = tx.longitude {
                         VStack(alignment: .leading, spacing: 16) {
@@ -170,31 +260,62 @@ struct SplitRequestDetailView: View {
                     
                     // 3. Actions
                     VStack(spacing: 16) {
-                        if isIncoming && request.status == .pending {
-                            Button(action: markAsPaid) {
-                                HStack {
-                                    Image(systemName: "checkmark.circle.fill")
-                                    Text("Mark as Paid")
+                        if isIncoming {
+                            // --- Receiver (User B) Actions ---
+                            
+                            if request.status == .pending {
+                                // Accept Button
+                                Button(action: acceptRequest) {
+                                    HStack {
+                                        Image(systemName: "checkmark.circle.fill")
+                                        Text("Accept Request")
+                                    }
+                                    .font(.headline)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 16)
+                                    .background(Color.blue)
+                                    .cornerRadius(AppRadius.large)
+                                    .shadow(color: Color.blue.opacity(0.3), radius: 8, y: 4)
                                 }
-                                .font(.headline)
-                                .fontWeight(.bold)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(Color.green)
-                                .cornerRadius(AppRadius.large)
-                                .shadow(color: Color.green.opacity(0.3), radius: 8, y: 4)
-                            }
-                            
-                            Button(action: declineRequest) {
-                                Text("Decline Request")
+                                
+                                // Decline Button
+                                Button(action: declineRequest) {
+                                    Text("Decline Request")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.red)
+                                }
+                            } else if request.status == .accepted {
+                                Text("Accepted - Waiting for settlement")
                                     .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(.red)
+                                    .foregroundColor(.secondary)
+                                    .padding()
                             }
-                        } else if request.fromUid == appState.currentUserId {
                             
-                            // ✅ NEW: Resend feature for Declined requests
+                        } else if request.fromUid == appState.currentUserId {
+                            // --- Sender (User A) Actions ---
+                            
+                            // Mark as Paid (Only Sender can do this now)
+                            if request.status == .pending || request.status == .accepted {
+                                Button(action: markAsPaid) {
+                                    HStack {
+                                        Image(systemName: "banknote.fill")
+                                        Text("Mark as Paid")
+                                    }
+                                    .font(.headline)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 16)
+                                    .background(Color.green)
+                                    .cornerRadius(AppRadius.large)
+                                    .shadow(color: Color.green.opacity(0.3), radius: 8, y: 4)
+                                }
+                            }
+                            
+                            // Resend feature for Declined requests
                             if request.status == .declined {
                                 Button(action: resendRequest) {
                                     HStack {
@@ -212,8 +333,8 @@ struct SplitRequestDetailView: View {
                                 }
                             }
                             
-                            // Allow canceling even if declined (to clean up)
-                            if request.status == .pending || request.status == .declined {
+                            // Allow canceling
+                            if request.status == .pending || request.status == .declined || request.status == .accepted {
                                 Button(action: cancelRequest) {
                                     HStack {
                                         Image(systemName: "trash")
@@ -273,6 +394,37 @@ struct SplitRequestDetailView: View {
         }
     }
     
+    private func acceptRequest() {
+        HapticManager.shared.medium()
+        Task {
+            do {
+                // 1. Create Transaction for Receiver
+                // We use details from the request and original transaction
+                let transaction = FirestoreModels.TransactionModel(
+                    userId: appState.currentUserId,
+                    title: request.note ?? originalTransaction?.title ?? "Split Expense",
+                    subtitle: originalTransaction?.subtitle ?? "Social",
+                    amount: -request.amount, // Expense
+                    date: Date(),
+                    type: "expense",
+                    createdAt: Date(),
+                    icon: originalTransaction?.icon ?? "person.2.fill",
+                    colorHex: originalTransaction?.colorHex ?? "#007AFF",
+                    note: "Accepted split from \(request.fromName ?? "friend")"
+                )
+                
+                try await appState.transactionRepo.addTransaction(transaction)
+                
+                // 2. Update Request Status
+                try await appState.requestRepo.updateRequestStatus(userId: appState.currentUserId, requestId: request.id!, status: .accepted)
+                
+                dismiss()
+            } catch {
+                errorState.show("Failed to accept request")
+            }
+        }
+    }
+    
     private func markAsPaid() {
         HapticManager.shared.heavy()
         Task {
@@ -323,6 +475,81 @@ struct SplitRequestDetailView: View {
         if let friend = appState.friendRepo.friends.first(where: { $0.id == uid }) { return friend.name }
         if let guest = appState.guestRepo.guests.first(where: { $0.id == uid }) { return guest.name }
         return "Unknown"
+    }
+    
+    private func toggleSplitPayment(_ split: FirestoreModels.Split) {
+        guard var tx = originalTransaction, let transactionId = tx.id else { return }
+        
+        // Optimistic UI toggle
+        if let index = tx.splits?.firstIndex(where: { $0.id == split.id }) {
+            tx.splits?[index].isPaid.toggle()
+            self.originalTransaction = tx
+        }
+        
+        Task {
+            do {
+                // 1. Fetch Request
+                var request: FirestoreModels.SplitRequest?
+                let db = Firestore.firestore()
+                
+                if let reqId = split.requestId {
+                    let doc = try await db.collection("split_requests").document(reqId).getDocument()
+                    request = try? doc.data(as: FirestoreModels.SplitRequest.self)
+                }
+                
+                // Fallback if no requestId or not found
+                if request == nil {
+                     // Try to find by friendId/guestId
+                     var targetUid: String?
+                     if let fid = split.friendId { targetUid = fid }
+                     else if let gid = split.guestId { targetUid = gid }
+                     
+                     if let target = targetUid {
+                        let snapshot = try await db.collection("split_requests")
+                            .whereField("transactionId", isEqualTo: transactionId)
+                            .whereField("toUid", isEqualTo: target)
+                            .getDocuments()
+                        request = try? snapshot.documents.first?.data(as: FirestoreModels.SplitRequest.self)
+                     }
+                }
+                
+                guard let foundRequest = request else {
+                    print("DEBUG: Could not find split request for split: \(split.id)")
+                    // Revert UI
+                    await MainActor.run {
+                        if let index = originalTransaction?.splits?.firstIndex(where: { $0.id == split.id }) {
+                            originalTransaction?.splits?[index].isPaid.toggle()
+                        }
+                    }
+                    return
+                }
+                
+                // 2. Toggle using Manager
+                let currentStatus = foundRequest.status
+                
+                if currentStatus == .pending || currentStatus == .accepted || currentStatus == .blocked_by_group || currentStatus == .declined {
+                     try await SocialTransactionManager.shared.markSplitAsPaid(request: foundRequest, currentUserId: appState.currentUserId, currentUserName: appState.userName)
+                } else if currentStatus == .paid {
+                     try await SocialTransactionManager.shared.unmarkSplitAsPaid(request: foundRequest, currentUserId: appState.currentUserId)
+                }
+                
+                // 3. Refresh Transaction
+                let freshTx = try await appState.transactionRepo.fetchTransaction(id: transactionId)
+                 if let fresh = freshTx {
+                     await MainActor.run {
+                         self.originalTransaction = fresh
+                     }
+                 }
+            } catch {
+                print("Error toggling split payment: \(error)")
+                // Revert UI
+                await MainActor.run {
+                    if let index = originalTransaction?.splits?.firstIndex(where: { $0.id == split.id }) {
+                        originalTransaction?.splits?[index].isPaid.toggle()
+                    }
+                }
+            }
+        }
     }
 }
 

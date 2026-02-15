@@ -246,6 +246,7 @@ struct AddSavingGoalView: View {
             }
             .padding(.bottom, 100)
             .padding(.horizontal, AppSpacing.compact)
+            .padding(.top, 20)
         }
     }
     

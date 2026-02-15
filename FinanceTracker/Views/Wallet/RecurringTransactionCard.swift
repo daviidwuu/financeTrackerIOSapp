@@ -60,6 +60,7 @@ struct RecurringTransactionCard: View {
             } label: {
                 Label("Delete", systemImage: "trash")
             }
+            .tint(.red)
         }
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             Button {

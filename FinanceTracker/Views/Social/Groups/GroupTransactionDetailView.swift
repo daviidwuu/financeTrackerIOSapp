@@ -11,6 +11,7 @@ struct GroupTransactionDetailView: View {
     @State private var originalTransaction: FirestoreModels.TransactionModel?
     @State private var isLoading = true
     @State private var showHistory = false
+    @State private var selectedSplit: FirestoreModels.SplitRequest?
     
     var body: some View {
         ZStack {
@@ -112,11 +113,15 @@ struct GroupTransactionDetailView: View {
                             VStack(spacing: 0) {
                                 ForEach(splits) { split in
                                     HStack(spacing: 12) {
-                                        ProfileAvatar(
-                                            text: String((split.toName ?? "U").prefix(1)),
-                                            color: Color.random(seed: split.toName ?? "User"),
-                                            size: 40
-                                        )
+                                        // Mini Avatar
+                                        ZStack {
+                                            Circle()
+                                                .fill(Color.primary.opacity(0.05))
+                                                .frame(width: 36, height: 36)
+                                            Text(String((split.toName ?? "U").prefix(1)).uppercased())
+                                                .font(.system(size: 14, weight: .bold))
+                                                .foregroundColor(.primary)
+                                        }
                                         
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(split.toName ?? "Friend")
@@ -125,45 +130,86 @@ struct GroupTransactionDetailView: View {
                                                 .foregroundColor(.primary)
                                             
                                             // Status Badge Pill
-                                            Text(split.status.rawValue.capitalized)
-                                                .font(.caption2)
-                                                .fontWeight(.bold)
-                                                .foregroundColor(statusColor(for: split.status))
-                                                .padding(.horizontal, 8)
-                                                .padding(.vertical, 2)
-                                                .background(statusColor(for: split.status).opacity(0.1))
-                                                .clipShape(Capsule())
+                                            if let status = Optional(split.status) {
+                                                Text(status.rawValue.capitalized)
+                                                    .font(.caption2)
+                                                    .fontWeight(.bold)
+                                                    .foregroundColor(statusColor(for: status))
+                                                    .padding(.horizontal, 8)
+                                                    .padding(.vertical, 2)
+                                                    .background(statusColor(for: status).opacity(0.1))
+                                                    .clipShape(Capsule())
+                                            }
                                         }
                                         
                                         Spacer()
                                         
-                                        Text(String(format: "$%.2f", split.amount))
-                                            .font(.body)
-                                            .fontWeight(.semibold)
-                                            .foregroundColor(.primary)
+                                        VStack(alignment: .trailing, spacing: 2) {
+                                            Text(String(format: "$%.2f", split.amount))
+                                                .font(.body.monospacedDigit())
+                                                .fontWeight(.semibold)
+                                                .foregroundColor(.primary)
                                             
-                                        // Nudge Button
-                                        if transaction.payerId == appState.currentUserId && (split.status == .pending || split.status == .accepted) {
-                                            Button {
-                                                nudgeUser(split: split)
-                                            } label: {
-                                                Image(systemName: "bell.fill")
-                                                    .foregroundColor(.orange)
-                                                    .frame(width: 32, height: 32)
-                                                    .background(Color.orange.opacity(0.1))
-                                                    .clipShape(Circle())
+                                            // Nudge Button (Only if pending)
+                                            if transaction.payerId == appState.currentUserId && (split.status == .pending || split.status == .accepted) {
+                                                Button {
+                                                    nudgeUser(split: split)
+                                                } label: {
+                                                    Label("Nudge", systemImage: "bell.fill")
+                                                        .font(.caption2)
+                                                        .foregroundColor(.orange)
+                                                }
+                                                .disabled(isNudgedRecently(split))
+                                                .opacity(isNudgedRecently(split) ? 0.5 : 1.0)
                                             }
-                                            .disabled(isNudgedRecently(split))
-                                            .opacity(isNudgedRecently(split) ? 0.5 : 1.0)
+                                        }
+                                            
+                                        // Inline Paid Toggle (Only if user is owner OR it is their own split)
+                                        if transaction.payerId == appState.currentUserId {
+                                            Button(action: { toggleSplitPayment(split) }) {
+                                                Image(systemName: split.status == .paid ? "checkmark.circle.fill" : "circle")
+                                                    .font(.title3)
+                                                    .foregroundColor(split.status == .paid ? .green : .secondary.opacity(0.3))
+                                            }
+                                            .buttonStyle(.plain)
+                                        } else if split.toUid == appState.currentUserId {
+                                             // Current User's Split (Friend View)
+                                            Button(action: { selectedSplit = split }) {
+                                                Image(systemName: "chevron.right")
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
                                         }
                                     }
-                                    .padding(16)
+                                    .padding(.vertical, 14)
+                                    .padding(.horizontal, 16)
                                     .background(Color(UIColor.secondarySystemBackground))
+                                    .contentShape(Rectangle()) // Make full row tappable
+                                    .onTapGesture {
+                                        // Only allow navigation if it's your own split or you are the payer (for details)
+                                        if split.toUid == appState.currentUserId || transaction.payerId == appState.currentUserId {
+                                            selectedSplit = split
+                                        }
+                                    }
                                     
                                     if split.id != splits.last?.id {
-                                        Divider().padding(.leading, 68)
+                                        Divider().padding(.horizontal, 16)
                                     }
                                 }
+                                
+                                // Net Cost Row
+                                HStack {
+                                    Text("Net Cost")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    let reimbursed = splits.filter { $0.status == .paid }.reduce(0) { $0 + $1.amount }
+                                    Text(String(format: "$%.2f", abs(transaction.amount) - reimbursed))
+                                        .font(.headline.monospacedDigit())
+                                        .foregroundColor(.primary)
+                                }
+                                .padding(16)
+                                .background(Color.primary.opacity(0.03))
                             }
                             .cornerRadius(AppRadius.medium)
                             .overlay(
@@ -278,6 +324,9 @@ struct GroupTransactionDetailView: View {
             }
             .presentationDetents([.medium, .large])
         }
+        .sheet(item: $selectedSplit, onDismiss: { loadSplits() }) { split in
+            SplitRequestDetailView(request: split)
+        }
     }
     
     private func statusColor(for status: FirestoreModels.SplitRequest.RequestStatus) -> Color {
@@ -338,6 +387,33 @@ struct GroupTransactionDetailView: View {
                 // Revert if failed
                 if let index = splits.firstIndex(where: { $0.id == split.id }) {
                     splits[index].lastNudgedAt = originalDate
+                }
+            }
+        }
+    }
+    
+    private func toggleSplitPayment(_ split: FirestoreModels.SplitRequest) {
+        // Optimistic UI toggle
+        if let index = splits.firstIndex(where: { $0.id == split.id }) {
+            splits[index].status = (splits[index].status == .paid) ? .pending : .paid
+        }
+        
+        Task {
+            do {
+                let currentStatus = split.status
+                if currentStatus == .pending || currentStatus == .accepted || currentStatus == .blocked_by_group || currentStatus == .declined {
+                     try await SocialTransactionManager.shared.markSplitAsPaid(request: split, currentUserId: appState.currentUserId, currentUserName: appState.userName)
+                } else if currentStatus == .paid {
+                     try await SocialTransactionManager.shared.unmarkSplitAsPaid(request: split, currentUserId: appState.currentUserId)
+                }
+                
+                // Refresh to ensure sync
+                loadSplits()
+            } catch {
+                print("Error toggling split payment: \(error)")
+                // Revert UI
+                await MainActor.run {
+                    loadSplits()
                 }
             }
         }

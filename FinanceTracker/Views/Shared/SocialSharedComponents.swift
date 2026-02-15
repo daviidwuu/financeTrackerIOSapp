@@ -61,7 +61,7 @@ struct BalanceCard: View {
         .cornerRadius(AppRadius.medium)
         .overlay(
             RoundedRectangle(cornerRadius: AppRadius.medium)
-                .stroke(isSelf ? Color.blue.opacity(0.3) : Color.clear, lineWidth: 1) // ✅ Blue border for self
+                .stroke(isSelf ? Color.primary.opacity(0.1) : Color.clear, lineWidth: 1) // ✅ Neutral border for self
         )
         .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2) // ✅ Soft shadow
     }
