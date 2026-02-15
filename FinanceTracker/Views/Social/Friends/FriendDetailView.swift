@@ -301,14 +301,12 @@ struct FriendCardRow: View {
     
     var body: some View {
         HStack(spacing: AppSpacing.element) {
-            ZStack {
-                Circle()
-                    .fill(Color.primary.opacity(0.05))
-                    .frame(width: 48, height: 48)
-                Image(systemName: transaction.icon ?? "dollarsign.circle.fill")
-                    .font(.system(size: 20))
-                    .foregroundColor(Color(hex: transaction.colorHex ?? "#000000"))
-            }
+            CategoryIconView(
+                category: transaction.subtitle,
+                iconOverride: transaction.icon,
+                colorOverride: transaction.colorHex,
+                type: transaction.type
+            )
             
             VStack(alignment: .leading, spacing: 4) {
                 // Title is the core data

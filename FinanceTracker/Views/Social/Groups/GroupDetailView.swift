@@ -455,23 +455,19 @@ struct GroupTransactionRow: View {
     let transaction: FirestoreModels.GroupTransaction
     let currentUserId: String
     
+    // We need appState to check for "You" logic properly, but it's not passed in.
+    // Ideally, we should pass in the current user's name or use EnvironmentObject if available.
+    // Since this is a subview, we can use @EnvironmentObject.
+    @EnvironmentObject var appState: AppState
+    
     var body: some View {
         HStack(spacing: AppSpacing.element) {
-            ZStack {
-                Circle()
-                    .fill(Color.primary.opacity(0.05))
-                    .frame(width: 48, height: 48)
-                
-                if transaction.type == "settlement" {
-                     Image(systemName: "banknote.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(.functionalSuccess)
-                } else {
-                    Image(systemName: transaction.icon ?? "cart.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(Color(hex: transaction.colorHex ?? "#808080"))
-                }
-            }
+            CategoryIconView(
+                category: transaction.category,
+                iconOverride: transaction.icon,
+                colorOverride: transaction.colorHex,
+                type: transaction.type
+            )
             
             VStack(alignment: .leading, spacing: 4) {
                 let displayTitle = (transaction.note?.isEmpty == false) ? transaction.note! : transaction.title
@@ -482,15 +478,26 @@ struct GroupTransactionRow: View {
                 
                 let payerName = (transaction.payerId == currentUserId) ? "You" : transaction.payerName
                 HStack(spacing: 4) {
-                    Text("\(payerName) paid")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
                     if transaction.type == "settlement" {
-                         Text("Settlement")
-                             .font(.caption)
-                             .fontWeight(.bold)
-                             .foregroundColor(.green)
+                        if let receiver = transaction.receiverName {
+                            // If receiver is me, show "You"
+                            // If payer is me, show "You paid X"
+                            let receiverDisplay = (receiver == appState.userName) ? "You" : receiver
+                            
+                            Text("\(payerName) paid \(receiverDisplay)")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(.green)
+                        } else {
+                            Text("\(payerName) paid settlement")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(.green)
+                        }
+                    } else {
+                        Text("\(payerName) paid")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
             }

@@ -185,7 +185,7 @@ struct ContentView: View {
         
         // Find matching budget
         if let budget = budgetRepo.budgets.first(where: { $0.category == category }) {
-            let spent = budgetRepo.calculateSpent(for: category, transactions: transactionRepo.transactions)
+            let spent = budget.spentAmount(transactions: transactionRepo.transactions)
             let totalLimit = budget.totalAmount
             
             // Validate totalLimit to avoid division by zero crash

@@ -731,7 +731,7 @@ class SocialTransactionManager: ObservableObject {
     }
 
     /// Settles up a debt between two users
-    func settleUp(payerId: String, receiverId: String, groupId: String?, amount: Double, payerName: String = "Member", method: String = "Cash") async throws {
+    func settleUp(payerId: String, receiverId: String, groupId: String?, amount: Double, payerName: String = "Member", receiverName: String? = nil, method: String = "Cash") async throws {
         // Payer Side (Expense)
         let payerRef = db.collection("users").document(payerId).collection("transactions").document()
         
@@ -745,7 +745,7 @@ class SocialTransactionManager: ObservableObject {
             date: Date(),
             type: "expense",
             createdAt: Date(),
-            icon: "banknote.fill",
+            icon: "dollarsign.circle.fill", // Updated icon
             colorHex: "#34C759", // Green
             note: "Settled up via \(method)"
         )
@@ -771,7 +771,7 @@ class SocialTransactionManager: ObservableObject {
              fromUid: payerId,
              toUid: receiverId,
              fromName: "Settlement",
-             toName: nil, // Will be filled by receiver logic or ignored
+             toName: receiverName, // ✅ Updated from nil
              amount: amount,
              currency: nil,
              note: "Settled via \(method)",
@@ -792,12 +792,13 @@ class SocialTransactionManager: ObservableObject {
                 amount: amount,
                 payerId: payerId,
                 payerName: payerName, 
+                receiverName: receiverName, // ✅ Added parameter
                 date: Date(),
                 type: "settlement", // Special type
                 currencyCode: nil,
                 note: nil,
                 category: "Settlement",
-                icon: "banknote.fill",
+                icon: "dollarsign.circle.fill", // Updated icon
                 colorHex: "#34C759",
                 originalTransactionId: nil,
                 editHistory: nil

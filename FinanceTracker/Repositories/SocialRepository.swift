@@ -373,7 +373,7 @@ class SocialRepository: ObservableObject {
         return DebtCalculator.shared.calculateDebtResolution(balances: balances)
     }
     
-    func settleUp(payerId: String, receiverId: String, groupId: String?, amount: Double, payerName: String? = nil, method: String) async throws {
+    func settleUp(payerId: String, receiverId: String, groupId: String?, amount: Double, payerName: String? = nil, receiverName: String? = nil, method: String) async throws {
         let settlementId = UUID().uuidString
         let timestamp = Date()
         
@@ -385,7 +385,7 @@ class SocialRepository: ObservableObject {
             fromUid: payerId, // Sender of money
             toUid: receiverId, // Receiver of money
             fromName: payerName ?? "User", // We might need to fetch names if nil
-            toName: nil,
+            toName: receiverName,
             amount: amount,
             currency: CurrencyManager.shared.mainCurrency,
             note: "Settlement via \(method)",
@@ -405,12 +405,13 @@ class SocialRepository: ObservableObject {
                 amount: amount,
                 payerId: payerId,
                 payerName: payerName ?? "User",
+                receiverName: receiverName,
                 date: timestamp,
                 type: "settlement", // Special type for UI
                 currencyCode: CurrencyManager.shared.mainCurrency,
                 note: "Paid via \(method)",
                 category: "Transfer",
-                icon: "banknote.fill",
+                icon: "dollarsign.circle.fill", // Updated icon
                 colorHex: "#34C759", // Green
                 originalTransactionId: nil,
                 editHistory: nil

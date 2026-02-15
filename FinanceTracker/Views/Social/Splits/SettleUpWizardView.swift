@@ -312,6 +312,7 @@ struct SettleUpWizardView: View {
                     groupId: group?.id,
                     amount: amountVal,
                     payerName: getName(for: payerId),
+                    receiverName: getName(for: receiverId),
                     method: "Payment"
                 )
                 HapticManager.shared.success()

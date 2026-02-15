@@ -114,65 +114,28 @@ enum FirestoreModels {
         
         // Computed property for remaining amount (calculated from transactions)
         func remainingAmount(transactions: [TransactionModel]) -> Double {
-            let calendar = Calendar.current
-            let now = Date()
+            return totalAmount - spentAmount(transactions: transactions)
+        }
+        
+        // Calculate amount spent in the current period
+        func spentAmount(transactions: [TransactionModel]) -> Double {
+            // Use centralized calculator for consistent windows anchored to monthStartDate
+            let calculator = BudgetPeriodCalculator(calendar: Calendar.current, anchor: monthStartDate)
+            let window = calculator.window(frequency: frequency)
             
-            // 1. Identify valid date range based on frequency
-            let startDate: Date
-            let endDate: Date
-            
-            switch frequency {
-            case "Weekly":
-                // Start of current week (assuming Sunday start)
-                startDate = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now))!
-                endDate = calendar.date(byAdding: .day, value: 7, to: startDate)!
-            case "Bi-Weekly":
-                // Start of current 2-week period (Naive implementation: Assume aligned with weeks)
-                // A better approach would be to calculate from a fixed epoch, but for now we'll match weekly start
-                // and check parity, or just look at last 14 days? 
-                // Let's stick to: Current Week + Previous Week? No, that shifts.
-                // Standard approach: Start of year -> chunk by 2 weeks.
-                let weekOfYear = calendar.component(.weekOfYear, from: now)
-                let startOfWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now))!
-                
-                if weekOfYear % 2 == 0 {
-                   // Even week: This + Next is a pair? Or Prev + This? 
-                   // Let's align with: Week 1-2, 3-4, etc.
-                   // If current is 4 (even), start is week 3.
-                   startDate = calendar.date(byAdding: .weekOfYear, value: -1, to: startOfWeek)!
-                } else {
-                   // Odd week: This + Next
-                   startDate = startOfWeek
-                }
-                endDate = calendar.date(byAdding: .day, value: 14, to: startDate)!
-                
-            case "Yearly":
-                startDate = calendar.date(from: calendar.dateComponents([.year], from: now))!
-                endDate = calendar.date(byAdding: .year, value: 1, to: startDate)!
-                
-            default: // "Monthly"
-                // Dynamically calculate the current month's range
-                startDate = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
-                endDate = calendar.date(byAdding: .month, value: 1, to: startDate)!
-            }
-            
-            // 2. Filter transactions
-            // 2. Filter transactions and calculate Net Spend
+            // Filter transactions and calculate Net Spend
             let netDiff = transactions
                 .filter { transaction in
                     // Match category
                     // Include both Expenses (negative) and Reimbursements (positive)
-                    // Exclude "Income" category explicitly if needed, but usually budgeting is for specific categories
                     guard transaction.subtitle == category else { return false }
-                    return transaction.date >= startDate && transaction.date < endDate
+                    return transaction.date >= window.start && transaction.date < window.end
                 }
                 .reduce(0) { $0 + $1.amount }
             
             // If netDiff is -25 (Net Expense), Spent is 25.
             // If netDiff is +10 (Net Profit), Spent is 0.
-            let spent = netDiff < 0 ? abs(netDiff) : 0
-                
-            return totalAmount - spent
+            return netDiff < 0 ? abs(netDiff) : 0
         }
     }
 
@@ -378,6 +341,7 @@ enum FirestoreModels {
         var amount: Double
         var payerId: String
         var payerName: String
+        var receiverName: String? // ✅ NEW: For settlement details
         var date: Date
         var type: String // "expense" or "income" (reimbursement)
         var currencyCode: String?
@@ -394,6 +358,7 @@ enum FirestoreModels {
             case amount
             case payerId
             case payerName
+            case receiverName
             case date
             case type
             case currencyCode

@@ -38,7 +38,7 @@ struct SocialDashboardView: View {
                     .padding(.bottom, 16)
                     
                     ScrollView {
-                        VStack(spacing: 24) {
+                        VStack(spacing: 4) {
                             // 2. Custom Segmented Control
                             CustomSegmentedControl(selection: $selectedSegment, options: ["Groups", "Friends", "Leaderboard"])
                                 .padding(.horizontal, AppSpacing.margin)
@@ -54,7 +54,7 @@ struct SocialDashboardView: View {
                                 ProgressView()
                                     .padding(.top, 40)
                             } else {
-                                VStack(spacing: 16) {
+                                VStack(spacing: 4) {
                                     if selectedSegment == 0 {
                                         groupsList
                                     } else if selectedSegment == 1 {
@@ -191,7 +191,7 @@ struct SocialDashboardView: View {
                         InvitationCard(invite: invite)
                     }
                 }
-                .padding(.bottom, 8)
+                .padding(.bottom, 4)
             }
             
             // Create New Group Button
@@ -219,7 +219,7 @@ struct SocialDashboardView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
-            .padding(.bottom, AppSpacing.compact)
+            .padding(.bottom, 4)
 
             ForEach(filteredGroups) { group in
                 NavigationLink(destination: GroupDetailView(group: group)) {
@@ -244,7 +244,7 @@ struct SocialDashboardView: View {
                     }
                     .tint(.red)
                 }
-                .padding(.bottom, AppSpacing.compact)
+                .padding(.bottom, 4)
             }
             
             if filteredGroups.isEmpty {
@@ -279,35 +279,36 @@ struct SocialDashboardView: View {
                         FriendRequestCard(request: request)
                     }
                 }
-                .padding(.bottom, 16)
+                .padding(.bottom, 4)
             }
             
             // Add Guest Button (Bottom)
             Button(action: { showingAddSheet = true }) {
-                HStack(spacing: 12) {
-                    Circle()
-                        .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
-                        .foregroundColor(.secondary)
-                        .frame(width: 48, height: 48)
-                        .overlay(
-                            Image(systemName: "plus")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(.secondary)
-                        )
-                    
-                    Text("Add Guest")
-                        .font(.body)
-                        .fontWeight(.medium)
-                        .foregroundColor(.primary)
-                    
-                    Spacer()
+                VStack(spacing: 0) {
+                    HStack(spacing: 12) {
+                        Circle()
+                            .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
+                            .foregroundColor(.secondary)
+                            .frame(width: 48, height: 48)
+                            .overlay(
+                                Image(systemName: "plus")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(.secondary)
+                            )
+                        
+                        Text("Add Guest")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.primary)
+                        
+                        Spacer()
+                    }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, AppSpacing.margin)
                 }
-                .padding(AppSpacing.element)
-                .padding(.horizontal, AppSpacing.margin)
                 .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
-            .padding(.bottom, AppSpacing.compact)
+            .padding(.bottom, 4)
             
             ForEach(filteredFriends, id: \.id) { friend in
                 NavigationLink(destination: FriendDetailView(friend: friend)) {
@@ -332,7 +333,7 @@ struct SocialDashboardView: View {
                     }
                     .tint(.red)
                 }
-                .padding(.bottom, AppSpacing.compact)
+                .padding(.bottom, 4)
             }
             
             if filteredFriends.isEmpty {

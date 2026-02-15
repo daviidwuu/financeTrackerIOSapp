@@ -117,15 +117,7 @@ class BudgetRepository: ObservableObject {
         try await batch.commit()
     }
     
-    func calculateSpent(for category: String, transactions: [FirestoreModels.TransactionModel]) -> Double {
-        let netDiff = transactions
-            .filter { $0.subtitle == category } // specific category
-            .reduce(0) { $0 + $1.amount } // sum (Ex: -50 + 25 = -25)
-            
-        // If net is negative (expense), return positive magnitude (25)
-        // If net is positive (profit), return 0 (no spend)
-        return netDiff < 0 ? abs(netDiff) : 0
-    }
+
     
     private func updateWidgetData(budgets: [FirestoreModels.CategoryBudget]) {
         // Calculate Total Monthly Budget (excluding Income)

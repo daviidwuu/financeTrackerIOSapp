@@ -460,89 +460,9 @@ struct AddTransactionView: View {
         }
     }
     
-    private func calculateSpent(for categoryName: String, type: String) -> Double {
-        let calendar = Calendar.current
-        let currentMonthTransactions = transactionRepo.transactions.filter { transaction in
-            guard transaction.subtitle == categoryName else { return false }
-            return calendar.isDate(transaction.date, equalTo: Date(), toGranularity: .month)
-        }
-        return currentMonthTransactions.reduce(0) { $0 + abs($1.amount) }
-    }
+
     
-    struct RichCategoryCard: View {
-        let category: FirestoreModels.CategoryBudget
-        let budgetLimit: Double
-        let currentAmount: Double
-        @Binding var selectedCategory: FirestoreModels.CategoryBudget?
-        
-        var isSelected: Bool {
-            selectedCategory?.category == category.category
-        }
-        
-        var progress: Double {
-            guard budgetLimit > 0 else { return 0 }
-            return min(currentAmount / budgetLimit, 1.0)
-        }
-        
-        var body: some View {
-            Button(action: { selectedCategory = category }) {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Circle()
-                            .fill(Color(hex: category.colorHex).opacity(0.2))
-                            .frame(width: 32, height: 32)
-                            .overlay(
-                                Image(systemName: category.icon)
-                                    .font(.system(size: 14))
-                                    .foregroundColor(Color(hex: category.colorHex))
-                            )
-                        
-                        Spacer()
-                        
-                        if isSelected {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 14))
-                                .foregroundColor(Color(hex: category.colorHex))
-                        }
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(category.category)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .lineLimit(1)
-                        
-                        Text("$\(Int(budgetLimit - currentAmount)) left")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    // Mini Progress Bar
-                    GeometryReader { geometry in
-                        ZStack(alignment: .leading) {
-                            Capsule()
-                                .fill(Color.secondary.opacity(0.1))
-                                .frame(height: 3)
-                            
-                            Rectangle()
-                                .fill(Color(hex: category.colorHex))
-                                .frame(width: geometry.size.width * progress, height: 3)
-                                .mask(Capsule())
-                        }
-                    }
-                    .frame(height: 3)
-                }
-                .padding(10)
-                .background(Color(UIColor.secondarySystemBackground))
-                .cornerRadius(AppRadius.small)
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppRadius.small)
-                        .stroke(isSelected ? Color(hex: category.colorHex) : Color.clear, lineWidth: 2)
-                )
-            }
-            .buttonStyle(.plain)
-        }
-    }
+
     
     private var transactionNotesStep: some View {
         VStack(spacing: 16) {

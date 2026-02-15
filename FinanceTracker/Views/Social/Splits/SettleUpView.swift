@@ -84,11 +84,14 @@ struct SettleUpView: View {
     func getMemberName(id: String) -> String {
         // Fallback to ID if not found, ideally fetch from cache
         if id == appState.currentUserId { return "You" }
-        return appState.friendRepo.friends.first(where: { $0.id == id })?.name ?? "Member"
+        if let friend = appState.friendRepo.friends.first(where: { $0.id == id }) { return friend.name }
+        if let guest = appState.guestRepo.guests.first(where: { $0.id == id }) { return guest.name }
+        if let name = group.memberNames?[id] { return name }
+        return "Member"
     }
     
     func settleUp() {
-        guard let amountDouble = CurrencyInput.parse(amount), !selectedReceiverId.isEmpty else { return }
+        guard let amountDouble = Double(amount), !selectedReceiverId.isEmpty else { return }
         
         Task {
             do {
@@ -97,6 +100,8 @@ struct SettleUpView: View {
                     receiverId: selectedReceiverId,
                     groupId: group.id,
                     amount: amountDouble,
+                    payerName: getMemberName(id: selectedPayerId),
+                    receiverName: getMemberName(id: selectedReceiverId),
                     method: paymentMethod
                 )
                 dismiss()
