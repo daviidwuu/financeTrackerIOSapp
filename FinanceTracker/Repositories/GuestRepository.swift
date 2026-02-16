@@ -3,22 +3,38 @@ import FirebaseFirestore
 import Combine
 
 class GuestRepository: ObservableObject {
-    private let db = Firestore.firestore()
     @Published var guests: [FirestoreModels.Guest] = []
+    @Published var isLoading: Bool = false
+    @Published var errorMessage: String? = nil
+    
+    private let db = Firestore.firestore()
     private var userId: String?
     private var listener: ListenerRegistration?
     
     func startListening(userId: String) {
         self.userId = userId
+        self.isLoading = true
+        self.errorMessage = nil
+        
         listener = db.collection("users").document(userId).collection("guests")
             .order(by: "createdAt", descending: true)
             .addSnapshotListener { [weak self] snapshot, error in
-                guard let documents = snapshot?.documents else {
-                    DebugLogger.log("Error fetching guests: \(error?.localizedDescription ?? "Unknown error")")
+                guard let self = self else { return }
+                self.isLoading = false
+                
+                if let error = error {
+                    self.errorMessage = "Error fetching guests: \(error.localizedDescription)"
+                    DebugLogger.log("Error fetching guests: \(error.localizedDescription)")
                     return
                 }
                 
-                self?.guests = documents.compactMap { document in
+                guard let documents = snapshot?.documents else {
+                    self.errorMessage = "No guests found."
+                    return
+                }
+                
+                self.errorMessage = nil
+                self.guests = documents.compactMap { document in
                     try? document.data(as: FirestoreModels.Guest.self)
                 }
             }

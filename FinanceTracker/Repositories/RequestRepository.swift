@@ -5,12 +5,16 @@ import Combine
 
 class RequestRepository: ObservableObject {
     @Published var requests: [FirestoreModels.SplitRequest] = []
+    @Published var isLoading: Bool = false
+    @Published var errorMessage: String? = nil
     
     private var db = Firestore.firestore()
     private var listenerRegistration: ListenerRegistration?
     
     func startListening(userId: String) {
         stopListening()
+        self.isLoading = true
+        self.errorMessage = nil
         
         // v2.1: Listen to root `split_requests` where `toUid` == currentUserId
         listenerRegistration = db.collection("split_requests")
@@ -18,27 +22,22 @@ class RequestRepository: ObservableObject {
             .whereField("status", isEqualTo: FirestoreModels.SplitRequest.RequestStatus.pending.rawValue) // Only fetch pending
             .order(by: "createdAt", descending: true)
             .addSnapshotListener { [weak self] querySnapshot, error in
+                guard let self = self else { return }
+                self.isLoading = false
+                
                 if let error = error {
-                    print("❌ Error fetching requests: \(error.localizedDescription)")
+                    self.errorMessage = "Error fetching requests: \(error.localizedDescription)"
                     return
                 }
                 
                 guard let documents = querySnapshot?.documents else {
-                    print("⚠️ Snapshot received but documents is nil")
+                    self.errorMessage = "No requests found."
                     return
                 }
                 
-                print("✅ Received \(documents.count) pending requests for user \(userId)")
-                
-                self?.requests = documents.compactMap { document in
-                    do {
-                        let req = try document.data(as: FirestoreModels.SplitRequest.self)
-                        print("   - Decoded request: \(req.id ?? "nil") from \(req.fromUid)")
-                        return req
-                    } catch {
-                        print("❌ Error decoding SplitRequest (ID: \(document.documentID)): \(error)")
-                        return nil
-                    }
+                self.errorMessage = nil
+                self.requests = documents.compactMap { document in
+                    try? document.data(as: FirestoreModels.SplitRequest.self)
                 }
             }
     }

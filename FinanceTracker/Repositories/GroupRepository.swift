@@ -5,13 +5,17 @@ import Combine
 class GroupRepository: ObservableObject {
     private let db = Firestore.firestore()
     @Published var groups: [FirestoreModels.Group] = []
-    @Published var isLoading = true // ✅ NEW: Loading state
+    @Published var isLoading = true
+    @Published var errorMessage: String? = nil
+    
     private var userId: String?
     private var listener: ListenerRegistration?
     
     func startListening(userId: String) {
         self.userId = userId
         self.isLoading = true // Reset loading state
+        self.errorMessage = nil
+        
         // v2.1: Query Root Collection where user is a member
         listener = db.collection("groups")
             .whereField("members", arrayContains: userId)
@@ -20,11 +24,18 @@ class GroupRepository: ObservableObject {
                 guard let self = self else { return }
                 self.isLoading = false // Loading complete
                 
-                guard let documents = snapshot?.documents else {
-                    DebugLogger.log("Error fetching groups: \(error?.localizedDescription ?? "Unknown error")")
+                if let error = error {
+                    self.errorMessage = "Error fetching groups: \(error.localizedDescription)"
+                    DebugLogger.log("Error fetching groups: \(error.localizedDescription)")
                     return
                 }
                 
+                guard let documents = snapshot?.documents else {
+                    self.errorMessage = "No groups found."
+                    return
+                }
+                
+                self.errorMessage = nil
                 self.groups = documents.compactMap { document in
                     try? document.data(as: FirestoreModels.Group.self)
                 }

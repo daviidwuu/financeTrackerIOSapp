@@ -7,20 +7,37 @@ import WidgetKit
 class BudgetRepository: ObservableObject {
     private let db = Firestore.firestore()
     @Published var budgets: [FirestoreModels.CategoryBudget] = []
+    @Published var isLoading: Bool = false
+    @Published var errorMessage: String? = nil
+    
     private var userId: String?
     
     private var listener: ListenerRegistration?
     
     func startListening(userId: String) {
         self.userId = userId
+        self.isLoading = true
+        self.errorMessage = nil
+        
         // Listen to ALL budgets for this user (Permanent Budget Model)
         listener = db.collection("users").document(userId).collection("budgets")
             .order(by: "category")
             .addSnapshotListener { [weak self] snapshot, error in
-                guard let documents = snapshot?.documents else {
-                    DebugLogger.log("Error fetching budgets: \(error?.localizedDescription ?? "Unknown error")")
+                guard let self = self else { return }
+                self.isLoading = false
+                
+                if let error = error {
+                    self.errorMessage = "Error fetching budgets: \(error.localizedDescription)"
+                    DebugLogger.log("Error fetching budgets: \(error.localizedDescription)")
                     return
                 }
+                
+                guard let documents = snapshot?.documents else {
+                    self.errorMessage = "No budgets found."
+                    return
+                }
+                
+                self.errorMessage = nil
                 
                 let allBudgets = documents.compactMap { document in
                     try? document.data(as: FirestoreModels.CategoryBudget.self)
@@ -40,18 +57,19 @@ class BudgetRepository: ObservableObject {
                     }.first
                 }
                 
-                self?.budgets = uniqueBudgets.sorted(by: { $0.category < $1.category })
+                self.budgets = uniqueBudgets.sorted(by: { $0.category < $1.category })
                 
                 // Update Widget Data
-                self?.updateWidgetData(budgets: uniqueBudgets)
+                self.updateWidgetData(budgets: uniqueBudgets)
                 
                 // Ensure default "Income" category exists (if not present in unique list)
                 if !uniqueBudgets.contains(where: { $0.category == "Income" }) {
                     Task { [weak self] in
+                        guard let self = self else { return }
                         // Use start of current month
                         let calendar = Calendar.current
                         let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
-                        await self?.createDefaultIncomeCategory(userId: userId, monthStartDate: startOfMonth)
+                        await self.createDefaultIncomeCategory(userId: userId, monthStartDate: startOfMonth)
                     }
                 }
             }

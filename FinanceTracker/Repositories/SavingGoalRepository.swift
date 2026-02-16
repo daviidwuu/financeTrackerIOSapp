@@ -6,25 +6,41 @@ import Combine
 class SavingGoalRepository: ObservableObject {
     private let db = Firestore.firestore()
     @Published var savingGoals: [FirestoreModels.SavingGoal] = []
+    @Published var isLoading: Bool = false
+    @Published var errorMessage: String? = nil
+    
     private var userId: String?
     
     private var listener: ListenerRegistration?
     
     func startListening(userId: String) {
         self.userId = userId
+        self.isLoading = true
+        self.errorMessage = nil
+        
         listener = db.collection("users").document(userId).collection("savingGoals")
             .addSnapshotListener { [weak self] snapshot, error in
-                guard let documents = snapshot?.documents else {
-                    DebugLogger.log("Error fetching saving goals: \(error?.localizedDescription ?? "Unknown error")")
+                guard let self = self else { return }
+                self.isLoading = false
+                
+                if let error = error {
+                    self.errorMessage = "Error fetching saving goals: \(error.localizedDescription)"
+                    DebugLogger.log("Error fetching saving goals: \(error.localizedDescription)")
                     return
                 }
                 
+                guard let documents = snapshot?.documents else {
+                    self.errorMessage = "No saving goals found."
+                    return
+                }
+                
+                self.errorMessage = nil
                 let goals = documents.compactMap { document in
                     try? document.data(as: FirestoreModels.SavingGoal.self)
                 }
                 
                 // Sort client-side to handle legacy documents without sortOrder
-                self?.savingGoals = goals.sorted { (g1, g2) in
+                self.savingGoals = goals.sorted { (g1, g2) in
                     let order1 = g1.sortOrder ?? Int.max
                     let order2 = g2.sortOrder ?? Int.max
                     
@@ -68,7 +84,7 @@ class SavingGoalRepository: ObservableObject {
         try db.collection("users").document(userId).collection("savingGoals").document(id).setData(from: goal)
     }
     
-    func reorderSavingGoals(_ goals: [FirestoreModels.SavingGoal]) {
+    func reorderSavingGoals(_ goals: [FirestoreModels.SavingGoal]) async throws {
         guard let userId = userId else { return }
         
         // Optimistic update
@@ -81,22 +97,21 @@ class SavingGoalRepository: ObservableObject {
             batch.updateData(["sortOrder": index], forDocument: ref)
         }
         
-        batch.commit { error in
-            if let error = error {
-                DebugLogger.log("Error reordering goals: \(error)")
-            }
-        }
+        try await batch.commit()
     }
     
     /// Distributes savings amount to goals in order (Waterfall)
     func distributeSavings(amount: Double) async throws {
-        guard userId != nil else { return }
+        guard let userId = userId else { return }
         
         var remainingAmount = amount
         // Use current local order which should be correct
         let sortedGoals = savingGoals.sorted {
             ($0.sortOrder ?? Int.max) < ($1.sortOrder ?? Int.max)
         }
+        
+        let batch = db.batch()
+        var hasUpdates = false
         
         for goal in sortedGoals {
             if remainingAmount <= 0.01 { break } // Float precision check
@@ -108,9 +123,19 @@ class SavingGoalRepository: ObservableObject {
             var updatedGoal = goal
             updatedGoal.currentAmount += allocation
             
-            // This awaits effectively sequentially, ensuring consistency
-            try await updateSavingGoal(updatedGoal)
+            if let id = updatedGoal.id {
+                let ref = db.collection("users").document(userId).collection("savingGoals").document(id)
+                // We could use setData or updateData. updateData is safer if we only want to update currentAmount.
+                // But updatedGoal might have other changes? Here we only change currentAmount.
+                batch.updateData(["currentAmount": updatedGoal.currentAmount], forDocument: ref)
+                hasUpdates = true
+            }
+            
             remainingAmount -= allocation
+        }
+        
+        if hasUpdates {
+            try await batch.commit()
         }
     }
     

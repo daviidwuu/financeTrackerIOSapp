@@ -4,20 +4,30 @@ import Combine
 
 class GroupInvitationRepository: ObservableObject {
     @Published var incomingInvitations: [FirestoreModels.GroupInvitation] = []
+    @Published var isLoading: Bool = false
+    @Published var errorMessage: String? = nil
     
     private let db = Firestore.firestore()
     private var listener: ListenerRegistration?
     
     func startListening(userId: String) {
+        self.isLoading = true
+        self.errorMessage = nil
+        
         listener = db.collection("group_invitations")
             .whereField("toUid", isEqualTo: userId)
             .whereField("status", isEqualTo: "pending")
             .addSnapshotListener { [weak self] snapshot, error in
-                guard let documents = snapshot?.documents else {
-                    print("Error fetching group invitations: \(error?.localizedDescription ?? "Unknown")")
+                guard let self = self else { return }
+                self.isLoading = false
+                
+                if let error = error {
+                    self.errorMessage = "Error fetching invitations: \(error.localizedDescription)"
                     return
                 }
-                self?.incomingInvitations = documents.compactMap { try? $0.data(as: FirestoreModels.GroupInvitation.self) }
+                
+                guard let documents = snapshot?.documents else { return }
+                self.incomingInvitations = documents.compactMap { try? $0.data(as: FirestoreModels.GroupInvitation.self) }
             }
     }
     

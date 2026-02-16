@@ -7,34 +7,60 @@ import WidgetKit
 class TransactionRepository: ObservableObject {
     private let db = Firestore.firestore()
     @Published var transactions: [FirestoreModels.TransactionModel] = []
-    @Published var isLoading = true // Track loading state
-    private var userId: String?
+    @Published var isLoading = true
+    @Published var errorMessage: String? = nil
     
+    private var userId: String?
     private var listener: ListenerRegistration?
+    private var currentLimit: Int = 50
     
     /// Start listening to transactions for a specific user
     func startListening(userId: String) {
         self.userId = userId
-        self.isLoading = true // Reset loading state on start
+        self.isLoading = true
+        self.errorMessage = nil
+        self.currentLimit = 50 // Reset limit
+        
+        setupListener()
+    }
+    
+    private func setupListener() {
+        guard let userId = userId else { return }
+        
+        listener?.remove()
+        
         listener = db.collection("users").document(userId).collection("transactions")
             .order(by: "date", descending: true)
+            .limit(to: currentLimit)
             .addSnapshotListener { [weak self] snapshot, error in
-                guard let documents = snapshot?.documents else {
-                    DebugLogger.log("Error fetching transactions: \(error?.localizedDescription ?? "Unknown error")")
-                    self?.isLoading = false // Stop loading on error
+                guard let self = self else { return }
+                self.isLoading = false
+                
+                if let error = error {
+                    self.errorMessage = "Error fetching transactions: \(error.localizedDescription)"
+                    DebugLogger.log("Error fetching transactions: \(error.localizedDescription)")
                     return
                 }
                 
-                self?.transactions = documents.compactMap { document in
+                guard let documents = snapshot?.documents else {
+                    self.errorMessage = "No transactions found."
+                    return
+                }
+                
+                self.errorMessage = nil
+                self.transactions = documents.compactMap { document in
                     try? document.data(as: FirestoreModels.TransactionModel.self)
                 }
-                self?.isLoading = false // Stop loading on success
                 
                 // Update Widget Data
-                if let transactions = self?.transactions {
-                    self?.updateWidgetData(transactions: transactions)
-                }
+                self.updateWidgetData(transactions: self.transactions)
             }
+    }
+    
+    func loadMore() {
+        guard let userId = userId else { return }
+        currentLimit += 50
+        setupListener()
     }
     
     /// Stop listening to changes
@@ -42,7 +68,7 @@ class TransactionRepository: ObservableObject {
         listener?.remove()
         userId = nil
         transactions = []
-        isLoading = true
+        isLoading = false
     }
     
     /// Add a new transaction
@@ -52,9 +78,19 @@ class TransactionRepository: ObservableObject {
             throw NSError(domain: "TransactionRepository", code: 400, userInfo: [NSLocalizedDescriptionKey: "No User ID available"])
         }
         
+        let ref = db.collection("users").document(userId).collection("transactions").document()
         var newTransaction = transaction
+        newTransaction.id = ref.documentID
         newTransaction.createdAt = Date()
-        try db.collection("users").document(userId).collection("transactions").document().setData(from: newTransaction)
+        
+        // Optimistic Update
+        await MainActor.run {
+            self.transactions.insert(newTransaction, at: 0)
+            // Re-sort just in case, though usually at top
+            self.transactions.sort { $0.date > $1.date }
+        }
+        
+        try await ref.setData(from: newTransaction)
         
         // Gamification Checks
         DispatchQueue.main.async {

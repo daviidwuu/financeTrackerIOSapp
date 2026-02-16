@@ -6,7 +6,9 @@ class FriendRepository: ObservableObject {
     private let db = Firestore.firestore()
     @Published var friends: [FirestoreModels.Friend] = []
     @Published var searchResults: [UserSearchResult] = [] // Using the User struct from FirebaseManager (or defining a lightweight one)
-    @Published var isLoading = true // ✅ NEW: Loading state
+    @Published var isLoading = true
+    @Published var errorMessage: String? = nil
+    
     private var userId: String?
     private var listener: ListenerRegistration?
     
@@ -15,23 +17,32 @@ class FriendRepository: ObservableObject {
         @DocumentID var id: String?
         var name: String
         var username: String
-        var email: String? // ✅ Fixed: Optional email
+        var email: String?
     }
     
     func startListening(userId: String) {
         self.userId = userId
         self.isLoading = true
+        self.errorMessage = nil
+        
         listener = db.collection("users").document(userId).collection("friends")
             .order(by: "name")
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self = self else { return }
                 self.isLoading = false
                 
-                guard let documents = snapshot?.documents else {
-                    DebugLogger.log("Error fetching friends: \(error?.localizedDescription ?? "Unknown error")")
+                if let error = error {
+                    self.errorMessage = "Error fetching friends: \(error.localizedDescription)"
+                    DebugLogger.log("Error fetching friends: \(error.localizedDescription)")
                     return
                 }
                 
+                guard let documents = snapshot?.documents else {
+                    self.errorMessage = "No friends found."
+                    return
+                }
+                
+                self.errorMessage = nil
                 self.friends = documents.compactMap { document in
                     try? document.data(as: FirestoreModels.Friend.self)
                 }
@@ -66,18 +77,19 @@ class FriendRepository: ObservableObject {
     }
     
     /// Search for users by username
-    /// Note: Firestore doesn't support partial text search natively well.
-    /// We will do an exact match or "process prefix" check if needed.
-    /// For now, let's do exact match or simple >= query.
+    /// Uses >= and <= for prefix matching to support "starts with" search.
     func searchUsers(username: String) async throws -> [UserSearchResult] {
         guard !username.isEmpty else { return [] }
         
         // Case sensitive search is standard in Firestore unless we store a lowercase version.
-        // Let's assume we store exactly as is for now, or the user inputs exact.
-        // Check implementation plan: "Simple Firestore query check"
+        // Assuming 'username' field is indexed.
+        
+        let queryText = username
+        let endText = queryText + "\u{f8ff}"
         
         let snapshot = try await db.collection("users")
-            .whereField("username", isEqualTo: username)
+            .whereField("username", isGreaterThanOrEqualTo: queryText)
+            .whereField("username", isLessThanOrEqualTo: endText)
             .getDocuments()
             
         return snapshot.documents.compactMap { try? $0.data(as: UserSearchResult.self) }
@@ -94,6 +106,8 @@ class FriendRepository: ObservableObject {
     
     /// Create bidirectional friendship (Client-side fallback for Phase 6 Cloud Functions)
     func createFriendship(requestId: String, fromUser: (uid: String, name: String, username: String), toUser: (uid: String, name: String, username: String, email: String)) async throws {
+        let batch = db.batch()
+        
         // 1. Add 'From User' (Sender) to 'To User' (Receiver/Me) friends list
         let senderAsFriend = FirestoreModels.Friend(
             id: fromUser.uid,
@@ -102,7 +116,8 @@ class FriendRepository: ObservableObject {
             email: nil, // Email not available in request
             addedAt: Date()
         )
-        try db.collection("users").document(toUser.uid).collection("friends").document(fromUser.uid).setData(from: senderAsFriend)
+        let receiverRef = db.collection("users").document(toUser.uid).collection("friends").document(fromUser.uid)
+        try batch.setData(from: senderAsFriend, forDocument: receiverRef)
         
         // 2. Add 'To User' (Receiver/Me) to 'From User' (Sender) friends list
         let receiverAsFriend = FirestoreModels.Friend(
@@ -112,9 +127,13 @@ class FriendRepository: ObservableObject {
             email: toUser.email,
             addedAt: Date()
         )
-        try db.collection("users").document(fromUser.uid).collection("friends").document(toUser.uid).setData(from: receiverAsFriend)
+        let senderRef = db.collection("users").document(fromUser.uid).collection("friends").document(toUser.uid)
+        try batch.setData(from: receiverAsFriend, forDocument: senderRef)
         
         // 3. Update Request Status
-        try await db.collection("friend_requests").document(requestId).updateData(["status": "accepted"])
+        let requestRef = db.collection("friend_requests").document(requestId)
+        batch.updateData(["status": "accepted"], forDocument: requestRef)
+        
+        try await batch.commit()
     }
 }

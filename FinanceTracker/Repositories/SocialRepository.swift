@@ -196,8 +196,12 @@ class SocialRepository: ObservableObject {
         
         // Listener 1 (Sent)
         friendTransactionsListener1 = q1.addSnapshotListener { [weak self] snapshot, error in
-            guard let _ = self else { return }
-            if let error = error { print("Error listening to sent requests: \(error)"); return }
+            guard let self = self else { return }
+            if let error = error {
+                print("Error listening to sent requests: \(error)")
+                DispatchQueue.main.async { self.errorMessage = "Error fetching sent requests: \(error.localizedDescription)" }
+                return
+            }
             
             sentRequests = snapshot?.documents.compactMap { try? $0.data(as: FirestoreModels.SplitRequest.self) } ?? []
             updateBlock()
@@ -205,8 +209,12 @@ class SocialRepository: ObservableObject {
         
         // Listener 2 (Received)
         friendTransactionsListener2 = q2.addSnapshotListener { [weak self] snapshot, error in
-            guard let _ = self else { return }
-            if let error = error { print("Error listening to received requests: \(error)"); return }
+            guard let self = self else { return }
+            if let error = error {
+                print("Error listening to received requests: \(error)")
+                DispatchQueue.main.async { self.errorMessage = "Error fetching received requests: \(error.localizedDescription)" }
+                return
+            }
             
             receivedRequests = snapshot?.documents.compactMap { try? $0.data(as: FirestoreModels.SplitRequest.self) } ?? []
             updateBlock()
@@ -461,6 +469,7 @@ class SocialRepository: ObservableObject {
     func fetchLeaderboard(friends: [FirestoreModels.Friend], currentUser: (id: String, name: String)) {
         guard !isLoading else { return }
         self.isLoading = true
+        self.errorMessage = nil
         
         var allIds = friends.compactMap { $0.id }
         allIds.append(currentUser.id)
@@ -470,34 +479,35 @@ class SocialRepository: ObservableObject {
         Task {
             var entries: [LeaderboardEntry] = []
             
-            await withTaskGroup(of: LeaderboardEntry?.self) { group in
-                for uid in allIds {
-                    group.addTask {
-                        do {
-                            let snapshot = try await self.db.collection("users").document(uid).getDocument()
-                            if let data = snapshot.data() {
-                                let name = data["name"] as? String ?? "Unknown"
-                                let points = data["points"] as? Int ?? 0
-                                return LeaderboardEntry(id: uid, name: name, points: points)
-                            }
-                        } catch {
-                            print("Error fetching user \(uid) for leaderboard: \(error)")
-                        }
-                        return nil
+            // Chunk ids into groups of 30 (Firestore limit for 'in' query is 30)
+            let chunkSize = 30
+            let chunks = stride(from: 0, to: allIds.count, by: chunkSize).map {
+                Array(allIds[$0..<min($0 + chunkSize, allIds.count)])
+            }
+            
+            for chunk in chunks {
+                do {
+                    let snapshot = try await db.collection("users")
+                        .whereField(FieldPath.documentID(), in: chunk)
+                        .getDocuments()
+                    
+                    let chunkEntries = snapshot.documents.compactMap { doc -> LeaderboardEntry? in
+                        let data = doc.data()
+                        let name = data["name"] as? String ?? "Unknown"
+                        let points = data["points"] as? Int ?? 0
+                        return LeaderboardEntry(id: doc.documentID, name: name, points: points)
                     }
-                }
-                
-                for await entry in group {
-                    if let entry = entry {
-                        entries.append(entry)
-                    }
+                    entries.append(contentsOf: chunkEntries)
+                } catch {
+                    print("Error fetching leaderboard chunk: \(error)")
+                    // We continue fetching other chunks even if one fails
                 }
             }
             
             // Sort Descending
             let sorted = entries.sorted { $0.points > $1.points }
             
-            DispatchQueue.main.async {
+            await MainActor.run {
                 self.leaderboardData = sorted
                 self.isLoading = false
             }

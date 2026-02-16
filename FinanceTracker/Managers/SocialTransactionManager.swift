@@ -470,7 +470,7 @@ class SocialTransactionManager: ObservableObject {
         let transactionRef = db.collection("users").document(transaction.userId).collection("transactions").document(transactionId)
         
         let archiveTxRef = db.collection("users").document(transaction.userId).collection("archived_transactions").document(transactionId)
-        try? batch.setData(from: transaction, forDocument: archiveTxRef)
+        try batch.setData(from: transaction, forDocument: archiveTxRef)
         
         batch.deleteDocument(transactionRef)
         

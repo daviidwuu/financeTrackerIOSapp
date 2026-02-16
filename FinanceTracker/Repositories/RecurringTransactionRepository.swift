@@ -6,21 +6,37 @@ import Combine
 class RecurringTransactionRepository: ObservableObject {
     private let db = Firestore.firestore()
     @Published var recurringTransactions: [FirestoreModels.RecurringTransaction] = []
+    @Published var isLoading: Bool = false
+    @Published var errorMessage: String? = nil
+    
     private var userId: String?
     
     private var listener: ListenerRegistration?
     
     func startListening(userId: String) {
         self.userId = userId
+        self.isLoading = true
+        self.errorMessage = nil
+        
         listener = db.collection("users").document(userId).collection("recurringTransactions")
             .order(by: "startDate")
             .addSnapshotListener { [weak self] snapshot, error in
-                guard let documents = snapshot?.documents else {
-                    DebugLogger.log("Error fetching recurring transactions: \(error?.localizedDescription ?? "Unknown error")")
+                guard let self = self else { return }
+                self.isLoading = false
+                
+                if let error = error {
+                    self.errorMessage = "Error fetching recurring transactions: \(error.localizedDescription)"
+                    DebugLogger.log("Error fetching recurring transactions: \(error.localizedDescription)")
                     return
                 }
                 
-                self?.recurringTransactions = documents.compactMap { document in
+                guard let documents = snapshot?.documents else {
+                    self.errorMessage = "No recurring transactions found."
+                    return
+                }
+                
+                self.errorMessage = nil
+                self.recurringTransactions = documents.compactMap { document in
                     try? document.data(as: FirestoreModels.RecurringTransaction.self)
                 }
             }
