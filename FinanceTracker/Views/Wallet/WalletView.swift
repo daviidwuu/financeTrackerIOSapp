@@ -534,7 +534,9 @@ struct WalletView: View {
         }
         
         // Sync to backend
-        savingGoalRepo.reorderSavingGoals(updatedGoals)
+        Task {
+            try? await savingGoalRepo.reorderSavingGoals(updatedGoals)
+        }
     }
     
     

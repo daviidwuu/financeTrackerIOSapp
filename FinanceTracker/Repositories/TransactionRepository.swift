@@ -90,7 +90,7 @@ class TransactionRepository: ObservableObject {
             self.transactions.sort { $0.date > $1.date }
         }
         
-        try await ref.setData(from: newTransaction)
+        try ref.setData(from: newTransaction)
         
         // Gamification Checks
         DispatchQueue.main.async {
