@@ -349,11 +349,9 @@ struct AddRecurringTransactionView: View {
                 .foregroundColor(.primary)
                 .submitLabel(.done)
             
-            if recurringToEdit != nil {
-                DatePicker("Start Date", selection: $startDate, displayedComponents: [.date])
-                    .datePickerStyle(.compact)
-                    .padding(.top)
-            }
+            DatePicker("Start Date", selection: $startDate, displayedComponents: [.date])
+                .datePickerStyle(.compact)
+                .padding(.top)
         }
         .padding(.horizontal, AppSpacing.margin)
     }

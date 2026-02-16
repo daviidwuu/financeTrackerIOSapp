@@ -1,8 +1,10 @@
 import SwiftUI
 import MapKit
+import FirebaseFirestore
 
 struct GroupTransactionDetailView: View {
     let transaction: FirestoreModels.GroupTransaction
+    let group: FirestoreModels.Group?
     @EnvironmentObject var appState: AppState
     @Environment(\.dismiss) var dismiss
     @StateObject private var repo = SocialRepository()
@@ -11,6 +13,7 @@ struct GroupTransactionDetailView: View {
     @State private var originalTransaction: FirestoreModels.TransactionModel?
     @State private var isLoading = true
     @State private var showHistory = false
+    @State private var showingEditWizard = false
     @State private var selectedSplit: FirestoreModels.SplitRequest?
     
     var body: some View {
@@ -23,7 +26,7 @@ struct GroupTransactionDetailView: View {
                     title: transaction.note?.isEmpty == false ? transaction.note! : transaction.title,
                     onBack: { dismiss() },
                     backIcon: "xmark",
-                    onMenu: nil,
+                    onMenu: { showingEditWizard = true },
                     backgroundColor: Color.backgroundPrimary,
                     textColor: .primary,
                     avatar: {
@@ -77,177 +80,175 @@ struct GroupTransactionDetailView: View {
                     VStack(spacing: 24) {
                         Spacer().frame(height: AppSpacing.element)
                         
-                        // 2. Splits List
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("SPLIT BREAKDOWN")
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .foregroundColor(.secondary)
-                            .padding(.leading, 8)
-                        
-                        if isLoading {
-                            HStack {
-                                Spacer()
-                                ProgressView()
-                                Spacer()
-                            }
-                            .padding()
-                            .background(Color(UIColor.secondarySystemBackground))
-                            .cornerRadius(AppRadius.medium)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: AppRadius.medium)
-                                    .stroke(Color.primary.opacity(0.05), lineWidth: 1)
-                            )
-                        } else if splits.isEmpty {
-                            HStack {
-                                Spacer()
-                                Text("No split details available")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                Spacer()
-                            }
-                            .padding()
-                            .background(Color(UIColor.secondarySystemBackground))
-                            .cornerRadius(AppRadius.medium)
-                        } else {
-                            VStack(spacing: 0) {
-                                ForEach(splits) { split in
-                                    HStack(spacing: 12) {
-                                        // Mini Avatar
-                                        ZStack {
-                                            Circle()
-                                                .fill(Color.primary.opacity(0.05))
-                                                .frame(width: 36, height: 36)
-                                            Text(String((split.toName ?? "U").prefix(1)).uppercased())
-                                                .font(.system(size: 14, weight: .bold))
-                                                .foregroundColor(.primary)
-                                        }
-                                        
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(split.toName ?? "Friend")
-                                                .font(.body)
-                                                .fontWeight(.medium)
-                                                .foregroundColor(.primary)
-                                            
-                                            // Status Badge Pill
-                                            if let status = Optional(split.status) {
-                                                Text(status.rawValue.capitalized)
-                                                    .font(.caption2)
-                                                    .fontWeight(.bold)
-                                                    .foregroundColor(statusColor(for: status))
-                                                    .padding(.horizontal, 8)
-                                                    .padding(.vertical, 2)
-                                                    .background(statusColor(for: status).opacity(0.1))
-                                                    .clipShape(Capsule())
-                                            }
-                                        }
-                                        
-                                        Spacer()
-                                        
-                                        VStack(alignment: .trailing, spacing: 2) {
-                                            Text(String(format: "$%.2f", split.amount))
-                                                .font(.body.monospacedDigit())
-                                                .fontWeight(.semibold)
-                                                .foregroundColor(.primary)
-                                            
-                                            // Nudge Button (Only if pending)
-                                            if transaction.payerId == appState.currentUserId && (split.status == .pending || split.status == .accepted) {
-                                                Button {
-                                                    nudgeUser(split: split)
-                                                } label: {
-                                                    Label("Nudge", systemImage: "bell.fill")
-                                                        .font(.caption2)
-                                                        .foregroundColor(.orange)
-                                                }
-                                                .disabled(isNudgedRecently(split))
-                                                .opacity(isNudgedRecently(split) ? 0.5 : 1.0)
-                                            }
-                                        }
-                                            
-                                        // Inline Paid Toggle (Only if user is owner OR it is their own split)
-                                        if transaction.payerId == appState.currentUserId {
-                                            Button(action: { toggleSplitPayment(split) }) {
-                                                Image(systemName: split.status == .paid ? "checkmark.circle.fill" : "circle")
-                                                    .font(.title3)
-                                                    .foregroundColor(split.status == .paid ? .green : .secondary.opacity(0.3))
-                                            }
-                                            .buttonStyle(.plain)
-                                        } else if split.toUid == appState.currentUserId {
-                                             // Current User's Split (Friend View)
-                                            Button(action: { selectedSplit = split }) {
-                                                Image(systemName: "chevron.right")
-                                                    .font(.caption)
-                                                    .foregroundColor(.secondary)
-                                            }
-                                        }
-                                    }
-                                    .padding(.vertical, 14)
-                                    .padding(.horizontal, 16)
-                                    .background(Color(UIColor.secondarySystemBackground))
-                                    .contentShape(Rectangle()) // Make full row tappable
-                                    .onTapGesture {
-                                        // Only allow navigation if it's your own split or you are the payer (for details)
-                                        if split.toUid == appState.currentUserId || transaction.payerId == appState.currentUserId {
-                                            selectedSplit = split
-                                        }
-                                    }
-                                    
-                                    if split.id != splits.last?.id {
-                                        Divider().padding(.horizontal, 16)
-                                    }
-                                }
-                                
-                                // Net Cost Row
-                                HStack {
-                                    Text("Net Cost")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                    Spacer()
-                                    let reimbursed = splits.filter { $0.status == .paid }.reduce(0) { $0 + $1.amount }
-                                    Text(String(format: "$%.2f", abs(transaction.amount) - reimbursed))
-                                        .font(.headline.monospacedDigit())
-                                        .foregroundColor(.primary)
-                                }
-                                .padding(16)
-                                .background(Color.primary.opacity(0.03))
-                            }
-                            .cornerRadius(AppRadius.medium)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: AppRadius.medium)
-                                    .stroke(Color.primary.opacity(0.05), lineWidth: 1)
-                            )
-                        }
-                    }
-                    .padding(.horizontal, AppSpacing.margin)
-                    
-                        // 3. Details Section
+                        // 2. Split Breakdown
                         VStack(alignment: .leading, spacing: 16) {
-                            Text("DETAILS")
+                            Text("SPLIT BREAKDOWN")
                                 .font(.caption)
                                 .fontWeight(.bold)
                                 .foregroundColor(.secondary)
                                 .padding(.leading, 8)
                             
-                            VStack(spacing: 0) {
-                                if let category = transaction.category ?? originalTransaction?.subtitle {
-                                    GroupDetailRow(title: "Category", value: category, icon: "tag.fill", color: .teal)
-                                    Divider().padding(.leading, 52)
+                            if isLoading {
+                                HStack {
+                                    Spacer()
+                                    ProgressView()
+                                    Spacer()
                                 }
-                                
-                                let myShare = splits.first(where: { $0.toUid == appState.currentUserId })
-                                if let share = myShare {
-                                    GroupDetailRow(title: "Your Share", value: String(format: "$%.2f", share.amount), icon: "person.crop.circle", color: .mint)
-                                    Divider().padding(.leading, 52)
+                                .padding()
+                                .background(Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(AppRadius.medium)
+                            } else if splits.isEmpty {
+                                HStack {
+                                    Spacer()
+                                    Text("No split details available")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
                                 }
-                                
-                                GroupDetailRow(title: "Split Between", value: "\(splits.count + 1) people", icon: "person.3.fill", color: .purple)
+                                .padding()
+                                .background(Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(AppRadius.medium)
+                            } else {
+                                VStack(spacing: 0) {
+                                    // Payer Row
+                                    let payerShare = abs(transaction.amount) - splits.reduce(0) { $0 + $1.amount }
+                                    let payerName = transaction.payerId == appState.currentUserId ? "You" : transaction.payerName
+                                    
+                                    HStack(spacing: 12) {
+                                        ZStack {
+                                            Circle()
+                                                .fill(Color.random(seed: payerName))
+                                                .frame(width: 36, height: 36)
+                                            Text(String(payerName.prefix(1)).uppercased())
+                                                .font(.system(size: 14, weight: .bold))
+                                                .foregroundColor(.white)
+                                        }
+                                        
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(payerName)
+                                                .font(.body)
+                                                .fontWeight(.medium)
+                                                .foregroundColor(.primary)
+                                            Text("Payer")
+                                                .font(.caption2)
+                                                .fontWeight(.bold)
+                                                .foregroundColor(.green)
+                                                .padding(.horizontal, 6)
+                                                .padding(.vertical, 2)
+                                                .background(Color.green.opacity(0.1))
+                                                .cornerRadius(4)
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        VStack(alignment: .trailing, spacing: 2) {
+                                            Text(String(format: "$%.2f", payerShare))
+                                                .font(.body.monospacedDigit())
+                                                .fontWeight(.semibold)
+                                                .foregroundColor(.primary)
+                                            Text("Paid $\(String(format: "%.2f", abs(transaction.amount)))")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                    .padding(.vertical, 14)
+                                    .padding(.horizontal, 16)
+                                    .background(Color(UIColor.secondarySystemBackground))
+                                    
+                                    Divider().padding(.horizontal, 16)
+                                    
+                                    ForEach(splits) { split in
+                                        HStack(spacing: 12) {
+                                            // Mini Avatar
+                                            ZStack {
+                                                Circle()
+                                                    .fill(Color.primary.opacity(0.05))
+                                                    .frame(width: 36, height: 36)
+                                                Text(String((split.toName ?? "").prefix(1)).uppercased())
+                                                    .font(.system(size: 14, weight: .bold))
+                                                    .foregroundColor(.primary)
+                                            }
+                                            
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(split.toName ?? "Friend")
+                                                    .font(.body)
+                                                    .fontWeight(.medium)
+                                                    .foregroundColor(.primary)
+                                                
+                                                // Status Badge Pill
+                                                if let status = Optional(split.status) {
+                                                    Text(status.rawValue.capitalized)
+                                                        .font(.caption2)
+                                                        .fontWeight(.bold)
+                                                        .foregroundColor(statusColor(for: status))
+                                                        .padding(.horizontal, 8)
+                                                        .padding(.vertical, 2)
+                                                        .background(statusColor(for: status).opacity(0.1))
+                                                        .clipShape(Capsule())
+                                                }
+                                            }
+                                            
+                                            Spacer()
+                                            
+                                            VStack(alignment: .trailing, spacing: 2) {
+                                                Text(String(format: "$%.2f", split.amount))
+                                                    .font(.body.monospacedDigit())
+                                                    .fontWeight(.semibold)
+                                                    .foregroundColor(.primary)
+                                                
+                                                // Nudge Button (Only if pending)
+                                                if transaction.payerId == appState.currentUserId && (split.status == .pending || split.status == .accepted) {
+                                                    Button {
+                                                        nudgeUser(split: split)
+                                                    } label: {
+                                                        Label("Nudge", systemImage: "bell.fill")
+                                                            .font(.caption2)
+                                                            .foregroundColor(.orange)
+                                                    }
+                                                    .disabled(isNudgedRecently(split))
+                                                    .opacity(isNudgedRecently(split) ? 0.5 : 1.0)
+                                                }
+                                            }
+                                                
+                                            // Inline Paid Toggle (Only if user is owner OR it is their own split)
+                                            if transaction.payerId == appState.currentUserId {
+                                                Button(action: { toggleSplitPayment(split) }) {
+                                                    Image(systemName: split.status == .paid ? "checkmark.circle.fill" : "circle")
+                                                        .font(.title3)
+                                                        .foregroundColor(split.status == .paid ? .green : .secondary.opacity(0.3))
+                                                }
+                                                .buttonStyle(.plain)
+                                            } else if split.toUid == appState.currentUserId {
+                                                 // Current User's Split (Friend View)
+                                                Button(action: { selectedSplit = split }) {
+                                                    Image(systemName: "chevron.right")
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary)
+                                                }
+                                            }
+                                        }
+                                        .padding(.vertical, 14)
+                                        .padding(.horizontal, 16)
+                                        .background(Color(UIColor.secondarySystemBackground))
+                                        .contentShape(Rectangle()) // Make full row tappable
+                                        .onTapGesture {
+                                            // Only allow navigation if it's your own split or you are the payer (for details)
+                                            if split.toUid == appState.currentUserId || transaction.payerId == appState.currentUserId {
+                                                selectedSplit = split
+                                            }
+                                        }
+                                        
+                                        if split.id != splits.last?.id {
+                                            Divider().padding(.horizontal, 16)
+                                        }
+                                    }
+                                }
+                                .cornerRadius(AppRadius.medium)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: AppRadius.medium)
+                                        .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+                                )
                             }
-                            .background(Color(UIColor.secondarySystemBackground))
-                            .cornerRadius(AppRadius.medium)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: AppRadius.medium)
-                                    .stroke(Color.primary.opacity(0.05), lineWidth: 1)
-                            )
                         }
                         .padding(.horizontal, AppSpacing.margin)
                         
@@ -260,36 +261,41 @@ struct GroupTransactionDetailView: View {
                                 .foregroundColor(.secondary)
                                 .padding(.leading, 8)
                             
-                            Map(initialPosition: .region(MKCoordinateRegion(
-                                center: CLLocationCoordinate2D(latitude: lat, longitude: long),
-                                span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-                            ))) {
-                                Marker("Location", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: long))
-                                    .tint(.red)
+                                Map(initialPosition: .region(MKCoordinateRegion(
+                                    center: CLLocationCoordinate2D(latitude: lat, longitude: long),
+                                    span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                                ))) {
+                                    Marker("Location", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: long))
+                                        .tint(.red)
+                                }
+                                .mapStyle(.standard)
+                                .frame(height: 200)
+                                .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
+                                
+                                if let name = tx.locationName {
+                                    Text(name)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.primary)
+                                        .padding(.leading, 8)
+                                }
                             }
-                            .mapStyle(.standard)
-                            .frame(height: 200)
-                            .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
-                            
-                            if let name = tx.locationName {
-                                Text(name)
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(.primary)
-                                    .padding(.leading, 8)
-                            }
+                            .padding(.horizontal, AppSpacing.margin)
                         }
-                        .padding(.horizontal, AppSpacing.margin)
                     }
+                    .padding(.bottom, 40)
                 }
-                .padding(.bottom, 40)
             }
         }
-    }
-    .navigationBarHidden(true)
+        .navigationBarHidden(true)
         .onAppear {
             loadSplits()
             loadOriginalTransaction()
+        }
+        .sheet(isPresented: $showingEditWizard) {
+            EditGroupTransactionWizardView(group: group, transactionToEdit: transaction) { newAmount, newNote, newSplits in
+                handleEdit(amount: newAmount, note: newNote, splits: newSplits)
+            }
         }
         .sheet(isPresented: $showHistory) {
             NavigationView {
@@ -329,6 +335,42 @@ struct GroupTransactionDetailView: View {
         }
     }
     
+    // MARK: - Handlers
+    
+    private func handleEdit(amount: Double, note: String, splits: [FirestoreModels.Split]) {
+        guard let originalTx = originalTransaction else { return }
+        
+        Task {
+            do {
+                // Update local model
+                var updatedTx = originalTx
+                updatedTx.amount = -abs(amount) // Ensure negative for expense
+                updatedTx.splits = splits
+                updatedTx.note = note.isEmpty ? nil : note
+                updatedTx.title = note.isEmpty ? updatedTx.title : note // Update title if note is used as title logic
+                
+                // Save to backend
+                _ = try await SocialTransactionManager.shared.createSocialTransaction(
+                    transaction: updatedTx,
+                    payerUid: transaction.payerId, // Use GroupTransaction properties
+                    payerName: transaction.payerName,
+                    groupId: group?.id,
+                    friendCache: appState.friendRepo.friends,
+                    groupCache: appState.groupRepo.groups
+                )
+                
+                await MainActor.run {
+                    loadSplits()
+                    loadOriginalTransaction()
+                    HapticManager.shared.success()
+                }
+            } catch {
+                print("Error updating transaction: \(error)")
+                HapticManager.shared.error()
+            }
+        }
+    }
+    
     private func statusColor(for status: FirestoreModels.SplitRequest.RequestStatus) -> Color {
         switch status {
         case .pending: return .orange
@@ -341,7 +383,6 @@ struct GroupTransactionDetailView: View {
     }
     
     private func loadSplits() {
-        // Fix: Use originalTransactionId because splits are linked to the source transaction, not the group transaction ID
         guard let originalId = transaction.originalTransactionId else { return }
         Task {
             do {
@@ -452,5 +493,3 @@ private struct GroupDetailRow: View {
         .padding(16)
     }
 }
-
-

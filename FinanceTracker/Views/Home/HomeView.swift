@@ -436,12 +436,30 @@ struct HomeView: View {
     private func deleteTransaction(_ transaction: FirestoreModels.TransactionModel) {
         guard let id = transaction.id else { return }
         hiddenTransactionIds.insert(id)
+        
+        // Optimistic Removal: Immediately hide linked income transactions (if any)
+        if let splits = transaction.splits {
+            for split in splits {
+                if let incomeId = split.incomeTransactionId {
+                    hiddenTransactionIds.insert(incomeId)
+                }
+            }
+        }
+        
         HapticManager.shared.heavy()
         
         undoState.schedule(
             label: "Transaction deleted",
             onUndo: { [self] in
                 hiddenTransactionIds.remove(id)
+                // Restore linked income transactions
+                if let splits = transaction.splits {
+                    for split in splits {
+                        if let incomeId = split.incomeTransactionId {
+                            hiddenTransactionIds.remove(incomeId)
+                        }
+                    }
+                }
             },
             onConfirm: { [self] in
                 Task {
@@ -462,10 +480,26 @@ struct HomeView: View {
                         
                         // 3. Cleanup Hidden ID (Item is now gone from source)
                         hiddenTransactionIds.remove(id)
+                        // Also cleanup hidden IDs for linked income transactions
+                        if let splits = transaction.splits {
+                            for split in splits {
+                                if let incomeId = split.incomeTransactionId {
+                                    hiddenTransactionIds.remove(incomeId)
+                                }
+                            }
+                        }
                     } catch {
                         DebugLogger.log("Failed to delete transaction: \(error)")
                         errorState.show("Failed to delete transaction")
                         hiddenTransactionIds.remove(id) // Restore on error
+                        // Restore linked income transactions on error
+                        if let splits = transaction.splits {
+                            for split in splits {
+                                if let incomeId = split.incomeTransactionId {
+                                    hiddenTransactionIds.remove(incomeId)
+                                }
+                            }
+                        }
                     }
                 }
             }

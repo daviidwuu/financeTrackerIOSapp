@@ -455,6 +455,25 @@ class SocialTransactionManager: ObservableObject {
             }
         }
         
+        // 3. Delete Linked Income Transactions (Reimbursements)
+        // If we delete the expense, we must delete the reimbursement to avoid artificial profit.
+        if let splits = transaction.splits {
+            for split in splits {
+                if let incomeId = split.incomeTransactionId {
+                    let incomeRef = db.collection("users").document(transaction.userId).collection("transactions").document(incomeId)
+                    batch.deleteDocument(incomeRef)
+                }
+            }
+        }
+
+        // 4. Delete the Transaction Itself (Archive First)
+        let transactionRef = db.collection("users").document(transaction.userId).collection("transactions").document(transactionId)
+        
+        let archiveTxRef = db.collection("users").document(transaction.userId).collection("archived_transactions").document(transactionId)
+        try? batch.setData(from: transaction, forDocument: archiveTxRef)
+        
+        batch.deleteDocument(transactionRef)
+        
         try await batch.commit()
     }
     // deleted extra brace

@@ -82,7 +82,7 @@ struct TransactionRow: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
-                } else {
+                } else if transaction.title != (transaction.subtitle ?? "") {
                     Text(transaction.title)
                         .font(.caption)
                         .foregroundColor(.secondary)

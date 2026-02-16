@@ -10,6 +10,7 @@ struct GroupDetailView: View {
     
     // UI State
     @State private var showingSettleUp = false
+    @State private var showingAddExpense = false
     @State private var showingSettings = false
     @State private var showingMembers = false
     @State private var showingSimplification = false
@@ -63,18 +64,31 @@ struct GroupDetailView: View {
                             }
                         },
                         actions: {
-                            Button(action: { showingSettleUp = true }) {
-                                HStack {
-                                    Text("Settle")
-                                        .foregroundColor(colorScheme == .dark ? .black : .white)
+                            HStack(spacing: 12) {
+                                Button(action: { showingSettleUp = true }) {
+                                    HStack {
+                                        Text("Settle")
+                                            .foregroundColor(colorScheme == .dark ? .black : .white)
+                                    }
+                                    .font(.headline)
+                                    .fontWeight(.bold)
+                                    .padding(.horizontal, 24)
+                                    .padding(.vertical, 12)
+                                    .frame(height: 44) // Match height of circle button
+                                    .background(colorScheme == .dark ? Color.white : Color.black)
+                                    .clipShape(Capsule())
+                                    .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
                                 }
-                                .font(.headline)
-                                .fontWeight(.bold)
-                                .padding(.horizontal, 24)
-                                .padding(.vertical, 12)
-                                .background(colorScheme == .dark ? Color.white : Color.black)
-                                .clipShape(Capsule())
-                                .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+                                
+                                Button(action: { showingAddExpense = true }) {
+                                    Image(systemName: "plus")
+                                        .font(.headline)
+                                        .foregroundColor(colorScheme == .dark ? .black : .white)
+                                        .frame(width: 44, height: 44) // Matches DetailHeaderView back button size
+                                        .background(colorScheme == .dark ? Color.white : Color.black)
+                                        .clipShape(Circle())
+                                        .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+                                }
                             }
                         }
                     )
@@ -125,12 +139,22 @@ struct GroupDetailView: View {
                         
                         let expenses = repo.groupTransactions.filter { $0.type != "settlement" }
                         let totalSpend = abs(expenses.reduce(0) { $0 + $1.amount })
-                        let mySpend = abs(expenses.filter { $0.payerId == appState.currentUserId }.reduce(0) { $0 + $1.amount })
                         
-                        // Overview Card
-                        HStack(spacing: 0) {
+                        // Calculate Personal Liability (Net Outflow)
+                        // Formula: (Expenses I Paid) + (Settlements I Paid) - (Settlements I Received)
+                        let myExpensesPaid = abs(expenses.filter { $0.payerId == appState.currentUserId }.reduce(0) { $0 + $1.amount })
+                        
+                        let settlements = repo.groupTransactions.filter { $0.type == "settlement" }
+                        let settlementsPaid = abs(settlements.filter { $0.payerId == appState.currentUserId }.reduce(0) { $0 + $1.amount })
+                        let settlementsReceived = abs(settlements.filter { $0.receiverName == appState.userName }.reduce(0) { $0 + $1.amount })
+                        
+                        let myNetExpenses = myExpensesPaid + settlementsPaid - settlementsReceived
+                        
+                        // Overview Cards
+                        HStack(spacing: 12) {
+                            // Card 1: Total Expenses
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Total Spend")
+                                Text("Total Expenses")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                 Text(String(format: "$%.2f", totalSpend))
@@ -138,45 +162,37 @@ struct GroupDetailView: View {
                                     .foregroundColor(.primary)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                            .background(Color(UIColor.secondarySystemBackground))
+                            .cornerRadius(AppRadius.medium)
                             
-                            Divider().frame(height: 40)
-                            
+                            // Card 2: My Expenses
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Your Share")
+                                Text("My Expenses")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
-                                Text(String(format: "$%.2f", mySpend))
+                                Text(String(format: "$%.2f", myNetExpenses))
                                     .font(AppTypography.sectionHeader)
                                     .foregroundColor(.blue)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.leading, 16)
+                            .padding()
+                            .background(Color(UIColor.secondarySystemBackground))
+                            .cornerRadius(AppRadius.medium)
                         }
-                        .padding()
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .cornerRadius(AppRadius.medium)
                         .padding(.horizontal, AppSpacing.margin)
                     }
 
                     // 4. Balances (Who owes who)
-                    VStack(alignment: .leading, spacing: AppSpacing.element) {
-                        HStack {
-                            Text("Balances")
-                                .font(.headline)
-                            Spacer()
-                        }
-                        .padding(.horizontal, AppSpacing.margin)
-                        
-                        if groupBalances.isEmpty {
-                            Text("All settled up!")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .center)
-                                .padding()
-                                .background(Color(UIColor.secondarySystemBackground).opacity(0.5))
-                                .cornerRadius(AppRadius.medium)
-                                .padding(.horizontal, AppSpacing.margin)
-                        } else {
+                    if abs(groupBalances[appState.currentUserId] ?? 0) > 0.01 {
+                        VStack(alignment: .leading, spacing: AppSpacing.element) {
+                            HStack {
+                                Text("Balances")
+                                    .font(.headline)
+                                Spacer()
+                            }
+                            .padding(.horizontal, AppSpacing.margin)
+                            
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 12) {
                                     let memberIds = groupBalances.keys.sorted()
@@ -242,6 +258,11 @@ struct GroupDetailView: View {
         .navigationBarBackButtonHidden(true)
         .navigationBarHidden(true)
         .onAppear { loadGroupData() }
+        .sheet(isPresented: $showingAddExpense) {
+            EditGroupTransactionWizardView(group: group, transactionToEdit: nil) { amount, note, splits in
+                handleAddExpense(amount: amount, note: note, splits: splits)
+            }
+        }
         .sheet(isPresented: $showingSettings) { GroupCreationWizardView(groupToEdit: group) }
         .sheet(isPresented: $showingSettleUp, onDismiss: { loadGroupData() }) { SettleUpWizardView(group: group, preSelectedFriend: nil).presentationDetents([.large]) }
         .sheet(isPresented: $showingMembers) { GroupMembersView(group: group).presentationDetents([.medium, .large]) }
@@ -274,7 +295,11 @@ struct GroupDetailView: View {
             .presentationDetents([.medium, .large])
         }
         .sheet(item: $selectedSplit, onDismiss: { loadGroupData() }) { split in SplitRequestDetailView(request: split) }
-        .sheet(item: $selectedTransaction, onDismiss: { loadGroupData() }) { transaction in GroupTransactionDetailView(transaction: transaction) }
+        .sheet(item: $selectedTransaction, onDismiss: { loadGroupData() }) { transaction in 
+             GroupTransactionDetailView(transaction: transaction, group: group)
+                 .presentationDetents([.medium, .large])
+                 .presentationDragIndicator(.visible)
+         }
         .onReceive(repo.$groupBalances) { newBalances in
              groupBalances = newBalances
              debtInstructions = repo.calculateDebtResolution(balances: newBalances)
@@ -337,9 +362,20 @@ struct GroupDetailView: View {
     }
     
     private func deleteTransaction(_ transaction: FirestoreModels.GroupTransaction) {
-        guard let groupId = group.id, let txId = transaction.id else { return }
+        guard let groupId = group.id, let _ = transaction.id else { return }
         HapticManager.shared.light()
-        Task { try? await repo.deleteGroupTransaction(transactionId: txId, groupId: groupId); loadGroupData() }
+        Task {
+            do {
+                // Use Manager to handle cascading delete (Splits, Original Tx, etc.)
+                try await SocialTransactionManager.shared.deleteSocialTransaction(groupTransaction: transaction, groupId: groupId)
+                await MainActor.run {
+                    loadGroupData()
+                }
+            } catch {
+                print("Error deleting transaction: \(error)")
+                HapticManager.shared.error()
+            }
+        }
     }
     
     private func deleteSplit(_ split: FirestoreModels.SplitRequest) {
@@ -353,6 +389,43 @@ struct GroupDetailView: View {
         if let guest = appState.guestRepo.guests.first(where: { $0.id == id }) { return guest.name }
         if let name = group.memberNames?[id] { return name }
         return "Member"
+    }
+    
+    private func handleAddExpense(amount: Double, note: String, splits: [FirestoreModels.Split]) {
+        let transaction = FirestoreModels.TransactionModel(
+            userId: appState.currentUserId,
+            title: note.isEmpty ? "Group Expense" : note,
+            subtitle: "Group: \(group.name)",
+            amount: -abs(amount),
+            date: Date(),
+            type: "expense",
+            createdAt: Date(),
+            icon: "person.2.fill", // Or group icon
+            colorHex: group.color,
+            note: note,
+            splits: splits
+        )
+        
+        Task {
+            do {
+                _ = try await SocialTransactionManager.shared.createSocialTransaction(
+                    transaction: transaction,
+                    payerUid: appState.currentUserId,
+                    payerName: appState.userName,
+                    groupId: group.id,
+                    friendCache: appState.friendRepo.friends,
+                    groupCache: appState.groupRepo.groups
+                )
+                
+                await MainActor.run {
+                    HapticManager.shared.success()
+                    loadGroupData()
+                }
+            } catch {
+                print("Error adding group expense: \(error)")
+                HapticManager.shared.error()
+            }
+        }
     }
 }
 

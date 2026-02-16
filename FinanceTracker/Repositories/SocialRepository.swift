@@ -1,5 +1,6 @@
 import Foundation
 import FirebaseFirestore
+import FirebaseAuth
 import Combine
 
 class SocialRepository: ObservableObject {
@@ -519,7 +520,15 @@ class SocialRepository: ObservableObject {
     }
     
     /// Fetches the original transaction to get details like location
-    func fetchOriginalTransaction(userId: String, transactionId: String) async throws -> FirestoreModels.TransactionModel {
+    func fetchOriginalTransaction(userId: String, transactionId: String) async throws -> FirestoreModels.TransactionModel? {
+        // Security Check: Users can only read their own transactions from the private collection
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return nil }
+        
+        if userId != currentUserId {
+            print("⚠️ Cannot fetch original transaction from another user's private collection. (Privacy Restricted)")
+            return nil
+        }
+        
         let docRef = db.collection("users").document(userId).collection("transactions").document(transactionId)
         return try await docRef.getDocument(as: FirestoreModels.TransactionModel.self)
     }

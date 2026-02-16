@@ -438,13 +438,34 @@ struct AllTransactionsView: View {
     private func deleteTransaction(_ transaction: FirestoreModels.TransactionModel) {
         guard let id = transaction.id else { return }
         
-        // Soft-delete: hide immediately, defer actual delete
-        hiddenTransactionIds.insert(id)
+        // Optimistic Removal: Immediately hide linked income transactions (if any)
+        // Must be done inside withAnimation to trigger instant layout update
+        withAnimation {
+            hiddenTransactionIds.insert(id)
+            
+            if let splits = transaction.splits {
+                for split in splits {
+                    if let incomeId = split.incomeTransactionId {
+                        hiddenTransactionIds.insert(incomeId)
+                    }
+                }
+            }
+        }
         
         undoState.schedule(
             label: "Transaction deleted",
             onUndo: {
-                hiddenTransactionIds.remove(id)
+                withAnimation {
+                    hiddenTransactionIds.remove(id)
+                    // Restore linked income transactions
+                    if let splits = transaction.splits {
+                        for split in splits {
+                            if let incomeId = split.incomeTransactionId {
+                                hiddenTransactionIds.remove(incomeId)
+                            }
+                        }
+                    }
+                }
             },
             onConfirm: {
                 Task {
@@ -456,10 +477,32 @@ struct AllTransactionsView: View {
                         } else {
                             try await transactionRepo.deleteTransaction(id: id)
                         }
+                        
+                        // Cleanup hidden IDs after successful deletion
+                        await MainActor.run {
+                            hiddenTransactionIds.remove(id)
+                            if let splits = transaction.splits {
+                                for split in splits {
+                                    if let incomeId = split.incomeTransactionId {
+                                        hiddenTransactionIds.remove(incomeId)
+                                    }
+                                }
+                            }
+                        }
                     } catch {
                         DebugLogger.log("Failed to delete transaction: \(error)")
                         await MainActor.run {
-                            hiddenTransactionIds.remove(id)
+                            withAnimation {
+                                hiddenTransactionIds.remove(id)
+                                // Restore linked income transactions on error
+                                if let splits = transaction.splits {
+                                    for split in splits {
+                                        if let incomeId = split.incomeTransactionId {
+                                            hiddenTransactionIds.remove(incomeId)
+                                        }
+                                    }
+                                }
+                            }
                             errorState.show("Failed to delete transaction")
                         }
                     }

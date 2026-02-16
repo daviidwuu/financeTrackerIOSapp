@@ -46,6 +46,7 @@ struct SocialDashboardView: View {
                             // 3. Search Bar
                             SearchBar(text: $searchText, onSearch: performSearch, isLoading: isSearching)
                                 .padding(.horizontal, AppSpacing.margin)
+                                .padding(.vertical, 4)
                             
                             // 4. Content List
                             if (selectedSegment == 0 && appState.groupRepo.isLoading) ||
@@ -191,7 +192,7 @@ struct SocialDashboardView: View {
                         InvitationCard(invite: invite)
                     }
                 }
-                .padding(.bottom, 4)
+                .padding(.bottom, 8)
             }
             
             // Create New Group Button
@@ -219,7 +220,7 @@ struct SocialDashboardView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
-            .padding(.bottom, 4)
+            .padding(.bottom, 8)
 
             ForEach(filteredGroups) { group in
                 NavigationLink(destination: GroupDetailView(group: group)) {
@@ -244,7 +245,7 @@ struct SocialDashboardView: View {
                     }
                     .tint(.red)
                 }
-                .padding(.bottom, 4)
+                .padding(.bottom, 8)
             }
             
             if filteredGroups.isEmpty {
@@ -279,36 +280,35 @@ struct SocialDashboardView: View {
                         FriendRequestCard(request: request)
                     }
                 }
-                .padding(.bottom, 4)
+                .padding(.bottom, 8)
             }
             
             // Add Guest Button (Bottom)
             Button(action: { showingAddSheet = true }) {
-                VStack(spacing: 0) {
-                    HStack(spacing: 12) {
-                        Circle()
-                            .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
-                            .foregroundColor(.secondary)
-                            .frame(width: 48, height: 48)
-                            .overlay(
-                                Image(systemName: "plus")
-                                    .font(.system(size: 20, weight: .semibold))
-                                    .foregroundColor(.secondary)
-                            )
-                        
-                        Text("Add Guest")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.primary)
-                        
-                        Spacer()
-                    }
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, AppSpacing.margin)
+                HStack(spacing: 12) {
+                    Circle()
+                        .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
+                        .foregroundColor(.secondary)
+                        .frame(width: 48, height: 48)
+                        .overlay(
+                            Image(systemName: "plus")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(.secondary)
+                        )
+                    
+                    Text("Add Guest")
+                        .font(.body)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
                 }
+                .padding(AppSpacing.element)
+                .padding(.horizontal, AppSpacing.margin)
                 .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
-            .padding(.bottom, 4)
+            .padding(.bottom, 8)
             
             ForEach(filteredFriends, id: \.id) { friend in
                 NavigationLink(destination: FriendDetailView(friend: friend)) {
@@ -333,7 +333,7 @@ struct SocialDashboardView: View {
                     }
                     .tint(.red)
                 }
-                .padding(.bottom, 4)
+                .padding(.bottom, 8)
             }
             
             if filteredFriends.isEmpty {

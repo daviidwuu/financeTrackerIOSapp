@@ -166,32 +166,33 @@ struct AddGroupMemberView: View {
                                 }
                                 
                                 // Guest Button
-                                Button(action: { showGuestInput = true }) {
-                                    HStack(spacing: 16) {
+                            Button(action: { showGuestInput = true }) {
+                                HStack(spacing: 16) {
+                                    ZStack {
                                         Circle()
                                             .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
                                             .foregroundColor(.secondary)
                                             .frame(width: 48, height: 48)
-                                            .overlay(
-                                                Image(systemName: "plus")
-                                                    .font(.headline)
-                                                    .foregroundColor(.secondary)
-                                            )
-                                        
-                                        Text("Add Guest")
-                                            .font(.body)
-                                            .fontWeight(.medium)
-                                            .foregroundColor(.primary)
-                                        
-                                        Spacer()
+                                        Image(systemName: "plus")
+                                            .font(.headline)
+                                            .foregroundColor(.secondary)
                                     }
-                                    .padding(.vertical, 12)
-                                    .padding(.horizontal)
+                                    
+                                    Text("Add Guest")
+                                        .font(.body)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.primary)
+                                    
+                                    Spacer()
                                 }
+                                .padding(.vertical, 12)
+                                .padding(.horizontal)
+                                .contentShape(Rectangle())
                             }
                         }
-                        
-                        // 3. Guests Added
+                    }
+                    
+                    // 3. Guests Added
                         if !createdGuests.isEmpty {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("GUESTS ADDED")
