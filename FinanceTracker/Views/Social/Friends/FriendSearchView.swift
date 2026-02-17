@@ -23,13 +23,7 @@ struct FriendSearchView: View {
                         .onSubmit {
                             performSearch()
                         }
-                    
-                    if !searchText.isEmpty {
-                        Button(action: { searchText = "" }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.secondary)
-                        }
-                    }
+                        .overlay(searchOverlay)
                 }
                 .padding()
                 .background(Color(UIColor.secondarySystemBackground))
@@ -101,12 +95,30 @@ struct FriendSearchView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                    Button("Close") {
+                        HapticManager.shared.light()
+                        dismiss()
+                    }
                 }
             }
             .onChange(of: searchText) { oldValue, newValue in
                 if newValue.isEmpty {
                     searchResults = []
+                }
+            }
+        }
+    }
+    
+    private var searchOverlay: some View {
+        HStack {
+            Spacer()
+            if !searchText.isEmpty {
+                Button(action: {
+                    HapticManager.shared.light()
+                    searchText = ""
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.secondary)
                 }
             }
         }
@@ -133,6 +145,7 @@ struct FriendSearchView: View {
     private func addFriend(user: FriendRepository.UserSearchResult) {
          Task {
              do {
+                 HapticManager.shared.light()
                  try await appState.friendRepo.addFriend(
                      currentUserId: appState.currentUserId,
                      currentUserInfo: (username: appState.currentUserUsername, name: appState.userName, email: appState.userEmail),
@@ -141,9 +154,11 @@ struct FriendSearchView: View {
                  // Show success feedback/toast?
                  // For now just dismiss or change button state
                  await MainActor.run {
+                     HapticManager.shared.success()
                      dismiss()
                  }
              } catch {
+                 HapticManager.shared.error()
                  print("Add friend error: \(error)")
              }
          }

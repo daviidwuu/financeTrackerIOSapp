@@ -251,7 +251,12 @@ struct SettleUpWizardView: View {
     
     // MARK: - Step 2: Amount
     private var stepTwoView: some View {
-        VStack(spacing: 24) {
+        let isTravelMode = CurrencyManager.shared.isTravelModeEnabled
+        let mainCode = CurrencyManager.shared.mainCurrency
+        let travelCode = CurrencyManager.shared.travelCurrency
+        let symbol = isTravelMode ? getSymbol(for: travelCode) : getSymbol(for: mainCode)
+        
+        return VStack(spacing: 24) {
             Spacer()
             
             VStack(spacing: 8) {
@@ -260,7 +265,7 @@ struct SettleUpWizardView: View {
                     .foregroundColor(.secondary)
                 
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text("$") // Currency Symbol
+                    Text(symbol) // Currency Symbol
                         .font(.largeTitle)
                         .foregroundColor(.secondary)
                     
@@ -277,6 +282,11 @@ struct SettleUpWizardView: View {
             Spacer()
         }
         .padding(.horizontal, AppSpacing.margin)
+    }
+    
+    private func getSymbol(for currencyCode: String) -> String {
+        let locale = NSLocale(localeIdentifier: currencyCode)
+        return locale.displayName(forKey: .currencySymbol, value: currencyCode) ?? currencyCode
     }
     
     // MARK: - Helpers

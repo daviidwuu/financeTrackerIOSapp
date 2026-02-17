@@ -13,7 +13,10 @@ class GroupRepository: ObservableObject {
     
     func startListening(userId: String) {
         self.userId = userId
-        self.isLoading = true // Reset loading state
+        // Only show loading if we don't have any data yet (Stale-While-Revalidate)
+        if groups.isEmpty {
+            self.isLoading = true
+        }
         self.errorMessage = nil
         
         // v2.1: Query Root Collection where user is a member

@@ -3,6 +3,7 @@ import SwiftUI
 // MARK: - Account Settings
 struct AccountSettingsView: View {
     @EnvironmentObject var appState: AppState
+    @Environment(\.dismiss) var dismiss
     @State private var name: String = ""
     @State private var username: String = ""
     @State private var email: String = ""
@@ -18,86 +19,129 @@ struct AccountSettingsView: View {
     @State private var initialUsername: String = ""
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Profile Information Section
-                MenuSection("Profile Information") {
-                    MenuInputRow(title: "Name", text: $name)
-                    MenuDivider()
+        ZStack(alignment: .top) {
+            // Background
+            (colorScheme == .dark ? Color.black : Color(UIColor.systemBackground))
+                .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 24) {
+                    Spacer().frame(height: 60)
                     
-                    VStack(spacing: 0) {
-                         MenuInputRow(title: "Username", text: $username, autocapitalization: .none)
-                         
-                         if isCheckingUsername {
-                             HStack {
-                                 Spacer()
-                                 Text("Checking availability...")
-                                     .font(.caption)
-                                     .foregroundColor(.secondary)
-                                     .padding(.trailing, 16)
-                                     .padding(.bottom, 8)
+                    // Profile Information Section
+                    MenuSection("Profile Information") {
+                        MenuInputRow(title: "Name", text: $name, autocapitalization: .words)
+                        MenuDivider()
+                        
+                        VStack(spacing: 0) {
+                             MenuInputRow(title: "Username", text: $username, autocapitalization: .none)
+                             
+                             if isCheckingUsername {
+                                 HStack {
+                                     Spacer()
+                                     Text("Checking availability...")
+                                         .font(.caption)
+                                         .foregroundColor(.secondary)
+                                         .padding(.trailing, 16)
+                                         .padding(.bottom, 8)
+                                 }
+                             } else if let msg = usernameMessage {
+                                 HStack {
+                                     Spacer()
+                                     Text(msg)
+                                         .font(.caption)
+                                         .foregroundColor(usernameAvailable ? .green : .red)
+                                         .padding(.trailing, 16)
+                                         .padding(.bottom, 8)
+                                 }
                              }
-                         } else if let msg = usernameMessage {
-                             HStack {
-                                 Spacer()
-                                 Text(msg)
-                                     .font(.caption)
-                                     .foregroundColor(usernameAvailable ? .green : .red)
-                                     .padding(.trailing, 16)
-                                     .padding(.bottom, 8)
-                             }
-                         }
-                    }
-                    .onChange(of: username) { _, newValue in
-                        checkUsername(newValue)
-                    }
+                        }
+                        .onChange(of: username) { _, newValue in
+                            checkUsername(newValue)
+                        }
 
-                    MenuDivider()
-                    MenuInputRow(title: "Email", text: $email, keyboardType: .emailAddress, autocapitalization: .none)
-                }
-                
-                if let errorMessage = errorMessage {
-                    Text(errorMessage)
-                        .foregroundColor(.red)
-                        .font(.caption)
-                }
-                
-                // Actions
-                MenuSection {
-                    Button(action: updateProfile) {
-                        Text("Update Profile")
+                        MenuDivider()
+                        MenuInputRow(title: "Email", text: $email, keyboardType: .emailAddress, autocapitalization: .none)
                     }
-                    .buttonStyle(PrimaryButtonStyle(isLoading: isLoading))
-                    .disabled(isLoading || name.isEmpty || email.isEmpty || username.isEmpty || !usernameAvailable || (name == appState.userName && email == appState.userEmail && username == initialUsername))
-                    .padding(16)
-                }
-                
-                // Security
-                MenuSection("Security") {
-                     Button(action: { sendPasswordReset() }) {
-                         MenuRowView(icon: "lock.rotation", title: "Reset Password", showChevron: true)
-                     }
-                     .buttonStyle(.plain)
-                }
-                
-                // Danger Zone
-                MenuSection {
-                    Button(action: { showDeleteConfirmation = true }) {
-                        Text("Delete Account")
-                            .font(.body)
+                    .padding(.top, 0)
+                    
+                    if let errorMessage = errorMessage {
+                        Text(errorMessage)
                             .foregroundColor(.red)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
+                            .font(.caption)
                     }
+                    
+                    // Actions
+                    VStack {
+                        Button(action: updateProfile) {
+                            if isLoading {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: colorScheme == .dark ? .black : .white))
+                            } else {
+                                Text("Update Profile")
+                                    .font(.headline)
+                            }
+                        }
+                        .foregroundColor(colorScheme == .dark ? .black : .white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(colorScheme == .dark ? Color.white : Color.black)
+                        .clipShape(Capsule())
+                        .disabled(isLoading || name.isEmpty || email.isEmpty || username.isEmpty || !usernameAvailable || (name == appState.userName && email == appState.userEmail && username == initialUsername))
+                        .opacity((isLoading || name.isEmpty || email.isEmpty || username.isEmpty || !usernameAvailable || (name == appState.userName && email == appState.userEmail && username == initialUsername)) ? 0.6 : 1)
+                    }
+                    .padding(.horizontal, AppSpacing.margin)
+                    
+                    // Security
+                    MenuSection("Security") {
+                         Button(action: { sendPasswordReset() }) {
+                             MenuRowView(icon: "lock.rotation", title: "Reset Password", showChevron: true)
+                         }
+                         .buttonStyle(.plain)
+                    }
+                    
+                    // Danger Zone
+                    MenuSection {
+                        Button(action: { showDeleteConfirmation = true }) {
+                            Text("Delete Account")
+                                .font(.body)
+                                .foregroundColor(.red)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                        }
+                    }
+                    
+                    Spacer()
+                }
+                .padding(.top, 20)
+            }
+            
+            // Fixed Navigation Bar
+            HStack {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .frame(width: 44, height: 44)
+                        .background((colorScheme == .dark ? Color.white : Color.black).opacity(0.05))
+                        .clipShape(Circle())
                 }
                 
                 Spacer()
+                
+                Text("Account Settings")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                
+                Spacer()
+                
+                Color.clear.frame(width: 44, height: 44)
             }
-            .padding(.top, 20)
+            .padding(.horizontal, AppSpacing.margin + AppSpacing.compact)
+            .padding(.top, 16)
         }
-        .background(Color(UIColor.systemBackground))
-        .navigationTitle("Account Settings")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .onAppear {
             name = appState.userName
             email = appState.userEmail
@@ -217,38 +261,73 @@ struct AccountSettingsView: View {
 struct AppearanceSettingsView: View {
     @AppStorage("userTheme") private var userTheme: String = "system"
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.dismiss) var dismiss
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                MenuSection("Display") {
-                    HStack {
-                        Text("Theme")
-                            .font(.body)
-                            .foregroundColor(.primary)
-                        Spacer()
-                        Picker("Theme", selection: $userTheme) {
-                            Text("System").tag("system")
-                            Text("Light").tag("light")
-                            Text("Dark").tag("dark")
+        ZStack(alignment: .top) {
+            // Background
+            (colorScheme == .dark ? Color.black : Color(UIColor.systemBackground))
+                .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 24) {
+                    Spacer().frame(height: 60)
+                    
+                    MenuSection("Display") {
+                        HStack {
+                            Text("Theme")
+                                .font(.body)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Picker("Theme", selection: $userTheme) {
+                                Text("System").tag("system")
+                                Text("Light").tag("light")
+                                Text("Dark").tag("dark")
+                            }
+                            .pickerStyle(.menu)
+                            .labelsHidden()
+                            .onChange(of: userTheme) { _, _ in
+                                HapticManager.shared.light()
+                            }
                         }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-                        .tint(.secondary)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 16)
+                        .background(Color(UIColor.secondarySystemBackground))
+                        .contentShape(Rectangle())
                     }
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 16)
-                    .background(Color(UIColor.secondarySystemBackground))
-                    .contentShape(Rectangle())
+                    .padding(.top, 0)
+                    
+                    Spacer()
+                }
+                .padding(.top, 20)
+            }
+            
+            // Fixed Navigation Bar
+            HStack {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .frame(width: 44, height: 44)
+                        .background((colorScheme == .dark ? Color.white : Color.black).opacity(0.05))
+                        .clipShape(Circle())
                 }
                 
                 Spacer()
+                
+                Text("Appearance")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                
+                Spacer()
+                
+                Color.clear.frame(width: 44, height: 44)
             }
-            .padding(.top, 20)
+            .padding(.horizontal, AppSpacing.margin + AppSpacing.compact)
+            .padding(.top, 16)
         }
-        .background(Color(UIColor.systemBackground))
-        .navigationTitle("Appearance")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
     }
 }
 
@@ -275,208 +354,247 @@ struct NotificationsSettingsView: View {
     @AppStorage("dailySummaryTime") private var dailySummaryTime: Double = 75600 // 21:00 default (21 * 3600)
     
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.dismiss) var dismiss
     
     @State private var permissionStatus: UNAuthorizationStatus = .notDetermined
     @State private var showingPermissionAlert = false
     @State private var summaryDate: Date = Date()
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Permission Status Section
-                MenuSection {
-                    HStack {
-                        Image(systemName: permissionIcon)
-                            .foregroundColor(permissionColor)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Notification Permission")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                            Text(permissionText)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        Spacer()
-                        if permissionStatus == .notDetermined || permissionStatus == .denied {
-                            Button("Enable") {
-                                requestPermission()
-                            }
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .padding(.vertical, 6)
-                            .padding(.horizontal, 12)
-                            .background(Color.blue.opacity(0.1))
-                            .foregroundColor(.blue)
-                            .cornerRadius(8)
-                        }
-                    }
-                    .padding(16)
-                }
-                
-                // Test Notification Button
-                MenuSection {
-                    Button(action: {
-                        testNotification()
-                    }) {
+        ZStack(alignment: .top) {
+            // Background
+            (colorScheme == .dark ? Color.black : Color(UIColor.systemBackground))
+                .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 24) {
+                    Spacer().frame(height: 60)
+                    
+                    // Permission Status Section
+                    MenuSection {
                         HStack {
-                            Image(systemName: "bell.badge")
-                            Text("Send Test Notification")
+                            Image(systemName: permissionIcon)
+                                .foregroundColor(permissionColor)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Notification Permission")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                Text(permissionText)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                             Spacer()
-                            Image(systemName: "paperplane.fill")
+                            if permissionStatus == .notDetermined || permissionStatus == .denied {
+                                Button("Enable") {
+                                    requestPermission()
+                                }
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .padding(.vertical, 6)
+                                .padding(.horizontal, 12)
+                                .background(Color.blue.opacity(0.1))
+                                .foregroundColor(.blue)
+                                .cornerRadius(8)
+                            }
                         }
-                        .foregroundColor(.blue)
                         .padding(16)
                     }
-                }
-                
-                // Transaction Alerts
-                MenuSection("Transaction Alerts") {
-                    MenuRowView(title: "New Transactions", showChevron: false, showToggle: $transactionNotifs)
-                    MenuDivider()
-                    MenuRowView(title: "Large Expense Alert", showChevron: false, showToggle: $largeExpenseAlert)
+                    .padding(.top, 0)
                     
-                    if largeExpenseAlert {
-                        MenuDivider()
-                        HStack {
-                            Text("Threshold")
-                                .font(.body)
-                                .foregroundColor(.primary)
-                            Spacer()
-                            TextField("Amount", value: $largeExpenseThreshold, format: .currency(code: CurrencyManager.shared.mainCurrency))
-                                .keyboardType(.decimalPad)
-                                .multilineTextAlignment(.trailing)
-                                .frame(width: 100)
-                                .padding(.vertical, 4)
-                                .padding(.horizontal, 8)
-                                .background(Color(UIColor.secondarySystemBackground))
-                                .cornerRadius(6)
-                        }
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 16)
-                    }
-                }
-                .onChange(of: transactionNotifs) { _, newValue in if newValue { ensurePermission() } }
-                .onChange(of: largeExpenseAlert) { _, newValue in if newValue { ensurePermission() } }
-                
-                // Budget & Bills
-                MenuSection("Budget & Bills") {
-                    MenuRowView(title: "Budget Warnings", showChevron: false, showToggle: $budgetNotifs)
-                    if budgetNotifs {
-                        MenuDivider()
-                        HStack {
-                            Text("Alert Threshold")
-                                .font(.body)
-                                .foregroundColor(.primary)
-                            Spacer()
-                            Picker("Threshold", selection: $budgetAlertThreshold) {
-                                Text("50%").tag(0.5)
-                                Text("80%").tag(0.8)
-                                Text("90%").tag(0.9)
-                                Text("100%").tag(1.0)
+                    // Test Notification Button
+                    MenuSection {
+                        Button(action: {
+                            testNotification()
+                        }) {
+                            HStack {
+                                Image(systemName: "bell.badge")
+                                Text("Send Test Notification")
+                                Spacer()
+                                Image(systemName: "paperplane.fill")
                             }
-                            .pickerStyle(.menu)
+                            .foregroundColor(.blue)
+                            .padding(16)
+                        }
+                    }
+                    
+                    // Transaction Alerts
+                    MenuSection("Transaction Alerts") {
+                        MenuRowView(title: "New Transactions", showChevron: false, showToggle: $transactionNotifs)
+                        MenuDivider()
+                        MenuRowView(title: "Large Expense Alert", showChevron: false, showToggle: $largeExpenseAlert)
+                        
+                        if largeExpenseAlert {
+                            MenuDivider()
+                            HStack {
+                                Text("Threshold")
+                                    .font(.body)
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                TextField("Amount", value: $largeExpenseThreshold, format: .currency(code: CurrencyManager.shared.mainCurrency))
+                                    .keyboardType(.decimalPad)
+                                    .multilineTextAlignment(.trailing)
+                                    .frame(width: 100)
+                                    .padding(.vertical, 4)
+                                    .padding(.horizontal, 8)
+                                    .background(Color(UIColor.secondarySystemBackground))
+                                    .cornerRadius(6)
+                            }
+                            .padding(.vertical, 10)
+                            .padding(.horizontal, 16)
+                        }
+                    }
+                    .onChange(of: transactionNotifs) { _, newValue in
+                        HapticManager.shared.light()
+                        if newValue { ensurePermission() }
+                    }
+                    .onChange(of: largeExpenseAlert) { _, newValue in if newValue { ensurePermission() } }
+                    
+                    // Budget & Bills
+                    MenuSection("Budget & Bills") {
+                        MenuRowView(title: "Budget Warnings", showChevron: false, showToggle: $budgetNotifs)
+                        if budgetNotifs {
+                            MenuDivider()
+                            HStack {
+                                Text("Alert Threshold")
+                                    .font(.body)
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Picker("Threshold", selection: $budgetAlertThreshold) {
+                                    Text("50%").tag(0.5)
+                                    Text("80%").tag(0.8)
+                                    Text("90%").tag(0.9)
+                                    Text("100%").tag(1.0)
+                                }
+                                .pickerStyle(.menu)
                             .labelsHidden()
                             .tint(.secondary)
+                            .onChange(of: budgetAlertThreshold) { _, _ in
+                                HapticManager.shared.light()
+                            }
                         }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 16)
-                        .background(Color(UIColor.secondarySystemBackground))
-                    }
-                    
-                    MenuDivider()
-                    MenuRowView(title: "Bill Reminders", showChevron: false, showToggle: $billReminders)
-                    MenuDivider()
-                    MenuRowView(title: "Unpaid Split Reminders", showChevron: false, showToggle: $unpaidSplitReminders)
-                }
-                .onChange(of: budgetNotifs) { _, newValue in if newValue { ensurePermission() } }
-                .onChange(of: billReminders) { _, newValue in if newValue { ensurePermission() } }
-                .onChange(of: unpaidSplitReminders) { _, newValue in if newValue { ensurePermission() } }
-                
-                // Scheduled Reports
-                MenuSection("Scheduled Reports") {
-                    MenuRowView(title: "Daily Summary", showChevron: false, showToggle: $dailySummary)
-                    
-                    if dailySummary {
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 16)
+                            .background(Color(UIColor.secondarySystemBackground))
+                        }
+                        
                         MenuDivider()
-                        HStack {
-                            Text("Time")
-                                .font(.body)
-                                .foregroundColor(.primary)
-                            Spacer()
-                            DatePicker("", selection: $summaryDate, displayedComponents: .hourAndMinute)
-                                .labelsHidden()
+                        MenuRowView(title: "Bill Reminders", showChevron: false, showToggle: $billReminders)
+                        MenuDivider()
+                        MenuRowView(title: "Unpaid Split Reminders", showChevron: false, showToggle: $unpaidSplitReminders)
+                    }
+                    .onChange(of: budgetNotifs) { _, newValue in if newValue { ensurePermission() } }
+                    .onChange(of: billReminders) { _, newValue in if newValue { ensurePermission() } }
+                    .onChange(of: unpaidSplitReminders) { _, newValue in if newValue { ensurePermission() } }
+                    
+                    // Scheduled Reports
+                    MenuSection("Scheduled Reports") {
+                        MenuRowView(title: "Daily Summary", showChevron: false, showToggle: $dailySummary)
+                        
+                        if dailySummary {
+                            MenuDivider()
+                            HStack {
+                                Text("Time")
+                                    .font(.body)
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                DatePicker("", selection: $summaryDate, displayedComponents: .hourAndMinute)
+                                    .labelsHidden()
+                            }
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 16)
+                            .background(Color(UIColor.secondarySystemBackground))
                         }
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 16)
-                        .background(Color(UIColor.secondarySystemBackground))
+                        
+                        MenuDivider()
+                        MenuRowView(title: "Weekly Report (Sunday 8 PM)", showChevron: false, showToggle: $weeklyReport)
+                    }
+                    .onChange(of: dailySummary) { _, newValue in
+                        if newValue {
+                            ensurePermission()
+                            updateDailySummarySchedule()
+                        } else {
+                            NotificationManager.shared.cancelDailySummary()
+                        }
+                    }
+                    .onChange(of: summaryDate) { _, newDate in
+                        let calendar = Calendar.current
+                        let components = calendar.dateComponents([.hour, .minute], from: newDate)
+                        let seconds = (Double(components.hour ?? 21) * 3600) + (Double(components.minute ?? 0) * 60)
+                        dailySummaryTime = seconds
+                        updateDailySummarySchedule()
+                    }
+                    .onChange(of: weeklyReport) { _, newValue in
+                        if newValue {
+                            ensurePermission()
+                            NotificationManager.shared.scheduleWeeklyReport()
+                        } else {
+                            NotificationManager.shared.cancelWeeklyReport()
+                        }
                     }
                     
-                    MenuDivider()
-                    MenuRowView(title: "Weekly Report (Sunday 8 PM)", showChevron: false, showToggle: $weeklyReport)
-                }
-                .onChange(of: dailySummary) { _, newValue in
-                    if newValue {
-                        ensurePermission()
-                        updateDailySummarySchedule()
-                    } else {
-                        NotificationManager.shared.cancelDailySummary()
+                    // Engagement & Tips
+                    MenuSection("Engagement") {
+                        MenuRowView(title: "Inactivity Reminders", showChevron: false, showToggle: $inactivityCheck)
+                        MenuDivider()
+                        MenuRowView(title: "Streak Warnings", showChevron: false, showToggle: $streakWarnings)
+                        MenuDivider()
+                        MenuRowView(title: "End of Day Check", showChevron: false, showToggle: $eodCheck)
+                        MenuDivider()
+                        MenuRowView(title: "Motivational Tips", showChevron: false, showToggle: $motivationalTips)
+                        MenuDivider()
+                        MenuRowView(title: "Goal Milestones", showChevron: false, showToggle: $goalMilestones)
                     }
-                }
-                .onChange(of: summaryDate) { _, newDate in
-                    let calendar = Calendar.current
-                    let components = calendar.dateComponents([.hour, .minute], from: newDate)
-                    let seconds = (Double(components.hour ?? 21) * 3600) + (Double(components.minute ?? 0) * 60)
-                    dailySummaryTime = seconds
-                    updateDailySummarySchedule()
-                }
-                .onChange(of: weeklyReport) { _, newValue in
-                    if newValue {
-                        ensurePermission()
-                        NotificationManager.shared.scheduleWeeklyReport()
-                    } else {
-                        NotificationManager.shared.cancelWeeklyReport()
+                    .onChange(of: inactivityCheck) { _, newValue in
+                         if newValue { ensurePermission(); NotificationManager.shared.scheduleInactivityCheck() }
+                         else { NotificationManager.shared.cancelInactivityCheck() }
                     }
+                    .onChange(of: streakWarnings) { _, newValue in
+                        if newValue { ensurePermission() }
+                        // Streak warnings are part of inactivity check logic currently
+                    }
+                    .onChange(of: eodCheck) { _, newValue in
+                        if newValue { ensurePermission(); NotificationManager.shared.scheduleEODCheck() }
+                        else { NotificationManager.shared.cancelEODCheck() }
+                    }
+                    .onChange(of: motivationalTips) { _, newValue in
+                        if newValue { ensurePermission(); NotificationManager.shared.scheduleMotivationalTips() }
+                        else { NotificationManager.shared.cancelMotivationalTips() }
+                    }
+                    .onChange(of: goalMilestones) { _, newValue in
+                        if newValue { ensurePermission() }
+                    }
+                    
+                    Spacer()
                 }
-                
-                // Engagement & Tips
-                MenuSection("Engagement") {
-                    MenuRowView(title: "Inactivity Reminders", showChevron: false, showToggle: $inactivityCheck)
-                    MenuDivider()
-                    MenuRowView(title: "Streak Warnings", showChevron: false, showToggle: $streakWarnings)
-                    MenuDivider()
-                    MenuRowView(title: "End of Day Check", showChevron: false, showToggle: $eodCheck)
-                    MenuDivider()
-                    MenuRowView(title: "Motivational Tips", showChevron: false, showToggle: $motivationalTips)
-                    MenuDivider()
-                    MenuRowView(title: "Goal Milestones", showChevron: false, showToggle: $goalMilestones)
-                }
-                .onChange(of: inactivityCheck) { _, newValue in
-                     if newValue { ensurePermission(); NotificationManager.shared.scheduleInactivityCheck() }
-                     else { NotificationManager.shared.cancelInactivityCheck() }
-                }
-                .onChange(of: streakWarnings) { _, newValue in
-                    if newValue { ensurePermission() }
-                    // Streak warnings are part of inactivity check logic currently
-                }
-                .onChange(of: eodCheck) { _, newValue in
-                    if newValue { ensurePermission(); NotificationManager.shared.scheduleEODCheck() }
-                    else { NotificationManager.shared.cancelEODCheck() }
-                }
-                .onChange(of: motivationalTips) { _, newValue in
-                    if newValue { ensurePermission(); NotificationManager.shared.scheduleMotivationalTips() }
-                    else { NotificationManager.shared.cancelMotivationalTips() }
-                }
-                .onChange(of: goalMilestones) { _, newValue in
-                    if newValue { ensurePermission() }
+                .padding(.top, 20)
+            }
+            
+            // Fixed Navigation Bar
+            HStack {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .frame(width: 44, height: 44)
+                        .background((colorScheme == .dark ? Color.white : Color.black).opacity(0.05))
+                        .clipShape(Circle())
                 }
                 
                 Spacer()
+                
+                Text("Notifications")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                
+                Spacer()
+                
+                Color.clear.frame(width: 44, height: 44)
             }
-            .padding(.top, 20)
+            .padding(.horizontal, AppSpacing.margin + AppSpacing.compact)
+            .padding(.top, 16)
         }
-        .background(Color(UIColor.systemBackground))
-        .navigationTitle("Notifications")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .onAppear {
             checkPermissionStatus()
             // Initialize Summary Date from Stored Time
@@ -606,188 +724,287 @@ struct PrivacySettingsView: View {
     @State private var faceIDEnabled = true
     @State private var analyticsEnabled = true
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.dismiss) var dismiss
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                MenuSection("Security") {
-                    MenuRowView(icon: "faceid", title: "Use Face ID", showChevron: false, showToggle: $faceIDEnabled)
-                    MenuDivider()
-                    NavigationLink {
-                        Text("2FA Setup")
-                            .navigationTitle("2FA")
-                    } label: {
-                        MenuRowView(icon: "lock.shield", title: "Two-Factor Authentication")
+        ZStack(alignment: .top) {
+            // Background
+            (colorScheme == .dark ? Color.black : Color(UIColor.systemBackground))
+                .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 24) {
+                    Spacer().frame(height: 60)
+                    
+                    MenuSection("Security") {
+                        MenuRowView(icon: "faceid", title: "Use Face ID", showChevron: false, showToggle: $faceIDEnabled)
+                        MenuDivider()
+                        NavigationLink {
+                            Text("2FA Setup")
+                                .navigationTitle("2FA")
+                        } label: {
+                            MenuRowView(icon: "lock.shield", title: "Two-Factor Authentication")
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+                    .padding(.top, 0)
+                    
+                    MenuSection("Data") {
+                        MenuRowView(title: "Share Analytics", showChevron: false, showToggle: $analyticsEnabled)
+                        MenuDivider()
+                        NavigationLink {
+                            Text("Privacy Policy Content")
+                                .navigationTitle("Privacy Policy")
+                        } label: {
+                            MenuRowView(icon: "hand.raised", title: "Data & Privacy Info")
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    
+                    Spacer()
                 }
-                
-                MenuSection("Data") {
-                    MenuRowView(title: "Share Analytics", showChevron: false, showToggle: $analyticsEnabled)
-                    MenuDivider()
-                    NavigationLink {
-                        Text("Privacy Policy Content")
-                            .navigationTitle("Privacy Policy")
-                    } label: {
-                        MenuRowView(icon: "hand.raised", title: "Data & Privacy Info")
-                    }
-                    .buttonStyle(.plain)
+                .padding(.top, 20)
+            }
+            
+            // Fixed Navigation Bar
+            HStack {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .frame(width: 44, height: 44)
+                        .background((colorScheme == .dark ? Color.white : Color.black).opacity(0.05))
+                        .clipShape(Circle())
                 }
                 
                 Spacer()
+                
+                Text("Privacy & Security")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                
+                Spacer()
+                
+                Color.clear.frame(width: 44, height: 44)
             }
-            .padding(.top, 20)
+            .padding(.horizontal, AppSpacing.margin + AppSpacing.compact)
+            .padding(.top, 16)
         }
-        .background(Color(UIColor.systemBackground))
-        .navigationTitle("Privacy & Security")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
     }
 }
 
 // MARK: - Help Center
 struct HelpCenterView: View {
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.dismiss) var dismiss
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                MenuSection("FAQ") {
-                    NavigationLink {
-                        Text("Tap the + button on the home screen.")
-                            .padding()
-                            .navigationTitle("Adding Transactions")
-                    } label: {
-                        MenuRowView(icon: "plus.circle", title: "How to add a transaction?")
+        ZStack(alignment: .top) {
+            // Background
+            (colorScheme == .dark ? Color.black : Color(UIColor.systemBackground))
+                .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 24) {
+                    Spacer().frame(height: 60)
+                    
+                    MenuSection("FAQ") {
+                        NavigationLink {
+                            Text("Tap the + button on the home screen.")
+                                .padding()
+                                .navigationTitle("Adding Transactions")
+                        } label: {
+                            MenuRowView(icon: "plus.circle", title: "How to add a transaction?")
+                        }
+                        .buttonStyle(.plain)
+                        
+                        MenuDivider()
+                        
+                        NavigationLink {
+                            Text("Go to the Wallet tab and tap + next to Budgets.")
+                                .padding()
+                                .navigationTitle("Setting Budgets")
+                        } label: {
+                            MenuRowView(icon: "chart.pie", title: "How to set a budget?")
+                        }
+                        .buttonStyle(.plain)
+                        
+                        MenuDivider()
+                        
+                        NavigationLink {
+                            Text("Data export is coming soon.")
+                                .padding()
+                                .navigationTitle("Export Data")
+                        } label: {
+                            MenuRowView(icon: "square.and.arrow.up", title: "Exporting data")
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+                    .padding(.top, 0)
                     
-                    MenuDivider()
-                    
-                    NavigationLink {
-                        Text("Go to the Wallet tab and tap + next to Budgets.")
-                            .padding()
-                            .navigationTitle("Setting Budgets")
-                    } label: {
-                        MenuRowView(icon: "chart.pie", title: "How to set a budget?")
+                    MenuSection("Contact") {
+                        Button(action: { }) {
+                            MenuRowView(icon: "envelope", title: "Contact Support")
+                        }
+                        .buttonStyle(.plain)
+                        
+                        MenuDivider()
+                        
+                        Button(action: { }) {
+                            MenuRowView(icon: "ant", title: "Report a Bug")
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                     
-                    MenuDivider()
-                    
-                    NavigationLink {
-                        Text("Data export is coming soon.")
-                            .padding()
-                            .navigationTitle("Export Data")
-                    } label: {
-                        MenuRowView(icon: "square.and.arrow.up", title: "Exporting data")
-                    }
-                    .buttonStyle(.plain)
+                    Spacer()
                 }
-                
-                MenuSection("Contact") {
-                    Button(action: { }) {
-                        MenuRowView(icon: "envelope", title: "Contact Support")
-                    }
-                    .buttonStyle(.plain)
-                    
-                    MenuDivider()
-                    
-                    Button(action: { }) {
-                        MenuRowView(icon: "ant", title: "Report a Bug")
-                    }
-                    .buttonStyle(.plain)
+                .padding(.top, 20)
+            }
+            
+            // Fixed Navigation Bar
+            HStack {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .frame(width: 44, height: 44)
+                        .background((colorScheme == .dark ? Color.white : Color.black).opacity(0.05))
+                        .clipShape(Circle())
                 }
                 
                 Spacer()
+                
+                Text("Help Center")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                
+                Spacer()
+                
+                Color.clear.frame(width: 44, height: 44)
             }
-            .padding(.top, 20)
+            .padding(.horizontal, AppSpacing.margin + AppSpacing.compact)
+            .padding(.top, 16)
         }
-        .background(Color(UIColor.systemBackground))
-        .navigationTitle("Help Center")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
     }
 }
 
 // MARK: - About Us
 struct AboutView: View {
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.dismiss) var dismiss
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                VStack(spacing: 8) {
-                    Image(systemName: "chart.bar.doc.horizontal.fill")
-                        .font(.system(size: 60))
-                        .foregroundColor(.blue)
-                        .padding(.top, 20)
+        ZStack(alignment: .top) {
+            // Background
+            (colorScheme == .dark ? Color.black : Color(UIColor.systemBackground))
+                .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 24) {
+                    Spacer().frame(height: 60)
                     
-                    Text("wym")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    
-                    Text("Version 1.0.0")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 20)
-                
-                MenuSection {
-                    HStack {
-                        Text("Developer")
-                            .font(.body)
-                            .foregroundColor(.primary)
-                        Spacer()
-                        Text("David Wu")
-                            .font(.body)
+                    VStack(spacing: 8) {
+                        Image(systemName: "chart.bar.doc.horizontal.fill")
+                            .font(.system(size: 60))
+                            .foregroundColor(.blue)
+                            .padding(.top, 20)
+                        
+                        Text("wym")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                        
+                        Text("Version 1.0.0")
+                            .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
-                    .padding(.vertical, 14)
-                    .padding(.horizontal, 16)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
                     
-                    MenuDivider()
-                    
-                    HStack {
-                        Text("Website")
-                            .font(.body)
-                            .foregroundColor(.primary)
-                        Spacer()
-                        Text("example.com")
-                            .font(.body)
-                            .foregroundColor(.secondary)
+                    MenuSection {
+                        HStack {
+                            Text("Developer")
+                                .font(.body)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Text("David Wu")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 14)
+                        .padding(.horizontal, 16)
+                        
+                        MenuDivider()
+                        
+                        HStack {
+                            Text("Website")
+                                .font(.body)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Text("example.com")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 14)
+                        .padding(.horizontal, 16)
                     }
-                    .padding(.vertical, 14)
-                    .padding(.horizontal, 16)
+                    .padding(.top, 0)
+                    
+                    MenuSection {
+                        Button(action: {}) {
+                            MenuRowView(title: "Rate App", showChevron: true)
+                        }
+                        .buttonStyle(.plain)
+                        
+                        MenuDivider()
+                        
+                        Button(action: {}) {
+                            MenuRowView(title: "Terms of Service", showChevron: true)
+                        }
+                        .buttonStyle(.plain)
+                        
+                        MenuDivider()
+                        
+                        Button(action: {}) {
+                            MenuRowView(title: "Privacy Policy", showChevron: true)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    
+                    Spacer()
                 }
-                
-                MenuSection {
-                    Button(action: {}) {
-                        MenuRowView(title: "Rate App", showChevron: true)
-                    }
-                    .buttonStyle(.plain)
-                    
-                    MenuDivider()
-                    
-                    Button(action: {}) {
-                        MenuRowView(title: "Terms of Service", showChevron: true)
-                    }
-                    .buttonStyle(.plain)
-                    
-                    MenuDivider()
-                    
-                    Button(action: {}) {
-                        MenuRowView(title: "Privacy Policy", showChevron: true)
-                    }
-                    .buttonStyle(.plain)
+                .padding(.top, 10)
+            }
+            
+            // Fixed Navigation Bar
+            HStack {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .frame(width: 44, height: 44)
+                        .background((colorScheme == .dark ? Color.white : Color.black).opacity(0.05))
+                        .clipShape(Circle())
                 }
                 
                 Spacer()
+                
+                Text("About Us")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                
+                Spacer()
+                
+                Color.clear.frame(width: 44, height: 44)
             }
-            .padding(.top, 10)
+            .padding(.horizontal, AppSpacing.margin + AppSpacing.compact)
+            .padding(.top, 16)
         }
-        .background(Color(UIColor.systemBackground))
-        .navigationTitle("About Us")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
     }
 }
 

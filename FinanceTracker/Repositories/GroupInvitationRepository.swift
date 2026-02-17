@@ -11,7 +11,10 @@ class GroupInvitationRepository: ObservableObject {
     private var listener: ListenerRegistration?
     
     func startListening(userId: String) {
-        self.isLoading = true
+        // Only show loading if we don't have any data yet (Stale-While-Revalidate)
+        if incomingInvitations.isEmpty {
+            self.isLoading = true
+        }
         self.errorMessage = nil
         
         listener = db.collection("group_invitations")

@@ -15,7 +15,10 @@ class SavingGoalRepository: ObservableObject {
     
     func startListening(userId: String) {
         self.userId = userId
-        self.isLoading = true
+        // Only show loading if we don't have any data yet (Stale-While-Revalidate)
+        if savingGoals.isEmpty {
+            self.isLoading = true
+        }
         self.errorMessage = nil
         
         listener = db.collection("users").document(userId).collection("savingGoals")

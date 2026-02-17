@@ -14,7 +14,10 @@ class FriendRequestRepository: ObservableObject {
     private var outgoingListener: ListenerRegistration?
     
     func startListening(userId: String) {
-        self.isLoading = true
+        // Only show loading if we don't have any data yet (Stale-While-Revalidate)
+        if incomingRequests.isEmpty && outgoingRequests.isEmpty {
+            self.isLoading = true
+        }
         self.errorMessage = nil
         
         // Listen to incoming requests (requests sent TO me)

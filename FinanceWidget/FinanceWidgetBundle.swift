@@ -4,8 +4,8 @@ import SwiftUI
 @main
 struct FinanceWidgetBundle: WidgetBundle {
     var body: some Widget {
-        LockScreenWidget()
-        SpentWidget()
+        BudgetWidget()
         QuickLogWidget()
+        RecentTransactionsWidget()
     }
 }

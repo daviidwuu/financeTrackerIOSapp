@@ -52,37 +52,42 @@ struct TransactionDetailView: View {
             (colorScheme == .dark ? Color.black : Color.white)
                 .ignoresSafeArea()
             
-            VStack(spacing: 0) {
-                // 2. Custom Header
-                DetailHeaderView(
-                    title: (transaction.note?.isEmpty == false) ? transaction.note! : transaction.title,
-                    subtitle: transaction.date.formatted(date: .long, time: .shortened),
-                    onBack: { dismiss() },
-                    onMenu: {
-                        HapticManager.shared.light()
-                        showEditSheet = true
-                    },
-                    backgroundColor: colorScheme == .dark ? Color.black : Color.white,
-                    textColor: colorScheme == .dark ? .white : .black,
-                    avatar: {
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Spacer for fixed Navigation Bar
+                    Spacer().frame(height: 60)
+                    
+                    // Header Content (formerly fixed)
+                    VStack(spacing: 8) {
+                        // Avatar
                         Image(systemName: categoryIcon)
                             .font(.system(size: 32, weight: .bold))
                             .foregroundColor(.white)
                             .frame(width: 80, height: 80)
                             .background(Color(hex: categoryColor))
                             .clipShape(Circle())
-                    },
-                    actions: {
-                        // Amount Display in Header
+                        
+                        // Text
+                        VStack(spacing: 4) {
+                            Text((transaction.note?.isEmpty == false) ? transaction.note! : transaction.title)
+                                .font(AppTypography.titleDisplay)
+                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                            
+                            Text(transaction.date.formatted(date: .long, time: .shortened))
+                                .font(.subheadline)
+                                .foregroundColor((colorScheme == .dark ? Color.white : Color.black).opacity(0.9))
+                        }
+                        
+                        // Amount Display
                         Text(String(format: "$%.2f", displayAmount))
                             .font(AppTypography.prominentBalance)
                             .foregroundColor(colorScheme == .dark ? .white : .black)
                             .padding(.top, 0)
                             .padding(.bottom, 0)
                     }
-                )
-                
-                ScrollView {
+                    .padding(.bottom, AppSpacing.section)
+                    .padding(.top, 20)
+                    
                     VStack(spacing: AppSpacing.section) {
                         
                         // Section B: Split / Actions
@@ -225,6 +230,11 @@ struct TransactionDetailView: View {
                                    let currencyCode = transaction.currencyCode {
                                     Divider().padding(.leading, 52)
                                     TransactionDetailRow(icon: "banknote", title: "Original Amount", value: String(format: "%.2f %@", originalAmount, currencyCode), color: .blue)
+                                    
+                                    if let rate = transaction.exchangeRate {
+                                        Divider().padding(.leading, 52)
+                                        TransactionDetailRow(icon: "arrow.triangle.2.circlepath", title: "Exchange Rate", value: String(format: "1 %@ = %.2f %@", CurrencyManager.shared.mainCurrency, rate, currencyCode), color: .orange)
+                                    }
                                 }
                                 
                                 if let note = transaction.note, !note.isEmpty {
@@ -257,6 +267,34 @@ struct TransactionDetailView: View {
                     .padding(.vertical)
                 }
             }
+            
+            // 3. Fixed Navigation Bar
+            HStack {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .frame(width: 44, height: 44)
+                        .background((colorScheme == .dark ? Color.white : Color.black).opacity(0.05))
+                        .clipShape(Circle())
+                }
+                
+                Spacer()
+                
+                Button(action: {
+                    HapticManager.shared.light()
+                    showEditSheet = true
+                }) {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .frame(width: 44, height: 44)
+                        .background((colorScheme == .dark ? Color.white : Color.black).opacity(0.05))
+                        .clipShape(Circle())
+                }
+            }
+            .padding(.horizontal, AppSpacing.margin + AppSpacing.compact)
+            .padding(.top, 16)
         }
         .onAppear {
             // Refresh data to ensure sync when returning from other views
@@ -402,8 +440,8 @@ struct TransactionDetailView: View {
                         
                         let finalTx = try await SocialTransactionManager.shared.createSocialTransaction(
                             transaction: newModel,
-                            payerUid: appState.currentUserId,
-                            payerName: !appState.userName.isEmpty ? appState.userName : (UserDefaults.standard.string(forKey: "user_name") ?? "Friend"),
+                            payerUid: newModel.userId,
+                            payerName: (newModel.userId == appState.currentUserId) ? (!appState.userName.isEmpty ? appState.userName : (UserDefaults.standard.string(forKey: "user_name") ?? "Friend")) : (friendRepo.friends.first(where: { $0.id == newModel.userId })?.name ?? "Friend"),
                             groupId: groupId,
                             friendCache: friendRepo.friends,
                             groupCache: appState.groupRepo.groups
@@ -438,8 +476,8 @@ struct TransactionDetailView: View {
             do {
                 let finalTx = try await SocialTransactionManager.shared.createSocialTransaction(
                     transaction: updatedTransaction,
-                    payerUid: appState.currentUserId,
-                    payerName: !appState.userName.isEmpty ? appState.userName : (UserDefaults.standard.string(forKey: "user_name") ?? "Friend"),
+                    payerUid: updatedTransaction.userId,
+                    payerName: (updatedTransaction.userId == appState.currentUserId) ? (!appState.userName.isEmpty ? appState.userName : (UserDefaults.standard.string(forKey: "user_name") ?? "Friend")) : (friendRepo.friends.first(where: { $0.id == updatedTransaction.userId })?.name ?? "Friend"),
                     groupId: groupId,
                     friendCache: friendRepo.friends,
                     groupCache: appState.groupRepo.groups
@@ -472,6 +510,8 @@ struct TransactionDetailView: View {
             return
         }
         guard let transactionId = transaction.id else { return }
+        
+        HapticManager.shared.medium() // Feedback for toggling payment status
         
         // Optimistic UI toggle
         if let index = transaction.splits?.firstIndex(where: { $0.id == split.id }) {

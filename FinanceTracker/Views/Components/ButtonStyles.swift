@@ -30,6 +30,11 @@ struct PrimaryButtonStyle: ButtonStyle {
         .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
         .animation(.easeInOut(duration: 0.2), value: configuration.isPressed)
         .animation(.easeInOut(duration: 0.2), value: isEnabled)
+        .onChange(of: configuration.isPressed) { _, isPressed in
+            if isPressed && isEnabled {
+                HapticManager.shared.light()
+            }
+        }
     }
 }
 
@@ -47,6 +52,11 @@ struct SecondaryButtonStyle: ButtonStyle {
             .clipShape(Capsule())
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
             .animation(.easeInOut(duration: 0.2), value: configuration.isPressed)
+            .onChange(of: configuration.isPressed) { _, isPressed in
+                if isPressed && isEnabled {
+                    HapticManager.shared.light()
+                }
+            }
     }
 }
 
@@ -64,6 +74,11 @@ struct SmallPrimaryButtonStyle: ButtonStyle {
             .clipShape(Capsule())
             .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
             .animation(.easeInOut(duration: 0.2), value: configuration.isPressed)
+            .onChange(of: configuration.isPressed) { _, isPressed in
+                if isPressed && isEnabled {
+                    HapticManager.shared.light()
+                }
+            }
     }
 }
 
@@ -81,6 +96,11 @@ struct SmallSecondaryButtonStyle: ButtonStyle {
             .clipShape(Capsule())
             .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
             .animation(.easeInOut(duration: 0.2), value: configuration.isPressed)
+            .onChange(of: configuration.isPressed) { _, isPressed in
+                if isPressed && isEnabled {
+                    HapticManager.shared.light()
+                }
+            }
     }
 }
 

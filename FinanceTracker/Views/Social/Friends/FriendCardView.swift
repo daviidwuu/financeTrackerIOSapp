@@ -4,7 +4,7 @@ struct FriendCardView: View {
     let friend: FirestoreModels.Friend
     
     var gradient: LinearGradient {
-        Color.GradientTheme.gradient(for: Color.random(seed: friend.name).toHex() ?? "#007AFF")
+        Color.GradientTheme.gradient(for: friend.avatarColor ?? Color.random(seed: friend.name).toHex() ?? "#007AFF")
     }
     
     var body: some View {
@@ -12,7 +12,7 @@ struct FriendCardView: View {
             // Gradient Icon / Avatar
             ProfileAvatar(
                 text: String(friend.name.prefix(1)),
-                color: Color.random(seed: friend.name),
+                color: friend.avatarColor.map { Color(hex: $0) } ?? Color.random(seed: friend.name),
                 size: AppSize.avatarList
             )
             
@@ -21,7 +21,7 @@ struct FriendCardView: View {
                     .font(.headline)
                     .foregroundColor(.primary)
                 
-                Text("@" + friend.username)
+                Text("@" + (friend.username ?? "user"))
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }

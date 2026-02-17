@@ -3,12 +3,13 @@ import FirebaseFirestore
 
 struct EditGroupTransactionWizardView: View {
     let group: FirestoreModels.Group?
+    let preSelectedFriend: FirestoreModels.Friend?
     
     // Optional: Only present for editing
     let transactionToEdit: FirestoreModels.GroupTransaction?
     
-    // Callback: Returns (Amount, Note, Splits)
-    var onSave: (Double, String, [FirestoreModels.Split]) -> Void
+    // Callback: Returns (Amount, Note, Category?, Splits)
+    var onSave: (Double, String, FirestoreModels.CategoryBudget?, [FirestoreModels.Split]) -> Void
     
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
@@ -19,6 +20,7 @@ struct EditGroupTransactionWizardView: View {
     @State private var amount: Double = 0.0
     @State private var amountString: String = ""
     @State private var note: String = ""
+    @State private var selectedCategory: FirestoreModels.CategoryBudget?
     @State private var direction: Edge = .trailing
     @FocusState private var isAmountFocused: Bool
     @State private var isLoadingSplits = false // Fix for race condition
@@ -41,47 +43,63 @@ struct EditGroupTransactionWizardView: View {
     @StateObject private var repo = SocialRepository()
     
     var isEditing: Bool { transactionToEdit != nil }
+    var isFriendMode: Bool { preSelectedFriend != nil }
+    
+    // Friend Mode Steps: 1. Amount -> 2. Category -> 3. Note -> 4. Distribution
+    // Group Mode Steps: 1. Amount -> 2. Category -> 3. Note -> 4. Members -> 5. Distribution
+    var totalSteps: Int { isFriendMode ? 4 : 5 }
     
     var body: some View {
-        WizardLayout(
-            title: stepTitle,
-            currentStep: currentStep,
-            totalSteps: 4,
-            onBack: currentStep > 1 ? {
-                direction = .leading
-                withAnimation { currentStep -= 1 }
-            } : nil,
-            onClose: { dismiss() },
-            direction: direction
-        ) {
-            currentStepView
-        } actionBar: {
-            Button(action: {
-                HapticManager.shared.light()
-                if currentStep < 4 {
-                    // Validation Logic
-                    if currentStep == 1 {
-                        if let val = Double(amountString) {
-                            self.amount = val
+        ZStack {
+            (colorScheme == .dark ? Color.black : Color(UIColor.systemGroupedBackground))
+                .ignoresSafeArea()
+                
+            WizardLayout(
+                title: stepTitle,
+                currentStep: currentStep,
+                totalSteps: totalSteps,
+                onBack: currentStep > 1 ? {
+                    direction = .leading
+                    withAnimation { currentStep -= 1 }
+                } : nil,
+                onClose: { 
+                    print("DEBUG: EditGroupTransactionWizardView onClose called")
+                    dismiss() 
+                },
+                direction: direction
+            ) {
+                currentStepView
+            } actionBar: {
+                Button(action: {
+                    HapticManager.shared.light()
+                    if currentStep < totalSteps {
+                        // Validation Logic
+                        if currentStep == 1 {
+                            if let val = Double(amountString) {
+                                self.amount = val
+                                // Recalculate splits with new amount
+                                recalculateSplits(for: splitMode)
+                            }
                         }
+                        
+                        direction = .trailing
+                        withAnimation { currentStep += 1 }
+                    } else {
+                        print("DEBUG: EditGroupTransactionWizardView onSave called")
+                        onSave(amount, note, selectedCategory, splits)
+                        dismiss()
                     }
-                    
-                    direction = .trailing
-                    withAnimation { currentStep += 1 }
-                } else {
-                    onSave(amount, note, splits)
-                    dismiss()
+                }) {
+                    if isLoadingSplits && isEditing {
+                         ProgressView()
+                             .tint(colorScheme == .dark ? .black : .white)
+                    } else {
+                        Text(currentStep < totalSteps ? "Next" : (isEditing ? "Save Changes" : "Add Expense"))
+                    }
                 }
-            }) {
-                if isLoadingSplits && isEditing {
-                     ProgressView()
-                         .tint(colorScheme == .dark ? .black : .white)
-                } else {
-                    Text(currentStep < 4 ? "Next" : (isEditing ? "Save Changes" : "Add Expense"))
-                }
+                .buttonStyle(PrimaryButtonStyle())
+                .disabled(isLoadingSplits && isEditing)
             }
-            .buttonStyle(PrimaryButtonStyle())
-            .disabled(isLoadingSplits && isEditing)
         }
         .onAppear {
             initializeData()
@@ -89,26 +107,43 @@ struct EditGroupTransactionWizardView: View {
     }
     
     private var stepTitle: String {
-        switch currentStep {
-        case 1: return isEditing ? "Edit Amount" : "Enter Amount"
-        case 2: return "Note"
-        case 3: return "Select Members"
-        case 4: return "Distribution"
-        default: return ""
+        if isFriendMode {
+            switch currentStep {
+            case 1: return isEditing ? "Edit Amount" : "Enter Amount"
+            case 2: return "Select Category"
+            case 3: return "Note"
+            case 4: return "Distribution"
+            default: return ""
+            }
+        } else {
+            switch currentStep {
+            case 1: return isEditing ? "Edit Amount" : "Enter Amount"
+            case 2: return "Select Category"
+            case 3: return "Note"
+            case 4: return "Select Members"
+            case 5: return "Distribution"
+            default: return ""
+            }
         }
     }
     
     @ViewBuilder
     private var currentStepView: some View {
-        switch currentStep {
-        case 1:
-            stepOneAmount
-        case 2:
-            stepTwoNote
-        case 3:
-            stepThreeMembers
-        default:
-            stepFourDistribution
+        if isFriendMode {
+            switch currentStep {
+            case 1: stepOneAmount
+            case 2: stepTwoCategory
+            case 3: stepThreeNote
+            default: stepFourDistribution
+            }
+        } else {
+            switch currentStep {
+            case 1: stepOneAmount
+            case 2: stepTwoCategory // Insert Category Step
+            case 3: stepThreeNote
+            case 4: stepThreeMembers
+            default: stepFourDistribution
+            }
         }
     }
     
@@ -163,7 +198,25 @@ struct EditGroupTransactionWizardView: View {
             self.amount = 0.0
             self.amountString = ""
             self.note = ""
-            // Select everyone by default including self
+            
+            // Pre-select Friend if in Friend Mode
+            if let friend = preSelectedFriend, let fid = friend.id {
+                selectedMemberIds.insert(fid)
+                // We need to manually add the split here because we skip Step 3
+                let newSplit = FirestoreModels.Split(
+                    name: friend.name,
+                    friendId: fid,
+                    amount: 0.0, // Will be calculated in distribution step
+                    isPaid: false
+                )
+                splits.append(newSplit)
+                shares[newSplit.id] = 1
+                
+                // Trigger recalculation for equal split (50/50 default)
+                // But amount is 0 yet, so just setup structure
+            }
+            
+            // Select everyone by default including self if in Group Mode
             if let group = group {
                 for memberId in group.members {
                     let name = getMemberName(id: memberId)
@@ -176,7 +229,12 @@ struct EditGroupTransactionWizardView: View {
     // MARK: - Step 1: Amount
     
     var stepOneAmount: some View {
-        VStack(spacing: 24) {
+        let isTravelMode = CurrencyManager.shared.isTravelModeEnabled
+        let mainCode = CurrencyManager.shared.mainCurrency
+        let travelCode = CurrencyManager.shared.travelCurrency
+        let symbol = isTravelMode ? getSymbol(for: travelCode) : getSymbol(for: mainCode)
+        
+        return VStack(spacing: 24) {
             Spacer()
             
             Text(isEditing ? "How much was the total bill?" : "How much did you pay?")
@@ -184,7 +242,7 @@ struct EditGroupTransactionWizardView: View {
                 .foregroundColor(.secondary)
             
             HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text("$")
+                Text(symbol)
                     .font(.system(size: 40, weight: .medium, design: .rounded))
                     .foregroundColor(.primary)
                 
@@ -206,9 +264,66 @@ struct EditGroupTransactionWizardView: View {
         .padding(.horizontal)
     }
     
-    // MARK: - Step 2: Note
+    // MARK: - Step 2 (Friend Mode): Category
+    var stepTwoCategory: some View {
+        VStack(spacing: 8) {
+            Text("Select Category")
+                .font(.headline)
+                .fontWeight(.semibold)
+                .foregroundColor(.secondary)
+                .padding(.horizontal, AppSpacing.margin)
+            
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: AppSpacing.element) {
+                    ForEach(appState.budgetRepo.budgets.filter { $0.category.lowercased() != "income" }) { budget in
+                        Button(action: {
+                            selectedCategory = budget
+                            HapticManager.shared.light()
+                            // Auto-advance? Maybe not, let them click Next
+                        }) {
+                            VStack(spacing: 0) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: budget.icon)
+                                        .font(.caption)
+                                        .foregroundColor(Color(hex: budget.colorHex))
+                                        .frame(width: 32, height: 32)
+                                        .background(Color(hex: budget.colorHex).opacity(0.1)) // Subtle tint
+                                        .clipShape(Circle())
+                                    
+                                    Text(budget.category)
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.primary)
+                                        .lineLimit(1)
+                                    
+                                    Spacer()
+                                    
+                                    if selectedCategory?.category == budget.category {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .font(.caption)
+                                            .foregroundColor(.green)
+                                    }
+                                }
+                                .padding(8)
+                            }
+                            .background(selectedCategory?.category == budget.category ? Color(hex: budget.colorHex).opacity(0.1) : Color(UIColor.secondarySystemBackground))
+                            .cornerRadius(AppRadius.small)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppRadius.small)
+                                    .stroke(selectedCategory?.category == budget.category ? Color(hex: budget.colorHex) : Color.clear, lineWidth: 1)
+                            )
+                        }
+                    }
+                }
+                .padding(.horizontal, AppSpacing.compact)
+                .padding(.top)
+            }
+        }
+    }
     
-    var stepTwoNote: some View {
+    // MARK: - Step 2/3: Note
+    
+    var stepThreeNote: some View {
         VStack(spacing: 16) {
             Spacer()
             
@@ -367,6 +482,7 @@ struct EditGroupTransactionWizardView: View {
     }
     
     func toggleMember(id: String, name: String) {
+        HapticManager.shared.light()
         if selectedMemberIds.contains(id) {
             selectedMemberIds.remove(id)
             if let splitToRemove = splits.first(where: { $0.friendId == id }) {
@@ -385,9 +501,10 @@ struct EditGroupTransactionWizardView: View {
         }
         recalculateSplits(for: splitMode)
     }
-    
+
     func toggleGuest(guest: FirestoreModels.Guest) {
         guard let guestId = guest.id else { return }
+        HapticManager.shared.light()
         if selectedMemberIds.contains(guestId) {
             selectedMemberIds.remove(guestId)
             if let splitToRemove = splits.first(where: { $0.guestId == guestId }) {
@@ -434,7 +551,12 @@ struct EditGroupTransactionWizardView: View {
     // MARK: - Step 4: Distribution
     
     var stepFourDistribution: some View {
-        ScrollView {
+        let isTravelMode = CurrencyManager.shared.isTravelModeEnabled
+        let mainCode = CurrencyManager.shared.mainCurrency
+        let travelCode = CurrencyManager.shared.travelCurrency
+        let symbol = isTravelMode ? getSymbol(for: travelCode) : getSymbol(for: mainCode)
+        
+        return ScrollView {
             VStack(spacing: 24) {
                 // Total Amount Display
                 VStack(spacing: 8) {
@@ -443,8 +565,16 @@ struct EditGroupTransactionWizardView: View {
                         .fontWeight(.bold)
                         .foregroundColor(.secondary)
                     
-                    Text(amount, format: .currency(code: "USD"))
+                    Text("\(symbol)\(String(format: "%.2f", amount))")
                         .font(.system(size: 36, weight: .bold, design: .rounded))
+                        
+                    if isTravelMode {
+                        let mainAmount = CurrencyManager.shared.convertToMain(amount: amount, from: travelCode)
+                        let mainSymbol = getSymbol(for: mainCode)
+                        Text("≈ \(mainSymbol)\(String(format: "%.2f", mainAmount))")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 .padding(.top)
                 
@@ -465,7 +595,7 @@ struct EditGroupTransactionWizardView: View {
                 // Splits List
                 VStack(spacing: 16) {
                     ForEach(splits) { split in
-                        splitRow(for: split)
+                        splitRow(for: split, symbol: symbol)
                     }
                 }
                 .padding(.horizontal)
@@ -476,12 +606,13 @@ struct EditGroupTransactionWizardView: View {
     }
     
     @ViewBuilder
-    func splitRow(for split: FirestoreModels.Split) -> some View {
+    func splitRow(for split: FirestoreModels.Split, symbol: String) -> some View {
         switch splitMode {
         case .equal, .exact:
             CustomSplitRow(
                 split: split,
                 mode: splitMode,
+                currencySymbol: symbol,
                 onAmountChange: { id, val in adjustSplits(manuallyChangedSplitId: id, newValue: val) },
                 onRemove: { 
                     if let fid = split.friendId {
@@ -496,6 +627,7 @@ struct EditGroupTransactionWizardView: View {
                     get: { percentages[split.id] ?? 0 },
                     set: { percentages[split.id] = $0; recalculateSplits(for: .percentage) }
                 ),
+                currencySymbol: symbol,
                 onRemove: {
                     if let fid = split.friendId {
                         toggleMember(id: fid, name: split.name)
@@ -509,6 +641,7 @@ struct EditGroupTransactionWizardView: View {
                     get: { shares[split.id] ?? 1 },
                     set: { shares[split.id] = $0; recalculateSplits(for: .shares) }
                 ),
+                currencySymbol: symbol,
                 onRemove: {
                     if let fid = split.friendId {
                         toggleMember(id: fid, name: split.name)
@@ -516,6 +649,12 @@ struct EditGroupTransactionWizardView: View {
                 }
             )
         }
+    }
+    
+    // Helper
+    func getSymbol(for currencyCode: String) -> String {
+        let locale = NSLocale(localeIdentifier: currencyCode)
+        return locale.displayName(forKey: .currencySymbol, value: currencyCode) ?? currencyCode
     }
     
     // Logic (Copied/Adapted from SplitConfigurationView)
@@ -569,12 +708,12 @@ struct EditGroupTransactionWizardView: View {
         guard !unlockedIndices.isEmpty else { return }
         
         // Payer + Splits = Total People
-        // If Payer is NOT in splits list (which they aren't, currently), we need to account for them
-        // IF the split is "Equal" among everyone including payer.
-        // Usually "Split with Group" implies everyone pays their share.
-        // So we divide by (Splits Count + 1) for Payer.
+        // Logic update: If Payer is ALREADY in splits (Group Mode), don't double count.
+        // If Payer is NOT in splits (Friend Mode), add 1.
+        let payerIncluded = splits.contains(where: { $0.friendId == appState.currentUserId })
+        let divisor = Double(unlockedIndices.count + (payerIncluded ? 0 : 1))
         
-        let shareAmount = (remainder) / Double(unlockedIndices.count + 1)
+        let shareAmount = (remainder) / divisor
         let roundedShare = (shareAmount * 100).rounded() / 100
         
         for index in unlockedIndices {

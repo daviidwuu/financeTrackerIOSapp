@@ -2,23 +2,23 @@ import WidgetKit
 import SwiftUI
 
 // MARK: - Data Provider
-struct Provider: TimelineProvider {
+struct Provider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), dailyExpense: 45.0, dailyVault: 0.0, monthlySpend: 1250.0, monthlyBudget: 2000.0)
+        SimpleEntry(date: Date(), dailyExpense: 45.0, dailyVault: 0.0, monthlySpend: 1250.0, monthlyBudget: 2000.0, configuration: ConfigurationAppIntent())
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> ()) {
-        let entry = SimpleEntry(
+    func snapshot(for configuration: ConfigurationAppIntent, in context: Context) async -> SimpleEntry {
+        SimpleEntry(
             date: Date(),
             dailyExpense: WidgetDataManager.shared.getDailySpend(),
             dailyVault: WidgetDataManager.shared.getDailyVault(),
             monthlySpend: WidgetDataManager.shared.getMonthlySpend(),
-            monthlyBudget: WidgetDataManager.shared.getMonthlyBudget()
+            monthlyBudget: WidgetDataManager.shared.getMonthlyBudget(),
+            configuration: configuration
         )
-        completion(entry)
     }
-
-    func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> ()) {
+    
+    func timeline(for configuration: ConfigurationAppIntent, in context: Context) async -> Timeline<SimpleEntry> {
         let currentDate = Date()
         let calendar = Calendar.current
         
@@ -32,20 +32,17 @@ struct Provider: TimelineProvider {
         var entries: [SimpleEntry] = []
         
         // 1. Current State
-        entries.append(SimpleEntry(date: currentDate, dailyExpense: expense, dailyVault: vault, monthlySpend: mSpend, monthlyBudget: mBudget))
+        entries.append(SimpleEntry(date: currentDate, dailyExpense: expense, dailyVault: vault, monthlySpend: mSpend, monthlyBudget: mBudget, configuration: configuration))
         
         // 2. Schedule 10 PM Unlock (if currently before 10 PM)
         if let tenPM = calendar.date(bySettingHour: 22, minute: 0, second: 0, of: currentDate), currentDate < tenPM {
-            entries.append(SimpleEntry(date: tenPM, dailyExpense: expense, dailyVault: vault, monthlySpend: mSpend, monthlyBudget: mBudget))
+            entries.append(SimpleEntry(date: tenPM, dailyExpense: expense, dailyVault: vault, monthlySpend: mSpend, monthlyBudget: mBudget, configuration: configuration))
         }
         
         // Next refresh: Standard 30 mins or at 10 PM, whichever is sooner/appropriate
-        // WidgetKit handles the timeline, so just adding the 10PM entry ensures it refreshes then.
-        // We'll also request a standard refresh in 30 mins to keep data fresh.
         let nextUpdateDate = calendar.date(byAdding: .minute, value: 30, to: currentDate)!
         
-        let timeline = Timeline(entries: entries, policy: .after(nextUpdateDate))
-        completion(timeline)
+        return Timeline(entries: entries, policy: .after(nextUpdateDate))
     }
 }
 
@@ -55,6 +52,7 @@ struct SimpleEntry: TimelineEntry {
     let dailyVault: Double   // Raw vault (income)
     let monthlySpend: Double
     let monthlyBudget: Double
+    let configuration: ConfigurationAppIntent
     
     // Logic: Vault Unlocks at 10:00 PM (22:00)
     var isVaultUnlocked: Bool {
@@ -88,7 +86,9 @@ struct LockScreenWidgetEntryView : View {
     @Environment(\.widgetFamily) var family
     @Environment(\.colorScheme) var colorScheme
     
-    var mode: WidgetDisplayMode = .remaining
+    var mode: WidgetDisplayModeEnum {
+        entry.configuration.displayMode
+    }
 
     var body: some View {
         switch family {
@@ -189,9 +189,6 @@ struct LockScreenWidgetEntryView : View {
                 .containerBackground(.clear, for: .widget)
             
         // MARK: Home Screen - Small (Daily Focus)
-        // MARK: Home Screen - Small (Daily Focus)
-        // MARK: Home Screen - Small (Daily Focus)
-        // MARK: Home Screen - Small (Daily Focus - True Black Redesign)
         case .systemSmall:
             ZStack {
                 // Background
@@ -529,11 +526,6 @@ struct LockScreenWidgetEntryView : View {
     }
 }
 
-enum WidgetDisplayMode {
-    case remaining
-    case spent
-}
-
 // MARK: - Helper Views
 struct WidgetCircularProgressView: View {
     let value: Double
@@ -565,30 +557,16 @@ struct WidgetCircularProgressView: View {
 }
 
 // MARK: - Configuration
-struct LockScreenWidget: Widget {
+struct BudgetWidget: Widget {
     let kind: String = "FinanceWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: Provider()) { entry in
-            LockScreenWidgetEntryView(entry: entry, mode: .remaining)
+        AppIntentConfiguration(kind: kind, intent: ConfigurationAppIntent.self, provider: Provider()) { entry in
+            LockScreenWidgetEntryView(entry: entry)
         }
-        .configurationDisplayName("wym")
-        .description("Track daily habits and monthly budget.")
+        .configurationDisplayName("Budget Overview")
+        .description("Monitor your daily spending limit and monthly budget health at a glance.")
         .supportedFamilies([.accessoryRectangular, .accessoryCircular, .accessoryInline, .systemSmall, .systemMedium])
         .contentMarginsDisabled() // Modern look for system widgets
-    }
-}
-
-struct SpentWidget: Widget {
-    let kind: String = "SpentWidget"
-
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: Provider()) { entry in
-            LockScreenWidgetEntryView(entry: entry, mode: .spent)
-        }
-        .configurationDisplayName("wym Spent")
-        .description("Track how much you have spent.")
-        .supportedFamilies([.accessoryCircular, .systemMedium])
-        .contentMarginsDisabled()
     }
 }

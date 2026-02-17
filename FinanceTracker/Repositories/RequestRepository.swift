@@ -13,7 +13,10 @@ class RequestRepository: ObservableObject {
     
     func startListening(userId: String) {
         stopListening()
-        self.isLoading = true
+        // Only show loading if we don't have any data yet (Stale-While-Revalidate)
+        if requests.isEmpty {
+            self.isLoading = true
+        }
         self.errorMessage = nil
         
         // v2.1: Listen to root `split_requests` where `toUid` == currentUserId

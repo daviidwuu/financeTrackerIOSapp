@@ -16,7 +16,10 @@ class BudgetRepository: ObservableObject {
     
     func startListening(userId: String) {
         self.userId = userId
-        self.isLoading = true
+        // Only show loading if we don't have any data yet (Stale-While-Revalidate)
+        if budgets.isEmpty {
+            self.isLoading = true
+        }
         self.errorMessage = nil
         
         // Listen to ALL budgets for this user (Permanent Budget Model)

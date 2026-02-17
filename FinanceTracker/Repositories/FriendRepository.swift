@@ -22,7 +22,10 @@ class FriendRepository: ObservableObject {
     
     func startListening(userId: String) {
         self.userId = userId
-        self.isLoading = true
+        // Only show loading if we don't have any data yet (Stale-While-Revalidate)
+        if friends.isEmpty {
+            self.isLoading = true
+        }
         self.errorMessage = nil
         
         listener = db.collection("users").document(userId).collection("friends")
@@ -106,31 +109,22 @@ class FriendRepository: ObservableObject {
     
     /// Create bidirectional friendship (Client-side fallback for Phase 6 Cloud Functions)
     func createFriendship(requestId: String, fromUser: (uid: String, name: String, username: String), toUser: (uid: String, name: String, username: String, email: String)) async throws {
+        // 1. Critical Batch: Add 'From User' to 'My' friends list AND Update Request Status
+        // We prioritize this because we have permission to write to our own collection.
         let batch = db.batch()
         
-        // 1. Add 'From User' (Sender) to 'To User' (Receiver/Me) friends list
         let senderAsFriend = FirestoreModels.Friend(
             id: fromUser.uid,
             username: fromUser.username,
             name: fromUser.name,
             email: nil, // Email not available in request
+            avatarColor: nil, // Will be updated by Cloud Function
             addedAt: Date()
         )
-        let receiverRef = db.collection("users").document(toUser.uid).collection("friends").document(fromUser.uid)
-        try batch.setData(from: senderAsFriend, forDocument: receiverRef)
+        // 'toUser' is Me (Receiver of request)
+        let myFriendRef = db.collection("users").document(toUser.uid).collection("friends").document(fromUser.uid)
+        try batch.setData(from: senderAsFriend, forDocument: myFriendRef)
         
-        // 2. Add 'To User' (Receiver/Me) to 'From User' (Sender) friends list
-        let receiverAsFriend = FirestoreModels.Friend(
-            id: toUser.uid,
-            username: toUser.username,
-            name: toUser.name,
-            email: toUser.email,
-            addedAt: Date()
-        )
-        let senderRef = db.collection("users").document(fromUser.uid).collection("friends").document(toUser.uid)
-        try batch.setData(from: receiverAsFriend, forDocument: senderRef)
-        
-        // 3. Update Request Status
         let requestRef = db.collection("friend_requests").document(requestId)
         batch.updateData(["status": "accepted"], forDocument: requestRef)
         

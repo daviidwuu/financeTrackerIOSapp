@@ -54,40 +54,42 @@ struct MenuSection<Content: View>: View {
             if let title = title {
                 Text(title)
                     .font(.caption)
-                    .fontWeight(.medium)
+                    .fontWeight(.bold)
                     .foregroundColor(.secondary)
-                    .padding(.leading, 16)
-                    .textCase(.none)
+                    .padding(.leading, 8)
+                    .textCase(.uppercase)
             }
             
             VStack(spacing: 0) {
                 content
             }
             .background(Color(UIColor.secondarySystemBackground))
-            .cornerRadius(AppRadius.large)
+            .cornerRadius(AppRadius.medium)
             .overlay(
-                RoundedRectangle(cornerRadius: AppRadius.large)
-                    .stroke(Color.primary.opacity(0.03), lineWidth: 1)
+                RoundedRectangle(cornerRadius: AppRadius.medium)
+                    .stroke(Color.primary.opacity(0.05), lineWidth: 1)
             )
         }
         .padding(.horizontal, AppSpacing.margin)
-        .padding(.top, 8)
+        .padding(.top, 0) // Reduced top padding
     }
 }
 
 struct MenuRowView: View {
-    let icon: String? // SF Symbol Name (Optional)
+    let icon: String?
     let title: String
     let value: String?
     let showChevron: Bool
-    let showToggle: Binding<Bool>?
+    @Binding var showToggle: Bool
+    private var hasToggle: Bool
     
     init(icon: String? = nil, title: String, value: String? = nil, showChevron: Bool = true, showToggle: Binding<Bool>? = nil) {
         self.icon = icon
         self.title = title
         self.value = value
         self.showChevron = showChevron
-        self.showToggle = showToggle
+        self._showToggle = showToggle ?? Binding.constant(false)
+        self.hasToggle = showToggle != nil
     }
     
     var body: some View {
@@ -95,8 +97,8 @@ struct MenuRowView: View {
             // Icon (if present)
             if let icon = icon {
                 Image(systemName: icon)
-                    .font(.system(size: 16)) // Reduced size to 16
-                    .foregroundColor(.primary) // Monochrome
+                    .font(.system(size: 16))
+                    .foregroundColor(.primary)
                     .frame(width: 24, height: 24)
             }
             
@@ -108,9 +110,13 @@ struct MenuRowView: View {
             Spacer()
             
             // Value or Toggle or Chevron
-            if let showToggle = showToggle {
-                Toggle("", isOn: showToggle)
+            if hasToggle {
+                Toggle("", isOn: $showToggle)
                     .labelsHidden()
+                    .toggleStyle(MonochromaticToggleStyle())
+                    .onChange(of: showToggle) { _, _ in
+                        HapticManager.shared.light()
+                    }
             } else {
                 if let value = value {
                     Text(value)
@@ -120,8 +126,8 @@ struct MenuRowView: View {
                 
                 if showChevron {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(Color(UIColor.tertiaryLabel))
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(Color(UIColor.tertiaryLabel))
                 }
             }
         }
@@ -165,5 +171,34 @@ struct MenuInputRow: View {
         .padding(.horizontal, 16)
         .background(Color(UIColor.secondarySystemBackground))
         .contentShape(Rectangle())
+    }
+}
+
+// MARK: - Custom Toggle Style
+struct MonochromaticToggleStyle: ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack {
+            configuration.label
+            
+            ZStack {
+                // Track
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(configuration.isOn ? Color.primary : Color(UIColor.systemGray5))
+                    .frame(width: 51, height: 31)
+                    .animation(.easeInOut(duration: 0.2), value: configuration.isOn)
+                
+                // Thumb
+                Circle()
+                    .fill(configuration.isOn ? Color.backgroundPrimary : .white)
+                    .padding(2)
+                    .frame(width: 31, height: 31)
+                    .offset(x: configuration.isOn ? 10 : -10)
+                    .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+                    .animation(.easeInOut(duration: 0.2), value: configuration.isOn)
+            }
+            .onTapGesture {
+                configuration.isOn.toggle()
+            }
+        }
     }
 }

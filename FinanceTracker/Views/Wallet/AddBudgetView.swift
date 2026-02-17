@@ -188,7 +188,10 @@ struct AddBudgetView: View {
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 60))], spacing: 20) {
                     ForEach(icons, id: \.self) { icon in
-                        Button(action: { selectedIcon = icon }) {
+                        Button(action: {
+                            HapticManager.shared.light()
+                            selectedIcon = icon
+                        }) {
                             Circle()
                                 .fill(selectedIcon == icon ? Color.primary : Color.secondary.opacity(0.1))
                                 .frame(width: 60, height: 60)
@@ -215,7 +218,10 @@ struct AddBudgetView: View {
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 60))], spacing: 20) {
                     ForEach(colors, id: \.self) { color in
-                        Button(action: { selectedColor = color }) {
+                        Button(action: {
+                            HapticManager.shared.light()
+                            selectedColor = color
+                        }) {
                             Circle()
                                 .fill(color)
                                 .frame(width: 60, height: 60)

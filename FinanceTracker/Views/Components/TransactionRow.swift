@@ -59,7 +59,7 @@ struct TransactionRow: View {
     }
 
     var body: some View {
-        HStack(spacing: AppSpacing.element) {
+        HStack(alignment: .center, spacing: AppSpacing.element) {
             Circle()
                 .fill(Color(hex: categoryColor).opacity(0.1))
                 .frame(width: 48, height: 48)
@@ -78,12 +78,17 @@ struct TransactionRow: View {
                 
                 // NEW: Show Note or Merchant (Title) as Subtitle
                 if let note = transaction.note, !note.isEmpty {
-                    Text(note)
+                    Text(transaction.currencyCode != nil ? "\(note) (\(transaction.currencyCode!))" : note)
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                 } else if transaction.title != (transaction.subtitle ?? "") {
-                    Text(transaction.title)
+                    Text(transaction.currencyCode != nil ? "\(transaction.title) (\(transaction.currencyCode!))" : transaction.title)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                } else if let currencyCode = transaction.currencyCode {
+                    Text("(\(currencyCode))")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)

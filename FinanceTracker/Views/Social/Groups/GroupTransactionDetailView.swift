@@ -175,16 +175,12 @@ struct GroupTransactionDetailView: View {
                                                     .fontWeight(.medium)
                                                     .foregroundColor(.primary)
                                                 
-                                                // Status Badge Pill
+                                                // Status Text (Matching TransactionDetailView)
                                                 if let status = Optional(split.status) {
                                                     Text(status.rawValue.capitalized)
                                                         .font(.caption2)
                                                         .fontWeight(.bold)
                                                         .foregroundColor(statusColor(for: status))
-                                                        .padding(.horizontal, 8)
-                                                        .padding(.vertical, 2)
-                                                        .background(statusColor(for: status).opacity(0.1))
-                                                        .clipShape(Capsule())
                                                 }
                                             }
                                             
@@ -199,6 +195,7 @@ struct GroupTransactionDetailView: View {
                                                 // Nudge Button (Only if pending)
                                                 if transaction.payerId == appState.currentUserId && (split.status == .pending || split.status == .accepted) {
                                                     Button {
+                                                        HapticManager.shared.light()
                                                         nudgeUser(split: split)
                                                     } label: {
                                                         Label("Nudge", systemImage: "bell.fill")
@@ -242,6 +239,23 @@ struct GroupTransactionDetailView: View {
                                             Divider().padding(.horizontal, 16)
                                         }
                                     }
+                                    
+                                    // Net Cost Row (Only visible to Payer)
+                                    if transaction.payerId == appState.currentUserId {
+                                        Divider().padding(.horizontal, 16)
+                                        HStack {
+                                            Text("Net Cost")
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                            Spacer()
+                                            let reimbursed = splits.filter { $0.status == .paid }.reduce(0) { $0 + $1.amount }
+                                            Text(String(format: "$%.2f", abs(transaction.amount) - reimbursed))
+                                                .font(.headline.monospacedDigit())
+                                                .foregroundColor(.primary)
+                                        }
+                                        .padding(16)
+                                        .background(Color.primary.opacity(0.03))
+                                    }
                                 }
                                 .cornerRadius(AppRadius.medium)
                                 .overlay(
@@ -249,6 +263,50 @@ struct GroupTransactionDetailView: View {
                                         .stroke(Color.primary.opacity(0.05), lineWidth: 1)
                                 )
                             }
+                        }
+                        .padding(.horizontal, AppSpacing.margin)
+                        
+                        // 3. Details Section
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("DETAILS")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(.secondary)
+                                .padding(.leading, 8)
+                            
+                            VStack(spacing: 0) {
+                                GroupDetailRow(title: "Category", value: transaction.category ?? "Uncategorized", icon: "tag.fill", color: Color(hex: transaction.colorHex ?? "#808080"))
+                                
+                                if let originalTx = originalTransaction,
+                                   let originalAmount = originalTx.originalAmount,
+                                   let currencyCode = originalTx.currencyCode {
+                                    
+                                    Divider().padding(.leading, 52)
+                                    GroupDetailRow(title: "Original Amount", value: String(format: "%.2f %@", originalAmount, currencyCode), icon: "banknote", color: .blue)
+                                    
+                                    if let rate = originalTx.exchangeRate {
+                                        Divider().padding(.leading, 52)
+                                        GroupDetailRow(title: "Exchange Rate", value: String(format: "1 %@ = %.2f %@", transaction.currencyCode ?? CurrencyManager.shared.mainCurrency, rate, currencyCode), icon: "arrow.triangle.2.circlepath", color: .orange)
+                                    }
+                                } else if let originalAmount = transaction.originalAmount, let rate = transaction.exchangeRate {
+                                    // Fallback using data from GroupTransaction if OriginalTransaction isn't loaded yet (though code is missing)
+                                    Divider().padding(.leading, 52)
+                                    GroupDetailRow(title: "Original Amount", value: String(format: "%.2f (Foreign)", originalAmount), icon: "banknote", color: .blue)
+                                     
+                                    Divider().padding(.leading, 52)
+                                    GroupDetailRow(title: "Exchange Rate", value: String(format: "Rate: %.2f", rate), icon: "arrow.triangle.2.circlepath", color: .orange)
+                                }
+                                
+                                if let note = transaction.note, !note.isEmpty {
+                                    Divider().padding(.leading, 52)
+                                    GroupDetailRow(title: "Notes", value: note, icon: "text.alignleft", color: .secondary)
+                                }
+                                
+                                Divider().padding(.leading, 52)
+                                GroupDetailRow(title: "Created on", value: transaction.date.formatted(date: .omitted, time: .shortened), icon: "clock", color: .secondary)
+                            }
+                            .background(Color(UIColor.secondarySystemBackground))
+                            .cornerRadius(AppRadius.medium)
                         }
                         .padding(.horizontal, AppSpacing.margin)
                         
@@ -293,8 +351,8 @@ struct GroupTransactionDetailView: View {
             loadOriginalTransaction()
         }
         .sheet(isPresented: $showingEditWizard) {
-            EditGroupTransactionWizardView(group: group, transactionToEdit: transaction) { newAmount, newNote, newSplits in
-                handleEdit(amount: newAmount, note: newNote, splits: newSplits)
+            EditGroupTransactionWizardView(group: group, preSelectedFriend: nil, transactionToEdit: transaction) { newAmount, newNote, newCategory, newSplits in
+                handleEdit(amount: newAmount, note: newNote, category: newCategory, splits: newSplits)
             }
         }
         .sheet(isPresented: $showHistory) {
@@ -337,7 +395,7 @@ struct GroupTransactionDetailView: View {
     
     // MARK: - Handlers
     
-    private func handleEdit(amount: Double, note: String, splits: [FirestoreModels.Split]) {
+    private func handleEdit(amount: Double, note: String, category: FirestoreModels.CategoryBudget?, splits: [FirestoreModels.Split]) {
         guard let originalTx = originalTransaction else { return }
         
         Task {
@@ -348,6 +406,13 @@ struct GroupTransactionDetailView: View {
                 updatedTx.splits = splits
                 updatedTx.note = note.isEmpty ? nil : note
                 updatedTx.title = note.isEmpty ? updatedTx.title : note // Update title if note is used as title logic
+                
+                // Update category if provided
+                if let cat = category {
+                    updatedTx.subtitle = cat.category
+                    updatedTx.icon = cat.icon
+                    updatedTx.colorHex = cat.colorHex
+                }
                 
                 // Save to backend
                 _ = try await SocialTransactionManager.shared.createSocialTransaction(

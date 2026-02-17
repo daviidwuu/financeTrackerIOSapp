@@ -11,10 +11,23 @@ struct SocialDashboardView: View {
     @State private var showingAddSheet = false
     @State private var showArchived = false // ✅ NEW: Toggle archived view
     
+    // Navigation Path
+    @State private var navigationPath = NavigationPath()
+    
+    // Enum for stable navigation
+    enum SocialDestination: Hashable {
+        case group(String)
+        case friend(String)
+    }
+
+    init() {
+        print("DEBUG: SocialDashboardView init")
+    }
+
     var body: some View {
-        NavigationStack {
-            ZStack(alignment: .bottomTrailing) {
-                Color.backgroundPrimary.edgesIgnoringSafeArea(.all)
+        NavigationStack(path: $navigationPath) {
+            ZStack {
+                Color.backgroundPrimary.ignoresSafeArea()
                     .onTapGesture {
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     }
@@ -37,42 +50,55 @@ struct SocialDashboardView: View {
                     .padding(.top, 16)
                     .padding(.bottom, 16)
                     
-                    ScrollView {
-                        VStack(spacing: 4) {
-                            // 2. Custom Segmented Control
-                            CustomSegmentedControl(selection: $selectedSegment, options: ["Groups", "Friends", "Leaderboard"])
-                                .padding(.horizontal, AppSpacing.margin)
-                            
-                            // 3. Search Bar
-                            SearchBar(text: $searchText, onSearch: performSearch, isLoading: isSearching)
-                                .padding(.horizontal, AppSpacing.margin)
-                                .padding(.vertical, 4)
-                            
-                            // 4. Content List
-                            if (selectedSegment == 0 && appState.groupRepo.isLoading) ||
-                               (selectedSegment == 1 && appState.friendRepo.isLoading) ||
-                               (selectedSegment == 2 && repo.isLoading) {
-                                ProgressView()
-                                    .padding(.top, 40)
-                            } else {
-                                VStack(spacing: 4) {
-                                    if selectedSegment == 0 {
-                                        groupsList
-                                    } else if selectedSegment == 1 {
-                                        friendsList
-                                    } else {
-                                        LeaderboardView(repo: repo, filter: searchText)
-                                    }
-                                }
-                                .padding(.bottom, 100) // Space for bottom area
-                            }
-                        }
-                        .padding(.top, 8)
+                    List {
+                    // 2. Custom Segmented Control
+                    Section {
+                        CustomSegmentedControl(selection: $selectedSegment, options: ["Groups", "Friends", "Leaderboard"])
+                            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                        
+                        // 3. Search Bar
+                        SearchBar(text: $searchText, onSearch: performSearch, isLoading: isSearching)
+                            .listRowInsets(EdgeInsets(top: 8, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
                     }
+                    
+                    // 4. Content List
+                    if (selectedSegment == 0 && appState.groupRepo.isLoading) ||
+                       (selectedSegment == 1 && appState.friendRepo.isLoading) ||
+                       (selectedSegment == 2 && repo.isLoading) {
+                        ProgressView()
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                            .padding(.top, 40)
+                    } else {
+                        if selectedSegment == 0 {
+                            groupsList
+                        } else if selectedSegment == 1 {
+                            friendsList
+                        } else {
+                            leaderboardList
+                        }
+                    }
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .scrollIndicators(.hidden)
                 }
                 .background(alerts())
             }
             .navigationBarHidden(true)
+            .navigationDestination(for: SocialDestination.self) { destination in
+                switch destination {
+                case .group(let groupId):
+                    GroupDetailView(groupId: groupId)
+                case .friend(let friendId):
+                    FriendDetailContainerView(friendId: friendId)
+                }
+            }
             .sheet(isPresented: $showingAddSheet) {
                 if selectedSegment == 0 {
                     GroupCreationWizardView()
@@ -83,6 +109,9 @@ struct SocialDashboardView: View {
                     .presentationDetents([.fraction(0.4)])
                 }
             }
+        }
+        .onChange(of: navigationPath) { _, newPath in
+            print("DEBUG: Navigation path changed. Count: \(newPath.count)")
         }
         .onReceive(repo.$errorMessage) { msg in
             if let msg = msg {
@@ -95,6 +124,14 @@ struct SocialDashboardView: View {
                  guestRepo.startListening(userId: appState.currentUserId)
                  // ✅ Start listening to global balances
                  repo.listenToGlobalBalances(currentUserId: appState.currentUserId)
+                 
+                 // Fetch Leaderboard if needed
+                 if repo.leaderboardData.isEmpty {
+                     repo.fetchLeaderboard(
+                         friends: appState.friendRepo.friends,
+                         currentUser: (id: appState.currentUserId, name: appState.userName)
+                     )
+                 }
             }
         }
         .onDisappear {
@@ -170,29 +207,25 @@ struct SocialDashboardView: View {
         }
     }
 
+    @ViewBuilder
     var groupsList: some View {
-        // ✅ Filter logic: Search + Archive + Soft Delete Pending
         let filteredGroups = appState.groupRepo.groups.filter { group in
             let matchesSearch = searchText.isEmpty || group.name.localizedCaseInsensitiveContains(searchText)
             let isNotDeleted = !pendingDeletedGroupIds.contains(group.id ?? "")
             return matchesSearch && isNotDeleted
         }
         
-        return LazyVStack(spacing: 0) {
+        Group {
             // Priority: Group Invitations
             if !appState.groupInvitationRepo.incomingInvitations.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("INVITATIONS")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, AppSpacing.margin)
-                    
+                Section(header: Text("INVITATIONS").font(.caption).fontWeight(.bold)) {
                     ForEach(appState.groupInvitationRepo.incomingInvitations) { invite in
                         InvitationCard(invite: invite)
+                            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
                     }
                 }
-                .padding(.bottom, 8)
             }
             
             // Create New Group Button
@@ -216,36 +249,33 @@ struct SocialDashboardView: View {
                     Spacer()
                 }
                 .padding(AppSpacing.element)
-                .padding(.horizontal, AppSpacing.margin)
                 .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
-            .padding(.bottom, 8)
+            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
 
             ForEach(filteredGroups) { group in
-                NavigationLink(destination: GroupDetailView(group: group)) {
-                    GroupCardView(group: group)
-                        .padding(.horizontal, AppSpacing.margin)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .contextMenu {
-                    Button(role: .destructive) {
-                        groupToDelete = group
-                        showGroupDeleteAlert = true
-                    } label: {
-                        Label("Delete Group", systemImage: "trash")
+                GroupCardView(group: group)
+                    .contentShape(Rectangle()) // Ensure tap area covers the whole card
+                    .onTapGesture {
+                        if let id = group.id {
+                            navigationPath.append(SocialDestination.group(id))
+                        }
                     }
-                }
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    Button(role: .destructive) {
-                        groupToDelete = group
-                        showGroupDeleteAlert = true
-                    } label: {
-                        Label("Delete", systemImage: "trash")
+                    .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) {
+                            groupToDelete = group
+                            showGroupDeleteAlert = true
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                        .tint(.red)
                     }
-                    .tint(.red)
-                }
-                .padding(.bottom, 8)
             }
             
             if filteredGroups.isEmpty {
@@ -254,33 +284,30 @@ struct SocialDashboardView: View {
                     title: searchText.isEmpty ? "No Groups" : "No Groups Found",
                     message: searchText.isEmpty ? "Create a group to start splitting expenses." : "Try a different search term."
                 )
-                .padding(.top, 40)
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
             }
         }
     }
     
+    @ViewBuilder
     var friendsList: some View {
         let filteredFriends = appState.friendRepo.friends.filter { friend in
-            (searchText.isEmpty || friend.name.localizedCaseInsensitiveContains(searchText) || friend.username.localizedCaseInsensitiveContains(searchText)) &&
+            (searchText.isEmpty || friend.name.localizedCaseInsensitiveContains(searchText) || (friend.username ?? "").localizedCaseInsensitiveContains(searchText)) &&
             !pendingDeletedFriendIds.contains(friend.id ?? "")
         }
         
-        return LazyVStack(spacing: 0) {
+        Group {
             // 0. Incoming Requests Section
             if !appState.friendRequestRepo.incomingRequests.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("PENDING REQUESTS")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, AppSpacing.margin)
-                        .padding(.top, 8)
-                    
+                Section(header: Text("PENDING REQUESTS").font(.caption).fontWeight(.bold)) {
                     ForEach(appState.friendRequestRepo.incomingRequests) { request in
                         FriendRequestCard(request: request)
+                            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
                     }
                 }
-                .padding(.bottom, 8)
             }
             
             // Add Guest Button (Bottom)
@@ -304,36 +331,33 @@ struct SocialDashboardView: View {
                     Spacer()
                 }
                 .padding(AppSpacing.element)
-                .padding(.horizontal, AppSpacing.margin)
                 .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
-            .padding(.bottom, 8)
+            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
             
             ForEach(filteredFriends, id: \.id) { friend in
-                NavigationLink(destination: FriendDetailView(friend: friend)) {
-                    FriendCardView(friend: friend)
-                        .padding(.horizontal, AppSpacing.margin)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .contextMenu {
-                    Button(role: .destructive) {
-                        friendToDelete = friend
-                        showFriendDeleteAlert = true
-                    } label: {
-                        Label("Remove Friend", systemImage: "trash")
+                FriendCardView(friend: friend)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        if let id = friend.id {
+                            navigationPath.append(SocialDestination.friend(id))
+                        }
                     }
-                }
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    Button(role: .destructive) {
-                        friendToDelete = friend
-                        showFriendDeleteAlert = true
-                    } label: {
-                        Label("Remove", systemImage: "trash")
+                    .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) {
+                            friendToDelete = friend
+                            showFriendDeleteAlert = true
+                        } label: {
+                            Label("Remove", systemImage: "trash")
+                        }
+                        .tint(.red)
                     }
-                    .tint(.red)
-                }
-                .padding(.bottom, 8)
             }
             
             if filteredFriends.isEmpty {
@@ -342,7 +366,65 @@ struct SocialDashboardView: View {
                      title: searchText.isEmpty ? "No Friends" : "No Friends Found",
                      message: searchText.isEmpty ? "Add friends to split bills 1-on-1." : "Try a different search term."
                 )
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    var leaderboardList: some View {
+        let filteredData: [SocialRepository.LeaderboardEntry] = {
+            if searchText.isEmpty {
+                return repo.leaderboardData
+            } else {
+                return repo.leaderboardData.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+            }
+        }()
+        
+        Group {
+            if repo.isLoading {
+                ProgressView()
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .padding(.top, 40)
+            } else if filteredData.isEmpty {
+                EmptyStateView(
+                    icon: "trophy",
+                    title: "Leaderboard",
+                    message: searchText.isEmpty ? "Compare your gamification points with friends!" : "No results found."
+                )
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
                 .padding(.top, 40)
+            } else {
+                // 1. Podium for Top 3 (Only if filter is empty to show true leaders)
+                if searchText.isEmpty && !filteredData.isEmpty {
+                    Section {
+                        PodiumView(topUsers: Array(filteredData.prefix(3)))
+                            .padding(.top, 20)
+                            .frame(maxWidth: .infinity) // Center align
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                }
+                
+                // 2. List for the rest (or all if filtered)
+                let startIndex = (searchText.isEmpty && filteredData.count > 3) ? 3 : 0
+                let dataToShow = (searchText.isEmpty && filteredData.count > 3) ? Array(filteredData.dropFirst(3)) : filteredData
+                
+                ForEach(Array(dataToShow.enumerated()), id: \.element.id) { index, entry in
+                    LeaderboardRow(
+                        entry: entry,
+                        rank: startIndex + index + 1,
+                        isCurrentUser: entry.id == appState.currentUserId
+                    )
+                    .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                }
             }
         }
     }
@@ -435,7 +517,7 @@ struct SocialDashboardView: View {
         Task {
             do {
                 if appState.friendRepo.friends.contains(where: { 
-                    $0.username.localizedCaseInsensitiveCompare(username) == .orderedSame 
+                    ($0.username ?? "").localizedCaseInsensitiveCompare(username) == .orderedSame 
                 }) {
                     await MainActor.run {
                         resultTitle = "Already Friends"
@@ -539,6 +621,7 @@ struct CustomSegmentedControl: View {
                             .padding(.horizontal, 16)
                     }
                 }
+                .buttonStyle(PlainButtonStyle())
                 .frame(maxWidth: .infinity)
             }
         }
@@ -596,11 +679,11 @@ struct InvitationCard: View {
                         .clipShape(Circle())
                 }
             }
+            .buttonStyle(PlainButtonStyle())
         }
         .padding(AppSpacing.element)
         .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(AppRadius.medium)
-        .padding(.horizontal, AppSpacing.margin)
     }
     
     func accept() {
@@ -658,22 +741,31 @@ struct FriendRequestCard: View {
                         .clipShape(Circle())
                 }
             }
+            .buttonStyle(PlainButtonStyle())
         }
         .padding(AppSpacing.element)
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(AppRadius.medium)
-        .padding(.horizontal, AppSpacing.margin)
-    }
-    
-    func accept() {
+    .background(Color(UIColor.secondarySystemBackground))
+    .cornerRadius(AppRadius.medium)
+}
+
+func accept() {
         Task {
             // MVP: Client-side accept
-            try? await appState.friendRepo.createFriendship(
-                requestId: request.id ?? "",
-                fromUser: (uid: request.fromUid, name: request.fromName ?? "Unknown", username: request.fromUsername ?? ""),
-                toUser: (uid: appState.currentUserId, name: appState.userName, username: appState.currentUserUsername, email: appState.userEmail)
-            )
-            HapticManager.shared.success()
+            do {
+                try await appState.friendRepo.createFriendship(
+                    requestId: request.id ?? "",
+                    fromUser: (uid: request.fromUid, name: request.fromName ?? "Unknown", username: request.fromUsername ?? ""),
+                    toUser: (uid: appState.currentUserId, name: appState.userName, username: appState.currentUserUsername, email: appState.userEmail)
+                )
+                await MainActor.run {
+                    HapticManager.shared.success()
+                }
+            } catch {
+                print("Error accepting friend request: \(error)")
+                await MainActor.run {
+                    HapticManager.shared.error()
+                }
+            }
         }
     }
     func decline() {

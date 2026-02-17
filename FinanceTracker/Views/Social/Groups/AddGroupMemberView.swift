@@ -36,7 +36,10 @@ struct AddGroupMemberView: View {
                         .font(.headline)
                     
                     HStack {
-                        Button(action: { dismiss() }) {
+                        Button(action: {
+                            HapticManager.shared.light()
+                            dismiss()
+                        }) {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.title2)
                                 .foregroundColor(.secondary.opacity(0.5))

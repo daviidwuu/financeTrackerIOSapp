@@ -78,7 +78,10 @@ struct DetailHeaderView<Content: View, Actions: View, Subtitle: View>: View {
             // Top Navigation
             VStack {
                 HStack {
-                    Button(action: onBack) {
+                    Button(action: {
+                        HapticManager.shared.light()
+                        onBack()
+                    }) {
                         Image(systemName: backIcon)
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundColor(textColor)
@@ -86,11 +89,15 @@ struct DetailHeaderView<Content: View, Actions: View, Subtitle: View>: View {
                             .background(textColor.opacity(0.05))
                             .clipShape(Circle())
                     }
+                    .buttonStyle(.borderless)
                     
                     Spacer()
                     
                     if let onMenu = onMenu {
-                        Button(action: onMenu) {
+                        Button(action: {
+                            HapticManager.shared.light()
+                            onMenu()
+                        }) {
                             Image(systemName: "ellipsis")
                                 .font(.system(size: 18, weight: .semibold))
                                 .foregroundColor(textColor)
@@ -98,6 +105,7 @@ struct DetailHeaderView<Content: View, Actions: View, Subtitle: View>: View {
                                 .background(textColor.opacity(0.05))
                                 .clipShape(Circle())
                         }
+                        .buttonStyle(.borderless)
                     }
                 }
                 .padding(.horizontal, AppSpacing.margin + AppSpacing.compact)

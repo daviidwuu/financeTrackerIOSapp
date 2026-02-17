@@ -14,6 +14,7 @@ struct HomeView: View {
     var budgetRepo: BudgetRepository { appState.budgetRepo }
     var recurringRepo: RecurringTransactionRepository { appState.recurringRepo }
     var requestRepo: RequestRepository { appState.requestRepo }
+    var friendRequestRepo: FriendRequestRepository { appState.friendRequestRepo }
     
     @State private var showAddTransaction = false
     // showProfile moved to AppState
@@ -87,7 +88,10 @@ struct HomeView: View {
                                 Spacer()
                                 
                                 // [NEW] Mission Button
-                                Button(action: { showMissions = true }) {
+                                Button(action: { 
+                                    HapticManager.shared.light()
+                                    showMissions = true 
+                                }) {
                                     ZStack {
                                         Circle()
                                             .fill(Color.primary.opacity(0.05))
@@ -106,7 +110,10 @@ struct HomeView: View {
                                 }
                                 .buttonStyle(.plain)
                                 
-                                Button(action: { appState.showProfile = true }) {
+                                Button(action: { 
+                                    HapticManager.shared.light()
+                                    appState.showProfile = true 
+                                }) {
                                     Circle()
                                         .fill(Color.secondary.opacity(0.15))
                                         .frame(width: 44, height: 44)
@@ -173,6 +180,19 @@ struct HomeView: View {
                         .padding(.bottom, AppSpacing.compact)
                     }
                     
+                    // Section 1.4: Friend Requests
+                    if !friendRequestRepo.incomingRequests.isEmpty {
+                        Section(header: Text("Friend Requests").font(.headline)) {
+                            ForEach(friendRequestRepo.incomingRequests) { request in
+                                FriendRequestCard(request: request)
+                                    .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+                                    .listRowSeparator(.hidden)
+                                    .listRowBackground(Color.clear)
+                                    .padding(.bottom, AppSpacing.compact)
+                            }
+                        }
+                    }
+                    
                     // Section 1.5: Pending Requests
                     let pendingRequests = requestRepo.requests.filter { $0.status == .pending }
                     if !pendingRequests.isEmpty {
@@ -216,30 +236,14 @@ struct HomeView: View {
                         .textCase(nil)
                     ) {
                         if transactionRepo.isLoading {
-                            // Skeleton Loading State
-                            ForEach(0..<3) { _ in
-                                HStack {
-                                    Circle()
-                                        .fill(Color.secondary.opacity(0.1))
-                                        .frame(width: 40, height: 40)
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Capsule()
-                                            .fill(Color.secondary.opacity(0.1))
-                                            .frame(width: 120, height: 16)
-                                        Capsule()
-                                            .fill(Color.secondary.opacity(0.1))
-                                            .frame(width: 80, height: 12)
-                                    }
-                                    Spacer()
-                                    Capsule()
-                                        .fill(Color.secondary.opacity(0.1))
-                                        .frame(width: 60, height: 16)
-                                }
-                                .padding(.vertical, 8)
-                                .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
-                                .listRowSeparator(.hidden)
-                                .listRowBackground(Color.clear)
+                            HStack {
+                                Spacer()
+                                ProgressView()
+                                    .padding(.vertical, 20)
+                                Spacer()
                             }
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
                         } else if transactionRepo.transactions.isEmpty {
                             EmptyStateView(
                                 icon: "tray.fill",

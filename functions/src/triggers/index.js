@@ -12,6 +12,8 @@ exports.v2_onFriendRequestCreated = onDocumentCreated('friend_requests/{requestI
 
 exports.v2_onFriendRequestUpdated = onDocumentUpdated('friend_requests/{requestId}', async (event) => {
   const after = event.data.after.data();
+  console.log(`Friend Request ${event.params.requestId} updated. Status: ${after.status}`);
+  
   if (after.status === 'accepted') {
     const batch = admin.firestore().batch();
     const fromInfo = await getUserInfo(after.fromUid);
@@ -21,13 +23,13 @@ exports.v2_onFriendRequestUpdated = onDocumentUpdated('friend_requests/{requestI
     const fromFriendRef = admin.firestore().collection('users').doc(after.toUid).collection('friends').doc(after.fromUid);
     batch.set(fromFriendRef, {
       id: after.fromUid, username: fromInfo.username, name: fromInfo.name,
-      avatarColor: fromInfo.avatarColor, createdAt: new Date()
+      avatarColor: fromInfo.avatarColor, addedAt: new Date()
     });
 
     const toFriendRef = admin.firestore().collection('users').doc(after.fromUid).collection('friends').doc(after.toUid);
     batch.set(toFriendRef, {
       id: after.toUid, username: toInfo.username, name: toInfo.name,
-      avatarColor: toInfo.avatarColor, createdAt: new Date()
+      avatarColor: toInfo.avatarColor, addedAt: new Date()
     });
 
     // b. Unblock Group Invitations
@@ -203,8 +205,16 @@ exports.v2_onSplitRequestUpdated = onDocumentUpdated('split_requests/{requestId}
 
       // Notify Sender
       if (after.status === 'paid' && before.status !== 'paid') {
-        const receiver = await getUserInfo(after.toUid);
-        await sendNotification(after.fromUid, 'Payment Received', `${receiver.name} marked the split as paid.`, { type: 'split_paid' });
+        const debtor = await getUserInfo(after.toUid);
+        
+        if (after.lastUpdatedBy === after.fromUid) {
+             // Creditor marked it -> Notify Debtor
+             const creditor = await getUserInfo(after.fromUid);
+             await sendNotification(after.toUid, 'Payment Confirmed', `${creditor.name} marked your split as paid.`, { type: 'split_paid', id: event.params.requestId });
+        } else {
+             // Debtor marked it -> Notify Creditor
+             await sendNotification(after.fromUid, 'Payment Received', `${debtor.name} marked the split as paid.`, { type: 'split_paid', id: event.params.requestId });
+        }
       } else if (after.status === 'declined' && before.status !== 'declined') {
         const receiver = await getUserInfo(after.toUid);
         await sendNotification(after.fromUid, 'Request Declined', `${receiver.name} declined to pay.`, { type: 'split_declined' });

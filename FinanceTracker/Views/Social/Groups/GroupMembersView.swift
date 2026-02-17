@@ -23,7 +23,10 @@ struct GroupMembersView: View {
                     VStack(alignment: .leading, spacing: 24) {
                         
                         // Action: Add Member
-                        Button(action: { showingAddMember = true }) {
+                        Button(action: {
+                            HapticManager.shared.light()
+                            showingAddMember = true
+                        }) {
                             HStack(spacing: 16) {
                                 ZStack {
                                     Circle()

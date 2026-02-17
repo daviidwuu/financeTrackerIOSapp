@@ -328,10 +328,12 @@ class SocialTransactionManager: ObservableObject {
                     type: finalTransaction.type,
                     currencyCode: targetCurrency, // ✅ Store Target Currency
                     note: finalTransaction.note, // ✅ NEW: Store Note ("Burger King")
-                    category: finalTransaction.subtitle, // ✅ NEW: Store Category ("Food & Dining")
+                    category: nil, // ✅ USER REQUEST: Do not show personal category in Group View
                     icon: finalTransaction.icon, // ✅ NEW
                     colorHex: finalTransaction.colorHex, // ✅ NEW
                     originalTransactionId: finalTransaction.id,
+                    originalAmount: (sourceCurrency != targetCurrency) ? finalTransaction.amount : nil, // ✅ NEW: Store Original Amount
+                    exchangeRate: (sourceCurrency != targetCurrency) ? conversionRate : nil, // ✅ NEW: Store Exchange Rate
                     editHistory: finalTransaction.editHistory // ✅ Sync Edit History
                 )
                 try batch.setData(from: groupTx, forDocument: groupTxRef)
@@ -347,8 +349,6 @@ class SocialTransactionManager: ObservableObject {
     
     /// Deletes a social transaction and its associated splits/group feed items.
     func deleteSocialTransaction(groupTransaction: FirestoreModels.GroupTransaction, groupId: String) async throws {
-        guard let originalTxId = groupTransaction.originalTransactionId else { return }
-        
         let batch = db.batch()
         
         // 1. Delete Group Transaction (Archive First)
@@ -359,6 +359,12 @@ class SocialTransactionManager: ObservableObject {
              _ = try? batch.setData(from: groupTransaction, forDocument: archiveRef)
              
              batch.deleteDocument(ref)
+        }
+        
+        // If no original transaction is linked (e.g. legacy settlement), we are done.
+        guard let originalTxId = groupTransaction.originalTransactionId else {
+            try await batch.commit()
+            return
         }
         
         // 2. Delete Split Requests (Archive First)
@@ -453,6 +459,26 @@ class SocialTransactionManager: ObservableObject {
                 
                 batch.deleteDocument(doc.reference)
             }
+        } else {
+            // FALLBACK: Search for Group Transaction via Collection Group Query (for orphaned transactions)
+            // This handles cases where no split requests exist but a group transaction does.
+            let groupTxsSnapshot = try await db.collectionGroup("transactions")
+                .whereField("originalTransactionId", isEqualTo: transactionId)
+                .getDocuments()
+                
+            for doc in groupTxsSnapshot.documents {
+                // Ensure it's a Group Transaction (path check)
+                if doc.reference.path.contains("groups") {
+                    // Archive
+                    let groupIdFromPath = doc.reference.parent.parent?.documentID
+                    if let gid = groupIdFromPath {
+                        let archiveRef = db.collection("groups").document(gid).collection("archived_transactions").document(doc.documentID)
+                        batch.setData(doc.data(), forDocument: archiveRef)
+                    }
+                    
+                    batch.deleteDocument(doc.reference)
+                }
+            }
         }
         
         // 3. Delete Linked Income Transactions (Reimbursements)
@@ -541,7 +567,10 @@ class SocialTransactionManager: ObservableObject {
         
         // 1. Update Request Status to .paid
         let requestRef = db.collection("split_requests").document(requestId)
-        batch.updateData(["status": FirestoreModels.SplitRequest.RequestStatus.paid.rawValue], forDocument: requestRef)
+        batch.updateData([
+            "status": FirestoreModels.SplitRequest.RequestStatus.paid.rawValue,
+            "lastUpdatedBy": currentUserId
+        ], forDocument: requestRef)
         
         // 2. Sync with Original Transaction (Creditor's Side)
         let creditorId = request.fromUid
@@ -595,7 +624,36 @@ class SocialTransactionManager: ObservableObject {
             }
         }
         
-
+        // 3. Create Group Transaction (Settlement)
+        if let groupId = request.groupId {
+             let groupRef = db.collection("groups").document(groupId).collection("transactions").document()
+             
+             // Determine Names
+             // Request: fromUid (Creditor), toUid (Debtor)
+             // We need Payer (Debtor) and Receiver (Creditor)
+             let payerName = request.toName ?? "Member"
+             let receiverName = request.fromName ?? "Member"
+             
+             let groupTx = FirestoreModels.GroupTransaction(
+                 id: nil,
+                 title: "Settlement",
+                 amount: request.amount,
+                 payerId: request.toUid,
+                 payerName: payerName,
+                 receiverId: request.fromUid,
+                 receiverName: receiverName,
+                 date: Date(),
+                 type: "settlement",
+                 currencyCode: request.currency,
+                 note: request.note,
+                 category: "Settlement",
+                 icon: "dollarsign.circle.fill",
+                 colorHex: "#34C759",
+                 originalTransactionId: requestId, // Link to Request ID so we can delete it later
+                 editHistory: nil
+             )
+             try batch.setData(from: groupTx, forDocument: groupRef)
+        }
         
         try await batch.commit()
     }
@@ -607,7 +665,10 @@ class SocialTransactionManager: ObservableObject {
         
         // 1. Update Request
         let requestRef = db.collection("split_requests").document(requestId)
-        batch.updateData(["status": FirestoreModels.SplitRequest.RequestStatus.pending.rawValue], forDocument: requestRef)
+        batch.updateData([
+            "status": FirestoreModels.SplitRequest.RequestStatus.pending.rawValue,
+            "lastUpdatedBy": currentUserId
+        ], forDocument: requestRef)
         
         // 2. Revert Original Transaction Sync (If Creditor)
         if currentUserId == request.fromUid {
@@ -635,6 +696,17 @@ class SocialTransactionManager: ObservableObject {
                 }
             } catch {
                 print("DEBUG: Error unmarking split in transaction: \(error)")
+            }
+        }
+        
+        // 3. Delete Group Transaction (Settlement)
+        if let groupId = request.groupId {
+            let groupTxs = try await db.collection("groups").document(groupId).collection("transactions")
+                .whereField("originalTransactionId", isEqualTo: requestId)
+                .getDocuments()
+            
+            for doc in groupTxs.documents {
+                batch.deleteDocument(doc.reference)
             }
         }
         
@@ -811,6 +883,7 @@ class SocialTransactionManager: ObservableObject {
                 amount: amount,
                 payerId: payerId,
                 payerName: payerName, 
+                receiverId: receiverId, // ✅ Store Receiver ID
                 receiverName: receiverName, // ✅ Added parameter
                 date: Date(),
                 type: "settlement", // Special type
@@ -819,7 +892,7 @@ class SocialTransactionManager: ObservableObject {
                 category: "Settlement",
                 icon: "dollarsign.circle.fill", // Updated icon
                 colorHex: "#34C759",
-                originalTransactionId: nil,
+                originalTransactionId: payerRef.documentID, // Linked to payer transaction
                 editHistory: nil
             )
             try batch.setData(from: groupTx, forDocument: groupRef)

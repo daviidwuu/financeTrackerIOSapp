@@ -7,13 +7,24 @@ struct ContentView: View {
     // RecurringRepo was unused in body, but removing state object ref
     var recurringRepo: RecurringTransactionRepository { appState.recurringRepo }
     @State private var showAddTransaction = false
+    @State private var deepLinkCategory: String? // New state for deep link
     @Environment(\.colorScheme) var colorScheme
     // @State private var selectedTab = 0 // Moved to AppState
     @State private var showPostOnboardingGuide = false
     @AppStorage("budgetAlertThreshold") private var budgetAlertThreshold: Double = 0.8
     
     var body: some View {
-        TabView(selection: $appState.selectedTab) {
+        TabView(selection: Binding(
+            get: { appState.selectedTab },
+            set: { newValue in
+                if newValue == 3 {
+                    HapticManager.shared.light()
+                    showAddTransaction = true
+                } else {
+                    appState.selectedTab = newValue
+                }
+            }
+        )) {
             TabSection {
                 Tab("Home", systemImage: "square.grid.2x2.fill", value: 0) {
                     HomeView()
@@ -30,19 +41,15 @@ struct ContentView: View {
             
             // Repurposed Search Tab as Action Button
             Tab("Add", systemImage: "plus", value: 3, role: .search) {
-                // This view appears when the tab is selected
-                // We use it to trigger the sheet and immediately switch back or stay
+                // This view appears when the tab is selected, but thanks to the binding interceptor
+                // above, we never actually switch to this tab. It just serves as a button.
                 Color.clear
-                    .onAppear {
-                        // Trigger the add transaction flow
-                        showAddTransaction = true
-                        
-                        // Optional: Switch back to the previous tab so we don't stay on a blank "Add" page
-                        // For now, we keep it simple. The sheet will cover this.
-                        // When sheet dismisses, we might want to go back to Home or stay.
-                        // Ideally, we'd switch back immediately:
-                        appState.selectedTab = 0
-                    }
+            }
+        }
+        .onChange(of: appState.selectedTab) { _, newValue in
+            // Trigger haptic feedback on tab change
+            if newValue != 3 {
+                HapticManager.shared.selection()
             }
         }
         .tabViewStyle(.sidebarAdaptable)
@@ -56,14 +63,23 @@ struct ContentView: View {
             .environmentObject(appState)
             .presentationBackground(Color.backgroundPrimary)
         }
-        .sheet(isPresented: $showAddTransaction) {
-            AddTransactionView(onSave: { transaction in
+        .sheet(isPresented: $showAddTransaction, onDismiss: {
+            deepLinkCategory = nil // Reset on dismiss
+        }) {
+            AddTransactionView(initialCategoryName: deepLinkCategory, onSave: { transaction in
                 addTransaction(transaction)
             })
             .presentationBackground(Color.backgroundPrimary)
         }
         .onOpenURL { url in
             if url.scheme == "financetracker" && url.host == "add-transaction" {
+                // Parse Query Params
+                if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+                   let queryItems = components.queryItems {
+                    if let category = queryItems.first(where: { $0.name == "category" })?.value {
+                        deepLinkCategory = category
+                    }
+                }
                 showAddTransaction = true
             }
         }
@@ -173,6 +189,35 @@ struct ContentView: View {
                 
                 // Check budget warnings
                 checkBudgetStatus(for: transaction.title, amount: amount)
+                
+                // Update Widget Data
+                let newWidgetTransaction = WidgetDataManager.WidgetTransaction(
+                    id: UUID().uuidString,
+                    title: transaction.title,
+                    amount: amount,
+                    date: transaction.date,
+                    icon: transaction.icon,
+                    colorHex: transaction.color.toHex() ?? "#000000"
+                )
+                
+                var recents = WidgetDataManager.shared.getRecentTransactions()
+                recents.insert(newWidgetTransaction, at: 0)
+                if recents.count > 4 { recents = Array(recents.prefix(4)) }
+                WidgetDataManager.shared.saveRecentTransactions(recents)
+                
+                // Update Quick Log Categories (Top 4 from Budgets)
+                let topBudgets = budgetRepo.budgets
+                    .filter { $0.category.lowercased() != "income" }
+                    .prefix(4)
+                    .map {
+                        WidgetDataManager.WidgetCategory(
+                            name: $0.category,
+                            icon: $0.icon,
+                            colorHex: $0.colorHex
+                        )
+                    }
+                WidgetDataManager.shared.saveQuickLogCategories(Array(topBudgets))
+                
             } catch {
                 DebugLogger.log("Failed to add transaction: \(error)")
             }

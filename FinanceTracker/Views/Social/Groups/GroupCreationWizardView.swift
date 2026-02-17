@@ -15,7 +15,8 @@ struct GroupCreationWizardView: View {
     }
     
     // Repositories
-    @StateObject private var friendRepo = FriendRepository() // Local listener for search? Or should use AppState?
+    // Use shared repo to ensure friends list is up-to-date with SocialDashboard
+    var friendRepo: FriendRepository { appState.friendRepo }
     // Using local request for search is fine, but for guests we want shared.
     
     // State
@@ -131,7 +132,7 @@ struct GroupCreationWizardView: View {
         // Initialize repos
         .onAppear {
             if !appState.currentUserId.isEmpty {
-                friendRepo.startListening(userId: appState.currentUserId)
+                // friendRepo is now shared via AppState, so listening is handled there.
                 // AppState handles guestRepo listening
             }
             

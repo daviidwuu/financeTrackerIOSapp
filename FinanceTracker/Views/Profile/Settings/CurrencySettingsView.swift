@@ -4,41 +4,25 @@ struct CurrencySettingsView: View {
     @StateObject private var currencyManager = CurrencyManager.shared
     @State private var showRateModal = false
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.dismiss) var dismiss
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                MenuSection("Currency Configuration") {
-                    HStack {
-                        Text("Main Currency")
-                            .font(.body)
-                            .foregroundColor(.primary)
-                        Spacer()
-                        Picker("Main Currency", selection: $currencyManager.mainCurrency) {
-                            ForEach(currencyManager.availableCurrencies, id: \.self) { code in
-                                Text(currencyManager.currencyNames[code] ?? code).tag(code)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-                        .tint(.secondary)
-                    }
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 16)
-                    .background(Color(UIColor.secondarySystemBackground))
+        ZStack(alignment: .top) {
+            // Background
+            (colorScheme == .dark ? Color.black : Color(UIColor.systemBackground))
+                .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 24) {
+                    Spacer().frame(height: 60)
                     
-                    MenuDivider()
-                    
-                    MenuRowView(title: "Travel Mode", showChevron: false, showToggle: $currencyManager.isTravelModeEnabled)
-                    
-                    if currencyManager.isTravelModeEnabled {
-                        MenuDivider()
+                    MenuSection("Currency Configuration") {
                         HStack {
-                            Text("Travel Currency")
+                            Text("Main Currency")
                                 .font(.body)
                                 .foregroundColor(.primary)
                             Spacer()
-                            Picker("Travel Currency", selection: $currencyManager.travelCurrency) {
+                            Picker("Main Currency", selection: $currencyManager.mainCurrency) {
                                 ForEach(currencyManager.availableCurrencies, id: \.self) { code in
                                     Text(currencyManager.currencyNames[code] ?? code).tag(code)
                                 }
@@ -46,6 +30,9 @@ struct CurrencySettingsView: View {
                             .pickerStyle(.menu)
                             .labelsHidden()
                             .tint(.secondary)
+                            .onChange(of: currencyManager.mainCurrency) { _, _ in
+                                HapticManager.shared.light()
+                            }
                         }
                         .padding(.vertical, 12)
                         .padding(.horizontal, 16)
@@ -53,53 +40,105 @@ struct CurrencySettingsView: View {
                         
                         MenuDivider()
                         
-                        MenuRowView(title: "Auto-select Travel Currency based on Location", showChevron: false, showToggle: $currencyManager.isAutoDetectEnabled)
-                    }
-                }
-                .onChange(of: currencyManager.mainCurrency) { _, _ in
-                    currencyManager.fetchExchangeRate()
-                    showRateModal = true
-                }
-                .onChange(of: currencyManager.travelCurrency) { _, _ in
-                    currencyManager.setTravelCurrency(currencyManager.travelCurrency)
-                    showRateModal = true
-                }
-                
-                if currencyManager.isTravelModeEnabled {
-                    MenuSection("Current Exchange Rate") {
-                        HStack {
-                            Text("1 \(currencyManager.mainCurrency)")
-                                .font(.body)
-                                .foregroundColor(.primary)
-                            Spacer()
-                            Image(systemName: "arrow.right")
-                                .font(.body)
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            if currencyManager.exchangeRate > 0 {
-                                Text("\(String(format: "%.2f", currencyManager.exchangeRate)) \(currencyManager.travelCurrency)")
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.functionalSuccess)
-                            } else {
-                                ProgressView()
+                        MenuRowView(title: "Travel Mode", showChevron: false, showToggle: $currencyManager.isTravelModeEnabled)
+                        
+                        if currencyManager.isTravelModeEnabled {
+                            MenuDivider()
+                            HStack {
+                                Text("Travel Currency")
+                                    .font(.body)
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Picker("Travel Currency", selection: $currencyManager.travelCurrency) {
+                                    ForEach(currencyManager.availableCurrencies, id: \.self) { code in
+                                        Text(currencyManager.currencyNames[code] ?? code).tag(code)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .labelsHidden()
+                                .tint(.secondary)
+                                .onChange(of: currencyManager.travelCurrency) { _, _ in
+                                    HapticManager.shared.light()
+                                }
                             }
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 16)
+                            .background(Color(UIColor.secondarySystemBackground))
+                            
+                            MenuDivider()
+                            
+                            MenuRowView(title: "Auto-select Travel Currency based on Location", showChevron: false, showToggle: $currencyManager.isAutoDetectEnabled)
                         }
-                        .padding(16)
+                    }
+                    .padding(.top, 0)
+                    .onChange(of: currencyManager.mainCurrency) { _, _ in
+                        currencyManager.fetchExchangeRate()
+                        showRateModal = true
+                    }
+                    .onChange(of: currencyManager.travelCurrency) { _, _ in
+                        currencyManager.setTravelCurrency(currencyManager.travelCurrency)
+                        showRateModal = true
                     }
                     
-                    Text("Refreshed monthly based on 30-day average logic")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal)
+                    if currencyManager.isTravelModeEnabled {
+                        MenuSection("Current Exchange Rate") {
+                            HStack {
+                                Text("1 \(currencyManager.mainCurrency)")
+                                    .font(.body)
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Image(systemName: "arrow.right")
+                                    .font(.body)
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                if currencyManager.exchangeRate > 0 {
+                                    Text("\(String(format: "%.2f", currencyManager.exchangeRate)) \(currencyManager.travelCurrency)")
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.functionalSuccess)
+                                } else {
+                                    ProgressView()
+                                }
+                            }
+                            .padding(16)
+                        }
+                        
+                        Text("Refreshed monthly based on 30-day average logic")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal)
+                    }
+                    
+                    Spacer()
+                }
+                .padding(.top, 20)
+            }
+            
+            // Fixed Navigation Bar
+            HStack {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .frame(width: 44, height: 44)
+                        .background((colorScheme == .dark ? Color.white : Color.black).opacity(0.05))
+                        .clipShape(Circle())
                 }
                 
                 Spacer()
+                
+                Text("Currency Settings")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                
+                Spacer()
+                
+                Color.clear.frame(width: 44, height: 44)
             }
-            .padding(.top, 20)
+            .padding(.horizontal, AppSpacing.margin + AppSpacing.compact)
+            .padding(.top, 16)
         }
-        .background(Color(UIColor.systemBackground))
-        .navigationTitle("Currency Settings")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .sheet(isPresented: $showRateModal) {
             CurrencyRateModal(currencyManager: currencyManager)
         }

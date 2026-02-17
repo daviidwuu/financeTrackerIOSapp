@@ -480,6 +480,8 @@ struct SplitRequestDetailView: View {
     private func toggleSplitPayment(_ split: FirestoreModels.Split) {
         guard var tx = originalTransaction, let transactionId = tx.id else { return }
         
+        HapticManager.shared.medium() // Feedback for toggling payment status
+        
         // Optimistic UI toggle
         if let index = tx.splits?.firstIndex(where: { $0.id == split.id }) {
             tx.splits?[index].isPaid.toggle()

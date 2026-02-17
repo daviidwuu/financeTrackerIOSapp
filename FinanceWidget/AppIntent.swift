@@ -9,10 +9,21 @@ import WidgetKit
 import AppIntents
 
 struct ConfigurationAppIntent: WidgetConfigurationIntent {
-    static var title: LocalizedStringResource { "Configuration" }
-    static var description: IntentDescription { "This is an example widget." }
+    static var title: LocalizedStringResource = "Widget Configuration"
+    static var description = IntentDescription("Choose what data to display.")
 
-    // An example configurable parameter.
-    @Parameter(title: "Favorite Emoji", default: "😃")
-    var favoriteEmoji: String
+    @Parameter(title: "Display Mode", default: .remaining)
+    var displayMode: WidgetDisplayModeEnum
+}
+
+enum WidgetDisplayModeEnum: String, AppEnum {
+    case remaining
+    case spent
+
+    static var typeDisplayRepresentation: TypeDisplayRepresentation = "Display Mode"
+
+    static var caseDisplayRepresentations: [WidgetDisplayModeEnum : DisplayRepresentation] = [
+        .remaining: "Remaining Budget",
+        .spent: "Total Spent"
+    ]
 }

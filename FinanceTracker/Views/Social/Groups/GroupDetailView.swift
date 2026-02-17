@@ -2,24 +2,49 @@ import SwiftUI
 import FirebaseFirestore
 
 struct GroupDetailView: View {
-    let group: FirestoreModels.Group
+    let groupId: String
     @EnvironmentObject var appState: AppState
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
     @StateObject private var repo = SocialRepository()
     
+    // Computed group property from appState
+    var group: FirestoreModels.Group? {
+        appState.groupRepo.groups.first(where: { $0.id == groupId })
+    }
+    
     // UI State
-    @State private var showingSettleUp = false
-    @State private var showingAddExpense = false
-    @State private var showingSettings = false
-    @State private var showingMembers = false
-    @State private var showingSimplification = false
+    enum GroupSheet: Identifiable, Equatable {
+        case addExpense
+        case settings
+        case settleUp
+        case members
+        case simplification
+        case splitDetail(FirestoreModels.SplitRequest)
+        case transactionDetail(FirestoreModels.GroupTransaction)
+        
+        var id: String {
+            switch self {
+            case .addExpense: return "addExpense"
+            case .settings: return "settings"
+            case .settleUp: return "settleUp"
+            case .members: return "members"
+            case .simplification: return "simplification"
+            case .splitDetail(let split): return "split-\(split.id ?? "")"
+            case .transactionDetail(let tx): return "tx-\(tx.id ?? "")"
+            }
+        }
+        
+        static func == (lhs: GroupSheet, rhs: GroupSheet) -> Bool {
+            return lhs.id == rhs.id
+        }
+    }
+
+    @State private var activeSheet: GroupSheet?
     @State private var groupBalances: [String: Double] = [:]
     
     // Feature State
     @State private var pendingSplits: [FirestoreModels.SplitRequest] = []
-    @State private var selectedSplit: FirestoreModels.SplitRequest?
-    @State private var selectedTransaction: FirestoreModels.GroupTransaction?
     @State private var debtInstructions: [DebtInstruction] = []
     
     // Undo State
@@ -32,219 +57,259 @@ struct GroupDetailView: View {
         ZStack(alignment: .bottom) {
             Color.backgroundPrimary.edgesIgnoringSafeArea(.all)
             
-            ScrollView {
-                VStack(spacing: AppSpacing.section) {
+            if let group = group {
+                List {
                     // 1. Header
-                    DetailHeaderView(
-                        title: group.name,
-                        onBack: { dismiss() },
-                        onMenu: { showingSettings = true },
-                        backgroundColor: Color.backgroundPrimary,
-                        textColor: .primary,
-                        avatar: {
-                            GroupAvatar(
-                                icon: group.icon,
-                                color: group.color,
-                                size: AppSize.avatarHero
-                            )
-                        },
-                        subtitle: {
-                            Button(action: { showingMembers = true }) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "person.2.fill")
-                                    Text("\(group.members.count) members")
-                                }
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(Color.primary.opacity(0.05))
-                                .clipShape(Capsule())
-                            }
-                        },
-                        actions: {
-                            HStack(spacing: 12) {
-                                Button(action: { showingSettleUp = true }) {
-                                    HStack {
-                                        Text("Settle")
-                                            .foregroundColor(colorScheme == .dark ? .black : .white)
+                    Section {
+                        DetailHeaderView(
+                            title: group.name,
+                            onBack: { dismiss() },
+                            onMenu: { activeSheet = .settings },
+                            backgroundColor: Color.backgroundPrimary,
+                            textColor: .primary,
+                            avatar: {
+                                GroupAvatar(
+                                    icon: group.icon,
+                                    color: group.color,
+                                    size: AppSize.avatarHero
+                                )
+                            },
+                            subtitle: {
+                                Button(action: { activeSheet = .members }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "person.2.fill")
+                                        Text("\(group.members.count) members")
                                     }
-                                    .font(.headline)
-                                    .fontWeight(.bold)
-                                    .padding(.horizontal, 24)
-                                    .padding(.vertical, 12)
-                                    .frame(height: 44) // Match height of circle button
-                                    .background(colorScheme == .dark ? Color.white : Color.black)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.primary)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(Color.primary.opacity(0.05))
                                     .clipShape(Capsule())
-                                    .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
                                 }
-                                
-                                Button(action: { showingAddExpense = true }) {
-                                    Image(systemName: "plus")
-                                        .font(.headline)
-                                        .foregroundColor(colorScheme == .dark ? .black : .white)
-                                        .frame(width: 44, height: 44) // Matches DetailHeaderView back button size
-                                        .background(colorScheme == .dark ? Color.white : Color.black)
-                                        .clipShape(Circle())
-                                        .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+                            },
+                            actions: {
+                                HStack(spacing: 12) {
+                                    Button(action: {
+                                        HapticManager.shared.light()
+                                        activeSheet = .settleUp
+                                    }) {
+                                        Text("Settle")
+                                            .font(.headline)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(colorScheme == .dark ? .black : .white)
+                                            .padding(.horizontal, 20)
+                                            .frame(height: 44)
+                                            .background(colorScheme == .dark ? Color.white : Color.black)
+                                            .clipShape(Capsule())
+                                            .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
+                                    }
+                                    .buttonStyle(.borderless)
+                                    
+                                    Button(action: {
+                                        HapticManager.shared.light()
+                                        activeSheet = .addExpense
+                                    }) {
+                                        Image(systemName: "plus")
+                                            .font(.headline)
+                                            .foregroundColor(colorScheme == .dark ? .black : .white)
+                                            .frame(width: 44, height: 44) // Matches DetailHeaderView back button size
+                                            .background(colorScheme == .dark ? Color.white : Color.black)
+                                            .clipShape(Circle())
+                                            .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+                                    }
+                                    .buttonStyle(.borderless)
                                 }
                             }
-                        }
-                    )
+                        )
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
                     
                     // 2. Pending Actions (High Priority)
                     if !pendingSplits.isEmpty {
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                Image(systemName: "exclamationmark.circle.fill")
+                        Section {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack {
+                                    Image(systemName: "exclamationmark.circle.fill")
                                     .foregroundColor(.orange)
-                                Text("Action Required")
-                                    .font(.headline)
-                                Spacer()
-                                Text("\(pendingSplits.count)")
-                                    .font(.caption)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.white)
-                                    .padding(6)
-                                    .background(Color.red)
-                                    .clipShape(Circle())
-                            }
-                            .padding(.horizontal, AppSpacing.margin)
-                            
-                            VStack(spacing: 12) {
-                                ForEach(pendingSplits) { split in
-                                    PendingSplitCard(split: split, userId: appState.currentUserId, onToggle: {
-                                        handleSplitToggle(split)
-                                    })
-                                    .onTapGesture { selectedSplit = split }
-                                    .contextMenu {
-                                        if split.fromUid == appState.currentUserId {
-                                             Button(role: .destructive) { deleteSplit(split) } label: {
-                                                 Label("Delete Request", systemImage: "trash")
-                                             }
+                                    Text("Action Required")
+                                        .font(.headline)
+                                    Spacer()
+                                    Text("\(pendingSplits.count)")
+                                        .font(.caption)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.white)
+                                        .padding(6)
+                                        .background(Color.red)
+                                        .clipShape(Circle())
+                                }
+                                
+                                VStack(spacing: 12) {
+                                    ForEach(pendingSplits) { split in
+                                        PendingSplitCard(split: split, userId: appState.currentUserId, onToggle: {
+                                            handleSplitToggle(split)
+                                        })
+                                        .onTapGesture { activeSheet = .splitDetail(split) }
+                                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                            if split.fromUid == appState.currentUserId {
+                                                 Button(role: .destructive) { deleteSplit(split) } label: {
+                                                     Label("Delete", systemImage: "trash")
+                                                 }
+                                            }
                                         }
                                     }
                                 }
                             }
-                            .padding(.horizontal, AppSpacing.margin)
+                            .padding(.vertical, 8)
                         }
+                        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
                     }
                     
                     // 3. Group Overview & Stats (Consolidated)
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Overview")
-                            .font(.headline)
-                            .padding(.horizontal, AppSpacing.margin)
-                        
-                        let expenses = repo.groupTransactions.filter { $0.type != "settlement" }
-                        let totalSpend = abs(expenses.reduce(0) { $0 + $1.amount })
-                        
-                        // Calculate Personal Liability (Net Outflow)
-                        // Formula: (Expenses I Paid) + (Settlements I Paid) - (Settlements I Received)
-                        let myExpensesPaid = abs(expenses.filter { $0.payerId == appState.currentUserId }.reduce(0) { $0 + $1.amount })
-                        
-                        let settlements = repo.groupTransactions.filter { $0.type == "settlement" }
-                        let settlementsPaid = abs(settlements.filter { $0.payerId == appState.currentUserId }.reduce(0) { $0 + $1.amount })
-                        let settlementsReceived = abs(settlements.filter { $0.receiverName == appState.userName }.reduce(0) { $0 + $1.amount })
-                        
-                        let myNetExpenses = myExpensesPaid + settlementsPaid - settlementsReceived
-                        
-                        // Overview Cards
-                        HStack(spacing: 12) {
-                            // Card 1: Total Expenses
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Total Expenses")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Text(String(format: "$%.2f", totalSpend))
-                                    .font(AppTypography.sectionHeader)
-                                    .foregroundColor(.primary)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding()
-                            .background(Color(UIColor.secondarySystemBackground))
-                            .cornerRadius(AppRadius.medium)
+                    Section {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Overview")
+                                .font(.headline)
                             
-                            // Card 2: My Expenses
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("My Expenses")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Text(String(format: "$%.2f", myNetExpenses))
-                                    .font(AppTypography.sectionHeader)
-                                    .foregroundColor(.blue)
+                            let expenses = repo.groupTransactions.filter { $0.type != "settlement" }
+                            let totalSpend = abs(expenses.reduce(0) { $0 + $1.amount })
+                            
+                            // Calculate Personal Liability (Net Outflow)
+                            // Formula: (Expenses I Paid) + (Settlements I Paid) - (Settlements I Received)
+                            let myExpensesPaid = abs(expenses.filter { $0.payerId == appState.currentUserId }.reduce(0) { $0 + $1.amount })
+                            
+                            let settlements = repo.groupTransactions.filter { $0.type == "settlement" }
+                            let settlementsPaid = abs(settlements.filter { $0.payerId == appState.currentUserId }.reduce(0) { $0 + $1.amount })
+                            let settlementsReceived = abs(settlements.filter { 
+                                if let rid = $0.receiverId {
+                                    return rid == appState.currentUserId
+                                }
+                                return $0.receiverName == appState.userName 
+                            }.reduce(0) { $0 + $1.amount })
+                            
+                            let myNetExpenses = myExpensesPaid + settlementsPaid - settlementsReceived
+                            
+                            // Overview Cards
+                            HStack(spacing: 12) {
+                                // Card 1: Total Expenses
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Total Expenses")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text(String(format: "$%.2f", totalSpend))
+                                        .font(AppTypography.sectionHeader)
+                                        .foregroundColor(.primary)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding()
+                                .background(Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(AppRadius.medium)
+                                
+                                // Card 2: My Expenses
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("My Expenses")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text(String(format: "$%.2f", myNetExpenses))
+                                        .font(AppTypography.sectionHeader)
+                                        .foregroundColor(.primary)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding()
+                                .background(Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(AppRadius.medium)
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding()
-                            .background(Color(UIColor.secondarySystemBackground))
-                            .cornerRadius(AppRadius.medium)
                         }
-                        .padding(.horizontal, AppSpacing.margin)
+                        .padding(.vertical, 8)
                     }
+                    .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
 
                     // 4. Balances (Who owes who)
                     if abs(groupBalances[appState.currentUserId] ?? 0) > 0.01 {
-                        VStack(alignment: .leading, spacing: AppSpacing.element) {
-                            HStack {
-                                Text("Balances")
-                                    .font(.headline)
-                                Spacer()
-                            }
-                            .padding(.horizontal, AppSpacing.margin)
-                            
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 12) {
-                                    let memberIds = groupBalances.keys.sorted()
-                                    ForEach(memberIds, id: \.self) { memberId in
-                                        if let bal = groupBalances[memberId], abs(bal) > 0.01 {
-                                            BalanceCard(
-                                                name: getMemberName(id: memberId),
-                                                amount: abs(bal),
-                                                isOwed: bal > 0,
-                                                isSelf: memberId == appState.currentUserId
-                                            )
+                        Section {
+                            VStack(alignment: .leading, spacing: AppSpacing.element) {
+                                HStack {
+                                    Text("Balances")
+                                        .font(.headline)
+                                    Spacer()
+                                }
+                                
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 12) {
+                                        let memberIds = groupBalances.keys.sorted()
+                                        ForEach(memberIds, id: \.self) { memberId in
+                                            if let bal = groupBalances[memberId], abs(bal) > 0.01 {
+                                                BalanceCard(
+                                                    name: getMemberName(id: memberId, group: group),
+                                                    amount: abs(bal),
+                                                    isOwed: bal > 0,
+                                                    isSelf: memberId == appState.currentUserId
+                                                )
+                                            }
                                         }
                                     }
                                 }
-                                .padding(.horizontal, AppSpacing.margin)
                             }
+                            .padding(.vertical, 8)
                         }
+                        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
                     }
                     
                     // 5. Activity Feed
-                    VStack(alignment: .leading, spacing: AppSpacing.element) {
+                    Section(header: 
                         Text("Recent Activity")
                             .font(.headline)
-                            .padding(.horizontal, AppSpacing.margin)
-                        
-                        VStack(spacing: 16) {
-                            if repo.isLoading && repo.groupTransactions.isEmpty {
-                                ProgressView().padding()
-                            } else if repo.groupTransactions.isEmpty {
-                                ContentUnavailableView("No Activity", systemImage: "list.bullet.clipboard", description: Text("Transactions will appear here."))
-                            } else {
-                                LazyVStack(spacing: 8) {
-                                    ForEach(repo.groupTransactions) { transaction in
-                                        GroupTransactionRow(transaction: transaction, currentUserId: appState.currentUserId)
-                                            .background(Color(UIColor.secondarySystemBackground))
-                                            .cornerRadius(AppRadius.medium)
-                                            .onTapGesture { selectedTransaction = transaction }
-                                            .contextMenu {
-                                                if transaction.payerId == appState.currentUserId || transaction.type == "settlement" {
-                                                    Button(role: .destructive) { deleteTransaction(transaction) } label: {
-                                                        Label("Delete", systemImage: "trash")
-                                                    }
-                                                }
+                            .padding(.vertical, 8)
+                    ) {
+                        if repo.isLoading && repo.groupTransactions.isEmpty {
+                            ProgressView().padding()
+                             .listRowSeparator(.hidden)
+                             .listRowBackground(Color.clear)
+                        } else if repo.groupTransactions.isEmpty {
+                            ContentUnavailableView("No Activity", systemImage: "list.bullet.clipboard", description: Text("Transactions will appear here."))
+                             .listRowSeparator(.hidden)
+                             .listRowBackground(Color.clear)
+                        } else {
+                            ForEach(repo.groupTransactions.filter { $0.id != nil }) { transaction in
+                                GroupTransactionRow(transaction: transaction, currentUserId: appState.currentUserId)
+                                    .background(Color(UIColor.secondarySystemBackground))
+                                    .cornerRadius(AppRadius.medium)
+                                    .onTapGesture { activeSheet = .transactionDetail(transaction) }
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                        if transaction.payerId == appState.currentUserId || transaction.type == "settlement" {
+                                            Button(role: .destructive) { deleteTransaction(transaction, group: group) } label: {
+                                                Label("Delete", systemImage: "trash")
                                             }
+                                        }
                                     }
-                                }
+                                    .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
+                                    .listRowSeparator(.hidden)
+                                    .listRowBackground(Color.clear)
                             }
                         }
-                        .padding(.horizontal, AppSpacing.margin)
                     }
+                    .headerProminence(.increased)
                 }
-                .padding(.bottom, 100)
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .scrollIndicators(.hidden)
+            } else {
+                VStack {
+                    ProgressView()
+                    Text("Loading Group...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             
             // Undo Toast Overlay
@@ -258,48 +323,70 @@ struct GroupDetailView: View {
         .navigationBarBackButtonHidden(true)
         .navigationBarHidden(true)
         .onAppear { loadGroupData() }
-        .sheet(isPresented: $showingAddExpense) {
-            EditGroupTransactionWizardView(group: group, transactionToEdit: nil) { amount, note, splits in
-                handleAddExpense(amount: amount, note: note, splits: splits)
-            }
+        .sheet(item: $activeSheet) { sheet in
+             // Using a ZStack to ensure context is available and stable
+             ZStack {
+                 if let group = group {
+                     switch sheet {
+                     case .addExpense:
+                         EditGroupTransactionWizardView(group: group, preSelectedFriend: nil, transactionToEdit: nil) { amount, note, category, splits in
+                             handleAddExpense(amount: amount, note: note, category: category, splits: splits, group: group)
+                         }
+                         .presentationDetents([.large])
+                     case .settings:
+                         GroupCreationWizardView(groupToEdit: group)
+                     case .settleUp:
+                         SettleUpWizardView(group: group, preSelectedFriend: nil)
+                             .presentationDetents([.large])
+                     case .members:
+                         GroupMembersView(group: group)
+                             .presentationDetents([.medium, .large])
+                     case .simplification:
+                         VStack(spacing: 24) {
+                             Text("Simplify Debts")
+                                 .font(.title2)
+                                 .fontWeight(.bold)
+                                 .padding(.top, 24)
+                             
+                             Text("This plan minimizes the number of transactions needed to settle everyone up.")
+                                 .font(.subheadline)
+                                 .foregroundColor(.secondary)
+                                 .multilineTextAlignment(.center)
+                                 .padding(.horizontal)
+                             
+                             ScrollView {
+                                 VStack(spacing: 12) {
+                                     ForEach(debtInstructions) { instruction in
+                                         DebtInstructionRow(
+                                             debtorName: getMemberName(id: instruction.debtorId, group: group),
+                                             creditorName: getMemberName(id: instruction.creditorId, group: group),
+                                             amount: instruction.amount
+                                         )
+                                     }
+                                 }
+                                 .padding()
+                             }
+                         }
+                         .presentationDetents([.medium, .large])
+                     case .splitDetail(let split):
+                         SplitRequestDetailView(request: split)
+                     case .transactionDetail(let transaction):
+                         GroupTransactionDetailView(transaction: transaction, group: group)
+                             .presentationDetents([.medium, .large])
+                             .presentationDragIndicator(.visible)
+                     }
+                 } else {
+                     // Fallback if group is missing (rare but possible during sync)
+                     ProgressView()
+                 }
+             }
         }
-        .sheet(isPresented: $showingSettings) { GroupCreationWizardView(groupToEdit: group) }
-        .sheet(isPresented: $showingSettleUp, onDismiss: { loadGroupData() }) { SettleUpWizardView(group: group, preSelectedFriend: nil).presentationDetents([.large]) }
-        .sheet(isPresented: $showingMembers) { GroupMembersView(group: group).presentationDetents([.medium, .large]) }
-        .sheet(isPresented: $showingSimplification) {
-            VStack(spacing: 24) {
-                Text("Simplify Debts")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .padding(.top, 24)
-                
-                Text("This plan minimizes the number of transactions needed to settle everyone up.")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-                
-                ScrollView {
-                    VStack(spacing: 12) {
-                        ForEach(debtInstructions) { instruction in
-                            DebtInstructionRow(
-                                debtorName: getMemberName(id: instruction.debtorId),
-                                creditorName: getMemberName(id: instruction.creditorId),
-                                amount: instruction.amount
-                            )
-                        }
-                    }
-                    .padding()
-                }
-            }
-            .presentationDetents([.medium, .large])
+        .onChange(of: activeSheet) { _, newValue in
+             // Reload data only when sheet is dismissed (becomes nil)
+             if newValue == nil {
+                 loadGroupData()
+             }
         }
-        .sheet(item: $selectedSplit, onDismiss: { loadGroupData() }) { split in SplitRequestDetailView(request: split) }
-        .sheet(item: $selectedTransaction, onDismiss: { loadGroupData() }) { transaction in 
-             GroupTransactionDetailView(transaction: transaction, group: group)
-                 .presentationDetents([.medium, .large])
-                 .presentationDragIndicator(.visible)
-         }
         .onReceive(repo.$groupBalances) { newBalances in
              groupBalances = newBalances
              debtInstructions = repo.calculateDebtResolution(balances: newBalances)
@@ -310,14 +397,15 @@ struct GroupDetailView: View {
                  return !recentlyPaidSplitIds.contains(id) 
              }
         }
+        .onDisappear {
+            print("DEBUG: GroupDetailView onDisappear - Popped from stack")
+        }
     }
     
     // Logic Functions (Same as before)
     private func loadGroupData() {
-        if let groupId = group.id {
-            repo.fetchGroupTransactions(groupId: groupId)
-            repo.listenToGroupBalances(groupId: groupId, currentUserId: appState.currentUserId)
-        }
+        repo.fetchGroupTransactions(groupId: groupId)
+        repo.listenToGroupBalances(groupId: groupId, currentUserId: appState.currentUserId)
     }
     
     private func handleSplitToggle(_ split: FirestoreModels.SplitRequest) {
@@ -361,8 +449,11 @@ struct GroupDetailView: View {
         Task { try? await SocialTransactionManager.shared.unmarkSplitAsPaid(request: split, currentUserId: appState.currentUserId); loadGroupData() }
     }
     
-    private func deleteTransaction(_ transaction: FirestoreModels.GroupTransaction) {
-        guard let groupId = group.id, let _ = transaction.id else { return }
+    private func deleteTransaction(_ transaction: FirestoreModels.GroupTransaction, group: FirestoreModels.Group) {
+        guard let groupId = group.id, let _ = transaction.id else {
+            HapticManager.shared.error()
+            return
+        }
         HapticManager.shared.light()
         Task {
             do {
@@ -380,10 +471,16 @@ struct GroupDetailView: View {
     
     private func deleteSplit(_ split: FirestoreModels.SplitRequest) {
         HapticManager.shared.heavy()
-        Task { try? await SocialTransactionManager.shared.deleteSplitRequestAndSync(request: split) }
+        Task {
+            do {
+                try await SocialTransactionManager.shared.deleteSplitRequestAndSync(request: split)
+            } catch {
+                await MainActor.run { HapticManager.shared.error() }
+            }
+        }
     }
     
-    func getMemberName(id: String) -> String {
+    func getMemberName(id: String, group: FirestoreModels.Group) -> String {
         if id == appState.currentUserId { return "You" }
         if let friend = appState.friendRepo.friends.first(where: { $0.id == id }) { return friend.name }
         if let guest = appState.guestRepo.guests.first(where: { $0.id == id }) { return guest.name }
@@ -391,17 +488,17 @@ struct GroupDetailView: View {
         return "Member"
     }
     
-    private func handleAddExpense(amount: Double, note: String, splits: [FirestoreModels.Split]) {
+    private func handleAddExpense(amount: Double, note: String, category: FirestoreModels.CategoryBudget?, splits: [FirestoreModels.Split], group: FirestoreModels.Group) {
         let transaction = FirestoreModels.TransactionModel(
             userId: appState.currentUserId,
-            title: note.isEmpty ? "Group Expense" : note,
-            subtitle: "Group: \(group.name)",
+            title: note.isEmpty ? (category?.category ?? "Group Expense") : note,
+            subtitle: category?.category ?? "Group: \(group.name)",
             amount: -abs(amount),
             date: Date(),
             type: "expense",
             createdAt: Date(),
-            icon: "person.2.fill", // Or group icon
-            colorHex: group.color,
+            icon: category?.icon ?? "person.2.fill", // Or group icon
+            colorHex: category?.colorHex ?? group.color,
             note: note,
             splits: splits
         )
@@ -507,8 +604,8 @@ struct PendingSplitCard: View {
                 
                 Button(action: onToggle) {
                     Image(systemName: "circle")
-                        .font(.title2)
-                        .foregroundColor(.secondary.opacity(0.3))
+                    .font(.title2)
+                    .foregroundColor(.secondary.opacity(0.3))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Mark as paid")
@@ -555,7 +652,14 @@ struct GroupTransactionRow: View {
                         if let receiver = transaction.receiverName {
                             // If receiver is me, show "You"
                             // If payer is me, show "You paid X"
-                            let receiverDisplay = (receiver == appState.userName) ? "You" : receiver
+                            let receiverDisplay: String = {
+                                if let rid = transaction.receiverId, rid == appState.currentUserId {
+                                    return "You"
+                                } else if receiver == appState.userName {
+                                    return "You"
+                                }
+                                return receiver
+                            }()
                             
                             Text("\(payerName) paid \(receiverDisplay)")
                                 .font(.caption)

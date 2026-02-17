@@ -302,7 +302,7 @@ enum FirestoreModels {
         }
     }
     // MARK: - Group Model
-    struct Group: Identifiable, Codable {
+    struct Group: Identifiable, Codable, Hashable {
         @DocumentID var id: String?
         var name: String
         var normalizedName: String? // ✅ NEW: For duplicate detection
@@ -332,6 +332,14 @@ enum FirestoreModels {
         func isMember(_ uid: String) -> Bool {
             return members.contains(uid)
         }
+        
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(id)
+        }
+        
+        static func == (lhs: Group, rhs: Group) -> Bool {
+            return lhs.id == rhs.id
+        }
     }
 
     // MARK: - GroupTransaction Model
@@ -341,6 +349,7 @@ enum FirestoreModels {
         var amount: Double
         var payerId: String
         var payerName: String
+        var receiverId: String? // ✅ NEW: For settlement logic
         var receiverName: String? // ✅ NEW: For settlement details
         var date: Date
         var type: String // "expense" or "income" (reimbursement)
@@ -350,6 +359,8 @@ enum FirestoreModels {
         var icon: String? // ✅ NEW
         var colorHex: String? // ✅ NEW
         var originalTransactionId: String? // Linked to the user's private transaction
+        var originalAmount: Double? // ✅ NEW: Foreign currency amount
+        var exchangeRate: Double? // ✅ NEW: Exchange rate used
         var editHistory: [EditRecord]? // ✅ NEW: Track changes
         
         enum CodingKeys: String, CodingKey {
@@ -358,6 +369,7 @@ enum FirestoreModels {
             case amount
             case payerId
             case payerName
+            case receiverId
             case receiverName
             case date
             case type
@@ -365,6 +377,8 @@ enum FirestoreModels {
             case note
             case category
             case originalTransactionId
+            case originalAmount
+            case exchangeRate
             case editHistory
         }
     }
@@ -421,19 +435,29 @@ enum FirestoreModels {
     }
     
     // MARK: - Friend Model
-    struct Friend: Identifiable, Codable {
+    struct Friend: Identifiable, Codable, Hashable {
         @DocumentID var id: String? // The Friend's User ID
-        var username: String
+        var username: String? // Made optional to handle decoding failures
         var name: String // Display Name
         var email: String? // Optional
-        var addedAt: Date
+        var avatarColor: String? // ✅ NEW: For consistent UI color
+        var addedAt: Date? // Made optional
         
         enum CodingKeys: String, CodingKey {
             case id
             case username
             case name
             case email
+            case avatarColor
             case addedAt
+        }
+
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(id)
+        }
+
+        static func == (lhs: Friend, rhs: Friend) -> Bool {
+            return lhs.id == rhs.id
         }
     }
     // MARK: - User Profile Model

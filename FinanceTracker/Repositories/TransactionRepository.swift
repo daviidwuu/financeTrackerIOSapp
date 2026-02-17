@@ -13,11 +13,21 @@ class TransactionRepository: ObservableObject {
     private var userId: String?
     private var listener: ListenerRegistration?
     private var currentLimit: Int = 50
+    private var currentMonth: Date? = nil // Track selected month
     
     /// Start listening to transactions for a specific user
-    func startListening(userId: String) {
+    /// - Parameters:
+    ///   - userId: User ID
+    ///   - month: Optional month to filter by. If nil, fetches latest.
+    ///   - showLoading: Whether to show loading state (default: true). Set to false to prevent UI flash when switching filters.
+    func startListening(userId: String, month: Date? = nil, showLoading: Bool = true) {
         self.userId = userId
-        self.isLoading = true
+        self.currentMonth = month
+        
+        // Only show loading if we don't have any data yet (Stale-While-Revalidate)
+        if showLoading && transactions.isEmpty {
+            self.isLoading = true
+        }
         self.errorMessage = nil
         self.currentLimit = 50 // Reset limit
         
@@ -29,10 +39,29 @@ class TransactionRepository: ObservableObject {
         
         listener?.remove()
         
-        listener = db.collection("users").document(userId).collection("transactions")
+        var query = db.collection("users").document(userId).collection("transactions")
             .order(by: "date", descending: true)
-            .limit(to: currentLimit)
-            .addSnapshotListener { [weak self] snapshot, error in
+            
+        // Apply Month Filter if provided
+        if let month = currentMonth {
+            let calendar = Calendar.current
+            let components = calendar.dateComponents([.year, .month], from: month)
+            guard let startOfMonth = calendar.date(from: components) else { return }
+            
+            // Calculate End of Month: Start of next month - 1 second
+            guard let nextMonth = calendar.date(byAdding: .month, value: 1, to: startOfMonth) else { return }
+            
+            // Filter by date range
+            query = query
+                .whereField("date", isGreaterThanOrEqualTo: startOfMonth)
+                .whereField("date", isLessThan: nextMonth)
+                // Remove limit when filtering by month to show ALL transactions for that month
+        } else {
+            // Default behavior: Fetch ALL transactions (No Limit)
+            // query = query.limit(to: currentLimit) // DISABLED LIMIT
+        }
+            
+        listener = query.addSnapshotListener { [weak self] snapshot, error in
                 guard let self = self else { return }
                 self.isLoading = false
                 
@@ -44,6 +73,7 @@ class TransactionRepository: ObservableObject {
                 
                 guard let documents = snapshot?.documents else {
                     self.errorMessage = "No transactions found."
+                    self.transactions = []
                     return
                 }
                 
@@ -58,7 +88,7 @@ class TransactionRepository: ObservableObject {
     }
     
     func loadMore() {
-        guard let userId = userId else { return }
+        guard userId != nil else { return }
         currentLimit += 50
         setupListener()
     }

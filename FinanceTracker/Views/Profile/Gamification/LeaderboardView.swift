@@ -1,67 +1,7 @@
 import SwiftUI
 
-struct LeaderboardView: View {
-    @ObservedObject var repo: SocialRepository
-    @EnvironmentObject var appState: AppState
-    var filter: String = ""
-    
-    var filteredData: [SocialRepository.LeaderboardEntry] {
-        if filter.isEmpty {
-            return repo.leaderboardData
-        } else {
-            return repo.leaderboardData.filter { $0.name.localizedCaseInsensitiveContains(filter) }
-        }
-    }
-    
-    var body: some View {
-        ScrollView {
-            VStack(spacing: AppSpacing.section) {
-                if repo.isLoading {
-                    ProgressView()
-                        .padding(.top, 40)
-                } else if filteredData.isEmpty {
-                    EmptyStateView(
-                        icon: "trophy",
-                        title: "Leaderboard",
-                        message: filter.isEmpty ? "Compare your gamification points with friends!" : "No results found."
-                    )
-                    .padding(.top, 40)
-                } else {
-                    // 1. Podium for Top 3 (Only if filter is empty to show true leaders)
-                    if filter.isEmpty && !filteredData.isEmpty {
-                        PodiumView(topUsers: Array(filteredData.prefix(3)))
-                            .padding(.top, 20)
-                    }
-                    
-                    // 2. List for the rest (or all if filtered)
-                    LazyVStack(spacing: AppSpacing.element) {
-                        let startIndex = (filter.isEmpty && filteredData.count > 3) ? 3 : 0
-                        let dataToShow = (filter.isEmpty && filteredData.count > 3) ? Array(filteredData.dropFirst(3)) : filteredData
-                        
-                        ForEach(Array(dataToShow.enumerated()), id: \.element.id) { index, entry in
-                            LeaderboardRow(
-                                entry: entry,
-                                rank: startIndex + index + 1,
-                                isCurrentUser: entry.id == appState.currentUserId
-                            )
-                        }
-                    }
-                    .padding(.horizontal, AppSpacing.margin)
-                    .padding(.bottom, 100) // Spacing for scrolling
-                }
-            }
-        }
-        .background(Color.backgroundPrimary) // Ensure consistent specific background
-        .onAppear {
-            if repo.leaderboardData.isEmpty {
-                repo.fetchLeaderboard(
-                    friends: appState.friendRepo.friends,
-                    currentUser: (id: appState.currentUserId, name: appState.userName)
-                )
-            }
-        }
-    }
-}
+// LeaderboardView struct removed - logic moved to SocialDashboardView.swift
+// Keeping subviews for reuse
 
 struct PodiumView: View {
     let topUsers: [SocialRepository.LeaderboardEntry]

@@ -72,51 +72,83 @@ struct GuidesListView: View {
     ]
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                MenuSection {
-                    ForEach(guides.indices, id: \.self) { index in
-                        let guide = guides[index]
-                        Button(action: {
-                            selectedGuide = guide
-                        }) {
-                            HStack(spacing: 16) {
-                                Image(systemName: guide.icon)
-                                    .font(.title2)
-                                    .foregroundColor(.white)
-                                    .frame(width: 40, height: 40)
-                                    .background(guide.color)
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                                
-                                Text(guide.title)
-                                    .font(.body)
-                                    .foregroundColor(.primary)
-                                
-                                Spacer()
-                                
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(Color(UIColor.tertiaryLabel))
+        ZStack(alignment: .top) {
+            // Background
+            (colorScheme == .dark ? Color.black : Color(UIColor.systemBackground))
+                .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 24) {
+                    Spacer().frame(height: 60)
+                    
+                    MenuSection {
+                        ForEach(guides.indices, id: \.self) { index in
+                            let guide = guides[index]
+                            Button(action: {
+                                selectedGuide = guide
+                            }) {
+                                HStack(spacing: 16) {
+                                    Image(systemName: guide.icon)
+                                        .font(.title2)
+                                        .foregroundColor(.white)
+                                        .frame(width: 40, height: 40)
+                                        .background(guide.color)
+                                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                                    
+                                    Text(guide.title)
+                                        .font(.body)
+                                        .foregroundColor(.primary)
+                                    
+                                    Spacer()
+                                    
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundColor(Color(UIColor.tertiaryLabel))
+                                }
+                                .padding(.vertical, 12)
+                                .padding(.horizontal, 16)
+                                .contentShape(Rectangle())
                             }
-                            .padding(.vertical, 12)
-                            .padding(.horizontal, 16)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        
-                        if index < guides.count - 1 {
-                            MenuDivider()
+                            .buttonStyle(.plain)
+                            
+                            if index < guides.count - 1 {
+                                MenuDivider()
+                            }
                         }
                     }
+                    .padding(.top, 0)
+                    
+                    Spacer()
+                }
+                .padding(.top, 20)
+            }
+            
+            // Fixed Navigation Bar
+            HStack {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .frame(width: 44, height: 44)
+                        .background((colorScheme == .dark ? Color.white : Color.black).opacity(0.05))
+                        .clipShape(Circle())
                 }
                 
                 Spacer()
+                
+                Text("Guides")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                
+                Spacer()
+                
+                Color.clear.frame(width: 44, height: 44)
             }
-            .padding(.top, 20)
+            .padding(.horizontal, AppSpacing.margin + AppSpacing.compact)
+            .padding(.top, 16)
         }
-        .background(Color(UIColor.systemBackground))
-        .navigationTitle("Guides")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .sheet(item: $selectedGuide) { guide in
             GuideDetailView(guide: guide)
         }

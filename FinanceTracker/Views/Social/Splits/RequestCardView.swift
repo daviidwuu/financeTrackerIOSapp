@@ -5,78 +5,80 @@ struct RequestCardView: View {
     let onAccept: () -> Void
     let onDecline: () -> Void
     
+    @EnvironmentObject var appState: AppState
+    
     var body: some View {
-        HStack(spacing: AppSpacing.element) {
-            // "Red Card" Icon
+        HStack(spacing: 12) {
+            // Avatar / Icon
             Circle()
-                .fill(Color.red.opacity(0.1))
+                .fill(Color.orange.opacity(0.1))
                 .frame(width: 48, height: 48)
                 .overlay(
-                    Image(systemName: "exclamationmark.circle.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(.red)
+                    Image(systemName: "banknote.fill")
+                        .font(.headline)
+                        .foregroundColor(.orange)
                 )
             
-            VStack(alignment: .leading, spacing: 4) {
-                // Title (Note or Fallback)
-                Text(request.note?.isEmpty == false ? request.note! : "Split Request")
-                    .font(.body)
-                    .fontWeight(.bold)
-                    .foregroundColor(.primary)
-                
+            VStack(alignment: .leading, spacing: 2) {
+                // Primary Info: Sender Name
                 let senderName: String = {
                     if let name = request.fromName, !name.isEmpty {
                         return name
                     }
-                    // Fallback to friend lookup
-                    if let friend = AppState.shared.friendRepo.friends.first(where: { $0.id == request.fromUid }) {
+                    if let friend = appState.friendRepo.friends.first(where: { $0.id == request.fromUid }) {
                         return friend.name
                     }
                     return "Friend"
                 }()
                 
-                // Subtitle (Details)
-                Text("\(senderName) requests $\(String(format: "%.2f", abs(request.amount)))")
-                    .font(.subheadline)
+                Text(senderName)
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                
+                // Secondary Info: Request Details
+                let note = request.note?.isEmpty == false ? request.note! : "Expense"
+                Text("requests $\(String(format: "%.2f", abs(request.amount))) for \(note)")
+                    .font(.caption)
                     .foregroundColor(.secondary)
+                    .lineLimit(1)
             }
             
             Spacer()
             
             // Actions
-            HStack(spacing: 12) {
+            HStack(spacing: 8) {
                 Button(action: {
                     HapticManager.shared.light()
                     onDecline()
                 }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 32))
-                        .foregroundColor(.red)
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.secondary)
+                        .frame(width: 32, height: 32)
+                        .background(Color(UIColor.secondarySystemBackground))
+                        .clipShape(Circle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PlainButtonStyle())
                 
                 Button(action: {
                     HapticManager.shared.success()
                     onAccept()
                 }) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 32))
-                        .foregroundColor(.green)
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(Color.backgroundPrimary)
+                        .frame(width: 32, height: 32)
+                        .background(Color.functionalSuccess)
+                        .clipShape(Circle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PlainButtonStyle())
             }
         }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(UIColor.secondarySystemBackground))
-                .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
-        )
-        // Red border to emphasize importance
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.red.opacity(0.3), lineWidth: 1)
-        )
+        .padding(AppSpacing.element)
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(AppRadius.medium)
+        // No red border, consistent with FriendRequestCard
     }
 }
 

@@ -9,6 +9,7 @@ struct AddTransactionView: View {
     
     var transactionToEdit: FirestoreModels.TransactionModel?
     var requestToAccept: FirestoreModels.SplitRequest?
+    var initialCategoryName: String? // New property
     var onSave: ((TransactionFormData) -> Void)?
     
     // Repositories moved to AppState
@@ -105,6 +106,11 @@ struct AddTransactionView: View {
                         if let budget = budgetRepo.budgets.first(where: { $0.category == categoryName }) {
                             selectedCategory = budget
                         }
+                    }
+                } else if let initialName = initialCategoryName, selectedCategory == nil {
+                    // Pre-select category from deep link
+                    if let budget = budgetRepo.budgets.first(where: { $0.category == initialName }) {
+                        selectedCategory = budget
                     }
                 }
             }

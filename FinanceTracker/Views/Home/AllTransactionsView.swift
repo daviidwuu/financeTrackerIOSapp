@@ -27,13 +27,18 @@ struct AllTransactionsView: View {
         self.transactionRepo = transactionRepo
         self.budgetRepo = budgetRepo
         _selectedDate = State(initialValue: initialDate)
+        // If initialDate is provided, set selectedMonth to that date so repo fetches correctly
+        if let initial = initialDate {
+            _selectedMonth = State(initialValue: initial)
+        }
     }
     
     var filteredTransactions: [FirestoreModels.TransactionModel] {
         transactionRepo.transactions.filter { transaction in
             guard !hiddenTransactionIds.contains(transaction.id ?? "") else { return false }
-            // Month filter
-            // Month filter (only if no specific date is selected)
+            
+            // Month filter is now handled by Repository, but we keep this check for consistency
+            // in case repo returns data from a transition period or user changes filter rapidly.
             let matchesMonth: Bool
             if let date = selectedDate {
                 matchesMonth = Calendar.current.isDate(transaction.date, inSameDayAs: date)
@@ -84,14 +89,22 @@ struct AllTransactionsView: View {
     }
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                (colorScheme == .dark ? Color.black : Color(UIColor.systemGroupedBackground))
-                    .ignoresSafeArea()
-                
-                VStack(spacing: 16) {
-                    // Search Bar
-                    HStack {
+        ZStack(alignment: .top) {
+            // Background
+            (colorScheme == .dark ? Color.black : Color(UIColor.systemGroupedBackground))
+                .ignoresSafeArea()
+            
+            // Main Content
+             List {
+                 // Spacer for fixed Navigation Bar
+                 Color.clear.frame(height: 60)
+                     .listRowSeparator(.hidden)
+                     .listRowBackground(Color.clear)
+                 
+                 // Search & Filters Header
+                 VStack(spacing: 16) {
+                     // Search Bar
+                    HStack(alignment: .center) {
                         Image(systemName: "magnifyingglass")
                             .foregroundColor(.secondary)
                             .font(.system(size: 16))
@@ -106,9 +119,8 @@ struct AllTransactionsView: View {
                     }
                     .padding(12)
                     .background(Color(UIColor.secondarySystemGroupedBackground))
-                    .cornerRadius(12)
-                    .padding(.horizontal)
-                    .padding(.top, 8)
+                    .clipShape(Capsule())
+                    .padding(.horizontal, AppSpacing.margin)
                     
                     // Type Filter Segmented Control
                     Picker("Type", selection: $selectedType) {
@@ -117,7 +129,7 @@ struct AllTransactionsView: View {
                         Text("Expense").tag("Expense")
                     }
                     .pickerStyle(.segmented)
-                    .padding(.horizontal)
+                    .padding(.horizontal, AppSpacing.margin)
                     
                     // Category & Month Filters
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -267,7 +279,7 @@ struct AllTransactionsView: View {
                                     .cornerRadius(10)
                             }
                         }
-                        .padding(.horizontal)
+                        .padding(.horizontal, AppSpacing.margin)
                     }
                     
                     // Active Filter Chips
@@ -295,7 +307,7 @@ struct AllTransactionsView: View {
                                     }
                                 }
                             }
-                            .padding(.horizontal)
+                            .padding(.horizontal, AppSpacing.margin)
                         }
                     }
                     
@@ -305,71 +317,105 @@ struct AllTransactionsView: View {
                         StatCard(title: "Count", value: "\(transactionStats.count)", icon: "number.circle")
                         StatCard(title: "Avg", value: "$\(Int(abs(transactionStats.average)))", icon: "chart.bar")
                     }
-                    .padding(.horizontal)
-                    
-                    // Transaction List
-                    if filteredTransactions.isEmpty {
-                        VStack(spacing: 12) {
-                            Image(systemName: "tray")
-                                .font(.system(size: 48))
-                                .foregroundColor(.secondary)
-                            Text("No transactions found")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                            Text("Try adjusting your filters")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else {
-                        List {
-                            ForEach(sortedTransactions) { transaction in
-                                TransactionRow(transaction: transaction)
-                                    .background(Color(UIColor.secondarySystemGroupedBackground))
-                                    .cornerRadius(AppRadius.medium)
-                                    .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
-                                    .listRowSeparator(.hidden)
-                                    .listRowBackground(Color.clear)
-                                    .padding(.bottom, AppSpacing.compact)
-                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                        Button(role: .destructive) {
-                                            HapticManager.shared.heavy()
-                                            deleteTransaction(transaction)
-                                        } label: {
-                                            Label("Delete", systemImage: "trash")
-                                        }
-                                        .tint(.red)
-                                    }
-                                    .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                        Button {
-                                            HapticManager.shared.medium()
-                                            transactionToEdit = transaction
-                                        } label: {
-                                            Label("Edit", systemImage: "pencil")
-                                        }
-                                        .tint(.blue)
-                                    }
-                                    .onTapGesture {
-                                        HapticManager.shared.light()
-                                        selectedTransaction = transaction
-                                    }
+                    .padding(.horizontal, AppSpacing.margin)
+                }
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets()) // Remove default padding
+                .padding(.bottom, 8)
+                
+                // Transaction List
+                if filteredTransactions.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "tray")
+                            .font(.system(size: 48))
+                            .foregroundColor(.secondary)
+                        Text("No transactions found")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                        Text("Try adjusting your filters")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 300)
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                } else {
+                    ForEach(sortedTransactions) { transaction in
+                        TransactionRow(transaction: transaction)
+                            .background(Color(UIColor.secondarySystemGroupedBackground))
+                            .cornerRadius(AppRadius.medium)
+                            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                            .padding(.bottom, AppSpacing.compact)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    HapticManager.shared.heavy()
+                                    deleteTransaction(transaction)
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                                .tint(.red)
                             }
-                        }
-                        .listStyle(.plain)
-                        .scrollContentBackground(.hidden)
+                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                Button {
+                                    HapticManager.shared.medium()
+                                    transactionToEdit = transaction
+                                } label: {
+                                    Label("Edit", systemImage: "pencil")
+                                }
+                                .tint(.blue)
+                            }
+                            .onTapGesture {
+                                HapticManager.shared.light()
+                                selectedTransaction = transaction
+                            }
                     }
                 }
             }
-            .navigationTitle("Transactions")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            // Fetch transactions when month changes
+            .onChange(of: selectedMonth) { _, newMonth in
+                transactionRepo.startListening(userId: appState.currentUserId, month: newMonth)
+            }
+            .onAppear {
+                // Initial fetch for the selected month
+                transactionRepo.startListening(userId: appState.currentUserId, month: selectedMonth)
+            }
+            .onDisappear {
+                // Reset to default (latest 50) when leaving this view
+                transactionRepo.startListening(userId: appState.currentUserId, month: nil, showLoading: false)
+            }
+            
+            // Fixed Navigation Bar
+            HStack {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .frame(width: 44, height: 44)
+                        .background((colorScheme == .dark ? Color.white : Color.black).opacity(0.05))
+                        .clipShape(Circle())
+                }
+                
+                Spacer()
+                
+                Text("Transactions")
+                    .font(.headline)
                     .fontWeight(.semibold)
-                }
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                
+                Spacer()
+                
+                // Placeholder to balance layout
+                Color.clear.frame(width: 44, height: 44)
             }
+            .padding(.horizontal, AppSpacing.margin + AppSpacing.compact)
+            .padding(.top, 16)
+            
             .errorBanner(errorState)
             .undoableBanner(undoState)
             .sheet(item: $selectedTransaction) { transaction in

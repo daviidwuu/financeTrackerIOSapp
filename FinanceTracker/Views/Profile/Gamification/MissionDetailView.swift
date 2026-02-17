@@ -107,6 +107,7 @@ struct MissionDetailView: View {
                         // Action Button
                         if let _ = mission.actionLink {
                             Button(action: {
+                                HapticManager.shared.medium()
                                 dismiss()
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                                     onAction()

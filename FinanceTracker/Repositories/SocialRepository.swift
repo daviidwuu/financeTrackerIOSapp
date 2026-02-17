@@ -414,6 +414,7 @@ class SocialRepository: ObservableObject {
                 amount: amount,
                 payerId: payerId,
                 payerName: payerName ?? "User",
+                receiverId: receiverId, // ✅ Store Receiver ID
                 receiverName: receiverName,
                 date: timestamp,
                 type: "settlement", // Special type for UI

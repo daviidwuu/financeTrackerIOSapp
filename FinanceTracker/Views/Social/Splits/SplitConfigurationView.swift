@@ -393,7 +393,9 @@ struct SplitConfigurationView: View {
     // MARK: - Step 2: Distribution
     
     private var StepTwoView: some View {
-        ScrollView {
+        let symbol = getSymbol(for: CurrencyManager.shared.mainCurrency)
+        
+        return ScrollView {
             VStack(spacing: 24) {
                 // Total Owed Card
                 VStack(spacing: 8) {
@@ -402,7 +404,7 @@ struct SplitConfigurationView: View {
                         .fontWeight(.bold)
                         .foregroundColor(.secondary)
                     
-                    Text(String(format: "$%.2f", transactionAmount))
+                    Text(symbol + String(format: "%.2f", transactionAmount))
                         .font(.system(size: 36, weight: .bold, design: .rounded))
                         .foregroundColor(.primary)
                     
@@ -414,7 +416,7 @@ struct SplitConfigurationView: View {
                             Text("Unassigned:")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
-                            Text(String(format: "$%.2f", max(0, remaining)))
+                            Text(symbol + String(format: "%.2f", max(0, remaining)))
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
                                 .foregroundColor(abs(remaining) < 0.01 ? .green : .orange)
@@ -459,6 +461,7 @@ struct SplitConfigurationView: View {
                             CustomSplitRow(
                                 split: split,
                                 mode: splitMode,
+                                currencySymbol: symbol,
                                 onAmountChange: { id, val in adjustSplits(manuallyChangedSplitId: id, newValue: val) },
                                 onRemove: { removeSplit(split) }
                             )
@@ -469,6 +472,7 @@ struct SplitConfigurationView: View {
                                     get: { percentages[split.id] ?? 0 },
                                     set: { percentages[split.id] = $0; recalculateSplits(for: .percentage) }
                                 ),
+                                currencySymbol: symbol,
                                 onRemove: { removeSplit(split) }
                             )
                         case .shares:
@@ -478,6 +482,7 @@ struct SplitConfigurationView: View {
                                     get: { shares[split.id] ?? 1 },
                                     set: { shares[split.id] = $0; recalculateSplits(for: .shares) }
                                 ),
+                                currencySymbol: symbol,
                                 onRemove: { removeSplit(split) }
                             )
                         }
@@ -488,6 +493,11 @@ struct SplitConfigurationView: View {
                 Spacer().frame(height: 100)
             }
         }
+    }
+    
+    private func getSymbol(for currencyCode: String) -> String {
+        let locale = NSLocale(localeIdentifier: currencyCode)
+        return locale.displayName(forKey: .currencySymbol, value: currencyCode) ?? currencyCode
     }
     
     // MARK: - Logic
@@ -731,6 +741,7 @@ struct SplitConfigurationView: View {
 struct CustomSplitRow: View {
     let split: FirestoreModels.Split
     let mode: SplitMode
+    var currencySymbol: String = "$" // Default
     var onAmountChange: (String, Double) -> Void
     var onRemove: () -> Void
     
@@ -762,7 +773,7 @@ struct CustomSplitRow: View {
             
             if mode == .exact {
                 HStack(spacing: 2) {
-                    Text("$")
+                    Text(currencySymbol)
                         .foregroundColor(.primary)
                         .font(.body)
                     
@@ -786,7 +797,7 @@ struct CustomSplitRow: View {
                 .background(Color(UIColor.secondarySystemBackground))
                 .cornerRadius(8)
             } else {
-                Text(String(format: "$%.2f", split.amount))
+                Text(currencySymbol + String(format: "%.2f", split.amount))
                     .font(.body.monospacedDigit())
                     .fontWeight(.semibold)
             }
@@ -806,6 +817,7 @@ struct CustomSplitRow: View {
 struct PercentageSplitRow: View {
     let split: FirestoreModels.Split
     @Binding var percentage: Double
+    var currencySymbol: String = "$" // Default
     var onRemove: () -> Void
     
     var body: some View {
@@ -816,7 +828,7 @@ struct PercentageSplitRow: View {
                 Text(split.name)
                     .font(.body)
                     .fontWeight(.medium)
-                Text(String(format: "$%.2f", split.amount))
+                Text(currencySymbol + String(format: "%.2f", split.amount))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -848,6 +860,7 @@ struct PercentageSplitRow: View {
 struct ShareSplitRow: View {
     let split: FirestoreModels.Split
     @Binding var shareCount: Int
+    var currencySymbol: String = "$" // Default
     var onRemove: () -> Void
     
     var body: some View {
@@ -858,7 +871,7 @@ struct ShareSplitRow: View {
                 Text(split.name)
                     .font(.body)
                     .fontWeight(.medium)
-                Text(String(format: "$%.2f", split.amount))
+                Text(currencySymbol + String(format: "%.2f", split.amount))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }

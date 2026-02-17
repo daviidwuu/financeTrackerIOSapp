@@ -37,7 +37,7 @@ function getColorForCategory(category) {
 
 async function getUserInfo(uid) {
   const doc = await admin.firestore().collection('users').doc(uid).get();
-  if (!doc.exists) return { name: 'Someone', fcmToken: null };
+  if (!doc.exists) return { name: 'Someone', username: 'user', fcmToken: null, avatarColor: '#808080' };
   const data = doc.data();
   return {
     name: data.name || data.displayName || 'Someone',
