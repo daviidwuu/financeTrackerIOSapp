@@ -109,7 +109,7 @@ struct GuidesListView: View {
                                 .padding(.horizontal, 16)
                                 .contentShape(Rectangle())
                             }
-                            .buttonStyle(.plain)
+                            
                             
                             if index < guides.count - 1 {
                                 MenuDivider()

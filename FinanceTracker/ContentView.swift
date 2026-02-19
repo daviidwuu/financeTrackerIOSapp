@@ -151,6 +151,12 @@ struct ContentView: View {
             do {
                 // Convert UI Transaction to Firestore Transaction
                 let amount = Double(transaction.amount) ?? 0.0
+                
+                // FIX #10: Validate amount is not zero
+                guard amount != 0 else {
+                    DebugLogger.log("Ignoring transaction with zero amount")
+                    return
+                }
                 let firestoreTransaction = FirestoreModels.TransactionModel(
                     userId: appState.currentUserId, // Use global user ID
                     title: transaction.title,

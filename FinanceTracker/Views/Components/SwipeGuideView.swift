@@ -34,7 +34,7 @@ struct SwipeGuideView: View {
                                 )
                         } else if showDelete {
                             RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.red)
+                                .fill(AppColors.functionalExpense)
                                 .overlay(
                                     Image(systemName: "trash")
                                         .foregroundColor(.white)
@@ -45,7 +45,7 @@ struct SwipeGuideView: View {
                             Color.clear
                         }
                     }
-                    .cornerRadius(16)
+                    .cornerRadius(AppRadius.medium)
                     
                     // Row Content
                     HStack {
@@ -67,11 +67,11 @@ struct SwipeGuideView: View {
                     }
                     .padding()
                     .background(Color(UIColor.secondarySystemBackground))
-                    .cornerRadius(16)
+                    .cornerRadius(AppRadius.medium)
                     .offset(x: offset)
                 }
                 .frame(height: 70)
-                .padding(.horizontal, 20)
+                .padding(.horizontal, AppSpacing.margin)
                 
                 // Instructions
                 Text(guideText)

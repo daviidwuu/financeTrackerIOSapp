@@ -10,6 +10,8 @@ struct SplitRequestDetailView: View {
     @StateObject private var repo = SocialRepository()
     @State private var errorState = ErrorState()
     @State private var originalTransaction: FirestoreModels.TransactionModel?
+    @State private var allSplits: [FirestoreModels.SplitRequest] = []
+    @State private var showAcceptWizard = false
     
     // Derived Properties
     private var isIncoming: Bool { request.toUid == appState.currentUserId }
@@ -26,36 +28,50 @@ struct SplitRequestDetailView: View {
     
     var body: some View {
         ZStack {
-            Color.backgroundPrimary.ignoresSafeArea()
+            Color.backgroundPrimary.ignoresSafeArea(.all, edges: .bottom)
             
             VStack(spacing: 0) {
-                // 1. Standard Header
+                // 1. Slim Header (nav bar + title only)
                 DetailHeaderView(
-                    title: request.note ?? "Split Expense",
+                    title: "",
+                    subtitle: nil as String?,
                     onBack: { dismiss() },
                     backIcon: "xmark",
                     onMenu: nil,
                     backgroundColor: Color.backgroundPrimary,
                     textColor: .primary,
-                    avatar: {
-                        ZStack {
-                            Circle()
-                                .fill(statusColor.opacity(0.15))
-                                .frame(width: 80, height: 80)
-                                .shadow(color: statusColor.opacity(0.2), radius: 15, y: 8)
+                    height: AppSize.headerHeightSlim,
+                    avatar: { EmptyView() },
+                    actions: { EmptyView() }
+                )
+                
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Hero Section: Icon, Amount, Status, Date
+                        VStack(spacing: 8) {
+                            ZStack {
+                                Circle()
+                                    .fill(statusColor.opacity(0.15))
+                                    .frame(width: 80, height: 80)
+                                    .shadow(color: statusColor.opacity(0.2), radius: 15, y: 8)
+                                
+                                Image(systemName: isIncoming ? "arrow.down.left" : "arrow.up.right")
+                                    .font(.system(size: 32, weight: .bold))
+                                    .foregroundColor(statusColor)
+                            }
                             
-                            Image(systemName: isIncoming ? "arrow.down.left" : "arrow.up.right")
-                                .font(.system(size: 32, weight: .bold))
-                                .foregroundColor(statusColor)
-                        }
-                    },
-                    subtitle: {
-                        Text(request.createdAt.formatted(date: .long, time: .shortened))
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    },
-                    actions: {
-                        VStack(spacing: 4) {
+                            Text(request.note?.isEmpty == false ? request.note! : "Split Request")
+                                .font(AppTypography.titleDisplay)
+                                .foregroundColor(.primary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                            
+                            Text(originalTransaction?.subtitle ?? "Split Expense")
+                                .font(AppTypography.body)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                            
                             Text(String(format: "$%.2f", request.amount))
                                 .font(AppTypography.prominentBalance)
                                 .foregroundColor(.primary)
@@ -69,154 +85,91 @@ struct SplitRequestDetailView: View {
                                 .padding(.vertical, 6)
                                 .background(statusColor.opacity(0.1))
                                 .clipShape(Capsule())
+                            
+                            Text(request.createdAt.formatted(date: .long, time: .shortened))
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
                         }
-                    }
-                )
-                
-                ScrollView {
-                    VStack(spacing: 24) {
-                        Spacer().frame(height: AppSpacing.element)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, AppSpacing.element)
                         
-                        // 2. Info Card
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("DETAILS")
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .foregroundColor(.secondary)
-                            .padding(.leading, 8)
-                        
-                        VStack(spacing: 0) {
-                            RequestDetailRow(
-                                title: "Payer",
-                                value: resolveName(uid: request.fromUid, name: request.fromName),
-                                icon: "person.fill",
-                                color: .blue
-                            )
-                            
-                            Divider().padding(.leading, 52)
-                            
-                            RequestDetailRow(
-                                title: "Recipient",
-                                value: resolveName(uid: request.toUid, name: request.toName),
-                                icon: "person.2.fill",
-                                color: .purple
-                            )
-                            
-                            if let groupId = request.groupId, 
-                               let group = appState.groupRepo.groups.first(where: { $0.id == groupId }) {
-                                Divider().padding(.leading, 52)
-                                RequestDetailRow(title: "Group", value: group.name, icon: "person.3.fill", color: .orange)
-                            }
-                            
-                            Divider().padding(.leading, 52)
-                            RequestDetailRow(title: "Category", value: originalTransaction?.subtitle ?? "General", icon: "tag.fill", color: .teal)
-                            
-                            if let total = originalTransaction?.amount {
-                                Divider().padding(.leading, 52)
-                                RequestDetailRow(
-                                    title: "Total Expense",
-                                    value: String(format: "$%.2f", abs(total)),
-                                    icon: "sum",
-                                    color: .indigo
-                                )
-                            }
-                            
-                            Divider().padding(.leading, 52)
-                            RequestDetailRow(
-                                title: "Your Share",
-                                value: String(format: "$%.2f", request.amount),
-                                icon: "person.crop.circle",
-                                color: .mint
-                            )
-                        }
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .cornerRadius(AppRadius.medium)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: AppRadius.medium)
-                                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
-                        )
-                    }
-                    .padding(.horizontal, AppSpacing.margin)
-
-                    // 2.5 Split Status Card
-                    if let tx = originalTransaction, tx.type != "income", let splits = tx.splits, !splits.isEmpty {
+                        // 2. Details & Map Card (matches TransactionDetailView)
                         VStack(alignment: .leading, spacing: 16) {
-                            Text("SPLIT STATUS")
+                            Text("DETAILS")
                                 .font(.caption)
                                 .fontWeight(.bold)
                                 .foregroundColor(.secondary)
                                 .padding(.leading, 8)
                             
                             VStack(spacing: 0) {
-                                ForEach(splits) { split in
-                                    HStack(spacing: 12) {
-                                        // Mini Avatar
-                                        ZStack {
-                                            Circle()
-                                                .fill(Color.primary.opacity(0.05))
-                                                .frame(width: 36, height: 36)
-                                            Text(String(split.name.prefix(1)).uppercased())
-                                                .font(.system(size: 14, weight: .bold))
-                                                .foregroundColor(.primary)
-                                        }
-                                        
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(split.name)
-                                                .font(.body)
-                                                .fontWeight(.medium)
-                                                .foregroundColor(.primary)
-                                        }
-                                        
-                                        Spacer()
-                                        
-                                        VStack(alignment: .trailing, spacing: 2) {
-                                            Text(String(format: "$%.2f", split.amount))
-                                                .font(.body.monospacedDigit())
-                                                .fontWeight(.semibold)
-                                            
-                                            if let status = split.status {
-                                                Text(status.capitalized)
-                                                    .font(.caption2)
-                                                    .fontWeight(.bold)
-                                                    .foregroundColor(status == "paid" ? .green : (status == "declined" ? .red : (status == "accepted" ? .blue : .orange)))
-                                            } else {
-                                                Text(split.isPaid ? "Paid" : "Pending")
-                                                    .font(.caption2)
-                                                    .foregroundColor(split.isPaid ? .green : .orange)
-                                            }
-                                        }
-                                        
-                                        // Inline Paid Toggle (Only if user is owner)
-                                        if tx.userId == appState.currentUserId {
-                                            Button(action: { toggleSplitPayment(split) }) {
-                                                Image(systemName: split.isPaid ? "checkmark.circle.fill" : "circle")
-                                                    .font(.title3)
-                                                    .foregroundColor(split.isPaid ? .green : .secondary.opacity(0.3))
-                                            }
-                                            .buttonStyle(.plain)
-                                        }
+                                // Map Header (integrated into card)
+                                if let tx = originalTransaction, let lat = tx.latitude, let long = tx.longitude {
+                                    Map(initialPosition: .camera(MapCamera(centerCoordinate: CLLocationCoordinate2D(latitude: lat, longitude: long), distance: 500))) {
+                                        Marker(request.note ?? "Location", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: long))
                                     }
-                                    .padding(.vertical, 14)
-                                    .padding(.horizontal, 16)
+                                    .frame(height: 140)
                                     
-                                    if split.id != splits.last?.id {
-                                        Divider().padding(.horizontal, 16)
-                                    }
+                                    Divider()
                                 }
                                 
-                                // Net Cost Row
-                                HStack {
-                                    Text("Net Cost")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                    Spacer()
-                                    let reimbursed = splits.filter { $0.isPaid }.reduce(0) { $0 + $1.amount }
-                                    Text(String(format: "$%.2f", abs(tx.amount) - reimbursed))
-                                        .font(.headline.monospacedDigit())
-                                        .foregroundColor(.primary)
+                                TransactionDetailRow(
+                                    icon: "person.fill",
+                                    title: "Payer",
+                                    value: resolveName(uid: request.fromUid, name: request.fromName),
+                                    color: .secondary
+                                )
+                                
+                                Divider().padding(.leading, 52)
+                                
+                                TransactionDetailRow(
+                                    icon: "person.2.fill",
+                                    title: "Recipient",
+                                    value: resolveName(uid: request.toUid, name: request.toName),
+                                    color: .secondary
+                                )
+                                
+                                if let groupId = request.groupId,
+                                   let group = appState.groupRepo.groups.first(where: { $0.id == groupId }) {
+                                    Divider().padding(.leading, 52)
+                                    TransactionDetailRow(icon: "person.3.fill", title: "Group", value: group.name, color: .secondary)
                                 }
-                                .padding(16)
-                                .background(Color.primary.opacity(0.03))
+                                
+                                Divider().padding(.leading, 52)
+                                TransactionDetailRow(icon: "tag", title: "Category", value: originalTransaction?.subtitle ?? "General", color: Color(hex: originalTransaction?.colorHex ?? "#808080"))
+                                
+                                Divider().padding(.leading, 52)
+                                TransactionDetailRow(
+                                    icon: "banknote",
+                                    title: "Original Amount",
+                                    value: String(format: "$%.2f", request.originalTotalAmount ?? originalTransaction?.originalAmount ?? abs(originalTransaction?.amount ?? request.amount)),
+                                    color: .blue
+                                )
+                                
+                                Divider().padding(.leading, 52)
+                                TransactionDetailRow(
+                                    icon: "person.crop.circle",
+                                    title: "Your Share",
+                                    value: String(format: "$%.2f", request.amount),
+                                    color: .secondary
+                                )
+                                
+                                if let note = request.note, !note.isEmpty {
+                                    Divider().padding(.leading, 52)
+                                    TransactionDetailRow(
+                                        icon: "text.alignleft",
+                                        title: "Notes",
+                                        value: note,
+                                        color: .secondary
+                                    )
+                                }
+                                
+                                Divider().padding(.leading, 52)
+                                TransactionDetailRow(
+                                    icon: "clock",
+                                    title: "Created on",
+                                    value: request.createdAt.formatted(date: .omitted, time: .shortened),
+                                    color: .secondary
+                                )
                             }
                             .background(Color(UIColor.secondarySystemBackground))
                             .cornerRadius(AppRadius.medium)
@@ -226,37 +179,76 @@ struct SplitRequestDetailView: View {
                             )
                         }
                         .padding(.horizontal, AppSpacing.margin)
-                    }
-
-                    // 2.5 Map (If available)
-                    if let tx = originalTransaction, let lat = tx.latitude, let long = tx.longitude {
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("LOCATION")
-                                .font(.caption)
-                                .fontWeight(.bold)
-                                .foregroundColor(.secondary)
-                                .padding(.leading, 8)
-                            
-                            Map(initialPosition: .region(MKCoordinateRegion(
-                                center: CLLocationCoordinate2D(latitude: lat, longitude: long),
-                                span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-                            ))) {
-                                Marker("Location", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: long))
-                                    .tint(.red)
+                        
+                        // Optional Location Name
+                        if let tx = originalTransaction, let locName = tx.locationName, !locName.isEmpty {
+                            HStack {
+                                Image(systemName: "location.fill")
+                                    .font(.caption)
+                                Text(locName)
+                                    .font(.caption)
                             }
-                            .frame(height: 200)
-                            .cornerRadius(AppRadius.medium)
-                            
-                            if let name = tx.locationName {
-                                Text(name)
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(.primary)
-                                    .padding(.leading, 8)
-                            }
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, AppSpacing.margin)
+                            .padding(.top, -AppSpacing.element)
                         }
-                        .padding(.horizontal, AppSpacing.margin)
-                    }
+                        
+                        // 2.5. Split Status Section
+                        if !allSplits.isEmpty {
+                            VStack(alignment: .leading, spacing: 16) {
+                                Text("SPLIT STATUS")
+                                    .font(.caption)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.secondary)
+                                    .padding(.leading, 8)
+                                
+                                VStack(spacing: 0) {
+                                    ForEach(Array(allSplits.enumerated()), id: \.element.id) { index, split in
+                                        HStack(spacing: 12) {
+                                            Circle()
+                                                .fill(splitStatusColor(split.status).opacity(0.15))
+                                                .frame(width: 36, height: 36)
+                                                .overlay(
+                                                    Image(systemName: splitStatusIcon(split.status))
+                                                        .font(.system(size: 14, weight: .bold))
+                                                        .foregroundColor(splitStatusColor(split.status))
+                                                )
+                                            
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(resolveName(uid: split.toUid, name: split.toName))
+                                                    .font(.body)
+                                                    .fontWeight(.medium)
+                                                    .foregroundColor(.primary)
+                                                
+                                                Text(split.status.rawValue.capitalized)
+                                                    .font(.caption)
+                                                    .foregroundColor(splitStatusColor(split.status))
+                                            }
+                                            
+                                            Spacer()
+                                            
+                                            Text(String(format: "$%.2f", split.amount))
+                                                .font(.subheadline)
+                                                .fontWeight(.semibold)
+                                                .foregroundColor(.primary)
+                                        }
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 12)
+                                        
+                                        if index < allSplits.count - 1 {
+                                            Divider().padding(.leading, 64)
+                                        }
+                                    }
+                                }
+                                .background(Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(AppRadius.medium)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: AppRadius.medium)
+                                        .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+                                )
+                            }
+                            .padding(.horizontal, AppSpacing.margin)
+                        }
                     
                     // 3. Actions
                     VStack(spacing: 16) {
@@ -264,8 +256,11 @@ struct SplitRequestDetailView: View {
                             // --- Receiver (User B) Actions ---
                             
                             if request.status == .pending {
-                                // Accept Button
-                                Button(action: acceptRequest) {
+                                // Accept Button — opens full transaction wizard
+                                Button(action: {
+                                    HapticManager.shared.medium()
+                                    showAcceptWizard = true
+                                }) {
                                     HStack {
                                         Image(systemName: "checkmark.circle.fill")
                                         Text("Accept Request")
@@ -299,20 +294,30 @@ struct SplitRequestDetailView: View {
                             
                             // Mark as Paid (Only Sender can do this now)
                             if request.status == .pending || request.status == .accepted {
-                                Button(action: markAsPaid) {
+                                let isEnabled = request.status == .accepted
+                                
+                                Button(action: {
+                                    if isEnabled {
+                                        markAsPaid()
+                                    } else {
+                                        HapticManager.shared.error()
+                                        // Optional: Show alert or tooltip explaining why
+                                    }
+                                }) {
                                     HStack {
-                                        Image(systemName: "banknote.fill")
-                                        Text("Mark as Paid")
+                                        Image(systemName: isEnabled ? "banknote.fill" : "lock.fill")
+                                        Text(isEnabled ? "Mark as Paid" : "Waiting for Acceptance")
                                     }
                                     .font(.headline)
                                     .fontWeight(.bold)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(isEnabled ? .white : .secondary)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 16)
-                                    .background(Color.green)
+                                    .background(isEnabled ? AppColors.functionalIncome : Color(UIColor.secondarySystemBackground))
                                     .cornerRadius(AppRadius.large)
-                                    .shadow(color: Color.green.opacity(0.3), radius: 8, y: 4)
+                                    .shadow(color: isEnabled ? AppColors.functionalIncome.opacity(0.3) : Color.clear, radius: 8, y: 4)
                                 }
+                                .disabled(!isEnabled)
                             }
                             
                             // Resend feature for Declined requests
@@ -345,7 +350,7 @@ struct SplitRequestDetailView: View {
                                     .foregroundColor(.red)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 16)
-                                    .background(Color.red.opacity(0.1))
+                                    .background(AppColors.functionalExpense.opacity(0.1))
                                     .cornerRadius(AppRadius.large)
                                 }
                             }
@@ -362,6 +367,42 @@ struct SplitRequestDetailView: View {
         .navigationBarHidden(true)
         .onAppear {
             loadOriginalTransaction()
+            loadAllSplits()
+        }
+        .sheet(isPresented: $showAcceptWizard) {
+            AddTransactionView(requestToAccept: request, onSave: { transaction in
+                // 1. Save the transaction
+                Task {
+                    do {
+                        let amount = CurrencyInput.parseOrZero(transaction.amount)
+                        let firestoreTransaction = FirestoreModels.TransactionModel(
+                            userId: appState.currentUserId,
+                            title: transaction.title,
+                            subtitle: transaction.subtitle,
+                            amount: amount,
+                            date: transaction.date,
+                            type: amount < 0 ? "expense" : "income",
+                            createdAt: Date(),
+                            icon: transaction.icon,
+                            colorHex: transaction.color.toHex() ?? "#000000",
+                            note: transaction.notes
+                        )
+                        try await appState.transactionRepo.addTransaction(firestoreTransaction)
+                        
+                        // 2. Update request status
+                        try await appState.requestRepo.updateRequestStatus(
+                            userId: appState.currentUserId,
+                            requestId: request.id!,
+                            status: .accepted,
+                            lastUpdatedBy: appState.currentUserId
+                        )
+                        
+                        await MainActor.run { dismiss() }
+                    } catch {
+                        await MainActor.run { errorState.show("Failed to accept request") }
+                    }
+                }
+            })
         }
     }
 
@@ -385,7 +426,8 @@ struct SplitRequestDetailView: View {
                 // Reset status to pending and update timestamp to bump it up
                 try await Firestore.firestore().collection("split_requests").document(id).updateData([
                     "status": "pending",
-                    "createdAt": Date() // Bump to top
+                    "createdAt": Date(), // Bump to top
+                    "lastUpdatedBy": appState.currentUserId
                 ])
                 dismiss()
             } catch {
@@ -394,33 +436,12 @@ struct SplitRequestDetailView: View {
         }
     }
     
-    private func acceptRequest() {
-        HapticManager.shared.medium()
+    private func loadAllSplits() {
         Task {
             do {
-                // 1. Create Transaction for Receiver
-                // We use details from the request and original transaction
-                let transaction = FirestoreModels.TransactionModel(
-                    userId: appState.currentUserId,
-                    title: request.note ?? originalTransaction?.title ?? "Split Expense",
-                    subtitle: originalTransaction?.subtitle ?? "Social",
-                    amount: -request.amount, // Expense
-                    date: Date(),
-                    type: "expense",
-                    createdAt: Date(),
-                    icon: originalTransaction?.icon ?? "person.2.fill",
-                    colorHex: originalTransaction?.colorHex ?? "#007AFF",
-                    note: "Accepted split from \(request.fromName ?? "friend")"
-                )
-                
-                try await appState.transactionRepo.addTransaction(transaction)
-                
-                // 2. Update Request Status
-                try await appState.requestRepo.updateRequestStatus(userId: appState.currentUserId, requestId: request.id!, status: .accepted)
-                
-                dismiss()
+                allSplits = try await repo.fetchSplitsForTransaction(transactionId: request.transactionId)
             } catch {
-                errorState.show("Failed to accept request")
+                print("Error loading splits: \(error)")
             }
         }
     }
@@ -448,7 +469,7 @@ struct SplitRequestDetailView: View {
             do {
                 // Using RequestRepository directly properly via AppState if possible, or SocialTransactionManager if it had it.
                 // RequestRepository is in AppState.
-                try await appState.requestRepo.updateRequestStatus(userId: appState.currentUserId, requestId: request.id!, status: .declined)
+                try await appState.requestRepo.updateRequestStatus(userId: appState.currentUserId, requestId: request.id!, status: .declined, lastUpdatedBy: appState.currentUserId)
                 dismiss()
             } catch {
                 errorState.show("Failed to decline request")
@@ -460,7 +481,9 @@ struct SplitRequestDetailView: View {
         HapticManager.shared.warning()
         Task {
             do {
-                try await SocialTransactionManager.shared.deleteSplitRequestAndSync(request: request)
+                // Use the new resolver to handle Delete (Payer) or Decline (Receiver)
+                // Although this button is only shown for the Payer, it's safer to use the resolver.
+                try await SocialTransactionManager.shared.resolveSplitRequestAction(request: request)
                 dismiss()
             } catch {
                 errorState.show("Failed to cancel request")
@@ -477,117 +500,27 @@ struct SplitRequestDetailView: View {
         return "Unknown"
     }
     
-    private func toggleSplitPayment(_ split: FirestoreModels.Split) {
-        guard var tx = originalTransaction, let transactionId = tx.id else { return }
-        
-        HapticManager.shared.medium() // Feedback for toggling payment status
-        
-        // Optimistic UI toggle
-        if let index = tx.splits?.firstIndex(where: { $0.id == split.id }) {
-            tx.splits?[index].isPaid.toggle()
-            self.originalTransaction = tx
-        }
-        
-        Task {
-            do {
-                // 1. Fetch Request
-                var request: FirestoreModels.SplitRequest?
-                let db = Firestore.firestore()
-                
-                if let reqId = split.requestId {
-                    let doc = try await db.collection("split_requests").document(reqId).getDocument()
-                    request = try? doc.data(as: FirestoreModels.SplitRequest.self)
-                }
-                
-                // Fallback if no requestId or not found
-                if request == nil {
-                     // Try to find by friendId/guestId
-                     var targetUid: String?
-                     if let fid = split.friendId { targetUid = fid }
-                     else if let gid = split.guestId { targetUid = gid }
-                     
-                     if let target = targetUid {
-                        let snapshot = try await db.collection("split_requests")
-                            .whereField("transactionId", isEqualTo: transactionId)
-                            .whereField("toUid", isEqualTo: target)
-                            .getDocuments()
-                        request = try? snapshot.documents.first?.data(as: FirestoreModels.SplitRequest.self)
-                     }
-                }
-                
-                guard let foundRequest = request else {
-                    print("DEBUG: Could not find split request for split: \(split.id)")
-                    // Revert UI
-                    await MainActor.run {
-                        if let index = originalTransaction?.splits?.firstIndex(where: { $0.id == split.id }) {
-                            originalTransaction?.splits?[index].isPaid.toggle()
-                        }
-                    }
-                    return
-                }
-                
-                // 2. Toggle using Manager
-                let currentStatus = foundRequest.status
-                
-                if currentStatus == .pending || currentStatus == .accepted || currentStatus == .blocked_by_group || currentStatus == .declined {
-                     try await SocialTransactionManager.shared.markSplitAsPaid(request: foundRequest, currentUserId: appState.currentUserId, currentUserName: appState.userName)
-                } else if currentStatus == .paid {
-                     try await SocialTransactionManager.shared.unmarkSplitAsPaid(request: foundRequest, currentUserId: appState.currentUserId)
-                }
-                
-                // 3. Refresh Transaction
-                let freshTx = try await appState.transactionRepo.fetchTransaction(id: transactionId)
-                 if let fresh = freshTx {
-                     await MainActor.run {
-                         self.originalTransaction = fresh
-                     }
-                 }
-            } catch {
-                print("Error toggling split payment: \(error)")
-                // Revert UI
-                await MainActor.run {
-                    if let index = originalTransaction?.splits?.firstIndex(where: { $0.id == split.id }) {
-                        originalTransaction?.splits?[index].isPaid.toggle()
-                    }
-                }
-            }
+    private func splitStatusColor(_ status: FirestoreModels.SplitRequest.RequestStatus) -> Color {
+        switch status {
+        case .paid: return .green
+        case .accepted: return .blue
+        case .pending: return .orange
+        case .declined: return .red
+        default: return .gray
         }
     }
-}
-
-// Reuse DetailRow or define simpler one here
-struct RequestDetailRow: View {
-    let title: String
-    let value: String
-    let icon: String
-    let color: Color
     
-    var body: some View {
-        HStack(spacing: 16) {
-            ZStack {
-                Circle()
-                    .fill(color.opacity(0.1))
-                    .frame(width: 32, height: 32)
-                Image(systemName: icon)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(color)
-            }
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption2)
-                    .fontWeight(.bold)
-                    .foregroundColor(.secondary)
-                Text(value)
-                    .font(.body)
-                    .fontWeight(.medium)
-                    .foregroundColor(.primary)
-            }
-            Spacer()
+    private func splitStatusIcon(_ status: FirestoreModels.SplitRequest.RequestStatus) -> String {
+        switch status {
+        case .paid: return "checkmark.circle.fill"
+        case .accepted: return "checkmark"
+        case .pending: return "clock.fill"
+        case .declined: return "xmark.circle.fill"
+        default: return "questionmark.circle"
         }
-        .padding(16)
     }
+    
+    // toggleSplitPayment removed – Split Status card is now only shown on TransactionDetailView and GroupTransactionDetailView
 }
 
-
-
+// TransactionDetailRow is in Views/Components/TransactionDetailRow.swift

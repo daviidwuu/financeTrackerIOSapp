@@ -190,287 +190,280 @@ struct LockScreenWidgetEntryView : View {
             
         // MARK: Home Screen - Small (Daily Focus)
         case .systemSmall:
-            ZStack {
-                // Background
-                Color.black.ignoresSafeArea()
+            VStack(alignment: .leading, spacing: 0) {
+                // Header Row: Label + Gauge
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("Daily\nLimit")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Color(UIColor.systemGray))
+                            .lineSpacing(0)
+                        
+                        if !entry.isVaultUnlocked && entry.dailyVault > 0 {
+                            HStack(spacing: 2) {
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 8))
+                                Text(formatShort(entry.dailyVault))
+                                    .font(.system(size: 8, weight: .bold))
+                            }
+                            .foregroundStyle(Color.green.opacity(0.8))
+                            .padding(.top, 2)
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    // Thin Ring Gauge (Navigation Style)
+                    ZStack {
+                        Circle()
+                            .stroke(Color(UIColor.tertiarySystemFill), lineWidth: 3)
+                            .frame(width: 32, height: 32)
+                        
+                        if entry.dailySpend < 0 {
+                            // Credit: Full Green Ring
+                            Circle()
+                                .stroke(
+                                    Color.green,
+                                    style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                                )
+                                .frame(width: 32, height: 32)
+                        } else {
+                            Circle()
+                                .trim(from: 0, to: min(max(entry.dailyRemaining / (entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 1), 0), 1))
+                                .stroke(
+                                    calculateColor(remaining: entry.dailyRemaining, limit: entry.dailyBudgetLimit),
+                                    style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                                )
+                                .rotationEffect(.degrees(-90))
+                                .frame(width: 32, height: 32)
+                        }
+                    }
+                }
+                
+                Spacer()
+                
+                // Massive Value
+                Text(formatShort(entry.dailyRemaining))
+                    .font(.system(size: 42, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.primary)
+                    .minimumScaleFactor(0.5)
+                    .contentTransition(.numericText())
+                
+                // Footer
+                if entry.dailySpend < 0 {
+                     Text("CREDIT")
+                        .font(.system(size: 10, weight: .bold))
+                        .tracking(1)
+                        .foregroundStyle(.green)
+                        .padding(.top, 2)
+                } else {
+                    Text(entry.dailyRemaining >= 0 ? "REMAINING" : "OVER")
+                        .font(.system(size: 10, weight: .bold))
+                        .tracking(1)
+                        .foregroundStyle(entry.dailyRemaining >= 0 ? Color(UIColor.systemGray) : .red)
+                        .padding(.top, 2)
+                }
+            }
+            .padding(16)
+            .containerBackground(for: .widget) {
+                Color(UIColor.systemBackground)
+            }
+            
+        // MARK: Home Screen - Medium (Financial Dashboard - Hero Monthly)
+        case .systemMedium:
+            HStack(spacing: 12) {
+                // LEFT: Daily Card (Compact - Fixed Width)
+                // Dynamic Color Logic
+                let dailyBackground = {
+                    if mode == .spent {
+                       return abs(entry.dailySpend) > entry.dailyBudgetLimit
+                            ? Color.red.opacity(0.15)
+                            : Color(UIColor.secondarySystemFill)
+                    } else {
+                       if entry.dailySpend < 0 {
+                           return Color.green.opacity(0.15)
+                       }
+                       return entry.dailyRemaining < 0 
+                            ? Color.red.opacity(0.15) 
+                            : Color(UIColor.secondarySystemFill)
+                    }
+                }()
                 
                 VStack(alignment: .leading, spacing: 0) {
-                    // Header Row: Label + Gauge
-                    HStack(alignment: .top) {
+                    HStack {
+                        if mode == .spent {
+                            Image(systemName: abs(entry.dailySpend) > entry.dailyBudgetLimit ? "exclamationmark.triangle.fill" : "flame.fill")
+                                .font(.system(size: 10))
+                                .foregroundStyle(abs(entry.dailySpend) > entry.dailyBudgetLimit ? .red : .orange)
+                        } else {
+                            Image(systemName: entry.dailySpend < 0 ? "arrow.up.circle.fill" : (entry.dailyRemaining < 0 ? "exclamationmark.triangle.fill" : "sun.max.fill"))
+                                .font(.system(size: 10))
+                                .foregroundStyle(entry.dailySpend < 0 ? .green : (entry.dailyRemaining < 0 ? .red : Color.primary))
+                        }
+                        
                         VStack(alignment: .leading, spacing: 0) {
-                            Text("Daily\nLimit")
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            Text("TODAY")
+                                .font(.system(size: 9, weight: .bold))
+                                .tracking(1)
                                 .foregroundStyle(Color(UIColor.systemGray))
-                                .lineSpacing(0)
                             
                             if !entry.isVaultUnlocked && entry.dailyVault > 0 {
                                 HStack(spacing: 2) {
                                     Image(systemName: "lock.fill")
-                                        .font(.system(size: 8))
+                                        .font(.system(size: 6))
                                     Text(formatShort(entry.dailyVault))
-                                        .font(.system(size: 8, weight: .bold))
+                                        .font(.system(size: 6, weight: .bold))
                                 }
-                                .foregroundStyle(Color.green.opacity(0.8))
-                                .padding(.top, 2)
-                            }
-                        }
-                        
-                        Spacer()
-                        
-                        // Thin Ring Gauge (Navigation Style)
-                        ZStack {
-                            Circle()
-                                .stroke(Color(UIColor.darkGray).opacity(0.4), lineWidth: 3)
-                                .frame(width: 32, height: 32)
-                            
-                            if entry.dailySpend < 0 {
-                                // Credit: Full Green Ring
-                                Circle()
-                                    .stroke(
-                                        Color.green,
-                                        style: StrokeStyle(lineWidth: 3, lineCap: .round)
-                                    )
-                                    .frame(width: 32, height: 32)
-                            } else {
-                                Circle()
-                                    .trim(from: 0, to: min(max(entry.dailyRemaining / (entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 1), 0), 1))
-                                    .stroke(
-                                        calculateColor(remaining: entry.dailyRemaining, limit: entry.dailyBudgetLimit),
-                                        style: StrokeStyle(lineWidth: 3, lineCap: .round)
-                                    )
-                                    .rotationEffect(.degrees(-90))
-                                    .frame(width: 32, height: 32)
+                                .foregroundStyle(.green)
                             }
                         }
                     }
                     
                     Spacer()
                     
-                    // Massive Value
-                    Text(formatShort(entry.dailyRemaining))
-                        .font(.system(size: 42, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .minimumScaleFactor(0.5)
-                        .contentTransition(.numericText())
+                    // Compact Donut
+                    ZStack {
+                        Circle()
+                            .stroke(Color(UIColor.quaternarySystemFill), lineWidth: 6)
+                        
+                        // Ring Value
+                        let ringValue = mode == .spent ? abs(entry.dailySpend) : (entry.dailySpend < 0 ? 1 : entry.dailyRemaining)
+                        let ringColor = mode == .spent 
+                            ? calculateSpentColor(spent: abs(entry.dailySpend), limit: entry.dailyBudgetLimit)
+                            : (entry.dailySpend < 0 ? .green : calculateColor(remaining: entry.dailyRemaining, limit: entry.dailyBudgetLimit))
+                        
+                        Circle()
+                            .trim(from: 0, to: min(max((mode == .spent ? ringValue : (entry.dailySpend < 0 ? 1 : ringValue)) / (entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 1), 0), 1))
+                            .stroke(
+                                ringColor,
+                                style: StrokeStyle(lineWidth: 6, lineCap: .round)
+                            )
+                            .rotationEffect(.degrees(-90))
+                        
+                        VStack(spacing: 0) {
+                            Text(formatShort(ringValue))
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                .foregroundStyle(Color.primary)
+                                .minimumScaleFactor(0.8)
+                                .contentTransition(.numericText())
+                        }
+                    }
+                    .frame(width: 55, height: 55)
+                    .frame(maxWidth: .infinity)
                     
-                    // Footer
-                    if entry.dailySpend < 0 {
-                         Text("CREDIT")
-                            .font(.system(size: 10, weight: .bold))
-                            .tracking(1)
-                            .foregroundStyle(.green)
-                            .padding(.top, 2)
-                    } else {
-                        Text(entry.dailyRemaining >= 0 ? "REMAINING" : "OVER")
-                            .font(.system(size: 10, weight: .bold))
-                            .tracking(1)
-                            .foregroundStyle(entry.dailyRemaining >= 0 ? Color(UIColor.systemGray2) : .red)
-                            .padding(.top, 2)
+                    Spacer()
+                    
+                    // Footer Stat
+                    HStack(spacing: 4) {
+                        if mode == .spent {
+                            Text("Save:")
+                                .font(.system(size: 9))
+                                .foregroundStyle(Color(UIColor.systemGray))
+                            Text(formatShort(entry.dailyRemaining))
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(entry.dailyRemaining < 0 ? .red : Color.primary)
+                                .contentTransition(.numericText())
+                        } else {
+                            Text("Spent:")
+                                .font(.system(size: 9))
+                                .foregroundStyle(Color(UIColor.systemGray))
+                            Text(formatShort(abs(entry.dailySpend)))
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(Color.primary)
+                                .contentTransition(.numericText())
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                }
+                .padding(16) // HIG Standard Padding (was 12)
+                .frame(width: 115) // Slightly widened to accommodate padding (was 110)
+                .background(dailyBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(
+                            (mode == .spent ? (abs(entry.dailySpend) > entry.dailyBudgetLimit) : (entry.dailyRemaining < 0)) 
+                            ? Color.red.opacity(0.3) : Color.clear, 
+                            lineWidth: 1
+                        )
+                )
+                
+                // RIGHT: Monthly Overview (HERO - Takes available space)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("MONTHLY")
+                        .font(.system(size: 10, weight: .bold))
+                        .tracking(1)
+                        .foregroundStyle(Color(UIColor.systemGray))
+                        .padding(.bottom, 12)
+                    
+                    // Main Stats Row
+                    HStack(alignment: .lastTextBaseline) {
+                        if mode == .spent {
+                            Text(formatShort(abs(entry.monthlySpend)))
+                                .font(.system(size: 34, weight: .bold, design: .rounded))
+                                .foregroundStyle(Color.primary)
+                                .contentTransition(.numericText())
+                            
+                            Text("spent")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(Color(UIColor.systemGray))
+                                .padding(.leading, 2)
+                        } else {
+                            Text(formatShort(entry.monthlyBudget - entry.monthlySpend))
+                                .font(.system(size: 34, weight: .bold, design: .rounded))
+                                .foregroundStyle(Color.primary)
+                                .contentTransition(.numericText())
+                            
+                            Text("left")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(Color(UIColor.systemGray))
+                                .padding(.leading, 2)
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    // Progress Section
+                    VStack(alignment: .leading, spacing: 6) {
+                        // Labels
+                        HStack {
+                            Text(mode == .spent ? "Left" : "Spent")
+                                .font(.caption2)
+                                .foregroundStyle(Color(UIColor.systemGray))
+                            Spacer()
+                            Text(formatShort(entry.monthlyBudget))
+                                .font(.caption2)
+                                .foregroundStyle(Color(UIColor.systemGray))
+                            Text("Limit")
+                                .font(.caption2)
+                                .foregroundStyle(Color(UIColor.systemGray2))
+                        }
+                        
+                        // Wide Progress Bar
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Capsule()
+                                    .fill(Color(UIColor.tertiarySystemFill))
+                                
+                                Capsule()
+                                    .fill(Color.primary)
+                                    .frame(width: min(max(abs(entry.monthlySpend) / (entry.monthlyBudget > 0 ? entry.monthlyBudget : 1), 0), 1) * geo.size.width)
+                            }
+                        }
+                        .frame(height: 12) // Thicker for Hero feel
+                        
+                        // Spent/Left Value (No Negative Sign)
+                        Text(formatShort(mode == .spent ? (entry.monthlyBudget - entry.monthlySpend) : abs(entry.monthlySpend)))
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundStyle(Color.primary)
+                            .contentTransition(.numericText())
                     }
                 }
                 .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .containerBackground(for: .widget) {
-                Color.black
-            }
-            
-        // MARK: Home Screen - Medium (Financial Dashboard - Hero Monthly)
-        case .systemMedium:
-            ZStack {
-                Color.black.ignoresSafeArea()
-                
-                HStack(spacing: 12) {
-                    // LEFT: Daily Card (Compact - Fixed Width)
-                    // Dynamic Color Logic
-                    let dailyBackground = {
-                        if mode == .spent {
-                           return abs(entry.dailySpend) > entry.dailyBudgetLimit
-                                ? Color(UIColor.systemRed).opacity(0.15)
-                                : Color(UIColor.systemGray6).opacity(0.12)
-                        } else {
-                           if entry.dailySpend < 0 {
-                               return Color.green.opacity(0.15)
-                           }
-                           return entry.dailyRemaining < 0 
-                                ? Color(UIColor.systemRed).opacity(0.15) 
-                                : Color(UIColor.systemGray6).opacity(0.12)
-                        }
-                    }()
-                    
-                    VStack(alignment: .leading, spacing: 0) {
-                        HStack {
-                            if mode == .spent {
-                                Image(systemName: abs(entry.dailySpend) > entry.dailyBudgetLimit ? "exclamationmark.triangle.fill" : "flame.fill")
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(abs(entry.dailySpend) > entry.dailyBudgetLimit ? .red : .orange)
-                            } else {
-                                Image(systemName: entry.dailySpend < 0 ? "arrow.up.circle.fill" : (entry.dailyRemaining < 0 ? "exclamationmark.triangle.fill" : "sun.max.fill"))
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(entry.dailySpend < 0 ? .green : .white)
-                            }
-                            
-                            VStack(alignment: .leading, spacing: 0) {
-                                Text("TODAY")
-                                    .font(.system(size: 9, weight: .bold))
-                                    .tracking(1)
-                                    .foregroundStyle(Color(UIColor.systemGray))
-                                
-                                if !entry.isVaultUnlocked && entry.dailyVault > 0 {
-                                    HStack(spacing: 2) {
-                                        Image(systemName: "lock.fill")
-                                            .font(.system(size: 6))
-                                        Text(formatShort(entry.dailyVault))
-                                            .font(.system(size: 6, weight: .bold))
-                                    }
-                                    .foregroundStyle(Color.green.opacity(0.8))
-                                }
-                            }
-                        }
-                        
-                        Spacer()
-                        
-                        // Compact Donut
-                        ZStack {
-                            Circle()
-                                .stroke(Color.white.opacity(0.1), lineWidth: 6)
-                            
-                            // Ring Value
-                            let ringValue = mode == .spent ? abs(entry.dailySpend) : (entry.dailySpend < 0 ? 1 : entry.dailyRemaining)
-                            let ringColor = mode == .spent 
-                                ? calculateSpentColor(spent: abs(entry.dailySpend), limit: entry.dailyBudgetLimit)
-                                : (entry.dailySpend < 0 ? .green : calculateColor(remaining: entry.dailyRemaining, limit: entry.dailyBudgetLimit))
-                            
-                            Circle()
-                                .trim(from: 0, to: min(max((mode == .spent ? ringValue : (entry.dailySpend < 0 ? 1 : ringValue)) / (entry.dailyBudgetLimit > 0 ? entry.dailyBudgetLimit : 1), 0), 1))
-                                .stroke(
-                                    ringColor,
-                                    style: StrokeStyle(lineWidth: 6, lineCap: .round)
-                                )
-                                .rotationEffect(.degrees(-90))
-                            
-                            VStack(spacing: 0) {
-                                Text(formatShort(ringValue))
-                                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                                    .foregroundStyle(.white)
-                                    .minimumScaleFactor(0.8)
-                            }
-                        }
-                        .frame(width: 55, height: 55)
-                        .frame(maxWidth: .infinity)
-                        
-                        Spacer()
-                        
-                        // Footer Stat
-                        HStack(spacing: 4) {
-                            if mode == .spent {
-                                Text("Save:")
-                                    .font(.system(size: 9))
-                                    .foregroundStyle(Color(UIColor.systemGray))
-                                Text(formatShort(entry.dailyRemaining))
-                                    .font(.system(size: 10, weight: .semibold))
-                                    .foregroundStyle(entry.dailyRemaining < 0 ? .red : .white)
-                            } else {
-                                Text("Spent:")
-                                    .font(.system(size: 9))
-                                    .foregroundStyle(Color(UIColor.systemGray))
-                                Text(formatShort(abs(entry.dailySpend)))
-                                    .font(.system(size: 10, weight: .semibold))
-                                    .foregroundStyle(.white)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .center)
-                    }
-                    .padding(16) // HIG Standard Padding (was 12)
-                    .frame(width: 115) // Slightly widened to accommodate padding (was 110)
-                    .background(dailyBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(
-                                (mode == .spent ? (abs(entry.dailySpend) > entry.dailyBudgetLimit) : (entry.dailyRemaining < 0)) 
-                                ? Color.red.opacity(0.3) : Color.clear, 
-                                lineWidth: 1
-                            )
-                    )
-                    
-                    // RIGHT: Monthly Overview (HERO - Takes available space)
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text("MONTHLY")
-                            .font(.system(size: 10, weight: .bold))
-                            .tracking(1)
-                            .foregroundStyle(Color(UIColor.systemGray))
-                            .padding(.bottom, 12)
-                        
-                        // Main Stats Row
-                        HStack(alignment: .lastTextBaseline) {
-                            if mode == .spent {
-                                Text(formatShort(abs(entry.monthlySpend)))
-                                    .font(.system(size: 34, weight: .bold, design: .rounded))
-                                    .foregroundStyle(.white)
-                                    .contentTransition(.numericText())
-                                
-                                Text("spent")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundStyle(Color(UIColor.systemGray))
-                                    .padding(.leading, 2)
-                            } else {
-                                Text(formatShort(entry.monthlyBudget - entry.monthlySpend))
-                                    .font(.system(size: 34, weight: .bold, design: .rounded))
-                                    .foregroundStyle(.white)
-                                    .contentTransition(.numericText())
-                                
-                                Text("left")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundStyle(Color(UIColor.systemGray))
-                                    .padding(.leading, 2)
-                            }
-                        }
-                        
-                        Spacer()
-                        
-                        // Progress Section
-                        VStack(alignment: .leading, spacing: 6) {
-                            // Labels
-                            HStack {
-                                Text(mode == .spent ? "Left" : "Spent")
-                                    .font(.caption2)
-                                    .foregroundStyle(Color(UIColor.systemGray))
-                                Spacer()
-                                Text(formatShort(entry.monthlyBudget))
-                                    .font(.caption2)
-                                    .foregroundStyle(Color(UIColor.systemGray))
-                                Text("Limit")
-                                    .font(.caption2)
-                                    .foregroundStyle(Color(UIColor.systemGray2))
-                            }
-                            
-                            // Wide Progress Bar
-                            GeometryReader { geo in
-                                ZStack(alignment: .leading) {
-                                    Capsule()
-                                        .fill(Color.white.opacity(0.1))
-                                    
-                                    Capsule()
-                                        .fill(.white)
-                                        .frame(width: min(max(abs(entry.monthlySpend) / (entry.monthlyBudget > 0 ? entry.monthlyBudget : 1), 0), 1) * geo.size.width)
-                                }
-                            }
-                            .frame(height: 12) // Thicker for Hero feel
-                            
-                            // Spent/Left Value (No Negative Sign)
-                            // In Spent mode, footer shows "Left: $X"
-                            // In Remaining mode, footer shows "Spent: $X"
-                            Text(formatShort(mode == .spent ? (entry.monthlyBudget - entry.monthlySpend) : abs(entry.monthlySpend)))
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white)
-                        }
-                    }
-                    .padding(16)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-            .containerBackground(for: .widget) {
-                Color.black
+                Color(UIColor.systemBackground)
             }
 
         default:

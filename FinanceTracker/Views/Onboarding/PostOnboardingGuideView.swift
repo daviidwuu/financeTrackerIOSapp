@@ -70,7 +70,7 @@ struct PostOnboardingGuideView: View {
                     .frame(height: 50)
                     .background(Color.white)
                     .foregroundColor(.black)
-                    .cornerRadius(16)
+                    .cornerRadius(AppRadius.medium)
                     .shadow(color: .white.opacity(0.3), radius: 10, x: 0, y: 5)
                 }
                 .padding(24)
@@ -136,7 +136,7 @@ struct WelcomeGuideStep: View {
             
             ZStack {
                 Circle()
-                    .fill(Color.green.opacity(0.2))
+                    .fill(AppColors.functionalIncome.opacity(0.2))
                     .frame(width: 140, height: 140)
                     .scaleEffect(animate ? 1.1 : 1.0)
                     .opacity(animate ? 0.5 : 0.8)
@@ -357,7 +357,7 @@ struct WidgetCard: View {
             
             Spacer()
         }
-        .padding(16)
+        .padding(AppSpacing.element)
         .background(Color(UIColor.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }

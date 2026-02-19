@@ -47,21 +47,68 @@ async function getUserInfo(uid) {
   };
 }
 
-async function sendNotification(uid, title, body, data) {
+/**
+ * Sends a push notification to a user via FCM.
+ * Handles stale/invalid tokens by clearing them from the user profile.
+ * @param {string} uid - Target user ID
+ * @param {string} title - Notification title
+ * @param {string} body - Notification body
+ * @param {Object} data - Custom data payload (must be string values)
+ * @param {string} [preloadedToken] - Optional pre-fetched FCM token to avoid redundant reads
+ */
+async function sendNotification(uid, title, body, data, preloadedToken) {
+  const STALE_TOKEN_ERRORS = [
+    'messaging/registration-token-not-registered',
+    'messaging/invalid-registration-token',
+    'messaging/invalid-argument',
+  ];
+
   try {
-    const { fcmToken } = await getUserInfo(uid);
-    if (!fcmToken) return;
+    const fcmToken = preloadedToken || (await getUserInfo(uid)).fcmToken;
+    if (!fcmToken) {
+      console.warn(`[FCM] No token for user ${uid}. Skipping: "${title}"`);
+      return;
+    }
+
+    // Ensure all data values are strings (FCM requirement)
+    const stringData = {};
+    if (data) {
+      for (const [key, value] of Object.entries(data)) {
+        stringData[key] = String(value ?? '');
+      }
+    }
 
     const message = {
       token: fcmToken,
       notification: { title, body },
-      data: data,
-      apns: { payload: { aps: { sound: 'default', badge: 1 } } }
+      data: stringData,
+      apns: {
+        payload: {
+          aps: {
+            sound: 'default',
+            badge: 1,
+            'mutable-content': 1,
+          },
+        },
+      },
     };
+
     await admin.messaging().send(message);
-    console.log(`Notification sent to ${uid}: ${title}`);
+    console.log(`[FCM] ✅ Sent to ${uid} | type=${stringData.type || 'unknown'} | "${title}"`);
   } catch (error) {
-    console.error(`Error sending notification to ${uid}:`, error);
+    const errorCode = error?.code || error?.errorInfo?.code || '';
+
+    if (STALE_TOKEN_ERRORS.includes(errorCode)) {
+      // Token is stale or invalid — clear it from user profile
+      console.warn(`[FCM] ⚠️ Stale token for ${uid} (${errorCode}). Clearing fcmToken.`);
+      try {
+        await admin.firestore().collection('users').doc(uid).update({ fcmToken: admin.firestore.FieldValue.delete() });
+      } catch (clearError) {
+        console.error(`[FCM] Failed to clear stale token for ${uid}:`, clearError.message);
+      }
+    } else {
+      console.error(`[FCM] ❌ Failed for ${uid} | "${title}" | Error: ${error.message || error}`);
+    }
   }
 }
 

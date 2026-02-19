@@ -438,7 +438,7 @@ struct AddTransactionView: View {
                                             }
                                         }
                                     }
-                                    .padding(8)
+                                    .padding(AppSpacing.compact)
                                     
                                     // Thin progress bar at bottom
                                     GeometryReader { geometry in

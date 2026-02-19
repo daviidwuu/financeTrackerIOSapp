@@ -151,7 +151,7 @@ struct LeaderboardRow: View {
             .background(Color(UIColor.tertiarySystemFill))
             .clipShape(Capsule())
         }
-        .padding(16)
+        .padding(AppSpacing.element)
         .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(AppRadius.medium)
         .overlay(

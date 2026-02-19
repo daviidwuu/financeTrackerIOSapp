@@ -47,7 +47,7 @@ struct RecurringTransactionCard: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(Color(hex: transaction.colorHex).opacity(0.1))
-                    .cornerRadius(8)
+                    .cornerRadius(AppRadius.small)
             }
         }
         .padding()

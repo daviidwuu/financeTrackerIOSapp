@@ -795,7 +795,7 @@ struct CustomSplitRow: View {
                 .padding(.vertical, 8)
                 .padding(.horizontal, 8)
                 .background(Color(UIColor.secondarySystemBackground))
-                .cornerRadius(8)
+                .cornerRadius(AppRadius.small)
             } else {
                 Text(currencySymbol + String(format: "%.2f", split.amount))
                     .font(.body.monospacedDigit())
@@ -810,7 +810,7 @@ struct CustomSplitRow: View {
         }
         .padding()
         .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(16)
+        .cornerRadius(AppRadius.medium)
     }
 }
 
@@ -853,7 +853,7 @@ struct PercentageSplitRow: View {
         }
         .padding()
         .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(16)
+        .cornerRadius(AppRadius.medium)
     }
 }
 
@@ -905,7 +905,7 @@ struct ShareSplitRow: View {
         }
         .padding()
         .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(16)
+        .cornerRadius(AppRadius.medium)
     }
 }
 

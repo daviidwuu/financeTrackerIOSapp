@@ -53,11 +53,11 @@ struct ProfileView: View {
                                     .fontWeight(.semibold)
                                     .foregroundColor(colorScheme == .dark ? .black : .white)
                                     .padding(.vertical, 10)
-                                    .padding(.horizontal, 20)
+                                    .padding(.horizontal, AppSpacing.margin)
                                     .background(colorScheme == .dark ? Color.white : Color.black)
                                     .clipShape(Capsule())
                             }
-                            .buttonStyle(.plain)
+                            
                             .padding(.top, 4)
                         }
                         .padding(.bottom, AppSpacing.section)
@@ -93,7 +93,7 @@ struct ProfileView: View {
                                     value: userTheme.capitalized
                                 )
                             }
-                            .buttonStyle(.plain)
+                            
                             
                             MenuDivider()
                             
@@ -104,7 +104,7 @@ struct ProfileView: View {
                                     value: CurrencyManager.shared.mainCurrency
                                 )
                             }
-                            .buttonStyle(.plain)
+                            
                             
                             MenuDivider()
                             
@@ -114,7 +114,7 @@ struct ProfileView: View {
                                     title: "Notifications"
                                 )
                             }
-                            .buttonStyle(.plain)
+                            
                             
                             MenuDivider()
                             
@@ -125,7 +125,7 @@ struct ProfileView: View {
                                     value: currentHapticStyle.displayName
                                 )
                             }
-                            .buttonStyle(.plain)
+                            
                         }
                         
                         // 5. Security & Privacy
@@ -136,7 +136,7 @@ struct ProfileView: View {
                                     title: "Account Settings"
                                 )
                             }
-                            .buttonStyle(.plain)
+                            
                             
                             MenuDivider()
                             
@@ -146,7 +146,7 @@ struct ProfileView: View {
                                     title: "Privacy & Security"
                                 )
                             }
-                            .buttonStyle(.plain)
+                            
                             
                             MenuDivider()
                             
@@ -156,7 +156,7 @@ struct ProfileView: View {
                                     title: "Location"
                                 )
                             }
-                            .buttonStyle(.plain)
+                            
                         }
                         
                         // 6. Support
@@ -167,7 +167,7 @@ struct ProfileView: View {
                                     title: "Help Center"
                                 )
                             }
-                            .buttonStyle(.plain)
+                            
                             
                             MenuDivider()
                             
@@ -177,7 +177,7 @@ struct ProfileView: View {
                                     title: "Guides"
                                 )
                             }
-                            .buttonStyle(.plain)
+                            
                             
                             MenuDivider()
                             
@@ -187,7 +187,7 @@ struct ProfileView: View {
                                     title: "About Us"
                                 )
                             }
-                            .buttonStyle(.plain)
+                            
                         }
                         
                         // 7. Log Out

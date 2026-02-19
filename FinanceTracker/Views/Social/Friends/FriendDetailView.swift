@@ -29,6 +29,7 @@ struct FriendDetailView: View {
     }
 
     @State private var activeSheet: FriendSheet?
+    @State private var transactionToEdit: FirestoreModels.TransactionModel?
     
     // Undo State
     @State private var recentlyToggledTx: FirestoreModels.TransactionModel?
@@ -49,192 +50,10 @@ struct FriendDetailView: View {
             Color.backgroundPrimary.edgesIgnoringSafeArea(.all)
             
             List {
-                // 1. Header
-                Section {
-                    DetailHeaderView(
-                        title: friend.name,
-                        onBack: { dismiss() },
-                        onMenu: nil,
-                        backgroundColor: Color.backgroundPrimary,
-                        textColor: .primary,
-                        avatar: {
-                            ProfileAvatar(
-                                text: String(friend.name.prefix(1)),
-                                color: Color.random(seed: friend.name),
-                                size: AppSize.avatarHero
-                            )
-                        },
-                        subtitle: {
-                            Text("@\(friend.username)")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(Color.primary.opacity(0.05))
-                                .clipShape(Capsule())
-                        },
-                        actions: {
-                            HStack(spacing: 12) {
-                                Button(action: {
-                                    HapticManager.shared.light()
-                                    activeSheet = .settleUp
-                                }) {
-                                    Text("Settle")
-                                        .font(.headline)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(colorScheme == .dark ? .black : .white)
-                                        .padding(.horizontal, 20)
-                                        .frame(height: 44)
-                                        .background(colorScheme == .dark ? Color.white : Color.black)
-                                        .clipShape(Capsule())
-                                        .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
-                                }
-                                
-                                Button(action: {
-                                    HapticManager.shared.light()
-                                    activeSheet = .addExpense
-                                }) {
-                                    Image(systemName: "plus")
-                                        .font(.headline)
-                                        .foregroundColor(colorScheme == .dark ? .black : .white)
-                                        .frame(width: 44, height: 44)
-                                        .background(colorScheme == .dark ? Color.white : Color.black)
-                                        .clipShape(Circle())
-                                        .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
-                                }
-                            }
-                        }
-                    )
-                }
-                .listRowInsets(EdgeInsets())
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
-                
-                // 2. Action Required (High Priority)
-                if !pendingSplits.isEmpty {
-                    Section {
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                Image(systemName: "exclamationmark.circle.fill")
-                                    .foregroundColor(.orange)
-                                Text("Action Required")
-                                    .font(.headline)
-                                Spacer()
-                                Text("\(pendingSplits.count)")
-                                    .font(.caption)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.white)
-                                    .padding(6)
-                                    .background(Color.red)
-                                    .clipShape(Circle())
-                            }
-                            
-                            VStack(spacing: 12) {
-                                ForEach(pendingSplits) { split in
-                                    FriendPendingSplitCard(split: split, userId: appState.currentUserId, onToggle: {
-                                        handleSplitToggle(split)
-                                    })
-                                    .onTapGesture {
-                                        // Find original transaction to select
-                                        if let tx = repo.friendTransactions.first(where: { $0.id == split.id }) {
-                                            activeSheet = .transactionDetail(tx)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.vertical, 8)
-                    }
-                    .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                }
-                
-                // 3. Overview & Net Balance
-                Section {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Overview")
-                            .font(.headline)
-                        
-                        let balance = repo.friendBalances.values.reduce(0, +)
-                        
-                        HStack(spacing: 0) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(balance >= 0 ? "Owed to You" : "You Owe")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                
-                                Text(String(format: "$%.2f", abs(balance)))
-                                    .font(AppTypography.titleDisplay)
-                                    .foregroundColor(balance >= 0 ? .green : .red)
-                                
-                                if balance == 0 {
-                                    Text("All settled up")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            
-                            Spacer()
-                            
-                            // Mini Chart or Icon
-                            ZStack {
-                                Circle()
-                                    .fill(Color.primary.opacity(0.05))
-                                    .frame(width: 56, height: 56)
-                                Image(systemName: balance >= 0 ? "arrow.down.left" : "arrow.up.right")
-                                    .font(.title2)
-                                    .foregroundColor(balance >= 0 ? .green : .red)
-                            }
-                        }
-                        .padding(20)
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .cornerRadius(AppRadius.medium)
-                    }
-                    .padding(.vertical, 8)
-                }
-                .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
-                
-                // 4. Recent Activity
-                Section(header: 
-                    Text("Recent Activity")
-                        .font(.headline)
-                        .padding(.vertical, 8)
-                ) {
-                    if repo.isLoading && repo.friendTransactions.isEmpty {
-                        ProgressView().padding()
-                         .listRowSeparator(.hidden)
-                         .listRowBackground(Color.clear)
-                    } else if repo.friendTransactions.isEmpty {
-                        ContentUnavailableView("No activity", systemImage: "clock.arrow.circlepath", description: Text("Shared expenses will appear here."))
-                         .listRowSeparator(.hidden)
-                         .listRowBackground(Color.clear)
-                    } else {
-                        ForEach(repo.friendTransactions) { transaction in
-                            FriendCardRow(transaction: transaction, friendName: friend.name)
-                                .onTapGesture { activeSheet = .transactionDetail(transaction) }
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    Button(role: .destructive) { deleteTransaction(transaction) } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
-                                    
-                                    let isPaid = (transaction.note ?? "").lowercased() == "paid"
-                                    Button { toggleTransactionStatus(transaction) } label: {
-                                        Label(isPaid ? "Mark Pending" : "Mark Paid", systemImage: isPaid ? "arrow.uturn.backward" : "checkmark.circle")
-                                    }
-                                    .tint(isPaid ? .orange : .green)
-                                }
-                                .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
-                                .listRowSeparator(.hidden)
-                                .listRowBackground(Color.clear)
-                        }
-                    }
-                }
-                .headerProminence(.increased)
+                headerSection
+                actionRequiredSection
+                overviewSection
+                recentActivitySection
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
@@ -271,11 +90,247 @@ struct FriendDetailView: View {
                 }
             }
         }
+        .sheet(item: $transactionToEdit) { tx in
+             // Construct mock group transaction for the wizard
+             let groupTx = FirestoreModels.GroupTransaction(
+                 id: nil,
+                 title: tx.title,
+                 amount: tx.amount,
+                 payerId: tx.userId,
+                 payerName: appState.userName,
+                 receiverId: nil,
+                 receiverName: nil,
+                 date: tx.date,
+                 type: tx.type,
+                 currencyCode: nil,
+                 note: tx.note,
+                 category: tx.subtitle,
+                 icon: tx.icon,
+                 colorHex: tx.colorHex,
+                 originalTransactionId: tx.id,
+                 originalAmount: nil,
+                 exchangeRate: nil,
+                 editHistory: nil
+             )
+             
+             EditGroupTransactionWizardView(group: nil, preSelectedFriend: friend, transactionToEdit: groupTx) { amount, note, category, splits in
+                 handleUpdateTransaction(originalTx: tx, amount: amount, note: note, category: category, splits: splits)
+             }
+             .presentationDetents([.large])
+        }
         .onChange(of: activeSheet) { _, newValue in
              if newValue == nil {
                  loadData()
              }
         }
+    }
+
+    // MARK: - Sections
+    
+    private var headerSection: some View {
+        Section {
+            DetailHeaderView(
+                title: friend.name,
+                onBack: { dismiss() },
+                // onMenu: nil, // Removed explicit nil to use default value and avoid type ambiguity
+                backgroundColor: Color.backgroundPrimary,
+                textColor: .primary,
+                avatar: {
+                    ProfileAvatar(
+                        text: String(friend.name.prefix(1)),
+                        color: Color.random(seed: friend.name),
+                        size: AppSize.avatarHero
+                    )
+                },
+                subtitle: {
+                    Text("@\(friend.username ?? "")")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.primary.opacity(0.05))
+                        .clipShape(Capsule())
+                },
+                actions: {
+                    headerActions
+                }
+            )
+        }
+        .listRowInsets(EdgeInsets())
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+    }
+
+    private var headerActions: some View {
+        HStack(spacing: 12) {
+            Button(action: {
+                HapticManager.shared.light()
+                activeSheet = .settleUp
+            }) {
+                Text("Settle")
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, AppSpacing.margin)
+                    .frame(height: 44)
+                    .background(Color(UIColor.secondarySystemBackground))
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.borderless)
+            
+            Button(action: {
+                HapticManager.shared.light()
+                activeSheet = .addExpense
+            }) {
+                Image(systemName: "plus")
+                    .font(.headline)
+                    .foregroundColor(Color.backgroundPrimary)
+                    .frame(width: 44, height: 44)
+                    .background(Color.primary)
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.borderless)
+        }
+    }
+    
+    @ViewBuilder
+    private var actionRequiredSection: some View {
+        if !pendingSplits.isEmpty {
+            Section {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .foregroundColor(.orange)
+                        Text("Action Required")
+                            .font(.headline)
+                        Spacer()
+                        Text("\(pendingSplits.count)")
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .padding(6)
+                            .background(AppColors.functionalExpense)
+                            .clipShape(Circle())
+                    }
+                    
+                    VStack(spacing: 12) {
+                        ForEach(pendingSplits) { split in
+                            FriendPendingSplitCard(split: split, userId: appState.currentUserId, onToggle: {
+                                handleSplitToggle(split)
+                            })
+                            .onTapGesture {
+                                // Find original transaction to select
+                                if let tx = repo.friendTransactions.first(where: { $0.id == split.id }) {
+                                    activeSheet = .transactionDetail(tx)
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(.vertical, 8)
+            }
+            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+        }
+    }
+    
+    private var overviewSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Overview")
+                    .font(.headline)
+                
+                let balance = repo.friendBalances.values.reduce(0, +)
+                let totalShared = repo.friendTransactions.filter { $0.type != "income" }.reduce(0) { $0 + abs($1.amount) }
+                
+                HStack(spacing: 12) {
+                    // Card 1: Total Shared
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Total Shared")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(String(format: "$%.2f", totalShared))
+                            .font(AppTypography.sectionHeader)
+                            .foregroundColor(.primary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                    .background(Color(UIColor.secondarySystemBackground))
+                    .cornerRadius(AppRadius.medium)
+                    
+                    // Card 2: Net Balance
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(balance >= 0 ? "Owed to You" : "You Owe")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(String(format: "$%.2f", abs(balance)))
+                            .font(AppTypography.sectionHeader)
+                            .foregroundColor(balance == 0 ? .primary : (balance > 0 ? .green : .red))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                    .background(Color(UIColor.secondarySystemBackground))
+                    .cornerRadius(AppRadius.medium)
+                }
+            }
+            .padding(.vertical, 8)
+        }
+        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+    }
+    
+    private var recentActivitySection: some View {
+        Section(header: 
+            Text("Recent Activity")
+                .font(.headline)
+                .padding(.vertical, 8)
+        ) {
+            if repo.isLoading && repo.friendTransactions.isEmpty {
+                ProgressView().padding()
+                 .listRowSeparator(.hidden)
+                 .listRowBackground(Color.clear)
+            } else if repo.friendTransactions.isEmpty {
+                ContentUnavailableView("No activity", systemImage: "clock.arrow.circlepath", description: Text("Shared expenses will appear here."))
+                 .listRowSeparator(.hidden)
+                 .listRowBackground(Color.clear)
+            } else {
+                ForEach(repo.friendTransactions) { transaction in
+                    FriendCardRow(transaction: transaction, friendName: friend.name)
+                        .background(Color(UIColor.secondarySystemBackground))
+                        .cornerRadius(AppRadius.medium)
+                        .onTapGesture { activeSheet = .transactionDetail(transaction) }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) { deleteTransaction(transaction) } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                            .tint(.red)
+                            
+                            let isPaid = (transaction.note ?? "").lowercased() == "paid"
+                            Button { toggleTransactionStatus(transaction) } label: {
+                                Label(isPaid ? "Mark Pending" : "Mark Paid", systemImage: isPaid ? "arrow.uturn.backward" : "checkmark.circle")
+                            }
+                            .tint(isPaid ? .orange : .green)
+                        }
+                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                            if transaction.userId == appState.currentUserId && transaction.type != "income" {
+                                Button {
+                                    transactionToEdit = transaction
+                                } label: {
+                                    Label("Edit", systemImage: "pencil")
+                                }
+                                .tint(.blue)
+                            }
+                        }
+                        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                }
+            }
+        }
+        .headerProminence(.increased)
     }
     
     // Logic
@@ -346,15 +401,54 @@ struct FriendDetailView: View {
         }
     }
     
+    private func handleUpdateTransaction(originalTx: FirestoreModels.TransactionModel, amount: Double, note: String, category: FirestoreModels.CategoryBudget?, splits: [FirestoreModels.Split]) {
+        let transaction = FirestoreModels.TransactionModel(
+            id: originalTx.id,
+            userId: appState.currentUserId,
+            title: note.isEmpty ? (category?.category ?? "Expense") : note,
+            subtitle: category?.category ?? "Shared Expense",
+            amount: -abs(amount),
+            date: originalTx.date,
+            type: originalTx.type,
+            createdAt: originalTx.createdAt,
+            icon: category?.icon ?? originalTx.icon,
+            colorHex: category?.colorHex ?? originalTx.colorHex,
+            note: note,
+            splits: splits
+        )
+        
+        Task {
+            do {
+                _ = try await SocialTransactionManager.shared.createSocialTransaction(
+                    transaction: transaction,
+                    payerUid: appState.currentUserId,
+                    payerName: appState.userName,
+                    groupId: nil,
+                    friendCache: appState.friendRepo.friends,
+                    groupCache: appState.groupRepo.groups
+                )
+                
+                await MainActor.run {
+                    HapticManager.shared.success()
+                    loadData()
+                    transactionToEdit = nil
+                }
+            } catch {
+                print("Error updating friend expense: \(error)")
+                HapticManager.shared.error()
+            }
+        }
+    }
+    
     private func reconstructRequest(from tx: FirestoreModels.TransactionModel) -> FirestoreModels.SplitRequest? {
         guard let id = tx.id else { return nil }
         let status = FirestoreModels.SplitRequest.RequestStatus(rawValue: tx.note ?? "") ?? .pending
         let isIncome = tx.type == "income"
         
-        let fromUid = isIncome ? (friend.id ?? "") : appState.currentUserId
-        let fromName = isIncome ? friend.name : "You"
-        let toUid = isIncome ? appState.currentUserId : (friend.id ?? "")
-        let toName = isIncome ? "You" : friend.name
+        let fromUid = isIncome ? appState.currentUserId : (friend.id ?? "")
+        let fromName = isIncome ? "You" : friend.name
+        let toUid = isIncome ? (friend.id ?? "") : appState.currentUserId
+        let toName = isIncome ? friend.name : "You"
         
         // Use the 'source' field if available, which holds the original transaction ID
         let originalTxId = tx.source ?? id
@@ -373,6 +467,7 @@ struct FriendDetailView: View {
             status: status,
             dependencyId: nil,
             lastNudgedAt: nil,
+            originalTotalAmount: tx.originalAmount, // Pass through if available
             createdAt: tx.date
         )
     }
@@ -491,9 +586,9 @@ struct FriendPendingSplitCard: View {
                 .fill(Color.primary.opacity(0.05))
                 .frame(width: 48, height: 48)
                 .overlay(
-                    Image(systemName: isOwed ? "arrow.down.left" : "arrow.up.right")
+                    Image(systemName: isOwed ? "creditcard.fill" : "arrow.up.right")
                         .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(isOwed ? .green : .red)
+                        .foregroundColor(isOwed ? .green : .orange)
                 )
             
             VStack(alignment: .leading, spacing: 4) {
@@ -525,14 +620,14 @@ struct FriendPendingSplitCard: View {
                 Text("$\(String(format: "%.2f", split.amount))")
                     .font(.headline)
                     .fontWeight(.heavy)
-                    .foregroundColor(isOwed ? .green : .primary)
+                    .foregroundColor(isOwed ? .green : .orange)
                 
                 Button(action: onToggle) {
                     Image(systemName: "circle")
                         .font(.title2)
                         .foregroundColor(.secondary.opacity(0.3))
                 }
-                .buttonStyle(.plain)
+                
             }
         }
         .padding(AppSpacing.element)
@@ -553,21 +648,17 @@ struct FriendCardRow: View {
     
     var body: some View {
         HStack(spacing: AppSpacing.element) {
-            // Monochrome Icon
-            ZStack {
-                Circle()
-                    .fill(Color.primary.opacity(0.05))
-                    .frame(width: 40, height: 40)
-                
-                Image(systemName: transaction.icon ?? "dollarsign.circle")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.primary)
-            }
+            CategoryIconView(
+                category: transaction.subtitle,
+                iconOverride: transaction.icon,
+                colorOverride: transaction.colorHex,
+                type: transaction.type
+            )
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(transaction.title)
                     .font(.body)
-                    .fontWeight(.medium)
+                    .fontWeight(.semibold)
                     .foregroundColor(.primary)
                 
                 let totalAmount = transaction.originalAmount ?? fetchedOriginalAmount
@@ -604,25 +695,17 @@ struct FriendCardRow: View {
             VStack(alignment: .trailing, spacing: 4) {
                 Text("$\(String(format: "%.2f", abs(transaction.amount)))")
                     .font(.headline)
-                    .fontWeight(.semibold)
+                    .fontWeight(.bold)
                     // Keep Green/Red for amounts as it's critical info
                     .foregroundColor(transaction.type == "income" ? .green : .red)
                 
                 Text(transaction.date.formatted(date: .abbreviated, time: .omitted))
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.tertiaryLabel)
             }
         }
         .padding(AppSpacing.element)
-        // Clean list style - no background tint
-        .background(Color.backgroundPrimary) // Or clear
         .contentShape(Rectangle()) // Make tappable
-        .overlay(
-            Rectangle()
-                .frame(height: 1)
-                .foregroundColor(Color.primary.opacity(0.05)),
-            alignment: .bottom
-        )
         .task {
             if transaction.originalAmount == nil, let sourceId = transaction.source {
                 do {

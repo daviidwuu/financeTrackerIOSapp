@@ -50,6 +50,7 @@ struct GroupCreationWizardView: View {
     
     @State private var showError = false
     @State private var errorMessage = ""
+    @State private var showLeaveGroupDialog = false
     
     let availableColors = AppColors.selectionPalette
     
@@ -156,6 +157,21 @@ struct GroupCreationWizardView: View {
              Button("OK", role: .cancel) { }
         } message: {
              Text(errorMessage)
+        }
+        .confirmationDialog(
+            "Leave Group",
+            isPresented: $showLeaveGroupDialog,
+            titleVisibility: .visible
+        ) {
+            Button("Keep my data") {
+                leaveGroup(keepData: true)
+            }
+            Button("Delete my data", role: .destructive) {
+                leaveGroup(keepData: false)
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Your splits and transactions from this group will either be kept as personal records or permanently deleted.")
         }
         }
     
@@ -474,7 +490,7 @@ struct GroupCreationWizardView: View {
                         if isCreator {
                             deleteGroup()
                         } else {
-                            leaveGroup()
+                            showLeaveGroupDialog = true
                         }
                     }) {
                         HStack {
@@ -485,7 +501,7 @@ struct GroupCreationWizardView: View {
                         .padding()
                         .frame(maxWidth: .infinity)
                         .background(Color(UIColor.secondarySystemBackground))
-                        .cornerRadius(12)
+                        .cornerRadius(AppRadius.small)
                     }
                     .padding(.horizontal)
                 }
@@ -680,7 +696,7 @@ struct GroupCreationWizardView: View {
     }
     
     private func deleteGroup() {
-        guard let groupId = groupToEdit?.id else { return }
+        guard let group = groupToEdit else { return }
         
         // Instant Feedback: Dismiss immediately
         HapticManager.shared.success()
@@ -688,27 +704,31 @@ struct GroupCreationWizardView: View {
         
         Task {
             do {
-                 try await appState.groupRepo.deleteGroup(groupId: groupId)
+                 try await appState.groupRepo.requestGroupDeletion(group: group)
             } catch {
-                print("Error deleting group: \(error)")
-                HapticManager.shared.error()
+                print("Error requesting group deletion: \(error)")
+                await MainActor.run {
+                    HapticManager.shared.error()
+                }
             }
         }
     }
     
-    private func leaveGroup() {
+    private func leaveGroup(keepData: Bool) {
         guard let groupId = groupToEdit?.id else { return }
-        
-        // Instant Feedback
-        HapticManager.shared.success()
-        dismiss()
         
         Task {
             do {
-                try await appState.groupRepo.leaveGroup(groupId: groupId, userId: appState.currentUserId)
+                try await appState.groupRepo.leaveGroup(groupId: groupId, userId: appState.currentUserId, keepData: keepData)
+                await MainActor.run {
+                    HapticManager.shared.success()
+                    dismiss()
+                }
             } catch {
                 print("Error leaving group: \(error)")
-                HapticManager.shared.error()
+                await MainActor.run {
+                    HapticManager.shared.error()
+                }
             }
         }
     }

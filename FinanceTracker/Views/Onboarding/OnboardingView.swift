@@ -9,6 +9,16 @@ struct OnboardingView: View {
     
 
     
+    enum Field: Hashable {
+        case name
+        case username
+        case income
+        case email
+        case password
+    }
+    
+    @FocusState private var focusedField: Field?
+    
     @State private var currentStep = 1
     @State private var direction: Edge = .trailing
     
@@ -93,11 +103,11 @@ struct OnboardingView: View {
                     Group {
                         switch currentStep {
                         case 1: IntroStep()
-                        case 2: ProfileStep(name: $nameInput)
-                        case 3: UsernameStep(username: $usernameInput)
-                        case 4: IncomeStep(income: $incomeInput)
+                        case 2: ProfileStep(name: $nameInput, focusedField: $focusedField, onNext: nextStep)
+                        case 3: UsernameStep(username: $usernameInput, focusedField: $focusedField, onNext: nextStep)
+                        case 4: IncomeStep(income: $incomeInput, focusedField: $focusedField)
                         case 5: CategoriesStep(categories: $onboardingCategories)
-                        case 6: AccountStep(email: $emailInput, password: $passwordInput, errorMessage: $errorMessage)
+                        case 6: AccountStep(email: $emailInput, password: $passwordInput, errorMessage: $errorMessage, focusedField: $focusedField, onSubmit: nextStep)
                         default: EmptyView()
                         }
                     }
@@ -123,27 +133,43 @@ struct OnboardingView: View {
                         HStack {
                             if isLoading {
                                 ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .progressViewStyle(CircularProgressViewStyle(tint: Color.backgroundPrimary))
                             } else {
                                 Text(currentStep == 6 ? "Create Account" : "Continue")
-                                    .font(.headline)
-                                    .fontWeight(.bold)
                             }
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(isStepValid ? Color.primary : Color(UIColor.systemGray5))
-                        .foregroundColor(isStepValid ? (colorScheme == .dark ? .black : .white) : .secondary)
-                        .cornerRadius(AppRadius.button)
                     }
-                    .animation(nil, value: isStepValid) // Remove button color change animation
+                    .buttonStyle(PrimaryButtonStyle())
                     .disabled(!isStepValid || isLoading)
                 }
-                .padding(24)
+                .padding(.horizontal, 24)
+                .padding(.top, 16)
+                
+                // Login Bypass Link
+                NavigationLink(destination: LoginView()) {
+                    Text("Already have an account? Log In")
+                        .font(AppTypography.caption)
+                        .foregroundColor(AppColors.brandPrimary)
+                        .padding(.bottom, 24)
+                }
+                
                 // Add background to buttons to prevent content overlap
                 .background((colorScheme == .dark ? Color.black : Color.white).opacity(0.9)) 
             }
         }
+        .onTapGesture {
+            hideKeyboard()
+        }
+        .gesture(
+            DragGesture()
+                .onEnded { value in
+                    if value.translation.width < -50 && isStepValid {
+                        nextStep()
+                    } else if value.translation.width > 50 && currentStep > 1 {
+                        prevStep()
+                    }
+                }
+        )
         .navigationBarHidden(true)
         .onAppear { onAppearAction() }
     }
@@ -168,6 +194,7 @@ struct OnboardingView: View {
             direction = .trailing
             HapticManager.shared.light() // Navigation haptic
             currentStep += 1
+            updateFocus()
         } else {
             HapticManager.shared.success() // Completion haptic
             completeOnboarding()
@@ -180,6 +207,20 @@ struct OnboardingView: View {
             direction = .leading
             HapticManager.shared.light() // Navigation haptic
             currentStep -= 1
+            updateFocus()
+        }
+    }
+    
+    private func updateFocus() {
+        // Slight delay to allow transition before focusing
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            switch currentStep {
+            case 2: focusedField = .name
+            case 3: focusedField = .username
+            case 4: focusedField = .income
+            case 6: focusedField = .email
+            default: focusedField = nil
+            }
         }
     }
     
@@ -319,7 +360,7 @@ struct IntroStep: View {
             // Using a standard color directly to avoid closure type issues if Environment isn't cooperating in this specific context context
             Image(systemName: "sparkles")
                 .font(.system(size: 80))
-                .foregroundColor(.yellow) 
+                .foregroundColor(AppColors.brandPrimary) 
                 .padding()
                 .background(
                     Circle()
@@ -329,14 +370,14 @@ struct IntroStep: View {
             
             VStack(spacing: 12) {
                 Text("Welcome to wym")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .font(AppTypography.heroRounded(size: 28))
                     .multilineTextAlignment(.center)
                 
                 Text("Let's set up your profile and financial goals in just a few steps.")
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
+                    .padding(.horizontal, AppSpacing.section)
             }
             Spacer()
         }
@@ -345,20 +386,29 @@ struct IntroStep: View {
 
 struct ProfileStep: View {
     @Binding var name: String
+    var focusedField: FocusState<OnboardingView.Field?>.Binding
+    var onNext: () -> Void
     
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
             Text("What should we call you?")
-                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .font(AppTypography.heroRounded(size: 28))
                 .multilineTextAlignment(.center)
             
             TextField("Your Name", text: $name)
+                .focused(focusedField, equals: .name)
+                .submitLabel(.next)
+                .onSubmit {
+                    if !name.isEmpty {
+                        onNext()
+                    }
+                }
                 .font(AppTypography.heroInput)
                 .multilineTextAlignment(.center)
                 .padding()
                 .background(Color.clear)
-                .padding(.horizontal, 32)
+                .padding(.horizontal, AppSpacing.section)
             
             Spacer()
         }
@@ -367,6 +417,8 @@ struct ProfileStep: View {
 
 struct UsernameStep: View {
     @Binding var username: String
+    var focusedField: FocusState<OnboardingView.Field?>.Binding
+    var onNext: () -> Void
     @State private var isChecking = false
     @State private var availabilityMessage = ""
     @State private var isAvailable = false
@@ -375,7 +427,7 @@ struct UsernameStep: View {
         VStack(spacing: 24) {
             Spacer()
             Text("Pick a Username")
-                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .font(AppTypography.heroRounded(size: 28))
                 .multilineTextAlignment(.center)
             
             Text("Friends can use this to find you.")
@@ -385,13 +437,20 @@ struct UsernameStep: View {
             
             VStack(spacing: 8) {
                 TextField("username", text: $username)
+                    .focused(focusedField, equals: .username)
+                    .submitLabel(.next)
+                    .onSubmit {
+                        if !username.isEmpty && username.count >= 3 && isAvailable {
+                            onNext()
+                        }
+                    }
                     .font(AppTypography.heroInput)
                     .multilineTextAlignment(.center)
                     .autocapitalization(.none)
                     .disableAutocorrection(true)
                     .padding()
                     .background(Color.clear)
-                    .padding(.horizontal, 32)
+                    .padding(.horizontal, AppSpacing.section)
                     .onChange(of: username) { _, newValue in
                         checkAvailability(newValue)
                     }
@@ -403,10 +462,10 @@ struct UsernameStep: View {
                                 .font(.caption)
                         } else {
                             Image(systemName: isAvailable ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                .foregroundColor(isAvailable ? .green : .red)
+                                .foregroundColor(isAvailable ? AppColors.functionalIncome : AppColors.functionalExpense)
                             Text(availabilityMessage)
                                 .font(.caption)
-                                .foregroundColor(isAvailable ? .green : .red)
+                                .foregroundColor(isAvailable ? AppColors.functionalIncome : AppColors.functionalExpense)
                         }
                     }
                 }
@@ -449,6 +508,7 @@ struct UsernameStep: View {
 
 struct IncomeStep: View {
     @Binding var income: String
+    var focusedField: FocusState<OnboardingView.Field?>.Binding
     
     var body: some View {
         VStack(spacing: 24) {
@@ -456,29 +516,40 @@ struct IncomeStep: View {
             
             ZStack {
                 Circle()
-                    .fill(Color.green.opacity(0.1))
+                    .fill(AppColors.functionalIncome.opacity(0.1))
                     .frame(width: 160, height: 160)
                 
                 Image(systemName: "dollarsign.circle.fill")
                     .font(.system(size: 80))
-                    .foregroundColor(.green)
+                    .foregroundColor(AppColors.functionalIncome)
             }
             .padding(.bottom, 20)
             
             Text("What is your monthly income?")
-                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .font(AppTypography.heroRounded(size: 28))
                 .multilineTextAlignment(.center)
             
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text("$")
-                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                    .font(AppTypography.heroRounded(size: 40))
                     .foregroundColor(.secondary)
                 
                 TextField("0", text: $income)
+                    .focused(focusedField, equals: .income)
                     .keyboardType(.numberPad)
                     .font(AppTypography.heroInput)
                     .multilineTextAlignment(.leading)
                     .fixedSize()
+                    .toolbar {
+                        ToolbarItemGroup(placement: .keyboard) {
+                            if focusedField.wrappedValue == .income {
+                                Spacer()
+                                Button("Done") {
+                                    focusedField.wrappedValue = nil
+                                }
+                            }
+                        }
+                    }
             }
             
             Text("This will be set as your recurring monthly salary.")
@@ -502,7 +573,7 @@ struct CategoriesStep: View {
     var body: some View {
         VStack(spacing: 24) {
             Text("Customize Categories")
-                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .font(AppTypography.heroRounded(size: 28))
                 .multilineTextAlignment(.center)
                 .padding(.top, 40)
             
@@ -556,7 +627,7 @@ struct CategoriesStep: View {
                         }
                         .padding()
                         .background(Color(UIColor.secondarySystemBackground))
-                        .cornerRadius(16)
+                        .cornerRadius(AppRadius.medium)
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
@@ -607,7 +678,7 @@ struct CategoriesStep: View {
                 .padding()
                 .frame(maxWidth: .infinity)
                 .background(Color.clear)
-                .cornerRadius(12)
+                .cornerRadius(AppRadius.small)
                 .padding(.horizontal)
             }
 
@@ -761,17 +832,9 @@ struct EditCategorySheet: View {
                     }
                 }) {
                     Text(currentStep < 4 ? "Next" : "Save Changes")
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(isStepValid ? (colorScheme == .dark ? .black : .white) : .secondary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50) // Standardize height
-                        .background(isStepValid ? (colorScheme == .dark ? .white : .black) : Color(UIColor.systemGray5))
-                        .cornerRadius(AppRadius.button) // Use standard radius
-                        .contentShape(Rectangle()) // Explicitly define hit area
                 }
+                .buttonStyle(PrimaryButtonStyle())
                 .disabled(!isStepValid)
-                .animation(.easeInOut, value: isStepValid)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 8)
             }
@@ -853,7 +916,7 @@ struct EditCategorySheet: View {
                 .foregroundColor(.secondary)
             
             TextField("Optional", text: $amountString)
-                .font(.system(size: 64, weight: .bold, design: .rounded))
+                .font(AppTypography.heroRounded(size: 64))
                 .multilineTextAlignment(.center)
                 .keyboardType(.decimalPad)
                 .foregroundColor(.primary)
@@ -939,29 +1002,43 @@ struct AccountStep: View {
     @Binding var email: String
     @Binding var password: String
     @Binding var errorMessage: String?
+    var focusedField: FocusState<OnboardingView.Field?>.Binding
+    var onSubmit: () -> Void
     
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
             Text("Create your account")
-                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .font(AppTypography.heroRounded(size: 28))
                 .multilineTextAlignment(.center)
             
             VStack(spacing: 16) {
                 CustomTextField(icon: "envelope.fill", placeholder: "Email", text: $email)
+                    .focused(focusedField, equals: .email)
+                    .submitLabel(.next)
+                    .onSubmit {
+                        focusedField.wrappedValue = .password
+                    }
                     .keyboardType(.emailAddress)
                     .autocapitalization(.none)
                 
                 CustomSecureField(icon: "lock.fill", placeholder: "Password (min 6 chars)", text: $password)
+                    .focused(focusedField, equals: .password)
+                    .submitLabel(.join)
+                    .onSubmit {
+                        if email.contains("@") && password.count >= 6 {
+                            onSubmit()
+                        }
+                    }
             }
-            .padding(.horizontal, 32)
+            .padding(.horizontal, AppSpacing.section)
             
             if let error = errorMessage {
                 Text(error)
                     .foregroundColor(.red)
                     .font(.caption)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
+                    .padding(.horizontal, AppSpacing.section)
             }
             
             Spacer()

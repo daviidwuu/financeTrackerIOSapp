@@ -5,12 +5,24 @@ struct LoginView: View {
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var appState: AppState
     
+    enum Field: Hashable {
+        case email
+        case password
+    }
+    
+    @FocusState private var focusedField: Field?
+    
     @State private var email = ""
     @State private var password = ""
     @State private var isLoading = false
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var showForgotPassword = false
+    
+    // Add method to dismiss keyboard
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
     
     var body: some View {
         ZStack {
@@ -22,7 +34,7 @@ struct LoginView: View {
                 // Header
                 VStack(spacing: 8) {
                     Text("Welcome Back")
-                        .font(AppTypography.titleDisplay)
+                        .font(AppTypography.heroRounded(size: 28))
                         .foregroundColor(.primary)
                     
                     Text("Sign in to continue")
@@ -34,10 +46,20 @@ struct LoginView: View {
                 // Form
                 VStack(spacing: 20) {
                     CustomTextField(icon: "envelope.fill", placeholder: "Email", text: $email)
+                        .focused($focusedField, equals: .email)
+                        .submitLabel(.next)
+                        .onSubmit {
+                            focusedField = .password
+                        }
                         .keyboardType(.emailAddress)
                         .autocapitalization(.none)
                     
                     CustomSecureField(icon: "lock.fill", placeholder: "Password", text: $password)
+                        .focused($focusedField, equals: .password)
+                        .submitLabel(.join)
+                        .onSubmit {
+                            if isFormValid { login() }
+                        }
                     
                     HStack {
                         Spacer()
@@ -45,10 +67,10 @@ struct LoginView: View {
                             showForgotPassword = true
                         }
                         .font(.subheadline)
-                        .foregroundColor(.white)
+                        .foregroundColor(AppColors.brandPrimary)
                     }
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, AppSpacing.section)
                 
                 if showError {
                     HStack(spacing: 8) {
@@ -58,7 +80,7 @@ struct LoginView: View {
                     .foregroundColor(.red)
                     .font(.caption)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, AppSpacing.section)
                     .transition(.opacity)
                 }
                 
@@ -70,8 +92,17 @@ struct LoginView: View {
                 }
                 .buttonStyle(PrimaryButtonStyle(isLoading: isLoading))
                 .disabled(!isFormValid || isLoading)
-                .padding(.horizontal, 24)
-                .padding(.bottom, 20)
+                .padding(.horizontal, AppSpacing.section)
+                .padding(.bottom, AppSpacing.margin)
+            }
+        }
+        .onTapGesture {
+            hideKeyboard()
+        }
+        .onAppear {
+            // Auto focus email field when login view opens
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                focusedField = .email
             }
         }
         .navigationBarTitleDisplayMode(.inline)

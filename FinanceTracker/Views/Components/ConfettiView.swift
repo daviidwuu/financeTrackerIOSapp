@@ -50,7 +50,7 @@ struct ConfettiView: View {
                 speed: Double.random(in: 2...5),
                 swaySpeed: Double.random(in: 1...3),
                 rotationSpeed: Double.random(in: 50...200),
-                color: [Color.red, Color.blue, Color.green, Color.yellow, Color.purple, Color.orange].randomElement()!
+                color: [AppColors.functionalExpense, Color.blue, AppColors.functionalIncome, Color.yellow, Color.purple, Color.orange].randomElement()!
             ))
         }
         particles = newParticles

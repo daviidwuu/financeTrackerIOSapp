@@ -21,45 +21,47 @@ struct GroupTransactionDetailView: View {
             Color.backgroundPrimary.ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // 1. Standard Header
+                // 1. Slim Header (nav bar + title only)
                 DetailHeaderView(
-                    title: transaction.note?.isEmpty == false ? transaction.note! : transaction.title,
+                    title: "",
+                    subtitle: nil as String?,
                     onBack: { dismiss() },
                     backIcon: "xmark",
                     onMenu: { showingEditWizard = true },
                     backgroundColor: Color.backgroundPrimary,
                     textColor: .primary,
-                    avatar: {
-                        ZStack {
-                            Circle()
-                                .fill(Color(hex: transaction.colorHex ?? "#007AFF").opacity(0.15))
-                                .frame(width: 80, height: 80)
-                                .shadow(color: Color(hex: transaction.colorHex ?? "#007AFF").opacity(0.2), radius: 15, y: 8)
-                            
-                            Image(systemName: transaction.type == "settlement" ? "banknote.fill" : (transaction.icon ?? "cart.fill"))
-                                .font(.system(size: 32, weight: .bold))
-                                .foregroundColor(Color(hex: transaction.colorHex ?? "#007AFF"))
-                        }
-                    },
-                    subtitle: {
-                        HStack(spacing: 4) {
-                            Text(transaction.date.formatted(date: .long, time: .shortened))
-                            if let history = transaction.editHistory, !history.isEmpty {
-                                Button {
-                                    showHistory = true
-                                } label: {
-                                    Text("(Edited)")
-                                        .font(.caption)
-                                        .foregroundColor(.blue)
-                                        .underline()
-                                }
+                    height: AppSize.headerHeightSlim,
+                    avatar: { EmptyView() },
+                    actions: { EmptyView() }
+                )
+                
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Hero Section: Icon, Amount, Date, Paid by
+                        VStack(spacing: 8) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color(hex: transaction.colorHex ?? "#007AFF").opacity(0.15))
+                                    .frame(width: 80, height: 80)
+                                    .shadow(color: Color(hex: transaction.colorHex ?? "#007AFF").opacity(0.2), radius: 15, y: 8)
+                                
+                                Image(systemName: transaction.type == "settlement" ? "banknote.fill" : (transaction.icon ?? "cart.fill"))
+                                    .font(.system(size: 32, weight: .bold))
+                                    .foregroundColor(Color(hex: transaction.colorHex ?? "#007AFF"))
                             }
-                        }
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    },
-                    actions: {
-                        VStack(spacing: 4) {
+                            
+                            Text(transaction.note?.isEmpty == false ? transaction.note! : transaction.title)
+                                .font(AppTypography.titleDisplay)
+                                .foregroundColor(.primary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                            
+                            Text(transaction.category ?? "Uncategorized")
+                                .font(AppTypography.body)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                            
                             Text(String(format: "$%.2f", abs(transaction.amount)))
                                 .font(AppTypography.prominentBalance)
                                 .foregroundColor(.primary)
@@ -67,22 +69,34 @@ struct GroupTransactionDetailView: View {
                             HStack(spacing: 4) {
                                 Text("Paid by")
                                     .foregroundColor(.secondary)
-                                    Text(transaction.payerId == appState.currentUserId ? "You" : transaction.payerName)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(.primary)
+                                Text(transaction.payerId == appState.currentUserId ? "You" : transaction.payerName)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.primary)
                             }
                             .font(.caption)
+                            
+                            HStack(spacing: 4) {
+                                Text(transaction.date.formatted(date: .long, time: .shortened))
+                                if let history = transaction.editHistory, !history.isEmpty {
+                                    Button {
+                                        showHistory = true
+                                    } label: {
+                                        Text("(Edited)")
+                                            .font(.caption)
+                                            .foregroundColor(.blue)
+                                            .underline()
+                                    }
+                                }
+                            }
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                         }
-                    }
-                )
-                
-                ScrollView {
-                    VStack(spacing: 24) {
-                        Spacer().frame(height: AppSpacing.element)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, AppSpacing.element)
                         
                         // 2. Split Breakdown
                         VStack(alignment: .leading, spacing: 16) {
-                            Text("SPLIT BREAKDOWN")
+                            Text("SPLIT STATUS")
                                 .font(.caption)
                                 .fontWeight(.bold)
                                 .foregroundColor(.secondary)
@@ -110,130 +124,67 @@ struct GroupTransactionDetailView: View {
                                 .cornerRadius(AppRadius.medium)
                             } else {
                                 VStack(spacing: 0) {
-                                    // Payer Row
-                                    let payerShare = abs(transaction.amount) - splits.reduce(0) { $0 + $1.amount }
-                                    let payerName = transaction.payerId == appState.currentUserId ? "You" : transaction.payerName
-                                    
-                                    HStack(spacing: 12) {
-                                        ZStack {
-                                            Circle()
-                                                .fill(Color.random(seed: payerName))
-                                                .frame(width: 36, height: 36)
-                                            Text(String(payerName.prefix(1)).uppercased())
-                                                .font(.system(size: 14, weight: .bold))
-                                                .foregroundColor(.white)
-                                        }
-                                        
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(payerName)
-                                                .font(.body)
-                                                .fontWeight(.medium)
-                                                .foregroundColor(.primary)
-                                            Text("Payer")
-                                                .font(.caption2)
-                                                .fontWeight(.bold)
-                                                .foregroundColor(.green)
-                                                .padding(.horizontal, 6)
-                                                .padding(.vertical, 2)
-                                                .background(Color.green.opacity(0.1))
-                                                .cornerRadius(4)
-                                        }
-                                        
-                                        Spacer()
-                                        
-                                        VStack(alignment: .trailing, spacing: 2) {
-                                            Text(String(format: "$%.2f", payerShare))
-                                                .font(.body.monospacedDigit())
-                                                .fontWeight(.semibold)
-                                                .foregroundColor(.primary)
-                                            Text("Paid $\(String(format: "%.2f", abs(transaction.amount)))")
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        }
-                                    }
-                                    .padding(.vertical, 14)
-                                    .padding(.horizontal, 16)
-                                    .background(Color(UIColor.secondarySystemBackground))
-                                    
-                                    Divider().padding(.horizontal, 16)
-                                    
                                     ForEach(splits) { split in
-                                        HStack(spacing: 12) {
-                                            // Mini Avatar
-                                            ZStack {
-                                                Circle()
-                                                    .fill(Color.primary.opacity(0.05))
-                                                    .frame(width: 36, height: 36)
-                                                Text(String((split.toName ?? "").prefix(1)).uppercased())
-                                                    .font(.system(size: 14, weight: .bold))
-                                                    .foregroundColor(.primary)
-                                            }
-                                            
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                Text(split.toName ?? "Friend")
-                                                    .font(.body)
-                                                    .fontWeight(.medium)
-                                                    .foregroundColor(.primary)
-                                                
-                                                // Status Text (Matching TransactionDetailView)
-                                                if let status = Optional(split.status) {
-                                                    Text(status.rawValue.capitalized)
-                                                        .font(.caption2)
-                                                        .fontWeight(.bold)
-                                                        .foregroundColor(statusColor(for: status))
-                                                }
-                                            }
-                                            
-                                            Spacer()
-                                            
-                                            VStack(alignment: .trailing, spacing: 2) {
-                                                Text(String(format: "$%.2f", split.amount))
-                                                    .font(.body.monospacedDigit())
-                                                    .fontWeight(.semibold)
-                                                    .foregroundColor(.primary)
-                                                
-                                                // Nudge Button (Only if pending)
-                                                if transaction.payerId == appState.currentUserId && (split.status == .pending || split.status == .accepted) {
-                                                    Button {
-                                                        HapticManager.shared.light()
-                                                        nudgeUser(split: split)
-                                                    } label: {
-                                                        Label("Nudge", systemImage: "bell.fill")
-                                                            .font(.caption2)
-                                                            .foregroundColor(.orange)
-                                                    }
-                                                    .disabled(isNudgedRecently(split))
-                                                    .opacity(isNudgedRecently(split) ? 0.5 : 1.0)
-                                                }
-                                            }
-                                                
-                                            // Inline Paid Toggle (Only if user is owner OR it is their own split)
-                                            if transaction.payerId == appState.currentUserId {
-                                                Button(action: { toggleSplitPayment(split) }) {
-                                                    Image(systemName: split.status == .paid ? "checkmark.circle.fill" : "circle")
-                                                        .font(.title3)
-                                                        .foregroundColor(split.status == .paid ? .green : .secondary.opacity(0.3))
-                                                }
-                                                .buttonStyle(.plain)
-                                            } else if split.toUid == appState.currentUserId {
-                                                 // Current User's Split (Friend View)
-                                                Button(action: { selectedSplit = split }) {
-                                                    Image(systemName: "chevron.right")
-                                                        .font(.caption)
-                                                        .foregroundColor(.secondary)
-                                                }
-                                            }
-                                        }
-                                        .padding(.vertical, 14)
-                                        .padding(.horizontal, 16)
-                                        .background(Color(UIColor.secondarySystemBackground))
-                                        .contentShape(Rectangle()) // Make full row tappable
-                                        .onTapGesture {
-                                            // Only allow navigation if it's your own split or you are the payer (for details)
+                                        Button(action: {
                                             if split.toUid == appState.currentUserId || transaction.payerId == appState.currentUserId {
                                                 selectedSplit = split
                                             }
+                                        }) {
+                                            HStack(spacing: 12) {
+                                                // Mini Avatar
+                                                ZStack {
+                                                    Circle()
+                                                        .fill(Color.primary.opacity(0.05))
+                                                        .frame(width: 36, height: 36)
+                                                    Text(String((split.toName ?? "").prefix(1)).uppercased())
+                                                        .font(.system(size: 14, weight: .bold))
+                                                        .foregroundColor(.primary)
+                                                }
+                                                
+                                                VStack(alignment: .leading, spacing: 2) {
+                                                    Text(split.toName ?? "Friend")
+                                                        .font(.body)
+                                                        .fontWeight(.medium)
+                                                        .foregroundColor(.primary)
+                                                }
+                                                
+                                                Spacer()
+                                                
+                                                VStack(alignment: .trailing, spacing: 2) {
+                                                    Text(String(format: "$%.2f", split.amount))
+                                                        .font(.body.monospacedDigit())
+                                                        .fontWeight(.semibold)
+                                                        .foregroundColor(.primary)
+                                                    
+                                                    if let status = Optional(split.status) {
+                                                        Text(status.rawValue.capitalized)
+                                                            .font(.caption2)
+                                                            .fontWeight(.bold)
+                                                            .foregroundColor(statusColor(for: status))
+                                                    }
+                                                }
+                                                
+                                                // Inline Paid Toggle
+                                                if transaction.payerId == appState.currentUserId {
+                                                    Button(action: { toggleSplitPayment(split) }) {
+                                                        Image(systemName: split.status == .paid ? "checkmark.circle.fill" : "circle")
+                                                            .font(.title3)
+                                                            .foregroundColor(split.status == .paid ? .green : .secondary.opacity(0.3))
+                                                    }
+                                                    
+                                                } else if split.toUid == appState.currentUserId {
+                                                     // Current User's Split (Friend View)
+                                                    Button(action: { selectedSplit = split }) {
+                                                        Image(systemName: "chevron.right")
+                                                            .font(.caption)
+                                                            .foregroundColor(.secondary)
+                                                    }
+                                                }
+                                            }
+                                            .padding(.vertical, 14)
+                                            .padding(.horizontal, 16)
                                         }
+                                        
                                         
                                         if split.id != splits.last?.id {
                                             Divider().padding(.horizontal, 16)
@@ -242,7 +193,11 @@ struct GroupTransactionDetailView: View {
                                     
                                     // Net Cost Row (Only visible to Payer)
                                     if transaction.payerId == appState.currentUserId {
-                                        Divider().padding(.horizontal, 16)
+                                        // Divider handled by last element check above? No, we need one before Net Cost
+                                        if !splits.isEmpty {
+                                            Divider().padding(.horizontal, 16)
+                                        }
+                                        
                                         HStack {
                                             Text("Net Cost")
                                                 .font(.subheadline)
@@ -253,10 +208,11 @@ struct GroupTransactionDetailView: View {
                                                 .font(.headline.monospacedDigit())
                                                 .foregroundColor(.primary)
                                         }
-                                        .padding(16)
+                                        .padding(AppSpacing.element)
                                         .background(Color.primary.opacity(0.03))
                                     }
                                 }
+                                .background(Color(UIColor.secondarySystemBackground))
                                 .cornerRadius(AppRadius.medium)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: AppRadius.medium)
@@ -266,7 +222,7 @@ struct GroupTransactionDetailView: View {
                         }
                         .padding(.horizontal, AppSpacing.margin)
                         
-                        // 3. Details Section
+                        // 3. Details & Map Card (matches TransactionDetailView)
                         VStack(alignment: .leading, spacing: 16) {
                             Text("DETAILS")
                                 .font(.caption)
@@ -275,70 +231,71 @@ struct GroupTransactionDetailView: View {
                                 .padding(.leading, 8)
                             
                             VStack(spacing: 0) {
-                                GroupDetailRow(title: "Category", value: transaction.category ?? "Uncategorized", icon: "tag.fill", color: Color(hex: transaction.colorHex ?? "#808080"))
+                                // Map Header (Integrated into card)
+                                if let tx = originalTransaction, let lat = tx.latitude, let long = tx.longitude {
+                                    Map(initialPosition: .camera(MapCamera(centerCoordinate: CLLocationCoordinate2D(latitude: lat, longitude: long), distance: 500))) {
+                                        Marker(transaction.title, coordinate: CLLocationCoordinate2D(latitude: lat, longitude: long))
+                                    }
+                                    .frame(height: 140)
+                                    
+                                    Divider()
+                                }
+                                
+                                // Total Amount
+                                TransactionDetailRow(icon: "banknote", title: "Total Amount", value: String(format: "$%.2f", abs(transaction.amount)), color: .primary)
+                                
+                                // Your Share
+                                let myShare = splits.first(where: { $0.toUid == appState.currentUserId })?.amount
+                                    ?? (transaction.payerId == appState.currentUserId ? abs(transaction.amount) - splits.reduce(0) { $0 + $1.amount } : nil)
+                                if let share = myShare {
+                                    Divider().padding(.leading, 52)
+                                    TransactionDetailRow(icon: "person.crop.circle", title: "Your Share", value: String(format: "$%.2f", share), color: .blue)
+                                }
                                 
                                 if let originalTx = originalTransaction,
                                    let originalAmount = originalTx.originalAmount,
                                    let currencyCode = originalTx.currencyCode {
                                     
                                     Divider().padding(.leading, 52)
-                                    GroupDetailRow(title: "Original Amount", value: String(format: "%.2f %@", originalAmount, currencyCode), icon: "banknote", color: .blue)
+                                    TransactionDetailRow(icon: "banknote", title: "Original Amount", value: String(format: "%.2f %@", originalAmount, currencyCode), color: .blue)
                                     
                                     if let rate = originalTx.exchangeRate {
                                         Divider().padding(.leading, 52)
-                                        GroupDetailRow(title: "Exchange Rate", value: String(format: "1 %@ = %.2f %@", transaction.currencyCode ?? CurrencyManager.shared.mainCurrency, rate, currencyCode), icon: "arrow.triangle.2.circlepath", color: .orange)
+                                        TransactionDetailRow(icon: "arrow.triangle.2.circlepath", title: "Exchange Rate", value: String(format: "1 %@ = %.2f %@", transaction.currencyCode ?? CurrencyManager.shared.mainCurrency, rate, currencyCode), color: .orange)
                                     }
                                 } else if let originalAmount = transaction.originalAmount, let rate = transaction.exchangeRate {
-                                    // Fallback using data from GroupTransaction if OriginalTransaction isn't loaded yet (though code is missing)
+                                    // Fallback using data from GroupTransaction
                                     Divider().padding(.leading, 52)
-                                    GroupDetailRow(title: "Original Amount", value: String(format: "%.2f (Foreign)", originalAmount), icon: "banknote", color: .blue)
+                                    TransactionDetailRow(icon: "banknote", title: "Original Amount", value: String(format: "%.2f (Foreign)", originalAmount), color: .blue)
                                      
                                     Divider().padding(.leading, 52)
-                                    GroupDetailRow(title: "Exchange Rate", value: String(format: "Rate: %.2f", rate), icon: "arrow.triangle.2.circlepath", color: .orange)
+                                    TransactionDetailRow(icon: "arrow.triangle.2.circlepath", title: "Exchange Rate", value: String(format: "Rate: %.2f", rate), color: .orange)
                                 }
                                 
                                 if let note = transaction.note, !note.isEmpty {
                                     Divider().padding(.leading, 52)
-                                    GroupDetailRow(title: "Notes", value: note, icon: "text.alignleft", color: .secondary)
+                                    TransactionDetailRow(icon: "text.alignleft", title: "Notes", value: note, color: .secondary)
                                 }
                                 
                                 Divider().padding(.leading, 52)
-                                GroupDetailRow(title: "Created on", value: transaction.date.formatted(date: .omitted, time: .shortened), icon: "clock", color: .secondary)
+                                TransactionDetailRow(icon: "clock", title: "Created on", value: transaction.date.formatted(date: .omitted, time: .shortened), color: .secondary)
                             }
                             .background(Color(UIColor.secondarySystemBackground))
                             .cornerRadius(AppRadius.medium)
                         }
                         .padding(.horizontal, AppSpacing.margin)
                         
-                        // 4. Map (If available)
-                        if let tx = originalTransaction, let lat = tx.latitude, let long = tx.longitude {
-                            VStack(alignment: .leading, spacing: 16) {
-                                Text("LOCATION")
-                                .font(.caption)
-                                .fontWeight(.bold)
-                                .foregroundColor(.secondary)
-                                .padding(.leading, 8)
-                            
-                                Map(initialPosition: .region(MKCoordinateRegion(
-                                    center: CLLocationCoordinate2D(latitude: lat, longitude: long),
-                                    span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-                                ))) {
-                                    Marker("Location", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: long))
-                                        .tint(.red)
-                                }
-                                .mapStyle(.standard)
-                                .frame(height: 200)
-                                .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
-                                
-                                if let name = tx.locationName {
-                                    Text(name)
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.primary)
-                                        .padding(.leading, 8)
-                                }
+                        // Optional Location Name
+                        if let tx = originalTransaction, let locName = tx.locationName, !locName.isEmpty {
+                            HStack {
+                                Image(systemName: "location.fill")
+                                    .font(.caption)
+                                Text(locName)
+                                    .font(.caption)
                             }
+                            .foregroundColor(.secondary)
                             .padding(.horizontal, AppSpacing.margin)
+                            .padding(.top, -AppSpacing.element)
                         }
                     }
                     .padding(.bottom, 40)
@@ -448,10 +405,14 @@ struct GroupTransactionDetailView: View {
     }
     
     private func loadSplits() {
-        guard let originalId = transaction.originalTransactionId else { return }
+        // Use originalTransactionId first, fallback to group transaction's own ID
+        guard let queryId = transaction.originalTransactionId ?? transaction.id else {
+            isLoading = false
+            return
+        }
         Task {
             do {
-                splits = try await repo.fetchSplitsForTransaction(transactionId: originalId)
+                splits = try await repo.fetchSplitsForTransaction(transactionId: queryId)
             } catch {
                 print("Error loading splits: \(error)")
             }
@@ -526,35 +487,4 @@ struct GroupTransactionDetailView: View {
     }
 }
 
-private struct GroupDetailRow: View {
-    let title: String
-    let value: String
-    let icon: String
-    let color: Color
-    
-    var body: some View {
-        HStack(spacing: 16) {
-            ZStack {
-                Circle()
-                    .fill(color.opacity(0.1))
-                    .frame(width: 32, height: 32)
-                Image(systemName: icon)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(color)
-            }
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption2)
-                    .fontWeight(.bold)
-                    .foregroundColor(.secondary)
-                Text(value)
-                    .font(.body)
-                    .fontWeight(.medium)
-                    .foregroundColor(.primary)
-            }
-            Spacer()
-        }
-        .padding(16)
-    }
-}
+// TransactionDetailRow is in Views/Components/TransactionDetailRow.swift

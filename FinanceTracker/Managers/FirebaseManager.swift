@@ -75,15 +75,25 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "Auth", code: 409, userInfo: [NSLocalizedDescriptionKey: "Username is already taken"])
         }
         
-        // 2. Cleanup Anonymous User if exists
-        if let currentUser = auth.currentUser, currentUser.isAnonymous {
-            DebugLogger.log("Deleting anonymous user before creating new account")
-            try? await currentUser.delete()
-        }
+        let user: User
         
-        // 3. Create Auth User
-        let result = try await auth.createUser(withEmail: email, password: password)
-        let user = result.user
+        // 2. Safely Link or Create
+        if let currentUser = auth.currentUser, currentUser.isAnonymous {
+            // LINK CURRENT ANONYMOUS USER
+            DebugLogger.log("Linking anonymous user to new credential")
+            let credential = EmailAuthProvider.credential(withEmail: email, password: password)
+            do {
+                let result = try await currentUser.link(with: credential)
+                user = result.user
+            } catch let error as NSError where error.code == AuthErrorCode.credentialAlreadyInUse.rawValue {
+                // Fallback if link fails due to existing account
+                throw error
+            }
+        } else {
+            // CREATE NEW USER (No anonymous session active)
+            let result = try await auth.createUser(withEmail: email, password: password)
+            user = result.user
+        }
         
         // 3. Create user profile in Firestore
         try await createUserProfile(userId: user.uid, name: name, email: email, username: username)
@@ -163,11 +173,22 @@ class FirebaseManager: ObservableObject {
             DebugLogger.log("Cache miss for user profile: \(error.localizedDescription)")
         }
         
-        // 2. Fetch from server to ensure fresh data
-        let serverDoc = try await db.collection("users").document(userId).getDocument(source: .server)
-        if let data = serverDoc.data() {
-            self.updateLocalUser(data: data)
-            DebugLogger.log("Refreshed user profile from server")
+        // 2. Fetch from server to ensure fresh data (graceful fallback if offline)
+        // FIX #15: Don't throw on server failure if cache data was already loaded
+        do {
+            let serverDoc = try await db.collection("users").document(userId).getDocument(source: .server)
+            if let data = serverDoc.data() {
+                self.updateLocalUser(data: data)
+                DebugLogger.log("Refreshed user profile from server")
+            }
+        } catch {
+            // If we already loaded from cache, this is acceptable (offline mode)
+            if self.currentUserName != nil {
+                DebugLogger.log("Server refresh failed (offline?), using cached profile: \(error.localizedDescription)")
+            } else {
+                // No cache AND no server — propagate the error
+                throw error
+            }
         }
     }
     

@@ -48,18 +48,9 @@ class GroupInvitationRepository: ObservableObject {
         let inviteRef = db.collection("group_invitations").document(inviteId)
         batch.updateData(["status": "accepted"], forDocument: inviteRef)
         
-        // 2. Add Member to Group (Client-side Fallback / Redundancy)
-        // Note: Security rules might prevent this if only owner can add, 
-        // but typically "accepting" an invite should allow joining.
-        // If rules are strict, this might fail and rely on Cloud Function.
-        // For now, we assume strict rules are NOT blocking this specific write or we rely on the backend.
-        // However, to ensure "Instant Feedback", we want to update the UI immediately.
-        // The GroupRepository listener should pick this up if the backend updates it.
-        // If we want immediate local update, we can't easily force it without writing to DB.
-        
-        // Let's try to write to the group members array.
-        let groupRef = db.collection("groups").document(invitation.groupId)
-        batch.updateData(["members": FieldValue.arrayUnion([invitation.toUid])], forDocument: groupRef)
+        // 2. Gap #2 Fix: Removed duplicate group member write.
+        // The Cloud Function `v2_onGroupInvitationUpdated` handles adding the member
+        // to the group atomically when it detects status → "accepted".
         
         // 3. Find and Unblock Dependent Requests
         let dependentRequests = try await db.collection("split_requests")

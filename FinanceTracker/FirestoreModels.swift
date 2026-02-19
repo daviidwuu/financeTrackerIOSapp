@@ -314,6 +314,8 @@ enum FirestoreModels {
         var createdAt: Date
         var updatedAt: Date? // ✅ NEW: Track modifications
         var defaultCurrency: String? // ✅ NEW: Master currency for the group
+        var deletionStatus: String? // ✅ NEW: "requested" or nil
+        var memberActions: [String: String]? // ✅ NEW: Map [UID: "keep" | "delete"]
         
         enum CodingKeys: String, CodingKey {
             case id
@@ -327,6 +329,8 @@ enum FirestoreModels {
             case createdAt
             case updatedAt
             case defaultCurrency
+            case deletionStatus
+            case memberActions
         }
         
         func isMember(_ uid: String) -> Bool {
@@ -376,6 +380,8 @@ enum FirestoreModels {
             case currencyCode
             case note
             case category
+            case icon
+            case colorHex
             case originalTransactionId
             case originalAmount
             case exchangeRate
@@ -398,6 +404,9 @@ enum FirestoreModels {
         var status: RequestStatus // ✅ CHANGED to enum
         var dependencyId: String? // ✅ NEW: Links to blocking document
         var lastNudgedAt: Date? // ✅ NEW: For nudge feature
+        var hiddenFor: [String]? // ✅ NEW: User IDs who have hidden this split from their view
+        var originalTotalAmount: Double? // ✅ NEW: Full pre-split expense total
+        var isGuest: Bool? // FIX 3.5: Flag to distinguish guest split requests
         var createdAt: Date
         
         enum RequestStatus: String, Codable {
@@ -430,6 +439,9 @@ enum FirestoreModels {
             case status
             case dependencyId
             case lastNudgedAt
+            case hiddenFor
+            case originalTotalAmount
+            case isGuest
             case createdAt
         }
     }

@@ -1,0 +1,34 @@
+Gemini said
+Based on the documents provided, the design philosophy of wym can be summarized as "Premium Utility."
+
+The overarching goal is to elevate standard financial and social interactions (splitting bills, tracking expenses) from mundane data entry into a tactile, high-end product experience. The app refuses to look like a standard iOS spreadsheet or form; instead, it behaves like a physical, interactive object.
+
+Here are the three core pillars that define this philosophy:
+
+1. Visual Hierarchy: The "Monochromatic Stage"
+The app treats UI elements like actors on a stage.
+
+Strict Monochromatism: The structural foundation is exclusively Black, White, and System Grays. This creates a high-contrast, "OLED-friendly" environment that feels modern and clean.
+
+Color as Function, Not Decoration: Vibrant colors are never used just to make things look "pretty." They are strictly reserved for meaning: defining a Category, signaling Income vs. Expense, or highlighting a specific User Identity.
+
+Physicality & Depth: The app rejects flat design in favor of "Physical Cards." Through specific corner radii and shadow strategies, elements feel like distinct layers sitting on top of one another, giving the interface a sense of depth and hierarchy.
+
+2. User Experience: Human-Centric Guidance
+The UX is designed to hold the user's hand, transforming complex logic (like math and debt distribution) into simple, conversational flows.
+
+Wizards over Forms: Instead of presenting long lists of input fields, the app uses "Wizards" and "Dashboards." It breaks complex tasks into bite-sized, guided steps (e.g., "Selection" then "Distribution").
+
+Friendly & Forgiving: The tone is conversational ("You're all set!" vs. "Success"). The UI provides "silent guidance"—dimming buttons when an action isn't ready or showing live previews—so the user never has to guess if they are doing it right.
+
+Reachability: Critical actions are visually sticky (anchored to the bottom) or floating, ensuring that the primary goal of any screen is always accessible, regardless of scrolling.
+
+3. Interaction Design: Tactile Confidence
+The app believes that digital actions should have physical weight.
+
+Haptic Affirmation: Every logic change—from selecting a friend to deleting an item—is paired with a specific haptic feedback level. This builds muscle memory and gives the user confidence that their input was registered.
+
+Visual Continuity: The design prioritizes "object permanence." A friend’s avatar or a group’s color looks exactly the same in a list, a wizard, or a detail view. This reduces cognitive load, helping users instantly recognize who they are dealing with across different contexts.
+
+Summary
+wym is designed to feel expensive but invisible. The interface recedes into a stark, monochromatic background to let the user's data and social connections (the colors) take center stage, while the interaction model ensures that complex financial math feels as simple as playing a game.

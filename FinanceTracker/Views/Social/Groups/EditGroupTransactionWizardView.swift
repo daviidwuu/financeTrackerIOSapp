@@ -232,7 +232,7 @@ struct EditGroupTransactionWizardView: View {
         let isTravelMode = CurrencyManager.shared.isTravelModeEnabled
         let mainCode = CurrencyManager.shared.mainCurrency
         let travelCode = CurrencyManager.shared.travelCurrency
-        let symbol = isTravelMode ? getSymbol(for: travelCode) : getSymbol(for: mainCode)
+        let _ = isTravelMode ? getSymbol(for: travelCode) : getSymbol(for: mainCode)
         
         return VStack(spacing: 24) {
             Spacer()
@@ -242,10 +242,7 @@ struct EditGroupTransactionWizardView: View {
                 .foregroundColor(.secondary)
             
             HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(symbol)
-                    .font(.system(size: 40, weight: .medium, design: .rounded))
-                    .foregroundColor(.primary)
-                
+                // Removed explicit symbol to match AddTransactionView style
                 TextField("0.00", text: $amountString)
                     .keyboardType(.decimalPad)
                     .font(.system(size: 64, weight: .bold, design: .rounded))
@@ -304,7 +301,7 @@ struct EditGroupTransactionWizardView: View {
                                             .foregroundColor(.green)
                                     }
                                 }
-                                .padding(8)
+                                .padding(AppSpacing.compact)
                             }
                             .background(selectedCategory?.category == budget.category ? Color(hex: budget.colorHex).opacity(0.1) : Color(UIColor.secondarySystemBackground))
                             .cornerRadius(AppRadius.small)
@@ -498,6 +495,15 @@ struct EditGroupTransactionWizardView: View {
             )
             splits.append(newSplit)
             shares[newSplit.id] = 1
+            
+            // Rebalance percentage
+            if splitMode == .percentage {
+                let count = Double(splits.count)
+                let even = count > 0 ? 100.0 / count : 0
+                for split in splits {
+                    percentages[split.id] = even
+                }
+            }
         }
         recalculateSplits(for: splitMode)
     }
@@ -522,6 +528,15 @@ struct EditGroupTransactionWizardView: View {
             )
             splits.append(newSplit)
             shares[newSplit.id] = 1
+            
+            // Rebalance percentage
+            if splitMode == .percentage {
+                let count = Double(splits.count)
+                let even = count > 0 ? 100.0 / count : 0
+                for split in splits {
+                    percentages[split.id] = even
+                }
+            }
         }
         recalculateSplits(for: splitMode)
     }
@@ -531,6 +546,15 @@ struct EditGroupTransactionWizardView: View {
         percentages.removeValue(forKey: split.id)
         lockedSplitIds.remove(split.id)
         splits.removeAll(where: { $0.id == split.id })
+        
+        // Rebalance percentage
+        if splitMode == .percentage {
+            let count = Double(splits.count)
+            let even = count > 0 ? 100.0 / count : 0
+            for split in splits {
+                percentages[split.id] = even
+            }
+        }
     }
     
     func createGuest(name: String) {
@@ -565,13 +589,12 @@ struct EditGroupTransactionWizardView: View {
                         .fontWeight(.bold)
                         .foregroundColor(.secondary)
                     
-                    Text("\(symbol)\(String(format: "%.2f", amount))")
+                    Text(String(format: "%.2f", amount))
                         .font(.system(size: 36, weight: .bold, design: .rounded))
                         
                     if isTravelMode {
                         let mainAmount = CurrencyManager.shared.convertToMain(amount: amount, from: travelCode)
-                        let mainSymbol = getSymbol(for: mainCode)
-                        Text("≈ \(mainSymbol)\(String(format: "%.2f", mainAmount))")
+                        Text("≈ \(String(format: "%.2f", mainAmount))")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }

@@ -133,7 +133,7 @@ struct CalendarView: View {
             }
             .padding()
             .background(Color.primary.opacity(0.05))
-            .cornerRadius(15)
+            .cornerRadius(AppRadius.medium)
         }
         .padding()
         .background(Color(UIColor.secondarySystemBackground))

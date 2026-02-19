@@ -6,7 +6,7 @@ exports.addTransaction = functions.https.onRequest(async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') {
     res.set('Access-Control-Allow-Methods', 'POST');
-    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.status(204).send('');
     return;
   }
@@ -16,11 +16,35 @@ exports.addTransaction = functions.https.onRequest(async (req, res) => {
   }
 
   try {
+    // --- Gap #5 Fix: Verify Firebase Auth Token ---
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({ error: 'Missing or invalid Authorization header. Use: Bearer <Firebase ID Token>' });
+      return;
+    }
+
+    const idToken = authHeader.split('Bearer ')[1];
+    let decodedToken;
+    try {
+      decodedToken = await admin.auth().verifyIdToken(idToken);
+    } catch (authError) {
+      console.error('[Auth] Token verification failed:', authError.message);
+      res.status(401).json({ error: 'Invalid or expired token' });
+      return;
+    }
+
     const { UserID, Data } = req.body;
     if (!UserID || !Data) {
       res.status(400).json({ error: 'Missing required fields' });
       return;
     }
+
+    // Ensure the authenticated user matches the target UserID
+    if (decodedToken.uid !== UserID) {
+      res.status(403).json({ error: 'Token UID does not match UserID' });
+      return;
+    }
+
     const { Category, Type, Amount, Notes } = Data;
     const parsedAmount = parseFloat(Amount);
     if (isNaN(parsedAmount)) {

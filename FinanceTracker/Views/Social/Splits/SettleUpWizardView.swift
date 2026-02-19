@@ -97,8 +97,8 @@ struct SettleUpWizardView: View {
                 receiverId = firstOther
             }
             Task {
-                let balances = await repo.calculateGroupBalances(groupId: gid, currentUserId: appState.currentUserId)
-                let instructions = repo.calculateDebtResolution(balances: balances)
+                let balancesByCurrency = await repo.calculateGroupBalances(groupId: gid, currentUserId: appState.currentUserId)
+                let instructions = repo.calculateDebtResolution(balances: balancesByCurrency)
                 await MainActor.run {
                    if let debtToPay = instructions.first(where: { $0.debtorId == appState.currentUserId }) {
                         payerId = debtToPay.debtorId
@@ -219,9 +219,9 @@ struct SettleUpWizardView: View {
         VStack(spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(isSelected ? (isPayer ? Color.green : Color.blue) : Color(UIColor.secondarySystemBackground))
+                    .fill(isSelected ? (isPayer ? AppColors.functionalIncome : Color.blue) : Color(UIColor.secondarySystemBackground))
                     .frame(width: 64, height: 64)
-                    .shadow(color: isSelected ? (isPayer ? Color.green.opacity(0.4) : Color.blue.opacity(0.4)) : Color.clear, radius: 8, y: 4)
+                    .shadow(color: isSelected ? (isPayer ? AppColors.functionalIncome.opacity(0.4) : Color.blue.opacity(0.4)) : Color.clear, radius: 8, y: 4)
                 
                 // Show Name instead of Initial inside circle if selected or always? 
                 // Request says "include name underneath the icon", which is already there.
@@ -232,7 +232,7 @@ struct SettleUpWizardView: View {
                     .fontWeight(.bold)
                     .foregroundColor(isSelected ? .white : .primary)
             }
-            .padding(8) // Increased padding for icon
+            .padding(AppSpacing.compact) // Increased padding for icon
             .overlay(
                 Circle()
                     .strokeBorder(isSelected ? Color.white : Color.clear, lineWidth: 2)
@@ -316,11 +316,13 @@ struct SettleUpWizardView: View {
         
         Task {
             do {
-                try await repo.settleUp(
+                // FIX #6: Use SocialTransactionManager (the correct, complete implementation)
+                try await SocialTransactionManager.shared.settleUp(
                     payerId: payerId,
                     receiverId: receiverId,
                     groupId: group?.id,
                     amount: amountVal,
+                    currency: group?.defaultCurrency ?? CurrencyManager.shared.mainCurrency,
                     payerName: getName(for: payerId),
                     receiverName: getName(for: receiverId),
                     method: "Payment"

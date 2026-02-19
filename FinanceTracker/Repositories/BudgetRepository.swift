@@ -14,6 +14,11 @@ class BudgetRepository: ObservableObject {
     
     private var listener: ListenerRegistration?
     
+    // FIX #20: Clean up listener on deallocation
+    deinit {
+        listener?.remove()
+    }
+    
     func startListening(userId: String) {
         self.userId = userId
         // Only show loading if we don't have any data yet (Stale-While-Revalidate)
@@ -58,6 +63,31 @@ class BudgetRepository: ObservableObject {
                          }
                          return b1.createdAt > b2.createdAt
                     }.first
+                }
+                
+                // FIX #8: Clean up duplicate budgets from Firestore
+                // (previously they accumulated but were only hidden client-side)
+                let duplicateIds = grouped.values.flatMap { budgets -> [String] in
+                    let sorted = budgets.sorted { (b1, b2) in
+                        if b1.createdAt == b2.createdAt {
+                            return b1.monthStartDate > b2.monthStartDate
+                        }
+                        return b1.createdAt > b2.createdAt
+                    }
+                    return sorted.dropFirst().compactMap { $0.id } // IDs of duplicates to delete
+                }
+                
+                if !duplicateIds.isEmpty {
+                    Task { [weak self] in
+                        guard let self = self, let uid = self.userId else { return }
+                        let batch = self.db.batch()
+                        for id in duplicateIds {
+                            let ref = self.db.collection("users").document(uid).collection("budgets").document(id)
+                            batch.deleteDocument(ref)
+                        }
+                        try? await batch.commit()
+                        DebugLogger.log("Cleaned up \(duplicateIds.count) duplicate budgets")
+                    }
                 }
                 
                 self.budgets = uniqueBudgets.sorted(by: { $0.category < $1.category })

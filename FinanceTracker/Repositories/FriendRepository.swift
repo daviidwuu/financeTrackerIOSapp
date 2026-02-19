@@ -87,7 +87,8 @@ class FriendRepository: ObservableObject {
         // Case sensitive search is standard in Firestore unless we store a lowercase version.
         // Assuming 'username' field is indexed.
         
-        let queryText = username
+        // FIX #17: Case-insensitive search by lowercasing the query
+        let queryText = username.lowercased()
         let endText = queryText + "\u{f8ff}"
         
         let snapshot = try await db.collection("users")
@@ -107,27 +108,11 @@ class FriendRepository: ObservableObject {
         try await myRef.delete()
     }
     
-    /// Create bidirectional friendship (Client-side fallback for Phase 6 Cloud Functions)
+    /// FIX #3: Let Cloud Function handle bidirectional friendship creation.
+    /// Client only updates the friend request status to 'accepted'.
+    /// The Cloud Function `v2_onFriendRequestUpdated` creates both friend documents atomically.
     func createFriendship(requestId: String, fromUser: (uid: String, name: String, username: String), toUser: (uid: String, name: String, username: String, email: String)) async throws {
-        // 1. Critical Batch: Add 'From User' to 'My' friends list AND Update Request Status
-        // We prioritize this because we have permission to write to our own collection.
-        let batch = db.batch()
-        
-        let senderAsFriend = FirestoreModels.Friend(
-            id: fromUser.uid,
-            username: fromUser.username,
-            name: fromUser.name,
-            email: nil, // Email not available in request
-            avatarColor: nil, // Will be updated by Cloud Function
-            addedAt: Date()
-        )
-        // 'toUser' is Me (Receiver of request)
-        let myFriendRef = db.collection("users").document(toUser.uid).collection("friends").document(fromUser.uid)
-        try batch.setData(from: senderAsFriend, forDocument: myFriendRef)
-        
         let requestRef = db.collection("friend_requests").document(requestId)
-        batch.updateData(["status": "accepted"], forDocument: requestRef)
-        
-        try await batch.commit()
+        try await requestRef.updateData(["status": "accepted"])
     }
 }

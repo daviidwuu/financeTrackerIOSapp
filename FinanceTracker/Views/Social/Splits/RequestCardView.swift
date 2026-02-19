@@ -8,7 +8,7 @@ struct RequestCardView: View {
     @EnvironmentObject var appState: AppState
     
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppSpacing.element) {
             // Avatar / Icon
             Circle()
                 .fill(Color.orange.opacity(0.1))
@@ -19,7 +19,7 @@ struct RequestCardView: View {
                         .foregroundColor(.orange)
                 )
             
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
                 // Primary Info: Sender Name
                 let senderName: String = {
                     if let name = request.fromName, !name.isEmpty {
@@ -33,7 +33,7 @@ struct RequestCardView: View {
                 
                 Text(senderName)
                     .font(.body)
-                    .fontWeight(.medium)
+                    .fontWeight(.semibold)
                     .foregroundColor(.primary)
                 
                 // Secondary Info: Request Details
@@ -42,6 +42,11 @@ struct RequestCardView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
+                
+                // Timestamp
+                Text("Requested \(timeAgo(from: request.createdAt))")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
             }
             
             Spacer()
@@ -76,9 +81,17 @@ struct RequestCardView: View {
             }
         }
         .padding(AppSpacing.element)
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(AppRadius.medium)
-        // No red border, consistent with FriendRequestCard
+        .overlay(
+            RoundedRectangle(cornerRadius: AppRadius.medium)
+                .stroke(Color.orange, lineWidth: 1)
+        )
+        // Removed gray background as requested
+    }
+    
+    private func timeAgo(from date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter.localizedString(for: date, relativeTo: Date())
     }
 }
 
@@ -98,6 +111,7 @@ struct RequestCardView: View {
             status: .pending,
             dependencyId: nil,
             lastNudgedAt: nil,
+            originalTotalAmount: 50.0,
             createdAt: Date()
         ),
         onAccept: {},

@@ -38,31 +38,36 @@ struct BalanceCard: View {
     let amount: Double
     let isOwed: Bool 
     let isSelf: Bool
+    var currency: String = "" // FIX 1.3: Optional currency label
+    
+    private var currencySymbol: String {
+        currency.isEmpty ? "$" : currency
+    }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            ProfileAvatar(text: String(name.prefix(1)), color: Color.random(seed: name), size: 32)
+        HStack(spacing: 12) {
+            ProfileAvatar(text: String(name.prefix(1)), color: Color.random(seed: name), size: 40)
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(name)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
                     .lineLimit(1)
                 
-                Text(isOwed ? "gets $\(String(format: "%.0f", amount))" : "owes $\(String(format: "%.0f", amount))")
-                    .font(.system(size: 14, weight: .bold))
+                Text(isOwed ? "gets \(currencySymbol) \(String(format: "%.0f", amount))" : "owes \(currencySymbol) \(String(format: "%.0f", amount))")
+                    .font(.subheadline)
+                    .fontWeight(.bold)
                     .foregroundColor(isOwed ? .functionalSuccess : .functionalError)
             }
         }
-
-        .padding(16)
-        .frame(width: 140) // ✅ Slightly wider for better text fit
+        .padding(AppSpacing.element)
         .background(isSelf ? Color(UIColor.systemBackground) : Color(UIColor.secondarySystemBackground))
         .cornerRadius(AppRadius.medium)
         .overlay(
             RoundedRectangle(cornerRadius: AppRadius.medium)
-                .stroke(isSelf ? Color.primary.opacity(0.1) : Color.clear, lineWidth: 1) // ✅ Neutral border for self
+                .stroke(isSelf ? Color.primary.opacity(0.1) : Color.clear, lineWidth: 1)
         )
-        .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2) // ✅ Soft shadow
+        .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
     }
 }

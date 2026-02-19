@@ -56,6 +56,30 @@ class FriendRequestRepository: ObservableObject {
     }
     
     func sendFriendRequest(fromUid: String, fromName: String, fromUsername: String, toUid: String) async throws {
+        // FIX 3.1: Guard against duplicate pending requests
+        let existingOutgoing = try await db.collection("friend_requests")
+            .whereField("fromUid", isEqualTo: fromUid)
+            .whereField("toUid", isEqualTo: toUid)
+            .whereField("status", isEqualTo: "pending")
+            .getDocuments()
+        
+        guard existingOutgoing.documents.isEmpty else {
+            throw NSError(domain: "FriendRequest", code: 409,
+                          userInfo: [NSLocalizedDescriptionKey: "Friend request already sent"])
+        }
+        
+        // Also check reverse direction (they already sent us one)
+        let existingIncoming = try await db.collection("friend_requests")
+            .whereField("fromUid", isEqualTo: toUid)
+            .whereField("toUid", isEqualTo: fromUid)
+            .whereField("status", isEqualTo: "pending")
+            .getDocuments()
+        
+        guard existingIncoming.documents.isEmpty else {
+            throw NSError(domain: "FriendRequest", code: 409,
+                          userInfo: [NSLocalizedDescriptionKey: "This user already sent you a request — check your incoming requests"])
+        }
+        
         let request = FirestoreModels.FriendRequest(
             fromUid: fromUid,
             toUid: toUid,

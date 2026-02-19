@@ -59,7 +59,7 @@ struct WelcomeView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding()
                                 .background(Color.white)
-                                .cornerRadius(16)
+                                .cornerRadius(AppRadius.medium)
                                 .shadow(color: .white.opacity(0.3), radius: 10, x: 0, y: 5)
                         }
                         
@@ -71,7 +71,7 @@ struct WelcomeView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding()
                                 .background(Color(UIColor.secondarySystemBackground))
-                                .cornerRadius(16)
+                                .cornerRadius(AppRadius.medium)
                         }
                     }
                     .padding(.horizontal, 24)

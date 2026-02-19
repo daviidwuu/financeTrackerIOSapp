@@ -209,14 +209,64 @@ struct SocialDashboardView: View {
 
     @ViewBuilder
     var groupsList: some View {
-        let filteredGroups = appState.groupRepo.groups.filter { group in
+        let allGroups = appState.groupRepo.groups.filter { group in
             let matchesSearch = searchText.isEmpty || group.name.localizedCaseInsensitiveContains(searchText)
             let isNotDeleted = !pendingDeletedGroupIds.contains(group.id ?? "")
             return matchesSearch && isNotDeleted
         }
         
+        let pendingDeletionGroups = allGroups.filter { $0.deletionStatus == "requested" }
+        let activeGroups = allGroups.filter { $0.deletionStatus != "requested" }
+        
         Group {
-            // Priority: Group Invitations
+            // Priority 1: Deletion Requests (Action Required)
+            if !pendingDeletionGroups.isEmpty {
+                Section(header: Text("ACTION REQUIRED").font(.caption).fontWeight(.bold).foregroundColor(.red)) {
+                    ForEach(pendingDeletionGroups) { group in
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(AppColors.functionalExpense.opacity(0.1))
+                                    .frame(width: 48, height: 48)
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.red)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(group.name)
+                                    .font(.body)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.primary)
+                                Text("Deletion Requested")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                            }
+                            
+                            Spacer()
+                            
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(AppSpacing.element)
+                        .background(Color(.secondarySystemBackground)) // Distinct background
+                        .cornerRadius(AppRadius.small)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(AppColors.functionalExpense.opacity(0.5), lineWidth: 1)
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            groupForDeletionAction = group
+                        }
+                        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                    }
+                }
+            }
+            
+            // Priority 2: Group Invitations
             if !appState.groupInvitationRepo.incomingInvitations.isEmpty {
                 Section(header: Text("INVITATIONS").font(.caption).fontWeight(.bold)) {
                     ForEach(appState.groupInvitationRepo.incomingInvitations) { invite in
@@ -256,7 +306,7 @@ struct SocialDashboardView: View {
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
 
-            ForEach(filteredGroups) { group in
+            ForEach(activeGroups) { group in
                 GroupCardView(group: group)
                     .contentShape(Rectangle()) // Ensure tap area covers the whole card
                     .onTapGesture {
@@ -268,17 +318,21 @@ struct SocialDashboardView: View {
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button(role: .destructive) {
-                            groupToDelete = group
-                            showGroupDeleteAlert = true
-                        } label: {
-                            Label("Delete", systemImage: "trash")
+                        if group.createdBy == appState.currentUserId {
+                            Button(role: .destructive) {
+                                groupToDelete = group
+                                showGroupDeleteAlert = true
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                            .tint(.red)
+                        } else {
+                            // Leave Logic? Or just hide for now as per previous behavior
                         }
-                        .tint(.red)
                     }
             }
             
-            if filteredGroups.isEmpty {
+            if allGroups.isEmpty {
                 EmptyStateView(
                     icon: "person.3.fill",
                     title: searchText.isEmpty ? "No Groups" : "No Groups Found",
@@ -287,6 +341,9 @@ struct SocialDashboardView: View {
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
             }
+        }
+        .sheet(item: $groupForDeletionAction) { group in
+            GroupDeletionActionView(group: group)
         }
     }
     
@@ -432,6 +489,7 @@ struct SocialDashboardView: View {
     // Deletion Logic
     @State private var groupToDelete: FirestoreModels.Group?
     @State private var showGroupDeleteAlert = false
+    @State private var groupForDeletionAction: FirestoreModels.Group? // ✅ NEW: For Keep/Delete sheet
     
     @State private var friendToDelete: FirestoreModels.Friend?
     @State private var showFriendDeleteAlert = false
@@ -441,23 +499,24 @@ struct SocialDashboardView: View {
     @State private var pendingDeletedFriendIds: Set<String> = []
 
     private func deleteGroup(_ group: FirestoreModels.Group) {
-        guard let groupId = group.id else { return }
+        guard group.id != nil else { return }
         
-        // Optimistic Update: Hide immediately
-        _ = withAnimation {
-            pendingDeletedGroupIds.insert(groupId)
-        }
-        HapticManager.shared.success()
+        // Optimistic Update: Hide immediately (Wait, for request deletion, we shouldn't hide it, we should show it as "requested")
+        // But for the user who initiates it, maybe they want to deal with it immediately?
+        // Let's call requestGroupDeletion, then immediately pop up the action sheet for them?
+        // Or just let them see the "Action Required" card.
         
         Task {
             do {
-                try await appState.groupRepo.deleteGroup(groupId: groupId)
-            } catch {
-                print("Error deleting group: \(error)")
+                try await appState.groupRepo.requestGroupDeletion(group: group)
                 await MainActor.run {
-                    _ = withAnimation {
-                        pendingDeletedGroupIds.remove(groupId)
-                    }
+                    HapticManager.shared.success()
+                    // Auto-open the action sheet for the creator immediately
+                    groupForDeletionAction = group
+                }
+            } catch {
+                print("Error requesting group deletion: \(error)")
+                await MainActor.run {
                     HapticManager.shared.error()
                 }
             }
@@ -616,16 +675,18 @@ struct CustomSegmentedControl: View {
                         Text(options[index])
                             .font(.subheadline)
                             .fontWeight(.semibold)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
                             .foregroundColor(selection == index ? Color.backgroundPrimary : .secondary)
                             .padding(.vertical, 10)
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, 8)
                     }
                 }
                 .buttonStyle(PlainButtonStyle())
                 .frame(maxWidth: .infinity)
             }
         }
-        .padding(4)
+        .padding(5)
         .background(Color(UIColor.secondarySystemBackground))
         .clipShape(Capsule())
     }
@@ -656,67 +717,9 @@ struct InvitationCard: View {
                 Text("Invited by friend")
                     .font(.caption)
                     .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            HStack(spacing: 8) {
-                Button(action: { decline() }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.secondary)
-                        .frame(width: 32, height: 32)
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .clipShape(Circle())
-                }
-                
-                Button(action: { accept() }) {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(Color.backgroundPrimary)
-                        .frame(width: 32, height: 32)
-                        .background(Color.functionalSuccess)
-                        .clipShape(Circle())
-                }
-            }
-            .buttonStyle(PlainButtonStyle())
-        }
-        .padding(AppSpacing.element)
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(AppRadius.medium)
-    }
-    
-    func accept() {
-        Task { try? await appState.groupInvitationRepo.acceptInvitation(invite); HapticManager.shared.success() }
-    }
-    func decline() {
-        Task { try? await appState.groupInvitationRepo.declineInvitation(invite); HapticManager.shared.light() }
-    }
-}
-
-struct FriendRequestCard: View {
-    let request: FirestoreModels.FriendRequest
-    @EnvironmentObject var appState: AppState
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            Circle()
-                .fill(Color.blue.opacity(0.1))
-                .frame(width: 48, height: 48)
-                .overlay(
-                    Text(String((request.fromName ?? "?").prefix(1)).uppercased())
-                        .font(.headline)
-                        .foregroundColor(.blue)
-                )
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(request.fromName ?? "Unknown User")
-                    .font(.body)
-                    .fontWeight(.medium)
-                    .foregroundColor(.primary)
-                
-                Text("wants to be friends")
-                    .font(.caption)
+                    
+                Text(timeAgo(from: invite.createdAt))
+                    .font(.caption2)
                     .foregroundColor(.secondary)
             }
             
@@ -744,9 +747,91 @@ struct FriendRequestCard: View {
             .buttonStyle(PlainButtonStyle())
         }
         .padding(AppSpacing.element)
-    .background(Color(UIColor.secondarySystemBackground))
-    .cornerRadius(AppRadius.medium)
+        .overlay(
+            RoundedRectangle(cornerRadius: AppRadius.medium)
+                .stroke(Color.orange, lineWidth: 1)
+        )
+    }
+    
+    private func timeAgo(from date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+    
+    func accept() {
+        Task { try? await appState.groupInvitationRepo.acceptInvitation(invite); HapticManager.shared.success() }
+    }
+    func decline() {
+        Task { try? await appState.groupInvitationRepo.declineInvitation(invite); HapticManager.shared.light() }
+    }
 }
+
+struct FriendRequestCard: View {
+    let request: FirestoreModels.FriendRequest
+    @EnvironmentObject var appState: AppState
+    
+    var body: some View {
+        HStack(spacing: AppSpacing.element) {
+            Circle()
+                .fill(Color.blue.opacity(0.1))
+                .frame(width: 48, height: 48)
+                .overlay(
+                    Text(String((request.fromName ?? "?").prefix(1)).uppercased())
+                        .font(.headline)
+                        .foregroundColor(.blue)
+                )
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(request.fromName ?? "Unknown User")
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                
+                Text("wants to be friends")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    
+                Text(timeAgo(from: request.createdAt))
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            HStack(spacing: 8) {
+                Button(action: { decline() }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.secondary)
+                        .frame(width: 32, height: 32)
+                        .background(Color(UIColor.secondarySystemBackground))
+                        .clipShape(Circle())
+                }
+                
+                Button(action: { accept() }) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(Color.backgroundPrimary)
+                        .frame(width: 32, height: 32)
+                        .background(Color.functionalSuccess)
+                        .clipShape(Circle())
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .padding(AppSpacing.element)
+        .overlay(
+            RoundedRectangle(cornerRadius: AppRadius.medium)
+                .stroke(Color.blue, lineWidth: 1)
+        )
+    }
+    
+    private func timeAgo(from date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
 
 func accept() {
         Task {

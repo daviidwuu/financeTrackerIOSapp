@@ -21,6 +21,7 @@ struct DetailHeaderView<Content: View, Actions: View, Subtitle: View>: View {
         onMenu: (() -> Void)? = nil,
         backgroundColor: Color = .black,
         textColor: Color = .white,
+        height: CGFloat = AppSize.headerHeight,
         @ViewBuilder avatar: @escaping () -> Content,
         @ViewBuilder actions: @escaping () -> Actions
     ) where Subtitle == AnyView {
@@ -30,6 +31,7 @@ struct DetailHeaderView<Content: View, Actions: View, Subtitle: View>: View {
         self.onMenu = onMenu
         self.backgroundColor = backgroundColor
         self.textColor = textColor
+        self.height = height
         self.avatar = avatar
         self.actions = actions
         self.subtitle = {
@@ -53,6 +55,7 @@ struct DetailHeaderView<Content: View, Actions: View, Subtitle: View>: View {
         onMenu: (() -> Void)? = nil,
         backgroundColor: Color = .black,
         textColor: Color = .white,
+        height: CGFloat = AppSize.headerHeight,
         @ViewBuilder avatar: @escaping () -> Content,
         @ViewBuilder subtitle: @escaping () -> Subtitle,
         @ViewBuilder actions: @escaping () -> Actions
@@ -63,10 +66,13 @@ struct DetailHeaderView<Content: View, Actions: View, Subtitle: View>: View {
         self.onMenu = onMenu
         self.backgroundColor = backgroundColor
         self.textColor = textColor
+        self.height = height
         self.avatar = avatar
         self.subtitle = subtitle
         self.actions = actions
     }
+    
+    let height: CGFloat
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -99,7 +105,7 @@ struct DetailHeaderView<Content: View, Actions: View, Subtitle: View>: View {
                             onMenu()
                         }) {
                             Image(systemName: "ellipsis")
-                                .font(.system(size: 18, weight: .semibold))
+                            .font(.system(size: 18, weight: .semibold))
                                 .foregroundColor(textColor)
                                 .frame(width: 44, height: 44)
                                 .background(textColor.opacity(0.05))
@@ -142,7 +148,7 @@ struct DetailHeaderView<Content: View, Actions: View, Subtitle: View>: View {
                 .padding(.bottom, 0)
             }
         }
-        .frame(height: AppSize.headerHeight)
+        .frame(height: height)
         // .mask(Rectangle()) // Removed mask to allow background extension
     }
 }

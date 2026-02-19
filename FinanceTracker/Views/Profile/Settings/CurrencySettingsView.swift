@@ -99,7 +99,7 @@ struct CurrencySettingsView: View {
                                     ProgressView()
                                 }
                             }
-                            .padding(16)
+                            .padding(AppSpacing.element)
                         }
                         
                         Text("Refreshed monthly based on 30-day average logic")
@@ -181,7 +181,7 @@ struct CurrencyRateModal: View {
                 }
                 .padding()
                 .background(Color(UIColor.secondarySystemBackground))
-                .cornerRadius(16)
+                .cornerRadius(AppRadius.medium)
                 
                 Text("Rate fetched online (approx. 30d average).")
                     .font(.caption)

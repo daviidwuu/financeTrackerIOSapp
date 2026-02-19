@@ -33,7 +33,7 @@ struct SetUsernameView: View {
                         .disableAutocorrection(true)
                         .padding()
                         .background(Color(UIColor.systemBackground)) // Match view background
-                        .cornerRadius(12)
+                        .cornerRadius(AppRadius.small)
                         .padding(.horizontal, 32)
                         .onChange(of: username) { _, newValue in
                             checkAvailability(newValue)

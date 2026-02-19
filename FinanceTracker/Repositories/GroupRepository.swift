@@ -83,18 +83,183 @@ class GroupRepository: ObservableObject {
         // v2.1: Only creator can delete via Security Rules
         try await db.collection("groups").document(groupId).delete()
     }
+
+    /// Requests group deletion (Soft Delete)
+    func requestGroupDeletion(group: FirestoreModels.Group) async throws {
+        guard let groupId = group.id else { return }
+        
+        // Initialize member actions map
+        var initialActions: [String: String] = [:]
+        for memberId in group.members {
+            initialActions[memberId] = "pending"
+        }
+        
+        try await db.collection("groups").document(groupId).updateData([
+            "deletionStatus": "requested",
+            "memberActions": initialActions,
+            "updatedAt": Date()
+        ])
+    }
     
-    func leaveGroup(groupId: String, userId: String) async throws {
+    /// Process user's decision to Keep or Delete history
+    func submitDeletionAction(group: FirestoreModels.Group, action: String) async throws {
+        guard let groupId = group.id, let userId = userId else { return }
+        
+        let batch = db.batch()
         let groupRef = db.collection("groups").document(groupId)
         
-        // Atomically remove user from members array
-        try await groupRef.updateData([
-            "members": FieldValue.arrayRemove([userId])
-        ])
+        // 1. Handle Data Migration based on Action
+        if action == "keep" {
+            // A. Keep Data -> Detach SplitRequests from Group
+            let requests = try await db.collection("split_requests")
+                .whereField("groupId", isEqualTo: groupId)
+                .whereFilter(Filter.orFilter([
+                    Filter.whereField("fromUid", isEqualTo: userId),
+                    Filter.whereField("toUid", isEqualTo: userId)
+                ]))
+                .getDocuments()
+            
+            for doc in requests.documents {
+                batch.updateData(["groupId": NSNull()], forDocument: doc.reference)
+            }
+            
+        } else if action == "delete" {
+            // B. Delete Data -> Hard Delete Requests & Personal Transactions
+            
+            // Delete Split Requests
+            let requests = try await db.collection("split_requests")
+                .whereField("groupId", isEqualTo: groupId)
+                .whereFilter(Filter.orFilter([
+                    Filter.whereField("fromUid", isEqualTo: userId),
+                    Filter.whereField("toUid", isEqualTo: userId)
+                ]))
+                .getDocuments()
+            
+            for doc in requests.documents {
+                batch.deleteDocument(doc.reference)
+            }
+            
+            // Delete Personal Transactions linked to this group (via linked requests or manual query?)
+            // Since TransactionModel doesn't have groupId, we rely on finding them via the requests we just found.
+            // But wait, if we delete requests first, we lose the link? No, we have the docs.
+            let transactionIds = requests.documents.compactMap { $0.data()["transactionId"] as? String }
+            let uniqueTxIds = Set(transactionIds)
+            
+            for txId in uniqueTxIds {
+                let txRef = db.collection("users").document(userId).collection("transactions").document(txId)
+                batch.deleteDocument(txRef)
+            }
+        }
         
-        // Optional: Check if group is empty and delete it?
-        // This is better handled by a Cloud Function trigger to clean up abandoned groups.
-        // Client-side cleanup is risky if the user just loses connection.
+        // 2. Update Member Action Status
+        // Use dot notation to update specific key in map
+        batch.updateData(["memberActions.\(userId)": action], forDocument: groupRef)
+        
+        try await batch.commit()
+        
+        // 3. Check if all members are done -> Final Hard Delete
+        // We fetch the latest group data to check
+        let updatedGroupSnapshot = try await groupRef.getDocument()
+        if let updatedGroup = try? updatedGroupSnapshot.data(as: FirestoreModels.Group.self),
+           let actions = updatedGroup.memberActions {
+            
+            let allComplete = updatedGroup.members.allSatisfy { memberId in
+                let status = actions[memberId]
+                return status == "keep" || status == "delete"
+            }
+            
+            if allComplete {
+                try await finalizeGroupDeletion(groupId: groupId)
+            }
+        }
+    }
+    
+    private func finalizeGroupDeletion(groupId: String) async throws {
+        // Hard delete the group document
+        // Subcollections (transactions) usually need manual recursive delete in Firestore, 
+        // but for now we delete the parent. A backend trigger usually handles subcollection cleanup.
+        try await db.collection("groups").document(groupId).delete()
+    }
+    
+    func leaveGroup(groupId: String, userId: String, keepData: Bool) async throws {
+        // FIX 2.4: Check for outstanding balances before allowing leave
+        let hasBalance = await hasOutstandingBalance(groupId: groupId, userId: userId)
+        if hasBalance {
+            throw NSError(domain: "GroupRepository", code: 409,
+                          userInfo: [NSLocalizedDescriptionKey: "You must settle all debts before leaving the group."])
+        }
+        
+        let batch = db.batch()
+        let groupRef = db.collection("groups").document(groupId)
+        
+        // 1. Handle data migration based on user's choice (same logic as submitDeletionAction)
+        if keepData {
+            // A. Keep Data → Detach SplitRequests from Group
+            let requests = try await db.collection("split_requests")
+                .whereField("groupId", isEqualTo: groupId)
+                .whereFilter(Filter.orFilter([
+                    Filter.whereField("fromUid", isEqualTo: userId),
+                    Filter.whereField("toUid", isEqualTo: userId)
+                ]))
+                .getDocuments()
+            
+            for doc in requests.documents {
+                batch.updateData(["groupId": NSNull()], forDocument: doc.reference)
+            }
+        } else {
+            // B. Delete Data → Hard Delete Requests & Personal Transactions
+            let requests = try await db.collection("split_requests")
+                .whereField("groupId", isEqualTo: groupId)
+                .whereFilter(Filter.orFilter([
+                    Filter.whereField("fromUid", isEqualTo: userId),
+                    Filter.whereField("toUid", isEqualTo: userId)
+                ]))
+                .getDocuments()
+            
+            for doc in requests.documents {
+                batch.deleteDocument(doc.reference)
+            }
+            
+            // Delete linked personal transactions
+            let transactionIds = requests.documents.compactMap { $0.data()["transactionId"] as? String }
+            let uniqueTxIds = Set(transactionIds)
+            
+            for txId in uniqueTxIds {
+                let txRef = db.collection("users").document(userId).collection("transactions").document(txId)
+                batch.deleteDocument(txRef)
+            }
+        }
+        
+        // 2. Remove user from members array and memberNames map
+        batch.updateData([
+            "members": FieldValue.arrayRemove([userId]),
+            "memberNames.\(userId)": FieldValue.delete()
+        ], forDocument: groupRef)
+        
+        try await batch.commit()
+    }
+    
+    /// FIX 2.4: Check if user has outstanding (unsettled) splits in the group
+    func hasOutstandingBalance(groupId: String, userId: String) async -> Bool {
+        // Check splits where user owes someone (toUid == user, pending/accepted)
+        let owedSnapshot = try? await db.collection("split_requests")
+            .whereField("groupId", isEqualTo: groupId)
+            .whereField("toUid", isEqualTo: userId)
+            .whereField("status", in: ["pending", "accepted"])
+            .getDocuments()
+        
+        if let count = owedSnapshot?.documents.count, count > 0 { return true }
+        
+        // Check splits where user is owed (fromUid == user, pending/accepted)
+        let owingSnapshot = try? await db.collection("split_requests")
+            .whereField("groupId", isEqualTo: groupId)
+            .whereField("fromUid", isEqualTo: userId)
+            .whereField("status", in: ["pending", "accepted"])
+            .getDocuments()
+        
+        if let count = owingSnapshot?.documents.count, count > 0 { return true }
+        
+        return false
     }
     
     func updateGroup(_ group: FirestoreModels.Group) async throws {

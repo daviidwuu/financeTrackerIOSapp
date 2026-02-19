@@ -28,6 +28,23 @@ service cloud.firestore {
             && data.fromUid is string
             && data.toUid is string;
     }
+    
+    // FIX #13: Validate split request status transitions
+    function isValidStatusTransition(oldStatus, newStatus) {
+      // Allow no-op (status unchanged, field-only updates like lastNudgedAt)
+      return oldStatus == newStatus
+          // pending → accepted, declined, paid
+          || (oldStatus == 'pending' && newStatus in ['accepted', 'declined', 'paid'])
+          // accepted → paid
+          || (oldStatus == 'accepted' && newStatus == 'paid')
+          // declined → pending (resend)
+          || (oldStatus == 'declined' && newStatus == 'pending')
+          // paid → pending, accepted (revert/unmark)
+          || (oldStatus == 'paid' && newStatus in ['pending', 'accepted'])
+          // blocked → pending (unblock by Cloud Function)
+          || (oldStatus == 'blocked_by_group' && newStatus == 'pending')
+          || (oldStatus == 'blocked_by_friendship' && newStatus == 'pending');
+    }
 
     // ✅ NEW: Root collection for groups (Wiki-style shared)
     match /groups/{groupId} {
@@ -42,9 +59,8 @@ service cloud.firestore {
       allow update: if request.auth.uid in resource.data.members
                     && isValidGroup(request.resource.data);
       
-      // Any member can delete (wiki-style)
-      // Any member can delete (wiki-style)
-      allow delete: if request.auth.uid in resource.data.members;
+      // FIX #12: Only the creator can delete a group
+      allow delete: if request.auth.uid == resource.data.createdBy;
 
       // ✅ NEW: Group Transactions Subcollection
       match /transactions/{transactionId} {
@@ -69,9 +85,14 @@ service cloud.firestore {
                   || (resource.data.groupId != null && request.auth.uid in get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.members);
       
       // Allow receiver to update (accept/decline) OR sender to update (cancel/delete/mark paid)
-      allow update: if request.auth.uid == resource.data.toUid 
-                    || request.auth.uid == resource.data.fromUid;
-                    
+      // FIX #13: Validate status transitions to prevent invalid state changes
+      allow update: if (request.auth.uid == resource.data.toUid 
+                        || request.auth.uid == resource.data.fromUid)
+                    && isValidStatusTransition(
+                         resource.data.status, 
+                         request.resource.data.status
+                       );
+                     
       // ✅ Allow sender OR receiver to delete
       allow delete: if request.auth.uid == resource.data.fromUid 
                     || request.auth.uid == resource.data.toUid;

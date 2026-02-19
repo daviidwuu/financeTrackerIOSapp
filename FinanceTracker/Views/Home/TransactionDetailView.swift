@@ -28,6 +28,9 @@ struct TransactionDetailView: View {
     // Cached groupId for split re-editing (Fix #2)
     @State private var cachedGroupId: String? = nil
     
+    // Deletion Alert
+    @State private var showDeleteConfirmation = false
+    
     init(transaction: FirestoreModels.TransactionModel, onSave: ((FirestoreModels.TransactionModel, TransactionFormData) -> Void)? = nil) {
         _transaction = State(initialValue: transaction)
         self.onSave = onSave
@@ -47,19 +50,31 @@ struct TransactionDetailView: View {
     }
     
     var body: some View {
-        ZStack(alignment: .top) {
-            // 1. Background
-            (colorScheme == .dark ? Color.black : Color.white)
-                .ignoresSafeArea()
+        ZStack {
+            Color.backgroundPrimary.ignoresSafeArea()
             
+        VStack(spacing: 0) {
+            // 1. Header (slim nav bar + title only)
+            DetailHeaderView(
+                title: "",
+                subtitle: nil as String?,
+                onBack: { dismiss() },
+                onMenu: {
+                    HapticManager.shared.light()
+                    showEditSheet = true
+                },
+                backgroundColor: Color.backgroundPrimary,
+                textColor: .primary,
+                height: AppSize.headerHeightSlim,
+                avatar: { EmptyView() },
+                actions: { EmptyView() }
+            )
+            
+            // 2. Scrollable Content
             ScrollView {
-                VStack(spacing: 0) {
-                    // Spacer for fixed Navigation Bar
-                    Spacer().frame(height: 60)
-                    
-                    // Header Content (formerly fixed)
+                VStack(spacing: AppSpacing.section) {
+                    // Hero Section: Icon, Title, Note, Amount, Date
                     VStack(spacing: 8) {
-                        // Avatar
                         Image(systemName: categoryIcon)
                             .font(.system(size: 32, weight: .bold))
                             .foregroundColor(.white)
@@ -67,51 +82,51 @@ struct TransactionDetailView: View {
                             .background(Color(hex: categoryColor))
                             .clipShape(Circle())
                         
-                        // Text
-                        VStack(spacing: 4) {
-                            Text((transaction.note?.isEmpty == false) ? transaction.note! : transaction.title)
-                                .font(AppTypography.titleDisplay)
-                                .foregroundColor(colorScheme == .dark ? .white : .black)
-                            
-                            Text(transaction.date.formatted(date: .long, time: .shortened))
-                                .font(.subheadline)
-                                .foregroundColor((colorScheme == .dark ? Color.white : Color.black).opacity(0.9))
-                        }
+                        Text(transaction.note?.isEmpty == false ? transaction.note! : transaction.title)
+                            .font(AppTypography.titleDisplay)
+                            .foregroundColor(.primary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
                         
-                        // Amount Display
+                        Text(transaction.subtitle ?? "Uncategorized")
+                            .font(AppTypography.body)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                        
                         Text(String(format: "$%.2f", displayAmount))
                             .font(AppTypography.prominentBalance)
-                            .foregroundColor(colorScheme == .dark ? .white : .black)
-                            .padding(.top, 0)
-                            .padding(.bottom, 0)
-                    }
-                    .padding(.bottom, AppSpacing.section)
-                    .padding(.top, 20)
-                    
-                    VStack(spacing: AppSpacing.section) {
+                            .foregroundColor(.primary)
                         
-                        // Section B: Split / Actions
-                        if transaction.type != "income" {
-                            Button(action: {
-                                HapticManager.shared.light()
-                                showSplitSheet = true
-                            }) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: transaction.splits?.isEmpty == false ? "person.2.fill" : "person.badge.plus.fill")
-                                    Text(transaction.splits?.isEmpty == false ? "View Split Details" : "Split this bill")
-                                }
-                                .font(.headline)
-                                .fontWeight(.bold)
-                                .foregroundColor(colorScheme == .dark ? .black : .white)
-                                .padding(.horizontal, 24)
-                                .padding(.vertical, 12)
-                                .background(colorScheme == .dark ? Color.white : Color.black)
-                                .clipShape(Capsule())
+                        Text(transaction.date.formatted(date: .long, time: .shortened))
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, AppSpacing.element)
+                    
+                    // Section B: Split / Actions
+                    if transaction.type != "income" {
+                        Button(action: {
+                            HapticManager.shared.light()
+                            showSplitSheet = true
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: transaction.splits?.isEmpty == false ? "person.2.fill" : "person.badge.plus.fill")
+                                Text(transaction.splits?.isEmpty == false ? "View Split Details" : "Split this bill")
                             }
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(colorScheme == .dark ? .black : .white)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 12)
+                            .background(colorScheme == .dark ? Color.white : Color.black)
+                            .clipShape(Capsule())
                         }
+                    }
 
-                        // Section C: Split Status Card
-                        if transaction.type != "income", let splits = transaction.splits, !splits.isEmpty {
+                    // Section C: Split Status Card
+                    if transaction.type != "income", let splits = transaction.splits, !splits.isEmpty {
                             VStack(alignment: .leading, spacing: 16) {
                                 Text("SPLIT STATUS")
                                     .font(.caption)
@@ -165,12 +180,12 @@ struct TransactionDetailView: View {
                                                         .font(.title3)
                                                         .foregroundColor(split.isPaid ? .green : .secondary.opacity(0.3))
                                                 }
-                                                .buttonStyle(.plain)
+                                                
                                             }
                                             .padding(.vertical, 14)
                                             .padding(.horizontal, 16)
                                         }
-                                        .buttonStyle(.plain)
+                                        
                                         
                                         if split.id != splits.last?.id {
                                             Divider().padding(.horizontal, 16)
@@ -188,7 +203,7 @@ struct TransactionDetailView: View {
                                             .font(.headline.monospacedDigit())
                                             .foregroundColor(.primary)
                                     }
-                                    .padding(16)
+                                    .padding(AppSpacing.element)
                                     .background(Color.primary.opacity(0.03))
                                 }
                                 .background(Color(UIColor.secondarySystemBackground))
@@ -255,46 +270,35 @@ struct TransactionDetailView: View {
                             HStack {
                                 Image(systemName: "location.fill")
                                     .font(.caption)
-                                Text(locName)
+                                    Text(locName)
                                     .font(.caption)
                             }
                             .foregroundColor(.secondary)
                             .padding(.top, -AppSpacing.element)
                         }
                         
-                        Spacer().frame(height: 40)
-                    }
-                    .padding(.vertical)
+                        Spacer().frame(height: 20)
+                        
+                        // Delete Button
+                        Button(action: {
+                            checkAndDelete()
+                        }) {
+                            Text("Delete Transaction")
+                                .font(.headline)
+                                .fontWeight(.bold)
+                                .foregroundColor(.red)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(AppColors.functionalExpense.opacity(0.1))
+                                .cornerRadius(AppRadius.large)
+                        }
+                        .padding(.horizontal, AppSpacing.margin)
+                        
+                    Spacer().frame(height: 40)
                 }
+                .padding(.vertical)
             }
-            
-            // 3. Fixed Navigation Bar
-            HStack {
-                Button(action: { dismiss() }) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
-                        .frame(width: 44, height: 44)
-                        .background((colorScheme == .dark ? Color.white : Color.black).opacity(0.05))
-                        .clipShape(Circle())
-                }
-                
-                Spacer()
-                
-                Button(action: {
-                    HapticManager.shared.light()
-                    showEditSheet = true
-                }) {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
-                        .frame(width: 44, height: 44)
-                        .background((colorScheme == .dark ? Color.white : Color.black).opacity(0.05))
-                        .clipShape(Circle())
-                }
-            }
-            .padding(.horizontal, AppSpacing.margin + AppSpacing.compact)
-            .padding(.top, 16)
+        }
         }
         .onAppear {
             // Refresh data to ensure sync when returning from other views
@@ -335,6 +339,14 @@ struct TransactionDetailView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(errorMessage)
+        }
+        .confirmationDialog("Delete Transaction", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
+                deleteTransaction()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Are you sure you want to delete this transaction? This action cannot be undone.")
         }
     }
     
@@ -555,7 +567,7 @@ struct TransactionDetailView: View {
                 // We should check the REQUEST status.
                 let currentStatus = request!.status
                 
-                if currentStatus == .pending || currentStatus == .accepted || currentStatus == .blocked_by_group || currentStatus == .declined {
+                if currentStatus == .accepted || currentStatus == .blocked_by_group {
                     // Mark as Paid
                      try await SocialTransactionManager.shared.markSplitAsPaid(request: request!, currentUserId: appState.currentUserId, currentUserName: appState.userName)
                 } else if currentStatus == .paid {
@@ -581,39 +593,73 @@ struct TransactionDetailView: View {
             }
         }
     }
-}
 
-// MARK: - Components
-
-struct TransactionDetailRow: View {
-    let icon: String
-    let title: String
-    let value: String
-    let color: Color
+    // MARK: - Deletion Logic
     
-    var body: some View {
-        HStack(spacing: 16) {
-            ZStack {
-                Circle()
-                    .fill(color.opacity(0.1))
-                    .frame(width: 32, height: 32)
-                Image(systemName: icon)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(color)
+    private func checkAndDelete() {
+        HapticManager.shared.warning()
+        
+        // 1. Check if it's a "Payment Received" transaction linked to a split
+        if transaction.type == "income", let requestId = transaction.source, !requestId.isEmpty {
+            // It's linked. Check status.
+            Task {
+                do {
+                    let doc = try await Firestore.firestore().collection("split_requests").document(requestId).getDocument()
+                    if let request = try? doc.data(as: FirestoreModels.SplitRequest.self) {
+                        if request.status == .paid {
+                            // BLOCK DELETION
+                            await MainActor.run {
+                                errorMessage = "This transaction verifies a paid split. Please unmark the split as paid if you wish to undo this payment."
+                                showErrorAlert = true
+                            }
+                            return
+                        }
+                    }
+                    // If not paid (e.g. pending/declined/nil/accepted), allow delete
+                    await MainActor.run {
+                        showDeleteConfirmation = true
+                    }
+                } catch {
+                    // Error fetching request? Allow delete or fail safe?
+                    // Fail safe: Block if we can't verify
+                    await MainActor.run {
+                        errorMessage = "Could not verify split status. Please try again."
+                        showErrorAlert = true
+                    }
+                }
             }
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption2)
-                    .fontWeight(.bold)
-                    .foregroundColor(.secondary)
-                Text(value)
-                    .font(.body)
-                    .fontWeight(.medium)
-                    .foregroundColor(.primary)
-            }
-            Spacer()
+        } else {
+            // Normal transaction
+            showDeleteConfirmation = true
         }
-        .padding(16)
+    }
+    
+    private func deleteTransaction() {
+        Task {
+            do {
+                // Revert linked split if needed (for pending/orphaned ones)
+                // Note: We use the manager function but ignore result since we checked blocking above
+                let _ = await SocialTransactionManager.shared.revertLinkedSplitIfNeeded(transaction: transaction, currentUserId: appState.currentUserId)
+                
+                if let splits = transaction.splits, !splits.isEmpty {
+                    try await SocialTransactionManager.shared.deleteSocialTransaction(transaction: transaction)
+                } else {
+                    if let id = transaction.id {
+                        try await transactionRepo.deleteTransaction(id: id)
+                    }
+                }
+                
+                await MainActor.run {
+                    dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Failed to delete transaction: \(error.localizedDescription)"
+                    showErrorAlert = true
+                }
+            }
+        }
     }
 }
+
+// TransactionDetailRow is in Views/Components/TransactionDetailRow.swift

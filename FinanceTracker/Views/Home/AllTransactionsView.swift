@@ -23,6 +23,10 @@ struct AllTransactionsView: View {
     @State private var undoState = UndoState()
     @State private var hiddenTransactionIds: Set<String> = []
     
+    // Deletion Alert
+    @State private var showDeleteConfirmation = false
+    @State private var transactionToDelete: FirestoreModels.TransactionModel?
+    
     init(transactionRepo: TransactionRepository, budgetRepo: BudgetRepository, initialDate: Date? = nil) {
         self.transactionRepo = transactionRepo
         self.budgetRepo = budgetRepo
@@ -170,7 +174,7 @@ struct AllTransactionsView: View {
                                 .padding(.horizontal, 12)
                                 .frame(height: 36)
                                 .background(Color(UIColor.secondarySystemGroupedBackground))
-                                .cornerRadius(10)
+                                .cornerRadius(AppRadius.small)
                             }
                             
                             // Month Filter
@@ -202,7 +206,7 @@ struct AllTransactionsView: View {
                                 .padding(.horizontal, 12)
                                 .frame(height: 36)
                                 .background(Color(UIColor.secondarySystemGroupedBackground))
-                                .cornerRadius(10)
+                                .cornerRadius(AppRadius.small)
                             }
                             
                             // Date Filter (Specific Day)
@@ -232,7 +236,7 @@ struct AllTransactionsView: View {
                                         .foregroundColor(.primary)
                                         .frame(width: 36, height: 36)
                                         .background(Color(UIColor.secondarySystemGroupedBackground))
-                                        .cornerRadius(10)
+                                        .cornerRadius(AppRadius.small)
                                 }
                             }
                             
@@ -244,7 +248,7 @@ struct AllTransactionsView: View {
                                         .foregroundColor(.primary)
                                         .frame(width: 36, height: 36)
                                         .background(Color(UIColor.secondarySystemGroupedBackground))
-                                        .cornerRadius(10)
+                                        .cornerRadius(AppRadius.small)
                                 }
                             }
                             
@@ -276,7 +280,7 @@ struct AllTransactionsView: View {
                                     .foregroundColor(.primary)
                                     .frame(width: 36, height: 36)
                                     .background(Color(UIColor.secondarySystemGroupedBackground))
-                                    .cornerRadius(10)
+                                    .cornerRadius(AppRadius.small)
                             }
                         }
                         .padding(.horizontal, AppSpacing.margin)
@@ -353,7 +357,7 @@ struct AllTransactionsView: View {
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 Button(role: .destructive) {
                                     HapticManager.shared.heavy()
-                                    deleteTransaction(transaction)
+                                    checkAndDelete(transaction)
                                 } label: {
                                     Label("Delete", systemImage: "trash")
                                 }
@@ -431,6 +435,18 @@ struct AllTransactionsView: View {
                     updateTransaction(transaction, with: updatedTransaction)
                 })
             }
+            .confirmationDialog("Delete Transaction", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
+                Button("Delete", role: .destructive) {
+                    if let tx = transactionToDelete {
+                        deleteTransaction(tx)
+                    }
+                }
+                Button("Cancel", role: .cancel) { 
+                    transactionToDelete = nil
+                }
+            } message: {
+                Text("Are you sure you want to delete this transaction? This action cannot be undone.")
+            }
         }
     }
     
@@ -478,6 +494,41 @@ struct AllTransactionsView: View {
                 DebugLogger.log("Failed to update transaction: \(error)")
                 errorState.show("Failed to update transaction")
             }
+        }
+    }
+    
+    private func checkAndDelete(_ transaction: FirestoreModels.TransactionModel) {
+        // 1. Check if it's a "Payment Received" transaction linked to a split
+        if transaction.type == "income", let requestId = transaction.source, !requestId.isEmpty {
+            // It's linked. Check status.
+            Task {
+                do {
+                    let doc = try await Firestore.firestore().collection("split_requests").document(requestId).getDocument()
+                    if let request = try? doc.data(as: FirestoreModels.SplitRequest.self) {
+                        if request.status == .paid {
+                            // BLOCK DELETION
+                            await MainActor.run {
+                                errorState.show("This transaction verifies a paid split. Please unmark the split as paid if you wish to undo this payment.")
+                            }
+                            return
+                        }
+                    }
+                    // If not paid, allow delete
+                    await MainActor.run {
+                        transactionToDelete = transaction
+                        showDeleteConfirmation = true
+                    }
+                } catch {
+                    // Fail safe
+                    await MainActor.run {
+                        errorState.show("Could not verify split status. Please try again.")
+                    }
+                }
+            }
+        } else {
+            // Normal transaction
+            transactionToDelete = transaction
+            showDeleteConfirmation = true
         }
     }
     
@@ -598,7 +649,7 @@ struct FilterChip: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(Color(UIColor.secondarySystemGroupedBackground))
-        .cornerRadius(16)
+        .cornerRadius(AppRadius.medium)
     }
 }
 
@@ -622,6 +673,6 @@ struct StatCard: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
         .background(Color(UIColor.secondarySystemGroupedBackground))
-        .cornerRadius(12)
+        .cornerRadius(AppRadius.small)
     }
 }

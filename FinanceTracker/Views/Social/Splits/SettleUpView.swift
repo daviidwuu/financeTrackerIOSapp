@@ -95,11 +95,13 @@ struct SettleUpView: View {
         
         Task {
             do {
-                try await repo.settleUp(
+                // FIX #6: Use SocialTransactionManager (the correct, complete implementation)
+                try await SocialTransactionManager.shared.settleUp(
                     payerId: selectedPayerId,
                     receiverId: selectedReceiverId,
                     groupId: group.id,
                     amount: amountDouble,
+                    currency: group.defaultCurrency ?? CurrencyManager.shared.mainCurrency,
                     payerName: getMemberName(id: selectedPayerId),
                     receiverName: getMemberName(id: selectedReceiverId),
                     method: paymentMethod

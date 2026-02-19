@@ -29,6 +29,7 @@ struct HomeView: View {
     @State private var errorState = ErrorState()
     @State private var undoState = UndoState()
     @State private var hiddenTransactionIds: Set<String> = []
+    @State private var groupForDeletionAction: FirestoreModels.Group? // ✅ NEW
     
     var totalBudget: Double {
         WalletLogic.calculateTotalBudget(budgets: budgetRepo.budgets)
@@ -108,7 +109,7 @@ struct HomeView: View {
                                             .frame(width: 44, height: 44)
                                     }
                                 }
-                                .buttonStyle(.plain)
+                                
                                 
                                 Button(action: { 
                                     HapticManager.shared.light()
@@ -123,7 +124,7 @@ struct HomeView: View {
                                                 .foregroundColor(.primary)
                                         )
                                 }
-                                .buttonStyle(.plain)
+                                
                             }
                             .padding(.top, 10)
                             
@@ -191,9 +192,60 @@ struct HomeView: View {
                                     .padding(.bottom, AppSpacing.compact)
                             }
                         }
+                        .animation(.spring(), value: friendRequestRepo.incomingRequests.count)
                     }
                     
-                    // Section 1.5: Pending Requests
+                    // Section 1.5: Pending Group Deletions (High Priority)
+                    let pendingDeletionGroups = appState.groupRepo.groups.filter { $0.deletionStatus == "requested" && $0.memberActions?[appState.currentUserId] == "pending" }
+                    if !pendingDeletionGroups.isEmpty {
+                        Section(header: Text("Action Required").font(.headline).foregroundColor(.red)) {
+                            ForEach(pendingDeletionGroups) { group in
+                                HStack(spacing: 12) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(AppColors.functionalExpense.opacity(0.1))
+                                            .frame(width: 48, height: 48)
+                                        Image(systemName: "exclamationmark.triangle.fill")
+                                            .foregroundColor(.red)
+                                    }
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(group.name)
+                                            .font(.body)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.primary)
+                                        Text("Group deletion requested")
+                                            .font(.caption)
+                                            .foregroundColor(.red)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(AppSpacing.element)
+                                .background(Color(.secondarySystemBackground))
+                                .cornerRadius(AppRadius.small)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(AppColors.functionalExpense.opacity(0.5), lineWidth: 1)
+                                )
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    groupForDeletionAction = group
+                                }
+                                .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                                .padding(.bottom, AppSpacing.compact)
+                            }
+                        }
+                        .animation(.spring(), value: pendingDeletionGroups.count)
+                    }
+
+                    // Section 1.6: Pending Requests
                     let pendingRequests = requestRepo.requests.filter { $0.status == .pending }
                     if !pendingRequests.isEmpty {
                         Section(header: Text("Pending Requests").font(.headline)) {
@@ -213,6 +265,7 @@ struct HomeView: View {
                                 .padding(.bottom, AppSpacing.compact)
                             }
                         }
+                        .animation(.spring(), value: pendingRequests.count)
                     }
                     
                     // Section 2: Recent Transactions
@@ -227,10 +280,14 @@ struct HomeView: View {
                                 HapticManager.shared.light()
                                 showAllTransactions = true
                             }) {
-                                Text("View All")
-                                    .font(.subheadline)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.primary)
+                                HStack(spacing: 4) {
+                                    Text("View All")
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption.weight(.bold))
+                                }
+                                .foregroundColor(.secondary)
                             }
                         }
                         .textCase(nil)
@@ -340,6 +397,9 @@ struct HomeView: View {
                 .sheet(isPresented: $showMissions) {
                     MissionHubView()
                         .environmentObject(appState)
+                }
+                .sheet(item: $groupForDeletionAction) { group in
+                    GroupDeletionActionView(group: group)
                 }
             }
             .navigationBarHidden(true)
@@ -521,7 +581,7 @@ struct HomeView: View {
         Task {
             do {
                 guard let id = request.id else { return }
-                try await requestRepo.updateRequestStatus(userId: appState.currentUserId, requestId: id, status: .accepted)
+                try await requestRepo.updateRequestStatus(userId: appState.currentUserId, requestId: id, status: .accepted, lastUpdatedBy: appState.currentUserId)
             } catch {
                 DebugLogger.log("Failed to accept request: \(error)")
                 errorState.show("Failed to accept request")
@@ -533,7 +593,7 @@ struct HomeView: View {
         Task {
             do {
                 guard let id = request.id else { return }
-                try await requestRepo.updateRequestStatus(userId: appState.currentUserId, requestId: id, status: .declined)
+                try await requestRepo.updateRequestStatus(userId: appState.currentUserId, requestId: id, status: .declined, lastUpdatedBy: appState.currentUserId)
                 // Optionally remove from list after delay or just let status update hide it
             } catch {
                 DebugLogger.log("Failed to decline request: \(error)")

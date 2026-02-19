@@ -37,7 +37,7 @@ struct LocationSettingsView: View {
                              .padding(.horizontal, 12)
                              .background(Color.blue.opacity(0.1))
                              .foregroundColor(.blue)
-                             .cornerRadius(8)
+                             .cornerRadius(AppRadius.small)
                          } else if permissionStatus == .denied {
                              Button("Settings") {
                                  if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -48,12 +48,12 @@ struct LocationSettingsView: View {
                              .fontWeight(.semibold)
                              .padding(.vertical, 6)
                              .padding(.horizontal, 12)
-                             .background(Color.red.opacity(0.1))
+                             .background(AppColors.functionalExpense.opacity(0.1))
                              .foregroundColor(.red)
-                             .cornerRadius(8)
+                             .cornerRadius(AppRadius.small)
                          }
                      }
-                     .padding(16)
+                     .padding(AppSpacing.element)
                 }
                 
                 MenuSection("App Settings") {

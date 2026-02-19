@@ -14,6 +14,7 @@ struct AppSize {
     static let iconButton: CGFloat = 44
     
     static let headerHeight: CGFloat = 300
+    static let headerHeightSlim: CGFloat = 80
 }
 
 struct AppMap {
@@ -21,35 +22,20 @@ struct AppMap {
 }
 
 struct AppTypography {
-    static func heroRounded(size: CGFloat, relativeTo textStyle: Font.TextStyle = .body) -> Font {
-        .custom("SFProRounded-Bold", size: size, relativeTo: textStyle)
+    // Utilize semantic text styles for full iOS Dynamic Type support
+    
+    // Fallback scaling for hero elements using relative metrics
+    static let heroInput: Font = .system(size: 64, weight: .bold, design: .rounded)
+    
+    static func heroRounded(size: CGFloat) -> Font {
+        return .system(size: size, weight: .bold, design: .rounded)
     }
     
-    // Fallback if custom font not loaded, or use system with design .rounded which is what was likely intended but system(size:) doesn't scale automatically without relativeTo in newer SwiftUI versions or needs ScaledMetric.
-    // However, .system(size:weight:design:) returns a fixed font. 
-    // To get dynamic type with system fonts and fixed size as base, we can use .custom with the system font name or just rely on standard styles.
-    // But since the guide specifies exact points, we should try to respect that while allowing scaling.
-    // The best way in SwiftUI for "Custom size but scales" is .custom(name, size: relativeTo:).
-    // Since we are using System font, let's stick to .system but we might need a different approach for true dynamic type if we want exact control.
-    // Actually, .system(size:) does NOT scale. 
-    // Let's use standard styles where possible or a scaled metric approach.
-    // For this implementation, I will switch to using .custom with the System font name alias or just mapped to nearest text style.
+    static let prominentBalance: Font = .system(.largeTitle, design: .rounded).weight(.bold)
     
-    // BETTER APPROACH for "Premium Utility": Use standard styles with modifiers, OR use the .custom with relativeTo.
-    // Since we don't know if a custom font file is added, we should stick to system.
-    // To make system font scale with fixed size, we can't easily do it in a static var without @ScaledMetric.
-    // So we will change these to functions or computed properties that return standard scaled fonts close to the size, OR we accept the fixed size for "Hero" elements (which is sometimes desired in games/utilities) but fix the "Body" ones.
-    // BUT, the critique said "Refactor AppTypography to support Dynamic Type".
+    static let titleDisplay: Font = .largeTitle.weight(.bold) 
     
-    // Let's try to map to standard styles with weight overrides, which is most accessible.
-    
-    static let heroInput: Font = .system(size: 64, weight: .bold, design: .rounded) // Keep fixed for massive inputs as they might break layout if scaled too much, or use ViewModifier
-    
-    static let prominentBalance: Font = .system(size: 42, weight: .bold, design: .rounded)
-    
-    static let titleDisplay: Font = .largeTitle.weight(.bold) // Approx 34pt
-    
-    static let sectionHeader: Font = .title.weight(.bold) // Approx 28pt
+    static let sectionHeader: Font = .title.weight(.bold) 
     
     static let headline: Font = .headline.weight(.semibold)
     

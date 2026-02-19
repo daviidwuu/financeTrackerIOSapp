@@ -145,6 +145,6 @@ struct DetailRow: View {
                 .fontWeight(.semibold)
                 .foregroundColor(color)
         }
-        .padding(16)
+        .padding(AppSpacing.element)
     }
 }

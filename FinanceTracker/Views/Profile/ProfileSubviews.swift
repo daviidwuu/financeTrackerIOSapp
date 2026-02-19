@@ -97,7 +97,7 @@ struct AccountSettingsView: View {
                          Button(action: { sendPasswordReset() }) {
                              MenuRowView(icon: "lock.rotation", title: "Reset Password", showChevron: true)
                          }
-                         .buttonStyle(.plain)
+                         
                     }
                     
                     // Danger Zone
@@ -394,10 +394,10 @@ struct NotificationsSettingsView: View {
                                 .padding(.horizontal, 12)
                                 .background(Color.blue.opacity(0.1))
                                 .foregroundColor(.blue)
-                                .cornerRadius(8)
+                                .cornerRadius(AppRadius.small)
                             }
                         }
-                        .padding(16)
+                        .padding(AppSpacing.element)
                     }
                     .padding(.top, 0)
                     
@@ -413,7 +413,7 @@ struct NotificationsSettingsView: View {
                                 Image(systemName: "paperplane.fill")
                             }
                             .foregroundColor(.blue)
-                            .padding(16)
+                            .padding(AppSpacing.element)
                         }
                     }
                     
@@ -745,7 +745,7 @@ struct PrivacySettingsView: View {
                         } label: {
                             MenuRowView(icon: "lock.shield", title: "Two-Factor Authentication")
                         }
-                        .buttonStyle(.plain)
+                        
                     }
                     .padding(.top, 0)
                     
@@ -758,7 +758,7 @@ struct PrivacySettingsView: View {
                         } label: {
                             MenuRowView(icon: "hand.raised", title: "Data & Privacy Info")
                         }
-                        .buttonStyle(.plain)
+                        
                     }
                     
                     Spacer()
@@ -818,7 +818,7 @@ struct HelpCenterView: View {
                         } label: {
                             MenuRowView(icon: "plus.circle", title: "How to add a transaction?")
                         }
-                        .buttonStyle(.plain)
+                        
                         
                         MenuDivider()
                         
@@ -829,7 +829,7 @@ struct HelpCenterView: View {
                         } label: {
                             MenuRowView(icon: "chart.pie", title: "How to set a budget?")
                         }
-                        .buttonStyle(.plain)
+                        
                         
                         MenuDivider()
                         
@@ -840,7 +840,7 @@ struct HelpCenterView: View {
                         } label: {
                             MenuRowView(icon: "square.and.arrow.up", title: "Exporting data")
                         }
-                        .buttonStyle(.plain)
+                        
                     }
                     .padding(.top, 0)
                     
@@ -848,14 +848,14 @@ struct HelpCenterView: View {
                         Button(action: { }) {
                             MenuRowView(icon: "envelope", title: "Contact Support")
                         }
-                        .buttonStyle(.plain)
+                        
                         
                         MenuDivider()
                         
                         Button(action: { }) {
                             MenuRowView(icon: "ant", title: "Report a Bug")
                         }
-                        .buttonStyle(.plain)
+                        
                     }
                     
                     Spacer()
@@ -957,21 +957,21 @@ struct AboutView: View {
                         Button(action: {}) {
                             MenuRowView(title: "Rate App", showChevron: true)
                         }
-                        .buttonStyle(.plain)
+                        
                         
                         MenuDivider()
                         
                         Button(action: {}) {
                             MenuRowView(title: "Terms of Service", showChevron: true)
                         }
-                        .buttonStyle(.plain)
+                        
                         
                         MenuDivider()
                         
                         Button(action: {}) {
                             MenuRowView(title: "Privacy Policy", showChevron: true)
                         }
-                        .buttonStyle(.plain)
+                        
                     }
                     
                     Spacer()

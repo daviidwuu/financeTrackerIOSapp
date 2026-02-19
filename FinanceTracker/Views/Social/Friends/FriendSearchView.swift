@@ -69,7 +69,7 @@ struct FriendSearchView: View {
                                         .clipShape(Capsule())
                                         .shadow(color: Color.blue.opacity(0.3), radius: 4, x: 0, y: 2)
                                 }
-                                .buttonStyle(.plain) // Ensure row doesn't capture tap
+                                 // Ensure row doesn't capture tap
                             }
                             .padding(.vertical, 4)
                         }

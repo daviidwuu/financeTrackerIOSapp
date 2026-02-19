@@ -180,7 +180,7 @@ struct MissionHubView: View {
                 }) {
                     MissionRow(mission: mission, isCompleted: manager.completedMissionIds.contains(mission.id), isLocked: isLocked)
                 }
-                .buttonStyle(.plain)
+                
                 .disabled(isLocked)
             }
         }

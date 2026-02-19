@@ -38,16 +38,16 @@ struct QuickLogWidgetEntryView : View {
                 VStack {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 50))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color.primary)
+                        .symbolEffect(.bounce, options: .nonRepeating)
                     Text("Quick Log")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color.primary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.blue.gradient)
+                .background(Color(UIColor.secondarySystemBackground))
                 .containerBackground(for: .widget) {
-                    ContainerRelativeShape()
-                        .fill(Color.blue.gradient)
+                    Color(UIColor.systemBackground)
                 }
             }
             .widgetURL(URL(string: "financetracker://add-transaction"))
@@ -64,7 +64,7 @@ struct QuickLogWidgetEntryView : View {
                                 .font(.caption)
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color.white.opacity(0.1))
+                        .background(Color(UIColor.secondarySystemBackground))
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                     }
                 } else {
@@ -73,7 +73,7 @@ struct QuickLogWidgetEntryView : View {
                             VStack(spacing: 8) {
                                 ZStack {
                                     Circle()
-                                        .fill(Color(hex: category.colorHex).opacity(0.2))
+                                        .fill(Color(UIColor.tertiarySystemFill))
                                         .frame(width: 44, height: 44)
                                     
                                     Image(systemName: category.icon)
@@ -85,10 +85,10 @@ struct QuickLogWidgetEntryView : View {
                                     .font(.caption2)
                                     .fontWeight(.medium)
                                     .lineLimit(1)
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(Color.primary)
                             }
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(Color.black.opacity(0.2))
+                            .background(Color(UIColor.secondarySystemBackground))
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
                     }
@@ -96,13 +96,12 @@ struct QuickLogWidgetEntryView : View {
             }
             .padding()
             .containerBackground(for: .widget) {
-                Color.black
+                Color(UIColor.systemBackground)
             }
             
         case .accessoryCircular:
              // Lock Screen Button
              ZStack {
-                Color.white.opacity(0.1)
                 Image(systemName: "plus")
                     .font(.title2)
                     .bold()

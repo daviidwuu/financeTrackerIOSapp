@@ -20,9 +20,14 @@ class RequestRepository: ObservableObject {
         self.errorMessage = nil
         
         // v2.1: Listen to root `split_requests` where `toUid` == currentUserId
+        // FIX #16: Include both pending and accepted statuses (not just pending)
+        // so users can see requests they need to pay
         listenerRegistration = db.collection("split_requests")
             .whereField("toUid", isEqualTo: userId)
-            .whereField("status", isEqualTo: FirestoreModels.SplitRequest.RequestStatus.pending.rawValue) // Only fetch pending
+            .whereField("status", in: [
+                FirestoreModels.SplitRequest.RequestStatus.pending.rawValue,
+                FirestoreModels.SplitRequest.RequestStatus.accepted.rawValue
+            ])
             .order(by: "createdAt", descending: true)
             .addSnapshotListener { [weak self] querySnapshot, error in
                 guard let self = self else { return }
@@ -59,11 +64,15 @@ class RequestRepository: ObservableObject {
         return ref.documentID
     }
     
-    func updateRequestStatus(userId: String, requestId: String, status: FirestoreModels.SplitRequest.RequestStatus) async throws {
+    func updateRequestStatus(userId: String, requestId: String, status: FirestoreModels.SplitRequest.RequestStatus, lastUpdatedBy: String? = nil) async throws {
         // v2.1: Update root collection document
-        try await db.collection("split_requests").document(requestId).updateData([
+        var updateData: [String: Any] = [
             "status": status.rawValue
-        ])
+        ]
+        if let updatedBy = lastUpdatedBy {
+            updateData["lastUpdatedBy"] = updatedBy
+        }
+        try await db.collection("split_requests").document(requestId).updateData(updateData)
     }
     
     func deleteRequest(requestId: String) async throws {

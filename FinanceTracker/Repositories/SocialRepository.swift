@@ -6,6 +6,16 @@ import Combine
 class SocialRepository: ObservableObject {
     private let db = Firestore.firestore()
     
+    // FIX #20: Clean up all listeners on deallocation
+    deinit {
+        globalSentListener?.remove()
+        globalReceivedListener?.remove()
+        friendTransactionsListener1?.remove()
+        friendTransactionsListener2?.remove()
+        groupBalancesListener?.remove()
+        myGroupSplitsListener?.remove()
+    }
+    
     // MARK: - Leaderboard Data
     struct LeaderboardEntry: Identifiable {
         let id: String
@@ -14,7 +24,7 @@ class SocialRepository: ObservableObject {
     }
 
     @Published var friendBalances: [String: Double] = [:] // Real-time balance
-    @Published var groupBalances: [String: Double] = [:] // Real-time group balances
+    @Published var groupBalances: [String: [String: Double]] = [:] // FIX 1.3: currency → (memberId → balance)
     
     // Global Social Balances (Net Worth)
     @Published var totalOwedToYou: Double = 0
@@ -71,6 +81,10 @@ class SocialRepository: ObservableObject {
             guard let docs = snapshot?.documents else { return }
             
             sentTotal = docs.compactMap { try? $0.data(as: FirestoreModels.SplitRequest.self) }
+                .filter { req in
+                    guard let hidden = req.hiddenFor else { return true }
+                    return !hidden.contains(currentUserId)
+                }
                 .reduce(0) { $0 + $1.amount }
             updateBlock()
         }
@@ -83,6 +97,10 @@ class SocialRepository: ObservableObject {
             guard let docs = snapshot?.documents else { return }
             
             receivedTotal = docs.compactMap { try? $0.data(as: FirestoreModels.SplitRequest.self) }
+                .filter { req in
+                    guard let hidden = req.hiddenFor else { return true }
+                    return !hidden.contains(currentUserId)
+                }
                 .reduce(0) { $0 + $1.amount }
             updateBlock()
         }
@@ -147,7 +165,12 @@ class SocialRepository: ObservableObject {
         let updateBlock = { [weak self] in
             guard let self = self else { return }
             
-            let allRequests = sentRequests + receivedRequests
+            let allRequests = (sentRequests + receivedRequests)
+                .filter { req in
+                    // Issue #7: Exclude splits hidden by current user
+                    guard let hidden = req.hiddenFor else { return true }
+                    return !hidden.contains(currentUserId)
+                }
             
             // 1. Map Transactions
             let combined = allRequests.map { req -> FirestoreModels.TransactionModel in
@@ -224,41 +247,50 @@ class SocialRepository: ObservableObject {
     // MARK: - Balances
     
     /// Calculates the net balance with a friend, grouped by currency
+    /// FIX #7: Replaced silent `try?` with proper error handling
     func calculateFriendBalance(currentUserId: String, friendId: String) async -> [String: Double] {
         let requestsRef = db.collection("split_requests")
         
-        // 1. You paid/requested (They owe you) - Status: Pending or Accepted
-        let q1 = try? await requestsRef
-            .whereField("fromUid", isEqualTo: currentUserId)
-            .whereField("toUid", isEqualTo: friendId)
-            .getDocuments()
-        
-        // 2. They paid/requested (You owe them)
-        let q2 = try? await requestsRef
-            .whereField("fromUid", isEqualTo: friendId)
-            .whereField("toUid", isEqualTo: currentUserId)
-            .getDocuments()
+        do {
+            // 1. You paid/requested (They owe you) - Status: Pending or Accepted
+            let q1 = try await requestsRef
+                .whereField("fromUid", isEqualTo: currentUserId)
+                .whereField("toUid", isEqualTo: friendId)
+                .getDocuments()
             
-        let sent = q1?.documents.compactMap { try? $0.data(as: FirestoreModels.SplitRequest.self) } ?? []
-        let received = q2?.documents.compactMap { try? $0.data(as: FirestoreModels.SplitRequest.self) } ?? []
-        
-        var balances: [String: Double] = [:]
-        let mainCurrency = CurrencyManager.shared.mainCurrency
-        
-        // Calculate Owed To You (Positive)
-        for req in sent where req.status == .pending || req.status == .accepted {
-            let currency = req.currency ?? mainCurrency
-            balances[currency, default: 0] += req.amount
+            // 2. They paid/requested (You owe them)
+            let q2 = try await requestsRef
+                .whereField("fromUid", isEqualTo: friendId)
+                .whereField("toUid", isEqualTo: currentUserId)
+                .getDocuments()
+                
+            let sent = q1.documents.compactMap { try? $0.data(as: FirestoreModels.SplitRequest.self) }
+            let received = q2.documents.compactMap { try? $0.data(as: FirestoreModels.SplitRequest.self) }
+            
+            var balances: [String: Double] = [:]
+            let mainCurrency = CurrencyManager.shared.mainCurrency
+            
+            // Calculate Owed To You (Positive)
+            for req in sent where req.status == .pending || req.status == .accepted {
+                let currency = req.currency ?? mainCurrency
+                balances[currency, default: 0] += req.amount
+            }
+            
+            // Calculate You Owe (Negative)
+            for req in received where req.status == .pending || req.status == .accepted {
+                let currency = req.currency ?? mainCurrency
+                balances[currency, default: 0] -= req.amount
+            }
+            
+            // Filter out zero balances
+            return balances.filter { abs($0.value) > 0.01 }
+        } catch {
+            DebugLogger.log("Error calculating friend balance: \(error.localizedDescription)")
+            DispatchQueue.main.async {
+                self.errorMessage = "Failed to calculate balance: \(error.localizedDescription)"
+            }
+            return [:]
         }
-        
-        // Calculate You Owe (Negative)
-        for req in received where req.status == .pending || req.status == .accepted {
-            let currency = req.currency ?? mainCurrency
-            balances[currency, default: 0] -= req.amount
-        }
-        
-        // Filter out zero balances
-        return balances.filter { abs($0.value) > 0.01 }
     }
     
     private var groupBalancesListener: ListenerRegistration?
@@ -281,15 +313,19 @@ class SocialRepository: ObservableObject {
                 
                 guard let documents = snapshot?.documents else { return }
                 let activeRequests = documents.compactMap { try? $0.data(as: FirestoreModels.SplitRequest.self) }
+                    .filter { req in
+                        guard let hidden = req.hiddenFor else { return true }
+                        return !hidden.contains(currentUserId)
+                    }
                 
-                var balances: [String: Double] = [:]
+                // FIX 1.3: Group balances by currency
+                let mainCurrency = CurrencyManager.shared.mainCurrency
+                var balancesByCurrency: [String: [String: Double]] = [:]
                 
-                // Net Position = Total Paid (Requests Sent) - Total Consumed (Requests Received)
                 for req in activeRequests {
-                    // Payer (Credential) gains positive balance
-                    balances[req.fromUid, default: 0] += req.amount
-                    // Receiver (Debtor) gets negative balance
-                    balances[req.toUid, default: 0] -= req.amount
+                    let currency = req.currency ?? mainCurrency
+                    balancesByCurrency[currency, default: [:]][req.fromUid, default: 0] += req.amount
+                    balancesByCurrency[currency, default: [:]][req.toUid, default: 0] -= req.amount
                 }
                 
                 // Filter for "My Pending Splits" (Real-time)
@@ -298,18 +334,17 @@ class SocialRepository: ObservableObject {
                 }.sorted(by: { $0.createdAt > $1.createdAt })
                 
                 DispatchQueue.main.async {
-                    self.groupBalances = balances
+                    self.groupBalances = balancesByCurrency
                     self.myPendingGroupSplits = mySplits
                 }
             }
     }
     
-    /// Calculates balances for all members in a group (One-shot)
-    func calculateGroupBalances(groupId: String, currentUserId: String) async -> [String: Double] {
+    /// Calculates balances for all members in a group (One-shot) — FIX 1.3: Currency-aware
+    func calculateGroupBalances(groupId: String, currentUserId: String) async -> [String: [String: Double]] {
         let requestsRef = db.collection("split_requests")
         
         do {
-            // 1. You owe someone (Incoming) - Status: Pending or Accepted
             let snapshot = try await requestsRef
                 .whereField("groupId", isEqualTo: groupId)
                 .getDocuments()
@@ -317,17 +352,16 @@ class SocialRepository: ObservableObject {
             let activeRequests = snapshot.documents.compactMap { try? $0.data(as: FirestoreModels.SplitRequest.self) }
                 .filter { $0.status == .pending || $0.status == .accepted }
             
-            var balances: [String: Double] = [:]
+            let mainCurrency = CurrencyManager.shared.mainCurrency
+            var balancesByCurrency: [String: [String: Double]] = [:]
             
-            // Net Position = Total Paid (Requests Sent) - Total Consumed (Requests Received)
             for req in activeRequests {
-                // Payer (Credential) gains positive balance
-                balances[req.fromUid, default: 0] += req.amount
-                // Receiver (Debtor) gets negative balance
-                balances[req.toUid, default: 0] -= req.amount
+                let currency = req.currency ?? mainCurrency
+                balancesByCurrency[currency, default: [:]][req.fromUid, default: 0] += req.amount
+                balancesByCurrency[currency, default: [:]][req.toUid, default: 0] -= req.amount
             }
             
-            return balances
+            return balancesByCurrency
         } catch {
             print("Error calculating group balances: \(error)")
             return [:]
@@ -336,7 +370,8 @@ class SocialRepository: ObservableObject {
     
     // Derived Debt Instructions (Helper)
     func getDebtInstructions() -> [DebtInstruction] {
-        return DebtCalculator.shared.calculateDebtResolution(balances: groupBalances)
+        // FIX 1.3: Use multi-currency resolution
+        return DebtCalculator.shared.calculateMultiCurrencyResolution(balancesByCurrency: groupBalances)
     }
     
     // MARK: - Actions
@@ -348,88 +383,59 @@ class SocialRepository: ObservableObject {
     }
     
     func deleteFriendTransaction(transactionId: String) async throws {
-        // 1. Delete the split request
-        try await db.collection("split_requests").document(transactionId).delete()
+        // FIX 2.1: Route through proper cascade instead of raw delete.
+        // The old code directly deleted the split_requests doc without updating
+        // the source transaction's splits array, leaving orphaned requestId references.
+        let doc = try await db.collection("split_requests").document(transactionId).getDocument()
+        guard let request = try? doc.data(as: FirestoreModels.SplitRequest.self) else {
+            // Fallback: if we can't decode, still remove from local list
+            await MainActor.run { self.friendTransactions.removeAll { $0.id == transactionId } }
+            return
+        }
+        try await SocialTransactionManager.shared.resolveSplitRequestAction(request: request)
         
-        // 2. Optimistically remove from local list
+        // Optimistically remove from local list
         await MainActor.run {
             self.friendTransactions.removeAll { $0.id == transactionId }
         }
     }
     
     func deleteGroupTransaction(transactionId: String, groupId: String) async throws {
-        // 1. Delete the transaction document
-        try await db.collection("groups").document(groupId).collection("transactions").document(transactionId).delete()
+        // FIX 2.2: The old code queried split_requests by transactionId == groupTransactionId,
+        // but SplitRequest.transactionId stores the ORIGINAL user transaction ID, not the group
+        // transaction ID. This query always returned 0 results, so splits were never cleaned up.
+        // Now we fetch the group transaction to get originalTransactionId and use proper cascade.
+        let groupTxDoc = try await db.collection("groups").document(groupId)
+            .collection("transactions").document(transactionId).getDocument()
         
-        // 2. Also find and delete associated split requests
-        let splitsSnapshot = try await db.collection("split_requests")
-            .whereField("transactionId", isEqualTo: transactionId)
-            .getDocuments()
-            
-        let batch = db.batch()
-        for doc in splitsSnapshot.documents {
-            batch.deleteDocument(doc.reference)
+        if let groupTx = try? groupTxDoc.data(as: FirestoreModels.GroupTransaction.self) {
+            // Use the full cascade manager which handles:
+            // - Archiving the group transaction
+            // - Deleting associated split requests
+            // - Cleaning up income transactions from paid splits
+            // - Deleting the original user transaction (if current user is payer)
+            try await SocialTransactionManager.shared.deleteSocialTransaction(
+                groupTransaction: groupTx, groupId: groupId)
+        } else {
+            // Fallback: just delete the group transaction doc if we can't decode it
+            try await db.collection("groups").document(groupId)
+                .collection("transactions").document(transactionId).delete()
         }
-        try await batch.commit()
         
-        // 3. Optimistically remove
+        // Optimistically remove from local list
         await MainActor.run {
             self.groupTransactions.removeAll { $0.id == transactionId }
         }
     }
     
-    func calculateDebtResolution(balances: [String: Double]) -> [DebtInstruction] {
-        return DebtCalculator.shared.calculateDebtResolution(balances: balances)
+    func calculateDebtResolution(balances: [String: [String: Double]]) -> [DebtInstruction] {
+        // FIX 1.3: Use multi-currency resolution
+        return DebtCalculator.shared.calculateMultiCurrencyResolution(balancesByCurrency: balances)
     }
     
-    func settleUp(payerId: String, receiverId: String, groupId: String?, amount: Double, payerName: String? = nil, receiverName: String? = nil, method: String) async throws {
-        let settlementId = UUID().uuidString
-        let timestamp = Date()
-        
-        // 1. Create a settlement transaction (SplitRequest with type 'settlement')
-        let settlement = FirestoreModels.SplitRequest(
-            id: settlementId,
-            transactionId: settlementId, // Self-reference for settlements
-            groupId: groupId,
-            fromUid: payerId, // Sender of money
-            toUid: receiverId, // Receiver of money
-            fromName: payerName ?? "User", // We might need to fetch names if nil
-            toName: receiverName,
-            amount: amount,
-            currency: CurrencyManager.shared.mainCurrency,
-            note: "Settlement via \(method)",
-            status: .accepted, // Settlements are auto-accepted usually
-            dependencyId: nil,
-            lastNudgedAt: nil,
-            createdAt: timestamp
-        )
-        
-        try db.collection("split_requests").document(settlementId).setData(from: settlement)
-        
-        // 2. If Group Context, Add to Group History
-        if let groupId = groupId {
-            let groupTx = FirestoreModels.GroupTransaction(
-                id: settlementId,
-                title: "Settlement",
-                amount: amount,
-                payerId: payerId,
-                payerName: payerName ?? "User",
-                receiverId: receiverId, // ✅ Store Receiver ID
-                receiverName: receiverName,
-                date: timestamp,
-                type: "settlement", // Special type for UI
-                currencyCode: CurrencyManager.shared.mainCurrency,
-                note: "Paid via \(method)",
-                category: "Transfer",
-                icon: "dollarsign.circle.fill", // Updated icon
-                colorHex: "#34C759", // Green
-                originalTransactionId: nil,
-                editHistory: nil
-            )
-            
-            try db.collection("groups").document(groupId).collection("transactions").document(settlementId).setData(from: groupTx)
-        }
-    }
+    // FIX #6: settleUp has been removed from SocialRepository.
+    // Use SocialTransactionManager.settleUp instead, which is the correct, complete implementation
+    // that creates the payer-side expense transaction, settlement split request, and group feed item.
     
     func mergeGuestToFriend(guestId: String, friend: FirestoreModels.Friend, currentUserId: String) async throws {
         guard let friendId = friend.id else { return }

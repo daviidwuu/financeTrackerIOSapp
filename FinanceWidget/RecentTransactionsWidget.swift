@@ -34,63 +34,60 @@ struct RecentTransactionsEntryView : View {
     @Environment(\.widgetFamily) var family
 
     var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("Recent")
-                        .font(.system(size: 12, weight: .bold))
-                        .textCase(.uppercase)
-                        .foregroundStyle(Color(UIColor.systemGray))
-                    
-                    Spacer()
-                }
-                
-                if entry.transactions.isEmpty {
-                    Spacer()
-                    Text("No recent transactions")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                } else {
-                    VStack(spacing: 10) {
-                        ForEach(entry.transactions.prefix(family == .systemSmall ? 2 : 4)) { transaction in
-                            HStack(spacing: 8) {
-                                // Icon
-                                ZStack {
-                                    Circle()
-                                        .fill(Color(hex: transaction.colorHex).opacity(0.2))
-                                        .frame(width: 28, height: 28)
-                                    
-                                    Image(systemName: transaction.icon)
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(Color(hex: transaction.colorHex))
-                                }
-                                
-                                // Title
-                                Text(transaction.title)
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundStyle(.white)
-                                    .lineLimit(1)
-                                
-                                Spacer()
-                                
-                                // Amount
-                                Text(formatMoney(transaction.amount))
-                                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                                    .foregroundStyle(transaction.amount < 0 ? .white : .green)
-                            }
-                        }
-                    }
-                }
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Recent")
+                    .font(.system(size: 12, weight: .bold))
+                    .textCase(.uppercase)
+                    .foregroundStyle(Color(UIColor.systemGray))
                 
                 Spacer()
             }
-            .padding(16)
+            
+            if entry.transactions.isEmpty {
+                Spacer()
+                Text("No recent transactions")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(entry.transactions.prefix(family == .systemSmall ? 2 : 4)) { transaction in
+                        HStack(spacing: 8) {
+                            // Icon
+                            ZStack {
+                                Circle()
+                                    .fill(Color(UIColor.secondarySystemBackground))
+                                    .frame(width: 28, height: 28)
+                                
+                                Image(systemName: transaction.icon)
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(Color(hex: transaction.colorHex))
+                            }
+                            
+                            // Title
+                            Text(transaction.title)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(Color.primary)
+                                .lineLimit(1)
+                            
+                            Spacer()
+                            
+                            // Amount
+                            Text(formatMoney(transaction.amount))
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundStyle(transaction.amount < 0 ? Color.primary : .green)
+                                .contentTransition(.numericText())
+                        }
+                    }
+                }
+            }
+            
+            Spacer()
         }
+        .padding(16)
         .containerBackground(for: .widget) {
-            Color.black
+            Color(UIColor.systemBackground)
         }
     }
     

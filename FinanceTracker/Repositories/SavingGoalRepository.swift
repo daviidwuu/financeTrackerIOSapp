@@ -69,12 +69,16 @@ class SavingGoalRepository: ObservableObject {
         newGoal.sortOrder = maxOrder + 1
         newGoal.createdAt = Date()
         
-        // Optimistic Update: Add to local list immediately
+        // FIX #19: Generate document ID before optimistic update so the local copy has a real ID
+        let docRef = db.collection("users").document(userId).collection("savingGoals").document()
+        newGoal.id = docRef.documentID
+        
+        // Optimistic Update: Add to local list immediately (now with a valid ID)
         DispatchQueue.main.async {
             self.savingGoals.append(newGoal)
         }
         
-        try db.collection("users").document(userId).collection("savingGoals").document().setData(from: newGoal)
+        try docRef.setData(from: newGoal)
         
         // Gamification
         DispatchQueue.main.async {
@@ -106,6 +110,12 @@ class SavingGoalRepository: ObservableObject {
     /// Distributes savings amount to goals in order (Waterfall)
     func distributeSavings(amount: Double) async throws {
         guard let userId = userId else { return }
+        
+        // FIX #11: Guard against negative or zero amounts
+        guard amount > 0 else {
+            DebugLogger.log("distributeSavings called with non-positive amount: \(amount)")
+            return
+        }
         
         var remainingAmount = amount
         // Use current local order which should be correct
