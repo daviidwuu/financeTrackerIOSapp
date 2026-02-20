@@ -340,7 +340,7 @@ struct TransactionDetailView: View {
         } message: {
             Text(errorMessage)
         }
-        .confirmationDialog("Delete Transaction", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
+        .alert("Delete Transaction", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 deleteTransaction()
             }
@@ -647,7 +647,7 @@ struct TransactionDetailView: View {
                 if let splits = transaction.splits, !splits.isEmpty {
                     if let id = transaction.id {
                         await MainActor.run {
-                            transactionRepo.removeLocalTransaction(id: id)
+                            transactionRepo.optimisticDelete(transaction: transaction)
                         }
                     }
                     try await SocialTransactionManager.shared.deleteSocialTransaction(transaction: transaction)

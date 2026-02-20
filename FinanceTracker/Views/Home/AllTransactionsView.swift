@@ -21,7 +21,6 @@ struct AllTransactionsView: View {
     @State private var transactionToEdit: FirestoreModels.TransactionModel?
     @State private var errorState = ErrorState()
     @State private var undoState = UndoState()
-    @State private var hiddenTransactionIds: Set<String> = []
     
     // Deletion Alert
     @State private var showDeleteConfirmation = false
@@ -39,8 +38,6 @@ struct AllTransactionsView: View {
     
     var filteredTransactions: [FirestoreModels.TransactionModel] {
         transactionRepo.transactions.filter { transaction in
-            guard !hiddenTransactionIds.contains(transaction.id ?? "") else { return false }
-            
             // Month filter is now handled by Repository, but we keep this check for consistency
             // in case repo returns data from a transition period or user changes filter rapidly.
             let matchesMonth: Bool
@@ -435,7 +432,7 @@ struct AllTransactionsView: View {
                     updateTransaction(transaction, with: updatedTransaction)
                 })
             }
-            .confirmationDialog("Delete Transaction", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
+            .alert("Delete Transaction", isPresented: $showDeleteConfirmation) {
                 Button("Delete", role: .destructive) {
                     if let tx = transactionToDelete {
                         deleteTransaction(tx)
@@ -535,33 +532,17 @@ struct AllTransactionsView: View {
     private func deleteTransaction(_ transaction: FirestoreModels.TransactionModel) {
         guard let id = transaction.id else { return }
         
-        // Optimistic Removal: Immediately hide linked income transactions (if any)
+        // Optimistic Removal globally via repository
         // Must be done inside withAnimation to trigger instant layout update
         withAnimation {
-            hiddenTransactionIds.insert(id)
-            
-            if let splits = transaction.splits {
-                for split in splits {
-                    if let incomeId = split.incomeTransactionId {
-                        hiddenTransactionIds.insert(incomeId)
-                    }
-                }
-            }
+            transactionRepo.optimisticDelete(transaction: transaction)
         }
         
         undoState.schedule(
             label: "Transaction deleted",
             onUndo: {
                 withAnimation {
-                    hiddenTransactionIds.remove(id)
-                    // Restore linked income transactions
-                    if let splits = transaction.splits {
-                        for split in splits {
-                            if let incomeId = split.incomeTransactionId {
-                                hiddenTransactionIds.remove(incomeId)
-                            }
-                        }
-                    }
+                    transactionRepo.undoDelete(id: id)
                 }
             },
             onConfirm: {
@@ -570,38 +551,15 @@ struct AllTransactionsView: View {
                         let _ = await SocialTransactionManager.shared.revertLinkedSplitIfNeeded(transaction: transaction, currentUserId: appState.currentUserId)
                         
                         if let splits = transaction.splits, !splits.isEmpty {
-                            await MainActor.run {
-                                transactionRepo.removeLocalTransaction(id: id)
-                            }
                             try await SocialTransactionManager.shared.deleteSocialTransaction(transaction: transaction)
                         } else {
                             try await transactionRepo.deleteTransaction(id: id)
-                        }
-                        
-                        // Cleanup hidden IDs after successful deletion
-                        await MainActor.run {
-                            hiddenTransactionIds.remove(id)
-                            if let splits = transaction.splits {
-                                for split in splits {
-                                    if let incomeId = split.incomeTransactionId {
-                                        hiddenTransactionIds.remove(incomeId)
-                                    }
-                                }
-                            }
                         }
                     } catch {
                         DebugLogger.log("Failed to delete transaction: \(error)")
                         await MainActor.run {
                             withAnimation {
-                                hiddenTransactionIds.remove(id)
-                                // Restore linked income transactions on error
-                                if let splits = transaction.splits {
-                                    for split in splits {
-                                        if let incomeId = split.incomeTransactionId {
-                                            hiddenTransactionIds.remove(incomeId)
-                                        }
-                                    }
-                                }
+                                transactionRepo.undoDelete(id: id) // Restore linked income transactions on error
                             }
                             errorState.show("Failed to delete transaction")
                         }

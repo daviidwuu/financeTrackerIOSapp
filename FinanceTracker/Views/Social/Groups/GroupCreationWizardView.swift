@@ -159,10 +159,9 @@ struct GroupCreationWizardView: View {
         } message: {
              Text(errorMessage)
         }
-        .confirmationDialog(
+        .alert(
             "Leave Group",
-            isPresented: $showLeaveGroupDialog,
-            titleVisibility: .visible
+            isPresented: $showLeaveGroupDialog
         ) {
             Button("Keep my data") {
                 leaveGroup(keepData: true)
@@ -174,10 +173,9 @@ struct GroupCreationWizardView: View {
         } message: {
             Text("Your splits and transactions from this group will either be kept as personal records or permanently deleted.")
         }
-        .confirmationDialog(
+        .alert(
             "Delete Group",
-            isPresented: $showDeleteGroupDialog,
-            titleVisibility: .visible
+            isPresented: $showDeleteGroupDialog
         ) {
             Button("Keep Transaction History") {
                 confirmGroupDeletion(action: "keep")

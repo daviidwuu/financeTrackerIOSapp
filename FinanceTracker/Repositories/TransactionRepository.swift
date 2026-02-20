@@ -15,6 +15,9 @@ class TransactionRepository: ObservableObject {
     private var currentLimit: Int = 50
     private var currentMonth: Date? = nil // Track selected month
     
+    // Optimistic Deletion Cache
+    private var optimisticDeletedTransactions: [String: FirestoreModels.TransactionModel] = [:]
+    
     /// Start listening to transactions for a specific user
     /// - Parameters:
     ///   - userId: User ID
@@ -78,8 +81,14 @@ class TransactionRepository: ObservableObject {
                 }
                 
                 self.errorMessage = nil
+                // Only keep transactions that are not optimistically deleted
                 self.transactions = documents.compactMap { document in
-                    try? document.data(as: FirestoreModels.TransactionModel.self)
+                    guard let tx = try? document.data(as: FirestoreModels.TransactionModel.self),
+                          let id = tx.id,
+                          self.optimisticDeletedTransactions[id] == nil else {
+                        return nil
+                    }
+                    return tx
                 }
                 
                 // Update Widget Data
@@ -163,9 +172,9 @@ class TransactionRepository: ObservableObject {
     func deleteTransaction(id: String) async throws {
         guard let userId = userId else { return }
         
-        // 1. Optimistic Update
+        // 1. Finalize optimistic deletion from cache
         await MainActor.run {
-             removeLocalTransaction(id: id)
+             finalizeDelete(id: id)
         }
         
         let batch = db.batch()
@@ -234,12 +243,68 @@ class TransactionRepository: ObservableObject {
         try await batch.commit()
     }
     
-    /// Optimistically remove a transaction from the local list
+    /// Optimistically hide a transaction (and its linked income transactions) temporarily.
     @MainActor
-    func removeLocalTransaction(id: String) {
-        if let index = self.transactions.firstIndex(where: { $0.id == id }) {
-            self.transactions.remove(at: index)
-            self.updateWidgetData(transactions: self.transactions)
+    func optimisticDelete(transaction: FirestoreModels.TransactionModel) {
+        guard let id = transaction.id else { return }
+        
+        var idsToRemove = [id]
+        optimisticDeletedTransactions[id] = transaction
+        
+        if let splits = transaction.splits {
+            for split in splits {
+                if let incomeId = split.incomeTransactionId,
+                   let incomeTx = transactions.first(where: { $0.id == incomeId }) {
+                    idsToRemove.append(incomeId)
+                    optimisticDeletedTransactions[incomeId] = incomeTx
+                }
+            }
+        }
+        
+        // Remove from the published array
+        self.transactions.removeAll { tx in
+            guard let txId = tx.id else { return false }
+            return idsToRemove.contains(txId)
+        }
+        
+        // Update widgets immediately based on the new array
+        self.updateWidgetData(transactions: self.transactions)
+    }
+    
+    /// Restore a transaction that was optimistically hidden.
+    @MainActor
+    func undoDelete(id: String) {
+        // Restore main transaction
+        if let restoredTx = optimisticDeletedTransactions.removeValue(forKey: id) {
+            self.transactions.append(restoredTx)
+            
+            // Restore linked income transactions
+            if let splits = restoredTx.splits {
+                for split in splits {
+                    if let incomeId = split.incomeTransactionId,
+                       let linkedIncomeTx = optimisticDeletedTransactions.removeValue(forKey: incomeId) {
+                        self.transactions.append(linkedIncomeTx)
+                    }
+                }
+            }
+        }
+        
+        // Re-sort and update widgets
+        self.transactions.sort { $0.date > $1.date }
+        self.updateWidgetData(transactions: self.transactions)
+    }
+    
+    /// Finalize deletion and clean up from cache
+    @MainActor
+    func finalizeDelete(id: String) {
+        if let tx = optimisticDeletedTransactions.removeValue(forKey: id) {
+            if let splits = tx.splits {
+                for split in splits {
+                    if let incomeId = split.incomeTransactionId {
+                        optimisticDeletedTransactions.removeValue(forKey: incomeId)
+                    }
+                }
+            }
         }
     }
     

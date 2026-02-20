@@ -28,7 +28,6 @@ struct HomeView: View {
     @ObservedObject private var gamificationManager = GamificationManager.shared
     @State private var errorState = ErrorState()
     @State private var undoState = UndoState()
-    @State private var hiddenTransactionIds: Set<String> = []
     @State private var groupForDeletionAction: FirestoreModels.Group? // ✅ NEW
     @State private var pendingDeletedGroupIds: Set<String> = []
     
@@ -37,11 +36,7 @@ struct HomeView: View {
     }
     
     var totalSpent: Double {
-        let visibleTransactions = transactionRepo.transactions.filter { tx in
-            guard let id = tx.id else { return true }
-            return !hiddenTransactionIds.contains(id)
-        }
-        return WalletLogic.calculateNetSpent(transactions: visibleTransactions)
+        return WalletLogic.calculateNetSpent(transactions: transactionRepo.transactions)
     }
     
     var body: some View {
@@ -321,13 +316,9 @@ struct HomeView: View {
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                         } else {
-                            // Filter hidden transactions (Undo logic)
-                            let visibleTransactions = transactionRepo.transactions.filter { transaction in
-                                guard let id = transaction.id else { return true }
-                                return !hiddenTransactionIds.contains(id)
-                            }
+                            // Filter hidden transactions (Undo logic) is now handled globally in TransactionRepository
                             
-                            ForEach(visibleTransactions.prefix(5)) { transaction in
+                            ForEach(transactionRepo.transactions.prefix(5)) { transaction in
                                 TransactionRow(transaction: transaction)
                                     .background(Color(uiColor: .secondarySystemBackground))
                                     .cornerRadius(AppRadius.medium)
@@ -407,14 +398,44 @@ struct HomeView: View {
                     MissionHubView()
                         .environmentObject(appState)
                 }
-                .sheet(item: $groupForDeletionAction) { group in
-                    GroupDeletionActionView(group: group) {
-                        if let id = group.id {
-                            pendingDeletedGroupIds.insert(id)
+                .alert("Group Deleted", isPresented: Binding(
+                    get: { groupForDeletionAction != nil },
+                    set: { _ in groupForDeletionAction = nil }
+                )) {
+                    Button("Keep Transaction History") {
+                        if let group = groupForDeletionAction {
+                            if let id = group.id {
+                                pendingDeletedGroupIds.insert(id)
+                            }
+                            // Using the group repo from app state
+                            Task {
+                                do {
+                                    try await appState.groupRepo.submitDeletionAction(group: group, action: "keep")
+                                } catch {
+                                    // Handle errors silently for optimistic UI
+                                }
+                            }
                         }
-                        groupForDeletionAction = nil
                     }
-                    .environmentObject(appState.groupRepo)
+                    Button("Delete All History", role: .destructive) {
+                        if let group = groupForDeletionAction {
+                            if let id = group.id {
+                                pendingDeletedGroupIds.insert(id)
+                            }
+                            Task {
+                                do {
+                                    try await appState.groupRepo.submitDeletionAction(group: group, action: "delete")
+                                } catch {
+                                    // Handle errors
+                                }
+                            }
+                        }
+                    }
+                    Button("Cancel", role: .cancel) { }
+                } message: {
+                    if let group = groupForDeletionAction {
+                        Text("\(group.name) has been deleted by the creator. What would you like to do with your transaction history?")
+                    }
                 }
             }
             .navigationBarHidden(true)
@@ -514,31 +535,16 @@ struct HomeView: View {
     
     private func deleteTransaction(_ transaction: FirestoreModels.TransactionModel) {
         guard let id = transaction.id else { return }
-        hiddenTransactionIds.insert(id)
         
-        // Optimistic Removal: Immediately hide linked income transactions (if any)
-        if let splits = transaction.splits {
-            for split in splits {
-                if let incomeId = split.incomeTransactionId {
-                    hiddenTransactionIds.insert(incomeId)
-                }
-            }
-        }
+        // Optimistic Removal globally via repository
+        transactionRepo.optimisticDelete(transaction: transaction)
         
         HapticManager.shared.heavy()
         
         undoState.schedule(
             label: "Transaction deleted",
             onUndo: { [self] in
-                hiddenTransactionIds.remove(id)
-                // Restore linked income transactions
-                if let splits = transaction.splits {
-                    for split in splits {
-                        if let incomeId = split.incomeTransactionId {
-                            hiddenTransactionIds.remove(incomeId)
-                        }
-                    }
-                }
+                transactionRepo.undoDelete(id: id)
             },
             onConfirm: { [self] in
                 Task {
@@ -548,37 +554,16 @@ struct HomeView: View {
                         
                         // 2. Delete Transaction
                         if let splits = transaction.splits, !splits.isEmpty {
-                            // Social Delete
-                            // Optimistic Update: Remove locally first
-                            transactionRepo.removeLocalTransaction(id: id)
+                            // Social Delete (optimistic removal handled by repo, calling finalize is not strictly needed if we just call delete, but deleteTransaction handles finalize)
                             try await SocialTransactionManager.shared.deleteSocialTransaction(transaction: transaction)
                         } else {
-                            // Personal Delete (Repo handles optimistic update)
+                            // Personal Delete (Repo handles optimistic update/finalize)
                             try await transactionRepo.deleteTransaction(id: id)
-                        }
-                        
-                        // 3. Cleanup Hidden ID (Item is now gone from source)
-                        hiddenTransactionIds.remove(id)
-                        // Also cleanup hidden IDs for linked income transactions
-                        if let splits = transaction.splits {
-                            for split in splits {
-                                if let incomeId = split.incomeTransactionId {
-                                    hiddenTransactionIds.remove(incomeId)
-                                }
-                            }
                         }
                     } catch {
                         DebugLogger.log("Failed to delete transaction: \(error)")
                         errorState.show("Failed to delete transaction")
-                        hiddenTransactionIds.remove(id) // Restore on error
-                        // Restore linked income transactions on error
-                        if let splits = transaction.splits {
-                            for split in splits {
-                                if let incomeId = split.incomeTransactionId {
-                                    hiddenTransactionIds.remove(incomeId)
-                                }
-                            }
-                        }
+                        transactionRepo.undoDelete(id: id) // Restore on error
                     }
                 }
             }

@@ -109,14 +109,44 @@ struct SocialDashboardView: View {
                     .presentationDetents([.fraction(0.4)])
                 }
             }
-            .sheet(item: $groupForDeletionAction) { group in
-                GroupDeletionActionView(group: group) {
-                    if let id = group.id {
-                        pendingDeletedGroupIds.insert(id)
+            .alert("Group Deleted", isPresented: Binding(
+                get: { groupForDeletionAction != nil },
+                set: { _ in groupForDeletionAction = nil }
+            )) {
+                Button("Keep Transaction History") {
+                    if let group = groupForDeletionAction {
+                        if let id = group.id {
+                            pendingDeletedGroupIds.insert(id)
+                        }
+                        // Using the group repo from app state
+                        Task {
+                            do {
+                                try await appState.groupRepo.submitDeletionAction(group: group, action: "keep")
+                            } catch {
+                                // Handle errors silently for optimistic UI
+                            }
+                        }
                     }
-                    groupForDeletionAction = nil
                 }
-                .environmentObject(appState.groupRepo)
+                Button("Delete All History", role: .destructive) {
+                    if let group = groupForDeletionAction {
+                        if let id = group.id {
+                            pendingDeletedGroupIds.insert(id)
+                        }
+                        Task {
+                            do {
+                                try await appState.groupRepo.submitDeletionAction(group: group, action: "delete")
+                            } catch {
+                                // Handle errors
+                            }
+                        }
+                    }
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                if let group = groupForDeletionAction {
+                    Text("\(group.name) has been deleted by the creator. What would you like to do with your transaction history?")
+                }
             }
         }
         .onChange(of: navigationPath) { _, newPath in
@@ -168,7 +198,7 @@ struct SocialDashboardView: View {
         Group {
             if let group = groupToDelete {
                 Text("") // Placeholder to attach alert
-                    .confirmationDialog("Delete Group?", isPresented: $showGroupDeleteDialog, titleVisibility: .visible) {
+                    .alert("Delete Group?", isPresented: $showGroupDeleteDialog) {
                         Button("Keep Transaction History") {
                             confirmGroupDeletion(group: group, action: "keep")
                         }
@@ -227,7 +257,11 @@ struct SocialDashboardView: View {
             return matchesSearch && isNotDeleted
         }
         
-        let pendingDeletionGroups = allGroups.filter { $0.deletionStatus == "requested" }
+        let pendingDeletionGroups = appState.groupRepo.groups.filter { 
+            $0.deletionStatus == "requested" && 
+            $0.memberActions?[appState.currentUserId] == "pending" &&
+            !pendingDeletedGroupIds.contains($0.id ?? "")
+        }
         let activeGroups = allGroups.filter { $0.deletionStatus != "requested" }
         
         Group {
