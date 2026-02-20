@@ -1,29 +1,28 @@
 import WidgetKit
 import SwiftUI
 
-struct QuickLogProvider: TimelineProvider {
+struct QuickLogProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> SimpleLogEntry {
-        SimpleLogEntry(date: Date(), categories: [])
+        SimpleLogEntry(date: Date(), configuration: WidgetBackgroundIntent(), categories: [])
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (SimpleLogEntry) -> ()) {
+    func snapshot(for configuration: WidgetBackgroundIntent, in context: Context) async -> SimpleLogEntry {
         let categories = WidgetDataManager.shared.getQuickLogCategories()
-        let entry = SimpleLogEntry(date: Date(), categories: categories)
-        completion(entry)
+        return SimpleLogEntry(date: Date(), configuration: configuration, categories: categories)
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> ()) {
+    func timeline(for configuration: WidgetBackgroundIntent, in context: Context) async -> Timeline<SimpleLogEntry> {
         let categories = WidgetDataManager.shared.getQuickLogCategories()
-        let entry = SimpleLogEntry(date: Date(), categories: categories)
+        let entry = SimpleLogEntry(date: Date(), configuration: configuration, categories: categories)
         // Update whenever app is opened (handled by reloadAllTimelines)
         let nextUpdate = Calendar.current.date(byAdding: .hour, value: 1, to: Date())!
-        let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
-        completion(timeline)
+        return Timeline(entries: [entry], policy: .after(nextUpdate))
     }
 }
 
 struct SimpleLogEntry: TimelineEntry {
     let date: Date
+    let configuration: WidgetBackgroundIntent
     let categories: [WidgetDataManager.WidgetCategory]
 }
 
@@ -46,9 +45,7 @@ struct QuickLogWidgetEntryView : View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(UIColor.secondarySystemBackground))
-                .containerBackground(for: .widget) {
-                    Color(UIColor.systemBackground)
-                }
+                .applyWidgetBackground(style: entry.configuration.backgroundStyle) // Custom modifier
             }
             .widgetURL(URL(string: "financetracker://add-transaction"))
             
@@ -60,24 +57,28 @@ struct QuickLogWidgetEntryView : View {
                         VStack {
                             Image(systemName: "plus")
                                 .font(.title)
+                                .foregroundColor(.white)
                             Text("Add Transaction")
                                 .font(.caption)
+                                .bold()
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color(UIColor.secondarySystemBackground))
+                        .background(Color.blue)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                     }
                 } else {
-                    ForEach(entry.categories.prefix(4)) { category in
+                    // Layout up to 4 quick action buttons
+                    let displayLimit = min(4, entry.categories.count)
+                    ForEach(entry.categories.prefix(displayLimit)) { category in
                         Link(destination: URL(string: "financetracker://add-transaction?category=\(category.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")")!) {
                             VStack(spacing: 8) {
                                 ZStack {
                                     Circle()
-                                        .fill(Color(UIColor.tertiarySystemFill))
-                                        .frame(width: 44, height: 44)
+                                        .fill(Color(hex: category.colorHex).opacity(0.15))
+                                        .frame(width: 48, height: 48)
                                     
                                     Image(systemName: category.icon)
-                                        .font(.system(size: 20))
+                                        .font(.title3)
                                         .foregroundStyle(Color(hex: category.colorHex))
                                 }
                                 
@@ -95,9 +96,7 @@ struct QuickLogWidgetEntryView : View {
                 }
             }
             .padding()
-            .containerBackground(for: .widget) {
-                Color(UIColor.systemBackground)
-            }
+            .applyWidgetBackground(style: entry.configuration.backgroundStyle) // Custom modifier
             
         case .accessoryCircular:
              // Lock Screen Button
@@ -111,7 +110,30 @@ struct QuickLogWidgetEntryView : View {
             .widgetURL(URL(string: "financetracker://add-transaction"))
             
         default:
-            Text("Not Supported")
+            Text("Unsupported Widget Size")
+        }
+    }
+}
+
+// SwiftUI Helper for environments
+struct OptionalEnvironmentView<Content: View>: View {
+    let content: (ColorScheme) -> Content
+    @Environment(\.colorScheme) var scheme
+    var body: some View {
+        content(scheme)
+    }
+}
+
+extension View {
+    func applyWidgetBackground(style: WidgetBackgroundAppEnum) -> some View {
+        return self.containerBackground(for: .widget) {
+            OptionalEnvironmentView { scheme in
+                if style == .pure {
+                    scheme == .dark ? Color.black : Color.white
+                } else {
+                    Color(UIColor.systemBackground)
+                }
+            }
         }
     }
 }
@@ -148,7 +170,7 @@ struct QuickLogWidget: Widget {
     let kind: String = "QuickLogWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: QuickLogProvider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: WidgetBackgroundIntent.self, provider: QuickLogProvider()) { entry in
             QuickLogWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("Quick Action")

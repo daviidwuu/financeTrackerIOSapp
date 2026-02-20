@@ -570,6 +570,9 @@ struct AllTransactionsView: View {
                         let _ = await SocialTransactionManager.shared.revertLinkedSplitIfNeeded(transaction: transaction, currentUserId: appState.currentUserId)
                         
                         if let splits = transaction.splits, !splits.isEmpty {
+                            await MainActor.run {
+                                transactionRepo.removeLocalTransaction(id: id)
+                            }
                             try await SocialTransactionManager.shared.deleteSocialTransaction(transaction: transaction)
                         } else {
                             try await transactionRepo.deleteTransaction(id: id)

@@ -30,13 +30,18 @@ struct HomeView: View {
     @State private var undoState = UndoState()
     @State private var hiddenTransactionIds: Set<String> = []
     @State private var groupForDeletionAction: FirestoreModels.Group? // ✅ NEW
+    @State private var pendingDeletedGroupIds: Set<String> = []
     
     var totalBudget: Double {
         WalletLogic.calculateTotalBudget(budgets: budgetRepo.budgets)
     }
     
     var totalSpent: Double {
-        WalletLogic.calculateNetSpent(transactions: transactionRepo.transactions)
+        let visibleTransactions = transactionRepo.transactions.filter { tx in
+            guard let id = tx.id else { return true }
+            return !hiddenTransactionIds.contains(id)
+        }
+        return WalletLogic.calculateNetSpent(transactions: visibleTransactions)
     }
     
     var body: some View {
@@ -196,7 +201,11 @@ struct HomeView: View {
                     }
                     
                     // Section 1.5: Pending Group Deletions (High Priority)
-                    let pendingDeletionGroups = appState.groupRepo.groups.filter { $0.deletionStatus == "requested" && $0.memberActions?[appState.currentUserId] == "pending" }
+                    let pendingDeletionGroups = appState.groupRepo.groups.filter { 
+                        $0.deletionStatus == "requested" && 
+                        $0.memberActions?[appState.currentUserId] == "pending" &&
+                        !pendingDeletedGroupIds.contains($0.id ?? "")
+                    }
                     if !pendingDeletionGroups.isEmpty {
                         Section(header: Text("Action Required").font(.headline).foregroundColor(.red)) {
                             ForEach(pendingDeletionGroups) { group in
@@ -399,7 +408,13 @@ struct HomeView: View {
                         .environmentObject(appState)
                 }
                 .sheet(item: $groupForDeletionAction) { group in
-                    GroupDeletionActionView(group: group)
+                    GroupDeletionActionView(group: group) {
+                        if let id = group.id {
+                            pendingDeletedGroupIds.insert(id)
+                        }
+                        groupForDeletionAction = nil
+                    }
+                    .environmentObject(appState.groupRepo)
                 }
             }
             .navigationBarHidden(true)

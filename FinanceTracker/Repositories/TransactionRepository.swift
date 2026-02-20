@@ -265,7 +265,6 @@ class TransactionRepository: ObservableObject {
         let dailyVault = dailyTransactions.filter { $0.amount > 0 }.reduce(0) { $0 + $1.amount }
         
         // Save separately
-        // Save separately
         WidgetDataManager.shared.saveDailyData(expense: dailyExpense, vault: dailyVault)
         
         // Calculate Monthly Spend (Net)
@@ -276,6 +275,20 @@ class TransactionRepository: ObservableObject {
         // Monthly: Keep original logic for now (Absolute expense only? Or should we fix this too?)
         // The plan specifically prioritized Daily. Let's stick to Daily for this user request.
         WidgetDataManager.shared.saveMonthlySpend(monthlySpend < 0 ? abs(monthlySpend) : 0)
+        
+        // --- NEW: Optimistic Recent Transactions ---
+        let recentLimit = min(4, transactions.count)
+        let recentWidgetTxs = transactions.prefix(recentLimit).map { tx in
+            WidgetDataManager.WidgetTransaction(
+                id: tx.id ?? UUID().uuidString,
+                title: tx.title,
+                amount: tx.amount,
+                date: tx.date,
+                icon: tx.icon ?? "dollarsign.circle.fill",
+                colorHex: tx.colorHex ?? "#000000"
+            )
+        }
+        WidgetDataManager.shared.saveRecentTransactions(Array(recentWidgetTxs))
         
         // Force reload to ensure widget updates immediately
         WidgetCenter.shared.reloadAllTimelines()

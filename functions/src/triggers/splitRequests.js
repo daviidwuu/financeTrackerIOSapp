@@ -71,23 +71,25 @@ exports.v2_onSplitRequestUpdated = onDocumentUpdated('split_requests/{requestId}
                     }
 
                     // Sync Paid Status
-                    if (after.status === 'paid' && !splits[splitIndex].isPaid) {
-                        splits[splitIndex].isPaid = true;
-                        splits[splitIndex].paidDate = new Date();
-                        needsUpdate = true;
+                    if (after.status === 'paid') {
+                        if (!splits[splitIndex].isPaid) {
+                            splits[splitIndex].isPaid = true;
+                            splits[splitIndex].paidDate = new Date();
+                            needsUpdate = true;
+                        }
 
                         // Idempotency check — only create transactions if not already present
                         if (!splits[splitIndex].incomeTransactionId) {
                             // Create "Payment Received" income transaction for the Creditor (fromUid)
                             const incomeRef = admin.firestore().collection('users').doc(after.fromUid).collection('transactions').doc();
                             const incomeData = {
-                                title: after.note || 'Payment Received',
-                                subtitle: `From ${after.toName || 'Friend'}`,
+                                title: `Payment received from ${after.toName || 'User'}`,
+                                subtitle: 'Income',
                                 amount: after.amount,
                                 date: new Date(),
                                 icon: 'arrow.turn.down.left',
                                 colorHex: '#34C759',
-                                note: 'Split Payment via App',
+                                note: `Payment received from ${after.toName || 'User'}`,
                                 userId: after.fromUid,
                                 type: 'income',
                                 source: event.params.requestId,
@@ -96,28 +98,10 @@ exports.v2_onSplitRequestUpdated = onDocumentUpdated('split_requests/{requestId}
 
                             t.set(incomeRef, incomeData);
                             splits[splitIndex].incomeTransactionId = incomeRef.id;
+                            needsUpdate = true;
                         }
 
-                        if (!splits[splitIndex].debtorTransactionId) {
-                            // Create "Payment Sent" expense transaction for the Debtor (toUid)
-                            const expenseRef = admin.firestore().collection('users').doc(after.toUid).collection('transactions').doc();
-                            const expenseData = {
-                                title: after.note || 'Payment Sent',
-                                subtitle: `To ${after.fromName || 'Friend'}`,
-                                amount: -after.amount, // Negative = expense/outflow
-                                date: new Date(),
-                                icon: 'arrow.turn.up.right',
-                                colorHex: '#FF3B30',
-                                note: 'Split Payment via App',
-                                userId: after.toUid,
-                                type: 'expense',
-                                source: event.params.requestId,
-                                createdAt: admin.firestore.FieldValue.serverTimestamp()
-                            };
 
-                            t.set(expenseRef, expenseData);
-                            splits[splitIndex].debtorTransactionId = expenseRef.id;
-                        }
                     }
 
                     // Sync Unpaid Status (revert paid → pending/accepted)
@@ -133,12 +117,7 @@ exports.v2_onSplitRequestUpdated = onDocumentUpdated('split_requests/{requestId}
                             splits[splitIndex].incomeTransactionId = null;
                         }
 
-                        // Delete linked debtor expense transaction
-                        if (splits[splitIndex].debtorTransactionId) {
-                            const expenseRef = admin.firestore().collection('users').doc(after.toUid).collection('transactions').doc(splits[splitIndex].debtorTransactionId);
-                            t.delete(expenseRef);
-                            splits[splitIndex].debtorTransactionId = null;
-                        }
+
                     }
 
                     // Sync Accepted Status
@@ -147,17 +126,13 @@ exports.v2_onSplitRequestUpdated = onDocumentUpdated('split_requests/{requestId}
                         needsUpdate = true;
                     }
 
-                    // FIX 3.3: Auto-adjust creditor's expense when split is declined
+                    // FIX 3.3: (Removed) We no longer auto-adjust creditor's expense when split is declined.
+                    // The original transaction amount remains unchanged.
                     if (after.status === 'declined' && before.status !== 'declined') {
-                        const declinedAmount = after.amount;
-                        // Add declined amount back to creditor's expense (they absorb the cost)
-                        // txData.amount is negative for expenses, so we subtract to make it more negative
-                        const newAmount = (txData.amount || 0) - declinedAmount;
                         t.update(transactionRef, {
-                            splits: splits.filter(s => s.requestId !== event.params.requestId),
-                            amount: newAmount
+                            splits: splits.filter(s => s.requestId !== event.params.requestId)
                         });
-                        console.log(`[Split] DECLINED auto-adjust: tx ${after.transactionId} amount ${txData.amount} → ${newAmount} (absorbed $${declinedAmount})`);
+                        console.log(`[Split] DECLINED: Removed split ${event.params.requestId} from tx ${after.transactionId} without changing original amount.`);
                         needsUpdate = false; // Already updated above
                     }
 
@@ -235,12 +210,7 @@ exports.v2_onSplitRequestDeleted = onDocumentDeleted('split_requests/{requestId}
                         console.log(`[Split] Cleaning up creditor income tx: ${split.incomeTransactionId}`);
                     }
 
-                    // Delete debtor expense transaction
-                    if (split.debtorTransactionId) {
-                        const expenseRef = admin.firestore().collection('users').doc(data.toUid).collection('transactions').doc(split.debtorTransactionId);
-                        batch.delete(expenseRef);
-                        console.log(`[Split] Cleaning up debtor expense tx: ${split.debtorTransactionId}`);
-                    }
+
 
                     // Remove the split entry from the source transaction
                     const updatedSplits = splits.filter(s => s.requestId !== event.params.requestId);

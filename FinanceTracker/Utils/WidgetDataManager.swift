@@ -22,6 +22,20 @@ class WidgetDataManager {
         
         static let recentTransactions = "widget_recentTransactions"
         static let quickLogCategories = "widget_quickLogCategories"
+        static let widgetBackgroundStyle = "widget_backgroundStyle" // New Key
+    }
+    
+    // MARK: - Enums
+    enum WidgetBackgroundStyle: String, Codable, CaseIterable {
+        case pure = "pure"
+        case system = "system"
+        
+        var displayName: String {
+            switch self {
+            case .pure: return "Pure (Black/White)"
+            case .system: return "System (Default)"
+            }
+        }
     }
     
     // MARK: - Models
@@ -117,5 +131,12 @@ class WidgetDataManager {
     func getQuickLogCategories() -> [WidgetCategory] {
         guard let data = userDefaults?.data(forKey: Keys.quickLogCategories) else { return [] }
         return (try? JSONDecoder().decode([WidgetCategory].self, from: data)) ?? []
+    }
+    
+    func getWidgetBackgroundStyle() -> WidgetBackgroundStyle {
+        guard let savedString = userDefaults?.string(forKey: Keys.widgetBackgroundStyle), let style = WidgetBackgroundStyle(rawValue: savedString) else {
+            return .pure // Default to pure based on the request context although standard iOS is system
+        }
+        return style
     }
 }

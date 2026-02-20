@@ -19,6 +19,12 @@ struct SettleUpWizardView: View {
     @State private var amount: String = ""
     @State private var isSubmitting = false
     
+    // Step 3 & 4
+    var budgetRepo: BudgetRepository { appState.budgetRepo }
+    var transactionRepo: TransactionRepository { appState.transactionRepo }
+    @State private var selectedCategory: FirestoreModels.CategoryBudget?
+    @State private var transactionNotes: String = ""
+    
     @FocusState private var isAmountFocused: Bool
     @State private var direction: Edge = .trailing
     
@@ -26,34 +32,42 @@ struct SettleUpWizardView: View {
         WizardLayout(
             title: stepTitle,
             currentStep: currentStep,
-            totalSteps: 2,
+            totalSteps: 4,
             onBack: currentStep > 1 ? {
                 direction = .leading
-                withAnimation { currentStep = 1 }
-                isAmountFocused = false
+                withAnimation { currentStep -= 1 }
+                isAmountFocused = currentStep == 2
             } : nil,
             onClose: { dismiss() },
             direction: direction
         ) {
             if currentStep == 1 {
                 stepOneView
-            } else {
+            } else if currentStep == 2 {
                 stepTwoView
+            } else if currentStep == 3 {
+                stepThreeView
+            } else {
+                stepFourView
             }
         } actionBar: {
             Button(action: {
-                if currentStep == 1 {
+                if currentStep < 4 {
                     HapticManager.shared.light()
                     direction = .trailing
-                    withAnimation { currentStep = 2 }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                        isAmountFocused = true
+                    withAnimation { currentStep += 1 }
+                    if currentStep == 2 {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                            isAmountFocused = true
+                        }
+                    } else {
+                        isAmountFocused = false
                     }
                 } else {
                     submit()
                 }
             }) {
-                Text(currentStep == 1 ? "Next" : "Pay \(amount.isEmpty ? "0.00" : amount)")
+                Text(currentStep < 4 ? "Next" : "Pay \(amount.isEmpty ? "0.00" : amount)")
             }
             .buttonStyle(PrimaryButtonStyle(isLoading: isSubmitting))
             .disabled(!isValid || isSubmitting)
@@ -67,6 +81,8 @@ struct SettleUpWizardView: View {
         switch currentStep {
         case 1: return "Who is settling?"
         case 2: return "How much?"
+        case 3: return "Category"
+        case 4: return "Notes"
         default: return "Settle Up"
         }
     }
@@ -91,6 +107,13 @@ struct SettleUpWizardView: View {
                         }
                     }
                 }
+                
+                // Set default settlement category
+                await MainActor.run {
+                    if let settlementCat = budgetRepo.budgets.first(where: { $0.category.lowercased() == "settlement" }) {
+                        selectedCategory = settlementCat
+                    }
+                }
             }
         } else if let group = group, let gid = group.id {
             if let firstOther = group.members.first(where: { $0 != appState.currentUserId }) {
@@ -108,6 +131,10 @@ struct SettleUpWizardView: View {
                         payerId = debtToReceive.debtorId
                         receiverId = debtToReceive.creditorId
                         amount = String(format: "%.2f", debtToReceive.amount)
+                    }
+                    
+                    if let settlementCat = budgetRepo.budgets.first(where: { $0.category.lowercased() == "settlement" }) {
+                        selectedCategory = settlementCat
                     }
                 }
             }
@@ -289,14 +316,156 @@ struct SettleUpWizardView: View {
         return locale.displayName(forKey: .currencySymbol, value: currencyCode) ?? currencyCode
     }
     
+    // MARK: - Step 3 & 4
+    
+    private var stepThreeView: some View {
+        VStack(spacing: 8) {
+            Text("Select Category")
+            .font(.headline)
+            .fontWeight(.semibold)
+            .foregroundColor(.secondary)
+            .padding(.horizontal, AppSpacing.margin)
+            
+            ScrollView {
+                VStack(spacing: AppSpacing.element) {
+                    if let incomeBudget = budgetRepo.budgets.first(where: { $0.category.lowercased() == "income" }) {
+                        Button(action: {
+                            selectedCategory = incomeBudget
+                            HapticManager.shared.light()
+                        }) {
+                            HStack {
+                                Image(systemName: incomeBudget.icon)
+                                    .font(.caption)
+                                    .foregroundColor(.white)
+                                    .frame(width: 32, height: 32)
+                                    .background(Color.white.opacity(0.2))
+                                    .clipShape(Circle())
+                                
+                                Text(incomeBudget.category)
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                
+                                Spacer()
+                                
+                                if selectedCategory?.id == incomeBudget.id {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.title3)
+                                        .foregroundColor(.white)
+                                }
+                            }
+                            .padding(.vertical, 10)
+                            .padding(.horizontal)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color(hex: incomeBudget.colorHex))
+                            .cornerRadius(AppRadius.medium)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppRadius.medium)
+                                    .stroke(Color.white.opacity(0.5), lineWidth: selectedCategory?.id == incomeBudget.id ? 4 : 0)
+                            )
+                        }
+                        .padding(.horizontal, AppSpacing.compact)
+                    }
+                    
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: AppSpacing.element) {
+                        ForEach(budgetRepo.budgets.filter { $0.category.lowercased() != "income" }) { budget in
+                            let remaining = budget.remainingAmount(transactions: transactionRepo.transactions)
+                            let progress = min(max(1.0 - (remaining / budget.totalAmount), 0.0), 1.0)
+                            
+                            Button(action: {
+                                selectedCategory = budget
+                                HapticManager.shared.light()
+                            }) {
+                                VStack(spacing: 0) {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: budget.icon)
+                                        .font(.caption)
+                                        .foregroundColor(Color(hex: budget.colorHex))
+                                        .frame(width: 32, height: 32)
+                                        .background(Color(hex: budget.colorHex).opacity(0.2))
+                                        .clipShape(Circle())
+                                        
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(budget.category)
+                                            .font(.caption)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.primary)
+                                            .lineLimit(1)
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        VStack(alignment: .trailing, spacing: 2) {
+                                            if budget.type != "income" {
+                                                Text("$\(Int(remaining))")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            
+                                            if selectedCategory?.id == budget.id {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                .font(.caption)
+                                                .foregroundColor(.green)
+                                            }
+                                        }
+                                    }
+                                    .padding(AppSpacing.compact)
+                                    
+                                    GeometryReader { geometry in
+                                        ZStack(alignment: .leading) {
+                                            Color(hex: budget.colorHex).opacity(0.1)
+                                            Color(hex: budget.colorHex)
+                                            .frame(width: geometry.size.width * progress)
+                                        }
+                                    }
+                                    .frame(height: 3)
+                                }
+                                .background(selectedCategory?.id == budget.id ? Color(hex: budget.colorHex).opacity(0.1) : Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(AppRadius.small)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: AppRadius.small)
+                                    .stroke(selectedCategory?.id == budget.id ? Color(hex: budget.colorHex) : Color.clear, lineWidth: 1)
+                                )
+                            }
+                        }
+                    }
+                    .padding(.horizontal, AppSpacing.compact)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+        }
+    }
+    
+    private var stepFourView: some View {
+        VStack(spacing: 16) {
+            Spacer()
+            
+            Text("Notes (Optional)")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .foregroundColor(.secondary)
+            
+            TextField("e.g. Dinner with Friends", text: $transactionNotes)
+                .font(.system(size: 32, weight: .bold, design: .rounded))
+                .multilineTextAlignment(.center)
+                .foregroundColor(.primary)
+                .submitLabel(.done)
+            
+            Spacer()
+        }
+        .padding(.horizontal, AppSpacing.margin)
+    }
+    
     // MARK: - Helpers
-    // stickyActionBar removed (logic moved to body actionBar)
     
     private var isValid: Bool {
         if currentStep == 1 {
             return !payerId.isEmpty && !receiverId.isEmpty && payerId != receiverId
-        } else {
+        } else if currentStep == 2 {
             return (Double(amount) ?? 0) > 0
+        } else if currentStep == 3 {
+            return selectedCategory != nil
+        } else {
+            return true
         }
     }
     
@@ -312,11 +481,14 @@ struct SettleUpWizardView: View {
     
     private func submit() {
         guard let amountVal = Double(amount) else { return }
+        let categoryName = selectedCategory?.category ?? "Settlement"
+        let icon = selectedCategory?.icon ?? "dollarsign.circle.fill"
+        let color = selectedCategory?.colorHex ?? "#34C759"
+        
         isSubmitting = true
         
         Task {
             do {
-                // FIX #6: Use SocialTransactionManager (the correct, complete implementation)
                 try await SocialTransactionManager.shared.settleUp(
                     payerId: payerId,
                     receiverId: receiverId,
@@ -325,7 +497,11 @@ struct SettleUpWizardView: View {
                     currency: group?.defaultCurrency ?? CurrencyManager.shared.mainCurrency,
                     payerName: getName(for: payerId),
                     receiverName: getName(for: receiverId),
-                    method: "Payment"
+                    method: "Payment",
+                    category: categoryName,
+                    icon: icon,
+                    colorHex: color,
+                    note: transactionNotes.isEmpty ? nil : transactionNotes
                 )
                 HapticManager.shared.success()
                 isSubmitting = false

@@ -196,21 +196,6 @@ struct ContentView: View {
                 // Check budget warnings
                 checkBudgetStatus(for: transaction.title, amount: amount)
                 
-                // Update Widget Data
-                let newWidgetTransaction = WidgetDataManager.WidgetTransaction(
-                    id: UUID().uuidString,
-                    title: transaction.title,
-                    amount: amount,
-                    date: transaction.date,
-                    icon: transaction.icon,
-                    colorHex: transaction.color.toHex() ?? "#000000"
-                )
-                
-                var recents = WidgetDataManager.shared.getRecentTransactions()
-                recents.insert(newWidgetTransaction, at: 0)
-                if recents.count > 4 { recents = Array(recents.prefix(4)) }
-                WidgetDataManager.shared.saveRecentTransactions(recents)
-                
                 // Update Quick Log Categories (Top 4 from Budgets)
                 let topBudgets = budgetRepo.budgets
                     .filter { $0.category.lowercased() != "income" }

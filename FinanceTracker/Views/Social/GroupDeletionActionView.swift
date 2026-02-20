@@ -5,6 +5,8 @@ struct GroupDeletionActionView: View {
     @EnvironmentObject var groupRepo: GroupRepository
     @Environment(\.dismiss) var dismiss
     
+    var onActionSubmitted: (() -> Void)? = nil
+    
     @State private var isProcessing = false
     @State private var errorMessage: String?
     
@@ -117,6 +119,7 @@ struct GroupDeletionActionView: View {
                 await MainActor.run {
                     isProcessing = false
                     dismiss()
+                    onActionSubmitted?()
                 }
             } catch {
                 await MainActor.run {

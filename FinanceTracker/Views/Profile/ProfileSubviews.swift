@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 
 // MARK: - Account Settings
 struct AccountSettingsView: View {
@@ -260,6 +261,7 @@ struct AccountSettingsView: View {
 // MARK: - Appearance
 struct AppearanceSettingsView: View {
     @AppStorage("userTheme") private var userTheme: String = "system"
+    
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.dismiss) var dismiss
     
@@ -294,6 +296,7 @@ struct AppearanceSettingsView: View {
                         .padding(.horizontal, 16)
                         .background(Color(UIColor.secondarySystemBackground))
                         .contentShape(Rectangle())
+                        
                     }
                     .padding(.top, 0)
                     

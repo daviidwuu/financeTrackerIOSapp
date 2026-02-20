@@ -14,6 +14,9 @@ struct ConfigurationAppIntent: WidgetConfigurationIntent {
 
     @Parameter(title: "Display Mode", default: .remaining)
     var displayMode: WidgetDisplayModeEnum
+    
+    @Parameter(title: "Background Style", default: .pure)
+    var backgroundStyle: WidgetBackgroundAppEnum
 }
 
 enum WidgetDisplayModeEnum: String, AppEnum {
@@ -26,4 +29,23 @@ enum WidgetDisplayModeEnum: String, AppEnum {
         .remaining: "Remaining Budget",
         .spent: "Total Spent"
     ]
+}
+
+enum WidgetBackgroundAppEnum: String, AppEnum {
+    case pure
+    case system
+    
+    static var typeDisplayRepresentation: TypeDisplayRepresentation = "Background Style"
+    static var caseDisplayRepresentations: [WidgetBackgroundAppEnum : DisplayRepresentation] = [
+        .pure: "Pure (Black/White)",
+        .system: "System (Default iOS)"
+    ]
+}
+
+struct WidgetBackgroundIntent: WidgetConfigurationIntent {
+    static var title: LocalizedStringResource = "Widget Background"
+    static var description = IntentDescription("Choose the background style for the widget.")
+    
+    @Parameter(title: "Background Style", default: .pure)
+    var backgroundStyle: WidgetBackgroundAppEnum
 }

@@ -525,9 +525,14 @@ struct TransactionDetailView: View {
         
         HapticManager.shared.medium() // Feedback for toggling payment status
         
-        // Optimistic UI toggle
+        // Optimistic UI update — toggle both isPaid AND status so the label
+        // reflects the new state immediately, without waiting for Firestore.
         if let index = transaction.splits?.firstIndex(where: { $0.id == split.id }) {
-            transaction.splits?[index].isPaid.toggle()
+            let currentlyPaid = transaction.splits![index].isPaid
+            transaction.splits?[index].isPaid = !currentlyPaid
+            // Mirror the expected post-toggle status string:
+            // paid → accepted (reverted), anything else → paid
+            transaction.splits?[index].status = currentlyPaid ? "accepted" : "paid"
         }
         
         Task {
@@ -575,19 +580,19 @@ struct TransactionDetailView: View {
                      try await SocialTransactionManager.shared.unmarkSplitAsPaid(request: request!, currentUserId: appState.currentUserId)
                 }
                 
-                // 3. Refresh Transaction to ensure sync (incomeTransactionId etc)
-                let freshTx = try await transactionRepo.fetchTransaction(id: transactionId)
-                 if let fresh = freshTx {
-                     await MainActor.run {
-                         self.transaction = fresh
-                     }
-                 }
+                // Deliberately NOT re-fetching the transaction here.
+                // The Cloud Function updates Firestore asynchronously; an immediate
+                // fetchTransaction would return stale data and overwrite the
+                // optimistic state we just applied above. The onAppear fetch
+                // will sync the authoritative state the next time the view opens.
             } catch {
                 print("Error toggling split payment: \(error)")
-                // Revert UI
+                // Revert UI — restore both isPaid and status
                 await MainActor.run {
                     if let index = transaction.splits?.firstIndex(where: { $0.id == split.id }) {
-                        transaction.splits?[index].isPaid.toggle()
+                        let revertedPaid = !transaction.splits![index].isPaid
+                        transaction.splits?[index].isPaid = revertedPaid
+                        transaction.splits?[index].status = revertedPaid ? "paid" : "accepted"
                     }
                 }
             }
@@ -607,10 +612,9 @@ struct TransactionDetailView: View {
                     let doc = try await Firestore.firestore().collection("split_requests").document(requestId).getDocument()
                     if let request = try? doc.data(as: FirestoreModels.SplitRequest.self) {
                         if request.status == .paid {
-                            // BLOCK DELETION
+                            // Automatically revert paid split when deleted
                             await MainActor.run {
-                                errorMessage = "This transaction verifies a paid split. Please unmark the split as paid if you wish to undo this payment."
-                                showErrorAlert = true
+                                showDeleteConfirmation = true
                             }
                             return
                         }
@@ -640,8 +644,12 @@ struct TransactionDetailView: View {
                 // Revert linked split if needed (for pending/orphaned ones)
                 // Note: We use the manager function but ignore result since we checked blocking above
                 let _ = await SocialTransactionManager.shared.revertLinkedSplitIfNeeded(transaction: transaction, currentUserId: appState.currentUserId)
-                
                 if let splits = transaction.splits, !splits.isEmpty {
+                    if let id = transaction.id {
+                        await MainActor.run {
+                            transactionRepo.removeLocalTransaction(id: id)
+                        }
+                    }
                     try await SocialTransactionManager.shared.deleteSocialTransaction(transaction: transaction)
                 } else {
                     if let id = transaction.id {

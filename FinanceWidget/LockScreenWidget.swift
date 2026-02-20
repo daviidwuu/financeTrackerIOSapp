@@ -265,9 +265,7 @@ struct LockScreenWidgetEntryView : View {
                 }
             }
             .padding(16)
-            .containerBackground(for: .widget) {
-                Color(UIColor.systemBackground)
-            }
+            .applyWidgetBackground(style: entry.configuration.backgroundStyle)
             
         // MARK: Home Screen - Medium (Financial Dashboard - Hero Monthly)
         case .systemMedium:
@@ -275,6 +273,9 @@ struct LockScreenWidgetEntryView : View {
                 // LEFT: Daily Card (Compact - Fixed Width)
                 // Dynamic Color Logic
                 let dailyBackground = {
+                    if entry.configuration.backgroundStyle == .pure {
+                        return Color.clear
+                    }
                     if mode == .spent {
                        return abs(entry.dailySpend) > entry.dailyBudgetLimit
                             ? Color.red.opacity(0.15)
@@ -463,7 +464,11 @@ struct LockScreenWidgetEntryView : View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .containerBackground(for: .widget) {
-                Color(UIColor.systemBackground)
+                if entry.configuration.backgroundStyle == .pure {
+                    colorScheme == .dark ? Color.black : Color.white
+                } else {
+                    Color(UIColor.systemBackground)
+                }
             }
 
         default:

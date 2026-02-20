@@ -171,10 +171,10 @@ struct FriendDetailView: View {
                 Text("Settle")
                     .font(.headline)
                     .fontWeight(.bold)
-                    .foregroundColor(.primary)
+                    .foregroundColor(Color.backgroundPrimary)
                     .padding(.horizontal, AppSpacing.margin)
                     .frame(height: 44)
-                    .background(Color(UIColor.secondarySystemBackground))
+                    .background(Color.primary)
                     .clipShape(Capsule())
             }
             .buttonStyle(.borderless)
@@ -622,20 +622,25 @@ struct FriendPendingSplitCard: View {
                     .fontWeight(.heavy)
                     .foregroundColor(isOwed ? .green : .orange)
                 
-                Button(action: onToggle) {
-                    Image(systemName: "circle")
-                        .font(.title2)
-                        .foregroundColor(.secondary.opacity(0.3))
+                Button(action: {
+                    HapticManager.shared.success()
+                    onToggle()
+                }) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(Color.backgroundPrimary)
+                        .frame(width: 32, height: 32)
+                        .background(AppColors.functionalIncome)
+                        .clipShape(Circle())
                 }
+                .buttonStyle(PlainButtonStyle())
                 
             }
         }
         .padding(AppSpacing.element)
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(AppRadius.medium)
         .overlay(
             RoundedRectangle(cornerRadius: AppRadius.medium)
-                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+                .stroke(isOwed ? .green : .orange, lineWidth: 1)
         )
     }
 }
@@ -706,20 +711,6 @@ struct FriendCardRow: View {
         }
         .padding(AppSpacing.element)
         .contentShape(Rectangle()) // Make tappable
-        .task {
-            if transaction.originalAmount == nil, let sourceId = transaction.source {
-                do {
-                    let doc = try await Firestore.firestore().collection("transactions").document(sourceId).getDocument()
-                    if let tx = try? doc.data(as: FirestoreModels.TransactionModel.self) {
-                        await MainActor.run {
-                            self.fetchedOriginalAmount = abs(tx.amount)
-                        }
-                    }
-                } catch {
-                    print("Error fetching original transaction: \(error)")
-                }
-            }
-        }
     }
     
     func statusColor(_ status: String) -> Color {

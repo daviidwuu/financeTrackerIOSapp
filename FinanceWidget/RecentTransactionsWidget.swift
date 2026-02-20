@@ -1,31 +1,30 @@
 import WidgetKit
 import SwiftUI
 
-struct RecentTransactionsProvider: TimelineProvider {
+struct RecentTransactionsProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> RecentEntry {
-        RecentEntry(date: Date(), transactions: [
+        RecentEntry(date: Date(), configuration: WidgetBackgroundIntent(), transactions: [
             WidgetDataManager.WidgetTransaction(id: "1", title: "Coffee", amount: -4.50, date: Date(), icon: "cup.and.saucer.fill", colorHex: "#FF9500"),
             WidgetDataManager.WidgetTransaction(id: "2", title: "Groceries", amount: -120.30, date: Date().addingTimeInterval(-3600), icon: "cart.fill", colorHex: "#4CD964")
         ])
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (RecentEntry) -> ()) {
+    func snapshot(for configuration: WidgetBackgroundIntent, in context: Context) async -> RecentEntry {
         let transactions = WidgetDataManager.shared.getRecentTransactions()
-        let entry = RecentEntry(date: Date(), transactions: transactions)
-        completion(entry)
+        return RecentEntry(date: Date(), configuration: configuration, transactions: transactions)
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> ()) {
+    func timeline(for configuration: WidgetBackgroundIntent, in context: Context) async -> Timeline<RecentEntry> {
         let transactions = WidgetDataManager.shared.getRecentTransactions()
-        let entry = RecentEntry(date: Date(), transactions: transactions)
+        let entry = RecentEntry(date: Date(), configuration: configuration, transactions: transactions)
         let nextUpdate = Calendar.current.date(byAdding: .minute, value: 30, to: Date())!
-        let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
-        completion(timeline)
+        return Timeline(entries: [entry], policy: .after(nextUpdate))
     }
 }
 
 struct RecentEntry: TimelineEntry {
     let date: Date
+    let configuration: WidgetBackgroundIntent
     let transactions: [WidgetDataManager.WidgetTransaction]
 }
 
@@ -38,64 +37,69 @@ struct RecentTransactionsEntryView : View {
             HStack {
                 Text("Recent")
                     .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.secondary)
                     .textCase(.uppercase)
-                    .foregroundStyle(Color(UIColor.systemGray))
-                
                 Spacer()
+                Image(systemName: "list.bullet")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.secondary)
             }
             
             if entry.transactions.isEmpty {
                 Spacer()
                 Text("No recent transactions")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
                 Spacer()
             } else {
-                VStack(spacing: 10) {
-                    ForEach(entry.transactions.prefix(family == .systemSmall ? 2 : 4)) { transaction in
-                        HStack(spacing: 8) {
-                            // Icon
-                            ZStack {
-                                Circle()
-                                    .fill(Color(UIColor.secondarySystemBackground))
-                                    .frame(width: 28, height: 28)
-                                
-                                Image(systemName: transaction.icon)
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(Color(hex: transaction.colorHex))
-                            }
+                VStack(spacing: 8) {
+                    let displayLimit = family == .systemSmall ? 3 : 4
+                    ForEach(entry.transactions.prefix(displayLimit)) { transaction in
+                        HStack(spacing: 12) {
+                            Circle()
+                                .fill(Color(hex: transaction.colorHex))
+                                .frame(width: 32, height: 32)
+                                .overlay(
+                                    Image(systemName: transaction.icon)
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(.white)
+                                )
                             
-                            // Title
-                            Text(transaction.title)
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(Color.primary)
-                                .lineLimit(1)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(transaction.title)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .lineLimit(1)
+                                
+                                Text(transaction.date, style: .time)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
                             
                             Spacer()
                             
-                            // Amount
                             Text(formatMoney(transaction.amount))
-                                .font(.system(size: 12, weight: .bold, design: .rounded))
-                                .foregroundStyle(transaction.amount < 0 ? Color.primary : .green)
-                                .contentTransition(.numericText())
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(transaction.amount > 0 ? Color.green : Color.primary)
                         }
                     }
                 }
             }
-            
             Spacer()
         }
         .padding(16)
-        .containerBackground(for: .widget) {
-            Color(UIColor.systemBackground)
-        }
+        .applyWidgetBackground(style: entry.configuration.backgroundStyle) // Custom modifier
     }
     
     func formatMoney(_ amount: Double) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
-        formatter.maximumFractionDigits = 2
-        return formatter.string(from: NSNumber(value: abs(amount))) ?? ""
+        formatter.currencyCode = "USD"
+        // Hide minus sign for expenses since UI implies it's a spend
+        let absoluteAmount = abs(amount)
+        return formatter.string(from: NSNumber(value: absoluteAmount)) ?? "$0.00"
     }
 }
 
@@ -103,12 +107,11 @@ struct RecentTransactionsWidget: Widget {
     let kind: String = "RecentTransactionsWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: RecentTransactionsProvider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: WidgetBackgroundIntent.self, provider: RecentTransactionsProvider()) { entry in
             RecentTransactionsEntryView(entry: entry)
         }
         .configurationDisplayName("Recent Transactions")
         .description("View your latest spending activity.")
         .supportedFamilies([.systemSmall, .systemMedium])
-        .contentMarginsDisabled()
     }
 }

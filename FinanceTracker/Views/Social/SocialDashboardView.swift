@@ -109,6 +109,15 @@ struct SocialDashboardView: View {
                     .presentationDetents([.fraction(0.4)])
                 }
             }
+            .sheet(item: $groupForDeletionAction) { group in
+                GroupDeletionActionView(group: group) {
+                    if let id = group.id {
+                        pendingDeletedGroupIds.insert(id)
+                    }
+                    groupForDeletionAction = nil
+                }
+                .environmentObject(appState.groupRepo)
+            }
         }
         .onChange(of: navigationPath) { _, newPath in
             print("DEBUG: Navigation path changed. Count: \(newPath.count)")
@@ -159,13 +168,16 @@ struct SocialDashboardView: View {
         Group {
             if let group = groupToDelete {
                 Text("") // Placeholder to attach alert
-                    .alert("Delete Group?", isPresented: $showGroupDeleteAlert) {
-                        Button("Delete", role: .destructive) {
-                            deleteGroup(group)
+                    .confirmationDialog("Delete Group?", isPresented: $showGroupDeleteDialog, titleVisibility: .visible) {
+                        Button("Keep Transaction History") {
+                            confirmGroupDeletion(group: group, action: "keep")
                         }
-                        Button("Cancel", role: .cancel) {}
+                        Button("Delete All History", role: .destructive) {
+                            confirmGroupDeletion(group: group, action: "delete")
+                        }
+                        Button("Cancel", role: .cancel) { groupToDelete = nil }
                     } message: {
-                        Text("Are you sure you want to delete '\(group.name)'? This action cannot be undone.")
+                        Text("Are you sure you want to delete '\(group.name)'? What would you like to do with your transaction history?")
                     }
             }
             
@@ -221,7 +233,7 @@ struct SocialDashboardView: View {
         Group {
             // Priority 1: Deletion Requests (Action Required)
             if !pendingDeletionGroups.isEmpty {
-                Section(header: Text("ACTION REQUIRED").font(.caption).fontWeight(.bold).foregroundColor(.red)) {
+                Section(header: Text("Action Required").font(.headline).foregroundColor(.red)) {
                     ForEach(pendingDeletionGroups) { group in
                         HStack(spacing: 12) {
                             ZStack {
@@ -237,7 +249,7 @@ struct SocialDashboardView: View {
                                     .font(.body)
                                     .fontWeight(.medium)
                                     .foregroundColor(.primary)
-                                Text("Deletion Requested")
+                                Text("Group deletion requested")
                                     .font(.caption)
                                     .foregroundColor(.red)
                             }
@@ -259,21 +271,23 @@ struct SocialDashboardView: View {
                         .onTapGesture {
                             groupForDeletionAction = group
                         }
-                        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
+                        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
+                        .padding(.bottom, AppSpacing.compact)
                     }
                 }
             }
             
             // Priority 2: Group Invitations
             if !appState.groupInvitationRepo.incomingInvitations.isEmpty {
-                Section(header: Text("INVITATIONS").font(.caption).fontWeight(.bold)) {
+                Section(header: Text("Group Invitations").font(.headline)) {
                     ForEach(appState.groupInvitationRepo.incomingInvitations) { invite in
                         InvitationCard(invite: invite)
-                            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
+                            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
+                            .padding(.bottom, AppSpacing.compact)
                     }
                 }
             }
@@ -302,9 +316,10 @@ struct SocialDashboardView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
-            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
+            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
+            .padding(.bottom, AppSpacing.compact)
 
             ForEach(activeGroups) { group in
                 GroupCardView(group: group)
@@ -314,14 +329,15 @@ struct SocialDashboardView: View {
                             navigationPath.append(SocialDestination.group(id))
                         }
                     }
-                    .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
+                    .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
+                    .padding(.bottom, AppSpacing.compact)
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         if group.createdBy == appState.currentUserId {
                             Button(role: .destructive) {
                                 groupToDelete = group
-                                showGroupDeleteAlert = true
+                                showGroupDeleteDialog = true
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }
@@ -342,9 +358,7 @@ struct SocialDashboardView: View {
                 .listRowBackground(Color.clear)
             }
         }
-        .sheet(item: $groupForDeletionAction) { group in
-            GroupDeletionActionView(group: group)
-        }
+
     }
     
     @ViewBuilder
@@ -357,12 +371,13 @@ struct SocialDashboardView: View {
         Group {
             // 0. Incoming Requests Section
             if !appState.friendRequestRepo.incomingRequests.isEmpty {
-                Section(header: Text("PENDING REQUESTS").font(.caption).fontWeight(.bold)) {
+                Section(header: Text("Pending Requests").font(.headline)) {
                     ForEach(appState.friendRequestRepo.incomingRequests) { request in
                         FriendRequestCard(request: request)
-                            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
+                            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
+                            .padding(.bottom, AppSpacing.compact)
                     }
                 }
             }
@@ -391,9 +406,10 @@ struct SocialDashboardView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
-            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
+            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
+            .padding(.bottom, AppSpacing.compact)
             
             ForEach(filteredFriends, id: \.id) { friend in
                 FriendCardView(friend: friend)
@@ -403,9 +419,10 @@ struct SocialDashboardView: View {
                             navigationPath.append(SocialDestination.friend(id))
                         }
                     }
-                    .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
+                    .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
+                    .padding(.bottom, AppSpacing.compact)
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button(role: .destructive) {
                             friendToDelete = friend
@@ -478,9 +495,10 @@ struct SocialDashboardView: View {
                         rank: startIndex + index + 1,
                         isCurrentUser: entry.id == appState.currentUserId
                     )
-                    .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
+                    .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
+                    .padding(.bottom, AppSpacing.compact)
                 }
             }
         }
@@ -488,8 +506,8 @@ struct SocialDashboardView: View {
     
     // Deletion Logic
     @State private var groupToDelete: FirestoreModels.Group?
-    @State private var showGroupDeleteAlert = false
-    @State private var groupForDeletionAction: FirestoreModels.Group? // ✅ NEW: For Keep/Delete sheet
+    @State private var groupForDeletionAction: FirestoreModels.Group?
+    @State private var showGroupDeleteDialog = false
     
     @State private var friendToDelete: FirestoreModels.Friend?
     @State private var showFriendDeleteAlert = false
@@ -498,26 +516,21 @@ struct SocialDashboardView: View {
     @State private var pendingDeletedGroupIds: Set<String> = []
     @State private var pendingDeletedFriendIds: Set<String> = []
 
-    private func deleteGroup(_ group: FirestoreModels.Group) {
+    private func confirmGroupDeletion(group: FirestoreModels.Group, action: String) {
         guard group.id != nil else { return }
-        
-        // Optimistic Update: Hide immediately (Wait, for request deletion, we shouldn't hide it, we should show it as "requested")
-        // But for the user who initiates it, maybe they want to deal with it immediately?
-        // Let's call requestGroupDeletion, then immediately pop up the action sheet for them?
-        // Or just let them see the "Action Required" card.
         
         Task {
             do {
                 try await appState.groupRepo.requestGroupDeletion(group: group)
+                try await appState.groupRepo.submitDeletionAction(group: group, action: action)
                 await MainActor.run {
                     HapticManager.shared.success()
-                    // Auto-open the action sheet for the creator immediately
-                    groupForDeletionAction = group
                 }
             } catch {
                 print("Error requesting group deletion: \(error)")
                 await MainActor.run {
                     HapticManager.shared.error()
+                    errorState.show("Failed to delete group: \(error.localizedDescription)")
                 }
             }
         }

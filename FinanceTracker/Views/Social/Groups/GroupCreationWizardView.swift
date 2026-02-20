@@ -51,6 +51,7 @@ struct GroupCreationWizardView: View {
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var showLeaveGroupDialog = false
+    @State private var showDeleteGroupDialog = false
     
     let availableColors = AppColors.selectionPalette
     
@@ -172,6 +173,21 @@ struct GroupCreationWizardView: View {
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("Your splits and transactions from this group will either be kept as personal records or permanently deleted.")
+        }
+        .confirmationDialog(
+            "Delete Group",
+            isPresented: $showDeleteGroupDialog,
+            titleVisibility: .visible
+        ) {
+            Button("Keep Transaction History") {
+                confirmGroupDeletion(action: "keep")
+            }
+            Button("Delete All History", role: .destructive) {
+                confirmGroupDeletion(action: "delete")
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("What would you like to do with your transaction history?")
         }
         }
     
@@ -488,7 +504,7 @@ struct GroupCreationWizardView: View {
                     
                     Button(role: .destructive, action: {
                         if isCreator {
-                            deleteGroup()
+                            showDeleteGroupDialog = true
                         } else {
                             showLeaveGroupDialog = true
                         }
@@ -695,7 +711,7 @@ struct GroupCreationWizardView: View {
         }
     }
     
-    private func deleteGroup() {
+    private func confirmGroupDeletion(action: String) {
         guard let group = groupToEdit else { return }
         
         // Instant Feedback: Dismiss immediately
@@ -705,6 +721,7 @@ struct GroupCreationWizardView: View {
         Task {
             do {
                  try await appState.groupRepo.requestGroupDeletion(group: group)
+                 try await appState.groupRepo.submitDeletionAction(group: group, action: action)
             } catch {
                 print("Error requesting group deletion: \(error)")
                 await MainActor.run {

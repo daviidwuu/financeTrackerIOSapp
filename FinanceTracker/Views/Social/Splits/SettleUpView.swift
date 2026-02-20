@@ -11,6 +11,11 @@ struct SettleUpView: View {
     @State private var selectedReceiverId: String = ""
     @State private var paymentMethod: String = "Cash"
     
+    // New Fields
+    @State private var selectedCategoryId: String? = nil
+    @State private var transactionNotes: String = ""
+    var budgetRepo: BudgetRepository { appState.budgetRepo }
+    
     let paymentMethods = ["Cash", "Venmo", "PayPal", "Bank Transfer", "Other"]
     
     // Derived: Current User is Payer?
@@ -54,6 +59,18 @@ struct SettleUpView: View {
                     }
                 }
                 
+                Section(header: Text("Category")) {
+                    Picker("Category", selection: $selectedCategoryId) {
+                        ForEach(budgetRepo.budgets.filter { $0.category.lowercased() != "income" }) { budget in
+                            Text(budget.category).tag(budget.id as String?)
+                        }
+                    }
+                }
+                
+                Section(header: Text("Notes (Optional)")) {
+                    TextField("Notes", text: $transactionNotes)
+                }
+                
                 Button(action: {
                     settleUp()
                 }) {
@@ -77,6 +94,11 @@ struct SettleUpView: View {
                 if let first = group.members.first(where: { $0 != appState.currentUserId }) {
                     selectedReceiverId = first
                 }
+                
+                // Default Category
+                if let settlementCat = budgetRepo.budgets.first(where: { $0.category.lowercased() == "settlement" }) {
+                    selectedCategoryId = settlementCat.id
+                }
             }
         }
     }
@@ -93,9 +115,13 @@ struct SettleUpView: View {
     func settleUp() {
         guard let amountDouble = Double(amount), !selectedReceiverId.isEmpty else { return }
         
+        let category = budgetRepo.budgets.first { $0.id == selectedCategoryId }
+        let categoryName = category?.category ?? "Settlement"
+        let icon = category?.icon ?? "dollarsign.circle.fill"
+        let color = category?.colorHex ?? "#34C759"
+        
         Task {
             do {
-                // FIX #6: Use SocialTransactionManager (the correct, complete implementation)
                 try await SocialTransactionManager.shared.settleUp(
                     payerId: selectedPayerId,
                     receiverId: selectedReceiverId,
@@ -104,7 +130,11 @@ struct SettleUpView: View {
                     currency: group.defaultCurrency ?? CurrencyManager.shared.mainCurrency,
                     payerName: getMemberName(id: selectedPayerId),
                     receiverName: getMemberName(id: selectedReceiverId),
-                    method: paymentMethod
+                    method: paymentMethod,
+                    category: categoryName,
+                    icon: icon,
+                    colorHex: color,
+                    note: transactionNotes.isEmpty ? nil : transactionNotes
                 )
                 dismiss()
             } catch {

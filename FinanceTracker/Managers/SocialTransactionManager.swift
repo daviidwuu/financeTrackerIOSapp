@@ -371,8 +371,26 @@ class SocialTransactionManager: ObservableObject {
     
     /// Deletes a social transaction and its associated splits/group feed items.
     func deleteSocialTransaction(groupTransaction: FirestoreModels.GroupTransaction, groupId: String) async throws {
-        let batch = db.batch()
         let currentUserId = Auth.auth().currentUser?.uid
+        
+        // If this is a settlement, unmark the split as paid instead!
+        if groupTransaction.type == "settlement", let requestId = groupTransaction.originalTransactionId {
+            let requestRef = db.collection("split_requests").document(requestId)
+            if let snapshot = try? await requestRef.getDocument(), let request = try? snapshot.data(as: FirestoreModels.SplitRequest.self) {
+                try await unmarkSplitAsPaid(request: request, currentUserId: currentUserId ?? "")
+            } else {
+                // If request not found, just delete the orphan group transaction
+                let batch = db.batch()
+                if let txId = groupTransaction.id {
+                     let ref = db.collection("groups").document(groupId).collection("transactions").document(txId)
+                     batch.deleteDocument(ref)
+                }
+                try await batch.commit()
+            }
+            return
+        }
+        
+        let batch = db.batch()
         
         // 1. Delete Group Transaction (Archive First)
         if let txId = groupTransaction.id {
@@ -491,22 +509,21 @@ class SocialTransactionManager: ObservableObject {
                 batch.deleteDocument(doc.reference)
             }
         } else {
-            // FALLBACK: Search for Group Transaction via Collection Group Query (for orphaned transactions)
+            // FALLBACK: Search user's groups for Group Transaction (for orphaned transactions)
             // This handles cases where no split requests exist but a group transaction does.
-            let groupTxsSnapshot = try await db.collectionGroup("transactions")
-                .whereField("originalTransactionId", isEqualTo: transactionId)
+            let userGroupsSnapshot = try await db.collection("groups")
+                .whereField("members", arrayContains: transaction.userId)
                 .getDocuments()
                 
-            for doc in groupTxsSnapshot.documents {
-                // Ensure it's a Group Transaction (path check)
-                if doc.reference.path.contains("groups") {
-                    // Archive
-                    let groupIdFromPath = doc.reference.parent.parent?.documentID
-                    if let gid = groupIdFromPath {
-                        let archiveRef = db.collection("groups").document(gid).collection("archived_transactions").document(doc.documentID)
-                        batch.setData(doc.data(), forDocument: archiveRef)
-                    }
+            for groupDoc in userGroupsSnapshot.documents {
+                let groupTxsSnapshot = try await groupDoc.reference.collection("transactions")
+                    .whereField("originalTransactionId", isEqualTo: transactionId)
+                    .getDocuments()
                     
+                for doc in groupTxsSnapshot.documents {
+                    // Archive
+                    let archiveRef = db.collection("groups").document(groupDoc.documentID).collection("archived_transactions").document(doc.documentID)
+                    batch.setData(doc.data(), forDocument: archiveRef)
                     batch.deleteDocument(doc.reference)
                 }
             }
@@ -858,23 +875,26 @@ class SocialTransactionManager: ObservableObject {
     }
 
     /// Settles up a debt between two users
-    func settleUp(payerId: String, receiverId: String, groupId: String?, amount: Double, currency: String? = nil, payerName: String = "Member", receiverName: String? = nil, method: String = "Cash") async throws {
+    func settleUp(payerId: String, receiverId: String, groupId: String?, amount: Double, currency: String? = nil, payerName: String = "Member", receiverName: String? = nil, method: String = "Cash", category: String = "Settlement", icon: String = "dollarsign.circle.fill", colorHex: String = "#34C759", note: String? = nil) async throws {
         // Payer Side (Expense)
         let payerRef = db.collection("users").document(payerId).collection("transactions").document()
+        
+        let displayTitle = note?.isEmpty == false ? note! : category
+        let displayNote = note?.isEmpty == false ? note! : "Settled up via \(method)"
         
         // 1. Create a "Payment" transaction
         let paymentTransaction = FirestoreModels.TransactionModel(
             id: payerRef.documentID,
             userId: payerId,
-            title: "Payment to \(method)",
-            subtitle: "Settle Up",
+            title: displayTitle,
+            subtitle: category,
             amount: -amount, // Expense for payer
             date: Date(),
             type: "expense",
             createdAt: Date(),
-            icon: "dollarsign.circle.fill", // Updated icon
-            colorHex: "#34C759", // Green
-            note: "Settled up via \(method)"
+            icon: icon,
+            colorHex: colorHex,
+            note: displayNote
         )
         
         let batch = db.batch()
@@ -901,7 +921,7 @@ class SocialTransactionManager: ObservableObject {
              toName: receiverName, // ✅ Updated from nil
              amount: amount,
              currency: currency ?? CurrencyManager.shared.mainCurrency, // FIX 1.2: Store settlement currency
-             note: "Settled via \(method)",
+             note: displayNote,
              status: .paid, // Mark as PAID immediately so it triggers the Cloud Function
              dependencyId: nil,
              lastNudgedAt: nil,
@@ -916,7 +936,7 @@ class SocialTransactionManager: ObservableObject {
             let groupRef = db.collection("groups").document(groupId).collection("transactions").document()
             let groupTx = FirestoreModels.GroupTransaction(
                 id: nil,
-                title: "Settlement: \(method)",
+                title: displayTitle,
                 amount: amount,
                 payerId: payerId,
                 payerName: payerName, 
@@ -925,10 +945,10 @@ class SocialTransactionManager: ObservableObject {
                 date: Date(),
                 type: "settlement", // Special type
                 currencyCode: nil,
-                note: nil,
-                category: "Settlement",
-                icon: "dollarsign.circle.fill", // Updated icon
-                colorHex: "#34C759",
+                note: displayNote,
+                category: category,
+                icon: icon,
+                colorHex: colorHex,
                 originalTransactionId: payerRef.documentID, // Linked to payer transaction
                 editHistory: nil
             )

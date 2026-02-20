@@ -42,6 +42,7 @@ struct GroupDetailView: View {
 
     @State private var activeSheet: GroupSheet?
     @State private var transactionToEdit: FirestoreModels.GroupTransaction?
+    @State private var requestToAccept: FirestoreModels.SplitRequest? // Added for accept flow
     @State private var groupBalances: [String: [String: Double]] = [:] // FIX 1.3: currency → (memberId → balance)
     
     // Feature State
@@ -102,7 +103,7 @@ struct GroupDetailView: View {
                                 VStack(spacing: 12) {
                                     ForEach(receiverSplits) { split in
                                         PendingSplitCard(split: split, userId: appState.currentUserId, onToggle: {
-                                            handleSplitToggle(split)
+                                            requestToAccept = split // Open wizard instead of marking paid
                                         }, onDelete: {
                                             splitToDelete = split
                                         })
@@ -457,6 +458,11 @@ struct GroupDetailView: View {
                  .presentationDetents([.large])
              }
         }
+        .sheet(item: $requestToAccept) { request in
+            AddTransactionView(requestToAccept: request, onSave: { transaction in
+                 acceptRequest(request, transaction: transaction)
+            })
+        }
         .onChange(of: activeSheet) { _, newValue in
              // Reload data only when sheet is dismissed (becomes nil)
              if newValue == nil {
@@ -707,6 +713,63 @@ struct GroupDetailView: View {
             }
         }
     }
+    
+    // MARK: - Request Logic (Accept Flow matches HomeView)
+    
+    private func acceptRequest(_ request: FirestoreModels.SplitRequest, transaction: TransactionFormData) {
+        // 1. Add the transaction
+        addTransaction(transaction)
+        
+        // 2. Update Request Status
+        Task {
+            do {
+                guard let id = request.id else { return }
+                try await appState.requestRepo.updateRequestStatus(userId: appState.currentUserId, requestId: id, status: .accepted, lastUpdatedBy: appState.currentUserId)
+                await MainActor.run {
+                    // Optimistic update to remove it from action required
+                    pendingSplits.removeAll { $0.id == id }
+                }
+            } catch {
+                print("Failed to accept request: \(error)")
+            }
+        }
+    }
+    
+    private func addTransaction(_ transaction: TransactionFormData) {
+        Task {
+            do {
+                // Convert UI Transaction to Firestore Transaction
+                let amount = CurrencyInput.parseOrZero(transaction.amount)
+                let firestoreTransaction = FirestoreModels.TransactionModel(
+                    userId: appState.currentUserId, // Use global user ID
+                    title: transaction.title,
+                    subtitle: transaction.subtitle,
+                    amount: amount,
+                    date: transaction.date,
+                    type: amount < 0 ? "expense" : "income",
+                    createdAt: Date(),
+                    icon: transaction.icon,
+                    colorHex: transaction.color.toHex() ?? "#000000",
+                    note: transaction.notes,
+                    originalAmount: transaction.originalAmount,
+                    currencyCode: transaction.currencyCode,
+                    exchangeRate: transaction.exchangeRate
+                )
+                try await appState.transactionRepo.addTransaction(firestoreTransaction)
+                
+                // Send notification after successful save
+                NotificationManager.shared.sendTransactionNotification(
+                    amount: amount,
+                    category: transaction.title,
+                    type: transaction.type,
+                    originalAmount: transaction.originalAmount,
+                    currencyCode: transaction.currencyCode
+                )
+            } catch {
+                print("Failed to add transaction: \(error)")
+            }
+        }
+    }
 }
 
 // MARK: - Subviews
@@ -753,20 +816,20 @@ struct GroupHeaderSection: View {
                 },
                 actions: {
                     HStack(spacing: 12) {
-                        Button(action: {
-                            HapticManager.shared.light()
-                            onSettle()
-                        }) {
-                            Text("Settle")
-                                .font(.headline)
-                                .fontWeight(.bold)
-                                .foregroundColor(.primary)
-                                .padding(.horizontal, AppSpacing.margin)
-                                .frame(height: 44)
-                                .background(Color(UIColor.secondarySystemBackground))
-                                .clipShape(Capsule())
-                        }
-                        .buttonStyle(.borderless)
+            Button(action: {
+                HapticManager.shared.light()
+                onSettle()
+            }) {
+                Text("Settle")
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(Color.backgroundPrimary)
+                    .padding(.horizontal, AppSpacing.margin)
+                    .frame(height: 44)
+                    .background(Color.primary)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.borderless)
                         
                         Button(action: {
                             HapticManager.shared.light()
@@ -787,10 +850,10 @@ struct GroupHeaderSection: View {
                             onLeaveGroup()
                         }) {
                             Image(systemName: "rectangle.portrait.and.arrow.right")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.secondary)
+                                .font(.headline)
+                                .foregroundColor(.white)
                                 .frame(width: 44, height: 44)
-                                .background(Color(UIColor.secondarySystemBackground))
+                                .background(Color.red)
                                 .clipShape(Circle())
                         }
                         .buttonStyle(.borderless)

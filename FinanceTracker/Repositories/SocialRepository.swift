@@ -188,7 +188,8 @@ class SocialRepository: ObservableObject {
                     icon: "arrow.left.arrow.right",
                     colorHex: isPayer ? "#34C759" : "#FF3B30",
                     note: req.status.rawValue,
-                    source: req.transactionId // Pass Original Transaction ID
+                    source: req.transactionId, // Pass Original Transaction ID
+                    originalAmount: req.originalTotalAmount // ✅ Pass the original full amount
                 )
             }
             
