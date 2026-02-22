@@ -11,6 +11,7 @@ struct GroupTransactionDetailView: View {
     
     @State private var splits: [FirestoreModels.SplitRequest] = []
     @State private var originalTransaction: FirestoreModels.TransactionModel?
+    @State private var showFullMap = false
     @State private var isLoading = true
     @State private var showHistory = false
     @State private var showingEditWizard = false
@@ -27,7 +28,7 @@ struct GroupTransactionDetailView: View {
                     subtitle: nil as String?,
                     onBack: { dismiss() },
                     backIcon: "xmark",
-                    onMenu: { showingEditWizard = true },
+                    onMenu: transaction.payerId == appState.currentUserId ? { showingEditWizard = true } : nil,
                     backgroundColor: Color.backgroundPrimary,
                     textColor: .primary,
                     height: AppSize.headerHeightSlim,
@@ -94,9 +95,10 @@ struct GroupTransactionDetailView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.top, AppSpacing.element)
                         
-                        // 2. Split Breakdown
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("SPLIT STATUS")
+                        if transaction.type != "settlement" {
+                            // 2. Split Breakdown
+                            VStack(alignment: .leading, spacing: 16) {
+                                Text("SPLIT STATUS")
                                 .font(.caption)
                                 .fontWeight(.bold)
                                 .foregroundColor(.secondary)
@@ -221,6 +223,7 @@ struct GroupTransactionDetailView: View {
                             }
                         }
                         .padding(.horizontal, AppSpacing.margin)
+                        }
                         
                         // 3. Details & Map Card (matches TransactionDetailView)
                         VStack(alignment: .leading, spacing: 16) {
@@ -232,11 +235,17 @@ struct GroupTransactionDetailView: View {
                             
                             VStack(spacing: 0) {
                                 // Map Header (Integrated into card)
-                                if let tx = originalTransaction, let lat = tx.latitude, let long = tx.longitude {
+                                if let lat = transaction.latitude ?? originalTransaction?.latitude,
+                                   let long = transaction.longitude ?? originalTransaction?.longitude {
                                     Map(initialPosition: .camera(MapCamera(centerCoordinate: CLLocationCoordinate2D(latitude: lat, longitude: long), distance: 500))) {
                                         Marker(transaction.title, coordinate: CLLocationCoordinate2D(latitude: lat, longitude: long))
                                     }
+                                    .allowsHitTesting(false)
                                     .frame(height: 140)
+                                    .overlay(
+                                        Color.black.opacity(0.001)
+                                            .onTapGesture { showFullMap = true }
+                                    )
                                     
                                     Divider()
                                 }
@@ -247,7 +256,7 @@ struct GroupTransactionDetailView: View {
                                 // Your Share
                                 let myShare = splits.first(where: { $0.toUid == appState.currentUserId })?.amount
                                     ?? (transaction.payerId == appState.currentUserId ? abs(transaction.amount) - splits.reduce(0) { $0 + $1.amount } : nil)
-                                if let share = myShare {
+                                if transaction.type != "settlement", let share = myShare {
                                     Divider().padding(.leading, 52)
                                     TransactionDetailRow(icon: "person.crop.circle", title: "Your Share", value: String(format: "$%.2f", share), color: .blue)
                                 }
@@ -348,6 +357,11 @@ struct GroupTransactionDetailView: View {
         .sheet(item: $selectedSplit, onDismiss: { loadSplits() }) { split in
             SplitRequestDetailView(request: split)
         }
+        .sheet(isPresented: $showFullMap) {
+            if let tx = originalTransaction, let lat = tx.latitude, let lon = tx.longitude {
+                FullScreenMapView(coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon), title: transaction.title)
+            }
+        }
     }
     
     // MARK: - Handlers
@@ -412,7 +426,7 @@ struct GroupTransactionDetailView: View {
         }
         Task {
             do {
-                splits = try await repo.fetchSplitsForTransaction(transactionId: queryId)
+                splits = try await repo.fetchSplitsForTransaction(transactionId: queryId, groupId: group?.id)
             } catch {
                 print("Error loading splits: \(error)")
             }

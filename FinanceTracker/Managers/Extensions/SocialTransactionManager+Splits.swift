@@ -29,6 +29,19 @@ private func declineSplitRequest(request: FirestoreModels.SplitRequest) async th
             "status": FirestoreModels.SplitRequest.RequestStatus.declined.rawValue,
             "lastUpdatedBy": updatedBy
         ])
+        
+        // Update Group Feed Status
+        if let groupId = request.groupId {
+             let groupTxs = try await db.collection("groups").document(groupId).collection("transactions")
+                 .whereField("originalTransactionId", isEqualTo: request.transactionId)
+                 .getDocuments()
+                 
+             if let groupTxDoc = groupTxs.documents.first {
+                 try await groupTxDoc.reference.updateData([
+                     "involvedUserStatuses.\(request.toUid)": FirestoreModels.SplitRequest.RequestStatus.declined.rawValue
+                 ])
+             }
+        }
     }
 
 func markSplitAsPaid(request: FirestoreModels.SplitRequest, currentUserId: String, currentUserName: String) async throws {
@@ -45,6 +58,15 @@ func markSplitAsPaid(request: FirestoreModels.SplitRequest, currentUserId: Strin
              groupRef = db.collection("groups").document(groupId).collection("transactions").document()
         } else {
              groupRef = nil
+        }
+        
+        // Pre-fetch GroupTx for the original transaction so we can update its status badge
+        var groupTxRefToUpdate: DocumentReference? = nil
+        if let groupId = request.groupId {
+             let existingGroupTxs = try await db.collection("groups").document(groupId).collection("transactions")
+                  .whereField("originalTransactionId", isEqualTo: request.transactionId)
+                  .getDocuments()
+             groupTxRefToUpdate = existingGroupTxs.documents.first?.reference
         }
         
         // Perform atomic transaction to avoid race conditions and hidden encoding errors
@@ -73,6 +95,13 @@ func markSplitAsPaid(request: FirestoreModels.SplitRequest, currentUserId: Strin
                     "status": FirestoreModels.SplitRequest.RequestStatus.paid.rawValue,
                     "lastUpdatedBy": currentUserId
                 ], forDocument: requestRef)
+                
+                // Update parent Group Transaction badge status
+                if let updateRef = groupTxRefToUpdate {
+                     transaction.updateData([
+                          "involvedUserStatuses.\(request.toUid)": FirestoreModels.SplitRequest.RequestStatus.paid.rawValue
+                     ], forDocument: updateRef)
+                }
                 
                 // 3. Create Group Settlement Notification
                 if let groupRef = groupRef {
@@ -119,6 +148,18 @@ func unmarkSplitAsPaid(request: FirestoreModels.SplitRequest, currentUserId: Str
             "lastUpdatedBy": currentUserId
         ], forDocument: requestRef)
         
+        // 1b. Update Group Feed Badge
+        if let groupId = request.groupId {
+             let existingGroupTxs = try await db.collection("groups").document(groupId).collection("transactions")
+                  .whereField("originalTransactionId", isEqualTo: request.transactionId)
+                  .getDocuments()
+             if let groupTxDoc = existingGroupTxs.documents.first {
+                  batch.updateData([
+                       "involvedUserStatuses.\(request.toUid)": FirestoreModels.SplitRequest.RequestStatus.pending.rawValue
+                  ], forDocument: groupTxDoc.reference)
+             }
+        }
+        
         // 2. Transaction cleanup (income + expense deletion, isPaid revert) is handled
         //    entirely by the Cloud Function to avoid race conditions.
         
@@ -133,7 +174,9 @@ func unmarkSplitAsPaid(request: FirestoreModels.SplitRequest, currentUserId: Str
             }
         }
         
-        try await batch.commit()
+        try await withRetry {
+            try await batch.commit()
+        }
     }
 
 func unmarkSplitAsPaid(request: FirestoreModels.SplitRequest) async throws {
@@ -189,7 +232,21 @@ func revertLinkedSplitIfNeeded(transaction: FirestoreModels.TransactionModel, cu
             // 4. Update Request Status
             batch.updateData(["status": newStatus.rawValue], forDocument: requestRef)
             
+            // 5. Update Group Feed Badge
+            if let groupId = request.groupId {
+                 let existingGroupTxs = try await db.collection("groups").document(groupId).collection("transactions")
+                      .whereField("originalTransactionId", isEqualTo: request.transactionId)
+                      .getDocuments()
+                 if let groupTxDoc = existingGroupTxs.documents.first {
+                      batch.updateData([
+                           "involvedUserStatuses.\(request.toUid)": newStatus.rawValue
+                      ], forDocument: groupTxDoc.reference)
+                 }
+            }
+            
+        try await withRetry {
             try await batch.commit()
+        }
             print("DEBUG: Reverted linked split for deleted income transaction \(transaction.id ?? "nil") to status: \(newStatus.rawValue)")
             return true
         } catch {

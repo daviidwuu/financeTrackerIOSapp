@@ -4,10 +4,10 @@ struct WalletView: View {
     @EnvironmentObject var appState: AppState
     
     // Repositories moved to AppState
-    var savingGoalRepo: SavingGoalRepository { appState.savingGoalRepo }
-    var recurringRepo: RecurringTransactionRepository { appState.recurringRepo }
-    var budgetRepo: BudgetRepository { appState.budgetRepo }
-    var transactionRepo: TransactionRepository { appState.transactionRepo }
+    @EnvironmentObject var savingGoalRepo: SavingGoalRepository
+    @EnvironmentObject var recurringRepo: RecurringTransactionRepository
+    @EnvironmentObject var budgetRepo: BudgetRepository
+    @EnvironmentObject var transactionRepo: TransactionRepository
     
     @State private var showAddSavingGoal = false
     @State private var showAddRecurring = false

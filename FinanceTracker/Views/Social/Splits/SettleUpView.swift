@@ -14,7 +14,7 @@ struct SettleUpView: View {
     // New Fields
     @State private var selectedCategoryId: String? = nil
     @State private var transactionNotes: String = ""
-    var budgetRepo: BudgetRepository { appState.budgetRepo }
+    @EnvironmentObject var budgetRepo: BudgetRepository
     
     let paymentMethods = ["Cash", "Venmo", "PayPal", "Bank Transfer", "Other"]
     

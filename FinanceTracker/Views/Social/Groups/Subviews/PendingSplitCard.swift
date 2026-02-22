@@ -29,7 +29,7 @@ struct PendingSplitCard: View {
                 .fill(accentColor.opacity(0.1))
                 .frame(width: 48, height: 48)
                 .overlay(
-                    Image(systemName: isSender ? "creditcard.fill" : "arrow.up.right")
+                    Image(systemName: split.isSettlement == true ? "arrow.left.arrow.right" : (isSender ? "creditcard.fill" : "arrow.up.right"))
                         .font(.headline)
                         .foregroundColor(accentColor)
                 )
@@ -54,17 +54,31 @@ struct PendingSplitCard: View {
                     }
                 }
                 
-                let note = split.note?.isEmpty == false ? split.note! : "Expense"
-                if isSender {
-                    Text("You requested $\(String(format: "%.2f", split.amount)) for \(note)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
+                if split.isSettlement == true {
+                    if isSender {
+                        Text("You paid $\(String(format: "%.2f", split.amount))")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    } else {
+                        Text("paid you $\(String(format: "%.2f", split.amount))")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
                 } else {
-                    Text("requests $\(String(format: "%.2f", split.amount)) for \(note)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
+                    let note = split.note?.isEmpty == false ? split.note! : "Expense"
+                    if isSender {
+                        Text("You requested $\(String(format: "%.2f", split.amount)) for \(note)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    } else {
+                        Text("requests $\(String(format: "%.2f", split.amount)) for \(note)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
                 }
                 
                 // Time

@@ -524,10 +524,15 @@ class SocialRepository: ObservableObject {
     
     // MARK: - Helper Read Methods
     
-    func fetchSplitsForTransaction(transactionId: String) async throws -> [FirestoreModels.SplitRequest] {
-        let snapshot = try await db.collection("split_requests")
+    func fetchSplitsForTransaction(transactionId: String, groupId: String? = nil) async throws -> [FirestoreModels.SplitRequest] {
+        var query: Query = db.collection("split_requests")
             .whereField("transactionId", isEqualTo: transactionId)
-            .getDocuments()
+            
+        if let groupId = groupId {
+            query = query.whereField("groupId", isEqualTo: groupId)
+        }
+        
+        let snapshot = try await query.getDocuments()
         
         return snapshot.documents.compactMap { try? $0.data(as: FirestoreModels.SplitRequest.self) }
     }

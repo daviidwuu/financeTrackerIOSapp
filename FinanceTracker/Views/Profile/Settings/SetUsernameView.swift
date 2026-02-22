@@ -134,7 +134,7 @@ struct SetUsernameView: View {
         
         Task {
             do {
-                guard let userId = FirebaseManager.shared.auth.currentUser?.uid else { return }
+                guard let userId = FirebaseManager.shared.currentUser?.uid else { return }
                 try await FirebaseManager.shared.updateUserProfile(userId: userId, data: ["username": username])
                 
                 await MainActor.run {

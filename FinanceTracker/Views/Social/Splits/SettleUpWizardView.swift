@@ -20,8 +20,8 @@ struct SettleUpWizardView: View {
     @State private var isSubmitting = false
     
     // Step 3 & 4
-    var budgetRepo: BudgetRepository { appState.budgetRepo }
-    var transactionRepo: TransactionRepository { appState.transactionRepo }
+    @EnvironmentObject var budgetRepo: BudgetRepository
+    @EnvironmentObject var transactionRepo: TransactionRepository
     @State private var selectedCategory: FirestoreModels.CategoryBudget?
     @State private var transactionNotes: String = ""
     
@@ -479,6 +479,13 @@ struct SettleUpWizardView: View {
         return "Member"
     }
     
+    /// Returns the REAL display name (not "You") for storing in Firestore.
+    /// This prevents the "You paid You" bug where "You" gets stored as-is.
+    private func getRealName(for id: String) -> String {
+        if id == appState.currentUserId { return appState.userName }
+        return getName(for: id)  // Other users already get real names
+    }
+    
     private func submit() {
         guard let amountVal = Double(amount) else { return }
         let categoryName = selectedCategory?.category ?? "Settlement"
@@ -495,8 +502,8 @@ struct SettleUpWizardView: View {
                     groupId: group?.id,
                     amount: amountVal,
                     currency: group?.defaultCurrency ?? CurrencyManager.shared.mainCurrency,
-                    payerName: getName(for: payerId),
-                    receiverName: getName(for: receiverId),
+                    payerName: getRealName(for: payerId),
+                    receiverName: getRealName(for: receiverId),
                     method: "Payment",
                     category: categoryName,
                     icon: icon,

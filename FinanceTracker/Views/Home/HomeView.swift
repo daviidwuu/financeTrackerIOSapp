@@ -10,11 +10,11 @@ struct HomeView: View {
     }
     
     // Repositories moved to AppState
-    var transactionRepo: TransactionRepository { appState.transactionRepo }
-    var budgetRepo: BudgetRepository { appState.budgetRepo }
-    var recurringRepo: RecurringTransactionRepository { appState.recurringRepo }
-    var requestRepo: RequestRepository { appState.requestRepo }
-    var friendRequestRepo: FriendRequestRepository { appState.friendRequestRepo }
+    @EnvironmentObject var transactionRepo: TransactionRepository
+    @EnvironmentObject var budgetRepo: BudgetRepository
+    @EnvironmentObject var recurringRepo: RecurringTransactionRepository
+    @EnvironmentObject var requestRepo: RequestRepository
+    @EnvironmentObject var friendRequestRepo: FriendRequestRepository
     
     @State private var showAddTransaction = false
     // showProfile moved to AppState
@@ -109,6 +109,7 @@ struct HomeView: View {
                                             .frame(width: 44, height: 44)
                                     }
                                 }
+                                .buttonStyle(.plain)
                                 
                                 
                                 Button(action: { 
@@ -124,6 +125,7 @@ struct HomeView: View {
                                                 .foregroundColor(.primary)
                                         )
                                 }
+                                .buttonStyle(.plain)
                                 
                             }
                             .padding(.top, 10)
@@ -162,7 +164,7 @@ struct HomeView: View {
                                         .frame(height: 24)
                                         .overlay(
                                             Capsule()
-                                                .fill(Color.white)
+                                                .fill(Color.primary)
                                                 .frame(width: min(geometry.size.width * (totalSpent / max(totalBudget, 0.01)), geometry.size.width))
                                         , alignment: .leading)
                                         .clipShape(Capsule())
@@ -257,10 +259,18 @@ struct HomeView: View {
                                 RequestCardView(
                                     request: request,
                                     onAccept: {
-                                        requestToAccept = request
+                                        if request.isSettlement == true {
+                                            acceptSettlement(request)
+                                        } else {
+                                            requestToAccept = request
+                                        }
                                     },
                                     onDecline: {
-                                        declineRequest(request)
+                                        if request.isSettlement == true {
+                                            declineSettlement(request)
+                                        } else {
+                                            declineRequest(request)
+                                        }
                                     }
                                 )
                                 .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
@@ -398,7 +408,7 @@ struct HomeView: View {
                     MissionHubView()
                         .environmentObject(appState)
                 }
-                .alert("Group Deleted", isPresented: Binding(
+                .alert("Group Deleted: Action Required", isPresented: Binding(
                     get: { groupForDeletionAction != nil },
                     set: { _ in groupForDeletionAction = nil }
                 )) {
@@ -570,8 +580,29 @@ struct HomeView: View {
         )
     }
 
-    
     // MARK: - Request Logic
+    
+    private func acceptSettlement(_ request: FirestoreModels.SplitRequest) {
+        HapticManager.shared.success()
+        Task {
+            do {
+                try await SocialTransactionManager.shared.acceptSettlement(request: request, currentUserId: appState.currentUserId, currentUserName: appState.userName)
+            } catch {
+                await MainActor.run { HapticManager.shared.error() }
+            }
+        }
+    }
+    
+    private func declineSettlement(_ request: FirestoreModels.SplitRequest) {
+        HapticManager.shared.heavy()
+        Task {
+            do {
+                try await SocialTransactionManager.shared.declineSettlement(request: request)
+            } catch {
+                await MainActor.run { HapticManager.shared.error() }
+            }
+        }
+    }
     
     private func acceptRequest(_ request: FirestoreModels.SplitRequest, transaction: TransactionFormData) {
         // 1. Add the transaction

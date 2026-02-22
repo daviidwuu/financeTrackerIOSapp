@@ -11,67 +11,85 @@ struct GroupTransactionRow: View {
     @EnvironmentObject var appState: AppState
     
     var body: some View {
-        HStack(spacing: AppSpacing.element) {
-            CategoryIconView(
-                category: transaction.category,
-                iconOverride: transaction.icon,
-                colorOverride: transaction.colorHex,
-                type: transaction.type
-            )
+        let displayTitle = (transaction.note?.isEmpty == false) ? transaction.note! : transaction.title
+        let payerName = (transaction.payerId == currentUserId) ? "You" : transaction.payerName
+        
+        let subtitle: String
+        let statusBadge: String?
+        
+        if transaction.type == "settlement" {
+            // Determine settlement status from involvedUserStatuses
+            if let statuses = transaction.involvedUserStatuses,
+               let receiverId = transaction.receiverId {
+                let receiverStatus = statuses[receiverId] ?? "pending"
+                statusBadge = receiverStatus == "paid" ? "Paid" : receiverStatus == "declined" ? "Declined" : "Pending"
+            } else {
+                statusBadge = "Pending"
+            }
             
-            VStack(alignment: .leading, spacing: 4) {
-                let displayTitle = (transaction.note?.isEmpty == false) ? transaction.note! : transaction.title
-                Text(displayTitle)
-                    .font(.body)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
-                
-                let payerName = (transaction.payerId == currentUserId) ? "You" : transaction.payerName
-                HStack(spacing: 4) {
-                    if transaction.type == "settlement" {
-                        if let receiver = transaction.receiverName {
-                            // If receiver is me, show "You"
-                            // If payer is me, show "You paid X"
-                            let receiverDisplay: String = {
-                                if let rid = transaction.receiverId, rid == appState.currentUserId {
-                                    return "You"
-                                } else if receiver == appState.userName {
-                                    return "You"
-                                }
-                                return receiver
-                            }()
-                            
-                            Text("\(payerName) paid \(receiverDisplay)")
-                                .font(.caption)
-                                .fontWeight(.bold)
-                                .foregroundColor(.green)
-                        } else {
-                            Text("\(payerName) paid settlement")
-                                .font(.caption)
-                                .fontWeight(.bold)
-                                .foregroundColor(.green)
-                        }
-                    } else {
-                        Text("\(payerName) paid")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+            // Build subtitle: "You paid X" / "X paid you" / "X paid Y"
+            let receiverDisplay: String = {
+                if let rid = transaction.receiverId, rid == currentUserId {
+                    return "you"
+                } else if let rname = transaction.receiverName {
+                    return rname
+                }
+                return "settlement"
+            }()
+            
+            if transaction.payerId == currentUserId {
+                subtitle = "You paid \(receiverDisplay)"
+            } else if transaction.receiverId == currentUserId {
+                subtitle = "\(transaction.payerName) paid you"
+            } else {
+                subtitle = "\(transaction.payerName) paid \(receiverDisplay)"
+            }
+        } else {
+            var dynamicBadge: String? = nil
+            
+            if let statuses = transaction.involvedUserStatuses, !statuses.isEmpty {
+                if transaction.payerId == appState.currentUserId {
+                    // Current User is the Payer
+                    let hasPending = statuses.values.contains("pending") || statuses.values.contains("declined")
+                    dynamicBadge = hasPending ? "Awaiting Payments" : "Fully Settled"
+                } else if let myStatus = statuses[appState.currentUserId] {
+                    // Current User is a Debtor
+                    if myStatus == "pending" {
+                        dynamicBadge = "You Owe"
+                    } else if myStatus == "paid" {
+                        dynamicBadge = "Paid"
                     }
                 }
             }
             
-            Spacer()
-            
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("$\(String(format: "%.2f", abs(transaction.amount)))")
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(transaction.type == "settlement" || transaction.type == "income" ? .green : .primary)
-                
-                Text(transaction.date.formatted(date: .abbreviated, time: .omitted))
-                    .font(.caption2)
-                    .foregroundColor(.tertiaryLabel)
-            }
+            statusBadge = dynamicBadge
+            subtitle = "\(payerName) paid"
         }
-        .padding(AppSpacing.element)
+        
+        // Settlement color: expense for payer, income for receiver
+        let amountColor: Color = {
+            if transaction.type == "settlement" {
+                if transaction.payerId == currentUserId {
+                    return .primary // Expense color for payer
+                } else if transaction.receiverId == currentUserId {
+                    return .green // Income color for receiver
+                }
+                return .primary
+            }
+            return (transaction.type == "income") ? .green : .primary
+        }()
+        
+        return SocialTransactionCardView(
+            title: displayTitle,
+            subtitle: subtitle,
+            amount: transaction.amount,
+            date: transaction.date,
+            type: transaction.type,
+            category: transaction.category,
+            iconName: transaction.icon,
+            colorHex: transaction.colorHex,
+            amountColor: amountColor,
+            statusBadge: statusBadge
+        )
     }
 }

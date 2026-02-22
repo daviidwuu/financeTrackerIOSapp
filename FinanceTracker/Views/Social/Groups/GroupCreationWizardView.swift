@@ -16,7 +16,7 @@ struct GroupCreationWizardView: View {
     
     // Repositories
     // Use shared repo to ensure friends list is up-to-date with SocialDashboard
-    var friendRepo: FriendRepository { appState.friendRepo }
+    @EnvironmentObject var friendRepo: FriendRepository
     // Using local request for search is fine, but for guests we want shared.
     
     // State

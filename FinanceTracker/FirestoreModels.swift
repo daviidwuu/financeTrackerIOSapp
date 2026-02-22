@@ -365,6 +365,9 @@ enum FirestoreModels {
         var originalTransactionId: String? // Linked to the user's private transaction
         var originalAmount: Double? // ✅ NEW: Foreign currency amount
         var exchangeRate: Double? // ✅ NEW: Exchange rate used
+        var latitude: Double? // ✅ NEW: Maps location support
+        var longitude: Double? // ✅ NEW: Maps location support
+        var involvedUserStatuses: [String: String]? // ✅ NEW: Maps userId to RequestStatus string
         var editHistory: [EditRecord]? // ✅ NEW: Track changes
         
         enum CodingKeys: String, CodingKey {
@@ -385,6 +388,9 @@ enum FirestoreModels {
             case originalTransactionId
             case originalAmount
             case exchangeRate
+            case latitude
+            case longitude
+            case involvedUserStatuses
             case editHistory
         }
     }
@@ -407,6 +413,9 @@ enum FirestoreModels {
         var hiddenFor: [String]? // ✅ NEW: User IDs who have hidden this split from their view
         var originalTotalAmount: Double? // ✅ NEW: Full pre-split expense total
         var isGuest: Bool? // FIX 3.5: Flag to distinguish guest split requests
+        var isSettlement: Bool? // Flag to distinguish settlement requests from regular splits
+        var latitude: Double? // ✅ NEW: Maps location support
+        var longitude: Double? // ✅ NEW: Maps location support
         var createdAt: Date
         
         enum RequestStatus: String, Codable {
@@ -442,6 +451,9 @@ enum FirestoreModels {
             case hiddenFor
             case originalTotalAmount
             case isGuest
+            case isSettlement
+            case latitude
+            case longitude
             case createdAt
         }
     }

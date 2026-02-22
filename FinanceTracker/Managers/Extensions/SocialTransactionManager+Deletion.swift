@@ -20,7 +20,9 @@ func deleteSocialTransaction(groupTransaction: FirestoreModels.GroupTransaction,
                      let ref = db.collection("groups").document(groupId).collection("transactions").document(txId)
                      batch.deleteDocument(ref)
                 }
-                try await batch.commit()
+                try await withRetry {
+                    try await batch.commit()
+                }
             }
             return
         }
@@ -39,7 +41,9 @@ func deleteSocialTransaction(groupTransaction: FirestoreModels.GroupTransaction,
         
         // If no original transaction is linked (e.g. legacy settlement), we are done.
         guard let originalTxId = groupTransaction.originalTransactionId else {
-            try await batch.commit()
+            try await withRetry {
+                try await batch.commit()
+            }
             return
         }
         
@@ -67,7 +71,9 @@ func deleteSocialTransaction(groupTransaction: FirestoreModels.GroupTransaction,
         // We stop here to avoid permission errors.
         if let currentUserId = currentUserId, currentUserId != groupTransaction.payerId {
             print("⚠️ User \(currentUserId) is not the payer (\(groupTransaction.payerId)). Skipping private transaction deletion.")
-            try await batch.commit()
+            try await withRetry {
+                try await batch.commit()
+            }
             return
         }
         
@@ -99,7 +105,9 @@ func deleteSocialTransaction(groupTransaction: FirestoreModels.GroupTransaction,
         
         batch.deleteDocument(userTxRef)
         
-        try await batch.commit()
+        try await withRetry {
+            try await batch.commit()
+        }
     }
 
 func deleteSocialTransaction(transaction: FirestoreModels.TransactionModel) async throws {
@@ -181,7 +189,9 @@ func deleteSocialTransaction(transaction: FirestoreModels.TransactionModel) asyn
         
         batch.deleteDocument(transactionRef)
         
-        try await batch.commit()
+        try await withRetry {
+            try await batch.commit()
+        }
     }
 
 func deleteSplitRequestAndSync(request: FirestoreModels.SplitRequest) async throws {
@@ -243,7 +253,9 @@ func deleteSplitRequestAndSync(request: FirestoreModels.SplitRequest) async thro
         // Ideally, we might want to update the Group Transaction amount if it was a "split by amounts".
         // But for "Split equally", the total was the total.
         
-        try await batch.commit()
+        try await withRetry {
+            try await batch.commit()
+        }
     }
 
 }

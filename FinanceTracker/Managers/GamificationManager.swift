@@ -297,6 +297,7 @@ class GamificationManager: ObservableObject {
         guard points >= reward.cost else { return }
         
         // 2. Deduct Points (Optimistic)
+        let originalPoints = points
         points -= reward.cost
         
         // 3. Create Redemption
@@ -310,20 +311,55 @@ class GamificationManager: ObservableObject {
         )
         
         redemptions.insert(redemption, at: 0)
+        HapticManager.shared.success()
         
-        // 4. Persist to Firebase
+        // 4. Persist to Firebase securely using Transaction
         guard let userId = AppState.shared.currentUserId as String?, !userId.isEmpty else { return }
         let docRef = db.collection("users").document(userId)
         
-        // Update points
-        docRef.updateData([
-            "points": FieldValue.increment(Int64(-reward.cost))
-        ])
-        
-        // Save redemption (Subcollection)
-        try? docRef.collection("redemptions").document(redemption.id).setData(from: redemption)
-        
-        HapticManager.shared.success()
+        Task {
+            do {
+                try await db.runTransaction { (transaction, errorPointer) -> Any? in
+                    let doc: DocumentSnapshot
+                    do {
+                        doc = try transaction.getDocument(docRef)
+                    } catch let fetchError as NSError {
+                        errorPointer?.pointee = fetchError
+                        return nil
+                    }
+                    
+                    let currentPoints = doc.data()?["points"] as? Int ?? 0
+                    
+                    if currentPoints < reward.cost {
+                        let error = NSError(domain: "Gamification", code: 400, userInfo: [NSLocalizedDescriptionKey: "Insufficient points"])
+                        errorPointer?.pointee = error
+                        return nil
+                    }
+                    
+                    // Deduct points safely
+                    transaction.updateData(["points": currentPoints - reward.cost], forDocument: docRef)
+                    
+                    // Save redemption (Subcollection)
+                    let redemptionRef = docRef.collection("redemptions").document(redemption.id)
+                    do {
+                        try transaction.setData(from: redemption, forDocument: redemptionRef)
+                    } catch let encodeError as NSError {
+                        errorPointer?.pointee = encodeError
+                        return nil
+                    }
+                    return true
+                }
+            } catch {
+                DebugLogger.log("Redemption transaction failed: \(error)")
+                // Rollback optimistic updates on failure
+                DispatchQueue.main.async {
+                    self.points = originalPoints
+                    if let index = self.redemptions.firstIndex(where: { $0.id == redemption.id }) {
+                        self.redemptions.remove(at: index)
+                    }
+                }
+            }
+        }
     }
     
     private func generateRedemptionCode() -> String {

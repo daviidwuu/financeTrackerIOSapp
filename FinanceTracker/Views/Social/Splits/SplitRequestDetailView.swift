@@ -12,6 +12,7 @@ struct SplitRequestDetailView: View {
     @State private var originalTransaction: FirestoreModels.TransactionModel?
     @State private var allSplits: [FirestoreModels.SplitRequest] = []
     @State private var showAcceptWizard = false
+    @State private var showFullMap = false
     
     // Derived Properties
     private var isIncoming: Bool { request.toUid == appState.currentUserId }
@@ -103,11 +104,17 @@ struct SplitRequestDetailView: View {
                             
                             VStack(spacing: 0) {
                                 // Map Header (integrated into card)
-                                if let tx = originalTransaction, let lat = tx.latitude, let long = tx.longitude {
+                                if let lat = request.latitude ?? originalTransaction?.latitude,
+                                   let long = request.longitude ?? originalTransaction?.longitude {
                                     Map(initialPosition: .camera(MapCamera(centerCoordinate: CLLocationCoordinate2D(latitude: lat, longitude: long), distance: 500))) {
                                         Marker(request.note ?? "Location", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: long))
                                     }
+                                    .allowsHitTesting(false)
                                     .frame(height: 140)
+                                    .overlay(
+                                        Color.black.opacity(0.001)
+                                            .onTapGesture { showFullMap = true }
+                                    )
                                     
                                     Divider()
                                 }
@@ -404,6 +411,11 @@ struct SplitRequestDetailView: View {
                 }
             })
         }
+        .sheet(isPresented: $showFullMap) {
+            if let tx = originalTransaction, let lat = tx.latitude, let lon = tx.longitude {
+                FullScreenMapView(coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon), title: request.note ?? "Location")
+            }
+        }
     }
 
     private func loadOriginalTransaction() {
@@ -438,10 +450,14 @@ struct SplitRequestDetailView: View {
     
     private func loadAllSplits() {
         Task {
-            do {
-                allSplits = try await repo.fetchSplitsForTransaction(transactionId: request.transactionId)
-            } catch {
-                print("Error loading splits: \(error)")
+            if let groupId = request.groupId {
+                do {
+                    allSplits = try await repo.fetchSplitsForTransaction(transactionId: request.transactionId, groupId: groupId)
+                } catch {
+                    print("Error loading splits: \(error)")
+                }
+            } else {
+                allSplits = [request]
             }
         }
     }

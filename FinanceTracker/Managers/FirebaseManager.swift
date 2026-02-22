@@ -8,8 +8,8 @@ import FirebaseFirestore
 class FirebaseManager: ObservableObject {
     static let shared = FirebaseManager()
     
-    let auth: Auth
-    let db: Firestore
+    private let auth: Auth
+    private let db: Firestore
     
     @Published var currentUser: User?
     @Published var isAuthenticated = false
@@ -46,7 +46,16 @@ class FirebaseManager: ObservableObject {
     
     /// Check if a username is available
     func checkUsernameAvailability(_ username: String) async throws -> Bool {
+        if username.contains(" ") {
+            return false
+        }
         do {
+            let doc = try await db.collection("usernames").document(username.lowercased()).getDocument()
+            if doc.exists {
+                return false
+            }
+            
+            // Fallback for existing users who might not be in the usernames collection
             let snapshot = try await db.collection("users")
                 .whereField("username", isEqualTo: username)
                 .limit(to: 1)
@@ -70,6 +79,9 @@ class FirebaseManager: ObservableObject {
     /// Sign up a new user with email, password, and username
     func signUp(email: String, password: String, name: String, username: String) async throws -> User {
         // 1. Final check on username availability
+        if username.contains(" ") {
+            throw NSError(domain: "Auth", code: 400, userInfo: [NSLocalizedDescriptionKey: "Username cannot contain spaces"])
+        }
         let isAvailable = try await checkUsernameAvailability(username)
         guard isAvailable else {
             throw NSError(domain: "Auth", code: 409, userInfo: [NSLocalizedDescriptionKey: "Username is already taken"])
@@ -95,7 +107,34 @@ class FirebaseManager: ObservableObject {
             user = result.user
         }
         
-        // 3. Create user profile in Firestore
+        // 3. Register username atomically
+        let usernameRef = db.collection("usernames").document(username.lowercased())
+        do {
+            _ = try await db.runTransaction { (transaction, errorPointer) -> Any? in
+                let doc: DocumentSnapshot
+                do {
+                    doc = try transaction.getDocument(usernameRef)
+                } catch let fetchError as NSError {
+                    errorPointer?.pointee = fetchError
+                    return nil
+                }
+                
+                if doc.exists {
+                    let error = NSError(domain: "Auth", code: 409, userInfo: [NSLocalizedDescriptionKey: "Username is already taken"])
+                    errorPointer?.pointee = error
+                    return nil
+                }
+                
+                transaction.setData(["uid": user.uid, "createdAt": FieldValue.serverTimestamp()], forDocument: usernameRef)
+                return true
+            }
+        } catch {
+            // If username registration fails, clean up the auth user
+            try? await user.delete()
+            throw error
+        }
+        
+        // 4. Create user profile in Firestore
         try await createUserProfile(userId: user.uid, name: name, email: email, username: username)
         
         return user
@@ -119,6 +158,44 @@ class FirebaseManager: ObservableObject {
     /// Delete current user account
     func deleteUser() async throws {
         guard let user = auth.currentUser else { return }
+        let userId = user.uid
+        
+        // 1. Client-side best-effort deletion of user data
+        let batch = db.batch()
+        let userRef = db.collection("users").document(userId)
+        batch.deleteDocument(userRef)
+        
+        if let transactions = try? await userRef.collection("transactions").limit(to: 500).getDocuments() {
+            for doc in transactions.documents {
+                batch.deleteDocument(doc.reference)
+            }
+        }
+        
+        if let budgets = try? await userRef.collection("budgets").limit(to: 500).getDocuments() {
+            for doc in budgets.documents {
+                batch.deleteDocument(doc.reference)
+            }
+        }
+        
+        if let recurring = try? await userRef.collection("recurring_transactions").limit(to: 500).getDocuments() {
+            for doc in recurring.documents {
+                batch.deleteDocument(doc.reference)
+            }
+        }
+        
+        if let currentUsername = currentUserUsername {
+            let usernameRef = db.collection("usernames").document(currentUsername.lowercased())
+            batch.deleteDocument(usernameRef)
+        }
+        
+        do {
+            try await batch.commit()
+            DebugLogger.log("Successfully deleted user data from Firestore")
+        } catch {
+            DebugLogger.log("Failed to clean up user data before deletion: \(error)")
+        }
+        
+        // 2. Delete the auth user
         try await user.delete()
     }
     

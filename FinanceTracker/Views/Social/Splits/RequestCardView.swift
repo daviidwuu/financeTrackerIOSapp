@@ -14,7 +14,7 @@ struct RequestCardView: View {
                 .fill(Color.orange.opacity(0.1))
                 .frame(width: 48, height: 48)
                 .overlay(
-                    Image(systemName: "banknote.fill")
+                    Image(systemName: request.isSettlement == true ? "arrow.left.arrow.right" : "banknote.fill")
                         .font(.headline)
                         .foregroundColor(.orange)
                 )
@@ -31,17 +31,29 @@ struct RequestCardView: View {
                     return "Friend"
                 }()
                 
-                Text(senderName)
-                    .font(.body)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
-                
-                // Secondary Info: Request Details
-                let note = request.note?.isEmpty == false ? request.note! : "Expense"
-                Text("requests $\(String(format: "%.2f", abs(request.amount))) for \(note)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
+                if request.isSettlement == true {
+                    Text("Settlement")
+                        .font(.body)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                    
+                    Text("\(senderName) paid you $\(String(format: "%.2f", abs(request.amount)))")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                } else {
+                    Text(senderName)
+                        .font(.body)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                    
+                    // Secondary Info: Request Details
+                    let note = request.note?.isEmpty == false ? request.note! : "Expense"
+                    Text("requests $\(String(format: "%.2f", abs(request.amount))) for \(note)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
                 
                 // Timestamp
                 Text("Requested \(timeAgo(from: request.createdAt))")

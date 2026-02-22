@@ -11,6 +11,7 @@ class BudgetRepository: ObservableObject {
     @Published var errorMessage: String? = nil
     
     private var userId: String?
+    private var isCreatingIncomeDefault = false
     
     private var listener: ListenerRegistration?
     
@@ -96,13 +97,15 @@ class BudgetRepository: ObservableObject {
                 self.updateWidgetData(budgets: uniqueBudgets)
                 
                 // Ensure default "Income" category exists (if not present in unique list)
-                if !uniqueBudgets.contains(where: { $0.category == "Income" }) {
+                if !uniqueBudgets.contains(where: { $0.category == "Income" }), !self.isCreatingIncomeDefault {
+                    self.isCreatingIncomeDefault = true
                     Task { [weak self] in
                         guard let self = self else { return }
                         // Use start of current month
                         let calendar = Calendar.current
                         let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
                         await self.createDefaultIncomeCategory(userId: userId, monthStartDate: startOfMonth)
+                        self.isCreatingIncomeDefault = false
                     }
                 }
             }
@@ -132,6 +135,7 @@ class BudgetRepository: ObservableObject {
         listener?.remove()
         userId = nil
         budgets = []
+        isCreatingIncomeDefault = false
     }
     
     func addBudget(_ budget: FirestoreModels.CategoryBudget) async throws {

@@ -23,11 +23,11 @@ struct NotificationContent {
         case .motivational:
             return getMotivationalMessage(name: name, hour: hour)
         case .billDue(let billName, let amount):
-            return ("Bill Due Tomorrow!", "Don't forget: \(billName) ($\(Int(amount))) is due tomorrow. Make sure you have funds ready, \(name).")
+            return ("Bill Due Tomorrow!", "Don't forget: \(billName) ($\(String(format: "%.2f", amount))) is due tomorrow. Make sure you have funds ready, \(name).")
         case .streakWarning(let days):
             return ("Streak Risk! 🔥", "You haven't logged a transaction in \(days) hours. Open the app to keep your streak alive, \(name)!")
         case .largeExpense(let amount):
-            return ("Large Expense Detected", "Whoa, huge spend of $\(Int(amount))! Make sure this was planned, \(name).")
+            return ("Large Expense Detected", "Whoa, huge spend of $\(String(format: "%.2f", amount))! Make sure this was planned, \(name).")
         case .budgetHit(let category, let percent):
             return ("Budget Alert ⚠️", "You've hit \(percent)% of your \(category) budget. Tread carefully for the rest of the month, \(name).")
         }

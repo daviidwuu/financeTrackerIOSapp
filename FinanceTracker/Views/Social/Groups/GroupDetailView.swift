@@ -103,9 +103,17 @@ struct GroupDetailView: View {
                                 VStack(spacing: 12) {
                                     ForEach(receiverSplits) { split in
                                         PendingSplitCard(split: split, userId: appState.currentUserId, onToggle: {
-                                            requestToAccept = split // Open wizard instead of marking paid
+                                            if split.isSettlement == true {
+                                                acceptSettlement(split)
+                                            } else {
+                                                requestToAccept = split // Open wizard instead of marking paid
+                                            }
                                         }, onDelete: {
-                                            splitToDelete = split
+                                            if split.isSettlement == true {
+                                                declineSettlement(split)
+                                            } else {
+                                                splitToDelete = split
+                                            }
                                         })
                                         .onTapGesture { activeSheet = .splitDetail(split) }
                                     }
@@ -577,6 +585,42 @@ struct GroupDetailView: View {
                 await MainActor.run { 
                     HapticManager.shared.error()
                     // Revert
+                    pendingSplits.append(split)
+                }
+            }
+        }
+    }
+    
+    private func acceptSettlement(_ split: FirestoreModels.SplitRequest) {
+        HapticManager.shared.success()
+        withAnimation {
+            pendingSplits.removeAll { $0.id == split.id }
+        }
+        Task {
+            do {
+                try await SocialTransactionManager.shared.acceptSettlement(request: split, currentUserId: appState.currentUserId, currentUserName: appState.userName)
+                await MainActor.run { loadGroupData() }
+            } catch {
+                await MainActor.run {
+                    HapticManager.shared.error()
+                    pendingSplits.append(split)
+                }
+            }
+        }
+    }
+    
+    private func declineSettlement(_ split: FirestoreModels.SplitRequest) {
+        HapticManager.shared.heavy()
+        withAnimation {
+            pendingSplits.removeAll { $0.id == split.id }
+        }
+        Task {
+            do {
+                try await SocialTransactionManager.shared.declineSettlement(request: split)
+                await MainActor.run { loadGroupData() }
+            } catch {
+                await MainActor.run {
+                    HapticManager.shared.error()
                     pendingSplits.append(split)
                 }
             }

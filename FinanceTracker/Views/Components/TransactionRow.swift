@@ -3,7 +3,7 @@ import SwiftUI
 struct TransactionRow: View {
     let transaction: FirestoreModels.TransactionModel
     // Use shared repo from AppState
-    var budgetRepo: BudgetRepository { appState.budgetRepo }
+    @EnvironmentObject var budgetRepo: BudgetRepository
     @EnvironmentObject var appState: AppState
     
     // Dynamic lookup of category icon/color

@@ -72,7 +72,27 @@ class RequestRepository: ObservableObject {
         if let updatedBy = lastUpdatedBy {
             updateData["lastUpdatedBy"] = updatedBy
         }
-        try await db.collection("split_requests").document(requestId).updateData(updateData)
+        
+        // 1. Fetch Request to see if it belongs to a group
+        let requestRef = db.collection("split_requests").document(requestId)
+        if let requestDoc = try? await requestRef.getDocument(),
+           let request = try? requestDoc.data(as: FirestoreModels.SplitRequest.self),
+           let groupId = request.groupId {
+            
+            // 2. Update Group Transaction optionally
+            let groupTxs = try await db.collection("groups").document(groupId).collection("transactions")
+                .whereField("originalTransactionId", isEqualTo: request.transactionId)
+                .getDocuments()
+                
+            if let groupTxDoc = groupTxs.documents.first {
+                try await groupTxDoc.reference.updateData([
+                    "involvedUserStatuses.\(request.toUid)": status.rawValue
+                ])
+            }
+        }
+        
+        // 3. Commit root update
+        try await requestRef.updateData(updateData)
     }
     
     func deleteRequest(requestId: String) async throws {

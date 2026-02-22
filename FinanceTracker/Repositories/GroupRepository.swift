@@ -139,9 +139,7 @@ class GroupRepository: ObservableObject {
                 batch.deleteDocument(doc.reference)
             }
             
-            // Delete Personal Transactions linked to this group (via linked requests or manual query?)
-            // Since TransactionModel doesn't have groupId, we rely on finding them via the requests we just found.
-            // But wait, if we delete requests first, we lose the link? No, we have the docs.
+            // Delete Personal Transactions linked to this group
             let transactionIds = requests.documents.compactMap { $0.data()["transactionId"] as? String }
             let uniqueTxIds = Set(transactionIds)
             
@@ -151,26 +149,44 @@ class GroupRepository: ObservableObject {
             }
         }
         
-        // 2. Update Member Action Status
-        // Use dot notation to update specific key in map
-        batch.updateData(["memberActions.\(userId)": action], forDocument: groupRef)
-        
+        // Execute batch for user's personal data cleanup first
         try await batch.commit()
         
-        // 3. Check if all members are done -> Final Hard Delete
-        // We fetch the latest group data to check
-        let updatedGroupSnapshot = try await groupRef.getDocument()
-        if let updatedGroup = try? updatedGroupSnapshot.data(as: FirestoreModels.Group.self),
-           let actions = updatedGroup.memberActions {
+        // 2. Perform atomic update for Group membership and check for completion
+        let result = try await db.runTransaction { (transaction, errorPointer) -> Any? in
+            let doc: DocumentSnapshot
+            do {
+                doc = try transaction.getDocument(groupRef)
+            } catch let fetchError as NSError {
+                errorPointer?.pointee = fetchError
+                return nil
+            }
             
-            let allComplete = updatedGroup.members.allSatisfy { memberId in
+            guard let groupData = try? doc.data(as: FirestoreModels.Group.self) else { return false }
+            
+            var actions = groupData.memberActions ?? [:]
+            actions[userId] = action
+            
+            // After this user finishes, check if all original members have acted.
+            // Note: We check against groupData.members (which still includes the user in the snapshot).
+            let allComplete = groupData.members.allSatisfy { memberId in
+                if memberId == userId { return true } // This user just acted
                 let status = actions[memberId]
                 return status == "keep" || status == "delete"
             }
             
-            if allComplete {
-                try await finalizeGroupDeletion(groupId: groupId)
-            }
+            transaction.updateData([
+                "memberActions.\(userId)": action,
+                "members": FieldValue.arrayRemove([userId]),
+                "memberNames.\(userId)": FieldValue.delete()
+            ], forDocument: groupRef)
+            
+            return allComplete
+        }
+        
+        // 3. Check if all members are done -> Final Hard Delete
+        if let allComplete = result as? Bool, allComplete {
+            try await finalizeGroupDeletion(groupId: groupId)
         }
     }
     

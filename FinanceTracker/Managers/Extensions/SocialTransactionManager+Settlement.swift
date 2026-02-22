@@ -52,10 +52,11 @@ extension SocialTransactionManager {
              amount: amount,
              currency: currency ?? CurrencyManager.shared.mainCurrency, // FIX 1.2: Store settlement currency
              note: displayNote,
-             status: .paid, // Mark as PAID immediately so it triggers the Cloud Function
+             status: .pending, // ✅ CHANGED: Pending until receiver accepts
              dependencyId: nil,
              lastNudgedAt: nil,
              originalTotalAmount: amount, // Settlement = full amount
+             isSettlement: true, // ✅ NEW: Flag for settlement-specific UI
              createdAt: Date()
         )
         
@@ -80,33 +81,153 @@ extension SocialTransactionManager {
                 icon: icon,
                 colorHex: colorHex,
                 originalTransactionId: payerRef.documentID, // Linked to payer transaction
+                involvedUserStatuses: [receiverId: "pending"], // ✅ NEW: Track receiver's status
                 editHistory: nil
             )
             try batch.setData(from: groupTx, forDocument: groupRef)
         }
         
-        // 4. Mark existing pending splits between these users as paid
-        // Find splits where the receiver (creditor) split bills with the payer (debtor)
+        // ✅ REMOVED: Immediate cascade of pending splits.
+        // The cascade now happens only when User B accepts the settlement
+        // via acceptSettlement(), ensuring User B has a chance to verify.
+        
+        // FIX #18: Use retry with exponential backoff for the critical settlement commit
+        try await withRetry {
+            try await batch.commit()
+        }
+    }
+
+    // MARK: - Settlement Acceptance / Decline
+    
+    /// Called by User B (receiver) when they accept a settlement.
+    /// Creates an income transaction for User B, marks the settlement request as paid,
+    /// then cascades a partial settle to outstanding splits between these users.
+    func acceptSettlement(request: FirestoreModels.SplitRequest, currentUserId: String, currentUserName: String) async throws {
+        guard let requestId = request.id else { return }
+        
+        let batch = db.batch()
+        
+        // 1. Mark the settlement request as paid
+        let requestRef = db.collection("split_requests").document(requestId)
+        batch.updateData([
+            "status": FirestoreModels.SplitRequest.RequestStatus.paid.rawValue,
+            "lastUpdatedBy": currentUserId
+        ], forDocument: requestRef)
+        
+        // 2. Create income transaction for User B (receiver)
+        let incomeRef = db.collection("users").document(currentUserId).collection("transactions").document()
+        let incomeTransaction = FirestoreModels.TransactionModel(
+            id: incomeRef.documentID,
+            userId: currentUserId,
+            title: "Settlement from \(request.fromName ?? "Friend")",
+            subtitle: "Income",
+            amount: request.amount, // Positive = income
+            date: Date(),
+            type: "income",
+            createdAt: Date(),
+            icon: "dollarsign.circle.fill",
+            colorHex: "#34C759",
+            note: "Settlement from \(request.fromName ?? "Friend")"
+        )
+        try batch.setData(from: incomeTransaction, forDocument: incomeRef)
+        
+        // 3. Update group feed status badge (if group settlement)
+        if let groupId = request.groupId {
+            let groupTxs = try await db.collection("groups").document(groupId).collection("transactions")
+                .whereField("originalTransactionId", isEqualTo: request.transactionId)
+                .getDocuments()
+            if let groupTxDoc = groupTxs.documents.first {
+                batch.updateData([
+                    "involvedUserStatuses.\(currentUserId)": FirestoreModels.SplitRequest.RequestStatus.paid.rawValue
+                ], forDocument: groupTxDoc.reference)
+            }
+        }
+        
+        // 4. Cascade: Partially settle outstanding splits (oldest first)
+        // Find pending splits where receiver (creditor) has bills with payer (debtor)
         let pendingSplits = try await db.collection("split_requests")
-            .whereField("fromUid", isEqualTo: receiverId)
-            .whereField("toUid", isEqualTo: payerId)
+            .whereField("fromUid", isEqualTo: currentUserId) // Receiver is the creditor
+            .whereField("toUid", isEqualTo: request.fromUid) // Payer is the debtor
             .whereField("status", isEqualTo: FirestoreModels.SplitRequest.RequestStatus.pending.rawValue)
             .getDocuments()
         
-        for doc in pendingSplits.documents {
-             // FIX 1.2: Only settle splits matching the settlement currency
-             if let settleCurrency = currency,
-                let splitCurrency = doc.data()["currency"] as? String,
-                splitCurrency != settleCurrency {
-                 continue // Skip splits in different currencies
-             }
-             batch.updateData(["status": FirestoreModels.SplitRequest.RequestStatus.paid.rawValue, "lastUpdatedBy": payerId], forDocument: doc.reference)
-             
-             // NOTE: We do NOT update the original transaction here. 
-             // The Cloud Function will pick up this status change and sync it to the Creditor's transaction.
+        var remainingAmount = request.amount
+        
+        // Sort by createdAt ascending (oldest first)
+        let sortedDocs = pendingSplits.documents.sorted { doc1, doc2 in
+            let date1 = (doc1.data()["createdAt"] as? Timestamp)?.dateValue() ?? Date.distantPast
+            let date2 = (doc2.data()["createdAt"] as? Timestamp)?.dateValue() ?? Date.distantPast
+            return date1 < date2
         }
         
-        // FIX #18: Use retry with exponential backoff for the critical settlement commit
+        for doc in sortedDocs {
+            guard remainingAmount > 0.01 else { break }
+            
+            // FIX 1.2: Only settle splits matching the settlement currency
+            if let settleCurrency = request.currency,
+               let splitCurrency = doc.data()["currency"] as? String,
+               splitCurrency != settleCurrency {
+                continue
+            }
+            
+            let splitAmount = doc.data()["amount"] as? Double ?? 0
+            
+            if splitAmount <= remainingAmount {
+                // Full settle: mark as paid
+                batch.updateData([
+                    "status": FirestoreModels.SplitRequest.RequestStatus.paid.rawValue,
+                    "lastUpdatedBy": currentUserId
+                ], forDocument: doc.reference)
+                remainingAmount -= splitAmount
+                
+                // Update parent group transaction badge
+                if let groupId = doc.data()["groupId"] as? String,
+                   let originalTxId = doc.data()["transactionId"] as? String {
+                    let groupTxs = try await db.collection("groups").document(groupId).collection("transactions")
+                        .whereField("originalTransactionId", isEqualTo: originalTxId)
+                        .getDocuments()
+                    if let groupTxDoc = groupTxs.documents.first {
+                        batch.updateData([
+                            "involvedUserStatuses.\(request.fromUid)": FirestoreModels.SplitRequest.RequestStatus.paid.rawValue
+                        ], forDocument: groupTxDoc.reference)
+                    }
+                }
+            }
+            // If splitAmount > remainingAmount, skip (partial not supported at split level)
+        }
+        
+        try await withRetry {
+            try await batch.commit()
+        }
+    }
+    
+    /// Called by User B (receiver) when they decline a settlement.
+    /// Marks the settlement request as declined and updates the group feed badge.
+    func declineSettlement(request: FirestoreModels.SplitRequest) async throws {
+        guard let requestId = request.id else { return }
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        
+        let batch = db.batch()
+        
+        // 1. Mark request as declined
+        let requestRef = db.collection("split_requests").document(requestId)
+        batch.updateData([
+            "status": FirestoreModels.SplitRequest.RequestStatus.declined.rawValue,
+            "lastUpdatedBy": currentUserId
+        ], forDocument: requestRef)
+        
+        // 2. Update group feed status badge
+        if let groupId = request.groupId {
+            let groupTxs = try await db.collection("groups").document(groupId).collection("transactions")
+                .whereField("originalTransactionId", isEqualTo: request.transactionId)
+                .getDocuments()
+            if let groupTxDoc = groupTxs.documents.first {
+                batch.updateData([
+                    "involvedUserStatuses.\(currentUserId)": FirestoreModels.SplitRequest.RequestStatus.declined.rawValue
+                ], forDocument: groupTxDoc.reference)
+            }
+        }
+        
         try await withRetry {
             try await batch.commit()
         }

@@ -216,9 +216,22 @@ struct FriendDetailView: View {
                     
                     VStack(spacing: 12) {
                         ForEach(pendingSplits) { split in
-                            FriendPendingSplitCard(split: split, userId: appState.currentUserId, onToggle: {
-                                handleSplitToggle(split)
-                            })
+                            FriendPendingSplitCard(
+                                split: split,
+                                userId: appState.currentUserId,
+                                onToggle: {
+                                    if split.isSettlement == true {
+                                        acceptSettlement(split)
+                                    } else {
+                                        handleSplitToggle(split)
+                                    }
+                                },
+                                onDelete: {
+                                    if split.isSettlement == true {
+                                        declineSettlement(split)
+                                    }
+                                }
+                            )
                             .onTapGesture {
                                 // Find original transaction to select
                                 if let tx = repo.friendTransactions.first(where: { $0.id == split.id }) {
@@ -569,6 +582,35 @@ struct FriendDetailView: View {
             } catch { await MainActor.run { loadData() } }
         }
     }
+    
+    // Add missing accept/decline handlers
+    private func acceptSettlement(_ split: FirestoreModels.SplitRequest) {
+        HapticManager.shared.success()
+        Task {
+            do {
+                try await SocialTransactionManager.shared.acceptSettlement(request: split, currentUserId: appState.currentUserId, currentUserName: appState.userName)
+                await MainActor.run { loadData() }
+            } catch {
+                await MainActor.run {
+                    HapticManager.shared.error()
+                }
+            }
+        }
+    }
+    
+    private func declineSettlement(_ split: FirestoreModels.SplitRequest) {
+        HapticManager.shared.heavy()
+        Task {
+            do {
+                try await SocialTransactionManager.shared.declineSettlement(request: split)
+                await MainActor.run { loadData() }
+            } catch {
+                await MainActor.run {
+                    HapticManager.shared.error()
+                }
+            }
+        }
+    }
 }
 
 // MARK: - Subviews
@@ -577,8 +619,11 @@ struct FriendPendingSplitCard: View {
     let split: FirestoreModels.SplitRequest
     let userId: String
     let onToggle: () -> Void
+    var onDelete: (() -> Void)? = nil
+    var onAccept: (() -> Void)? = nil
+    var onDecline: (() -> Void)? = nil
     
-    private var isOwed: Bool { split.fromUid == userId }
+    private var isSender: Bool { split.fromUid == userId }
     
     var body: some View {
         HStack(spacing: AppSpacing.element) {
@@ -586,32 +631,48 @@ struct FriendPendingSplitCard: View {
                 .fill(Color.primary.opacity(0.05))
                 .frame(width: 48, height: 48)
                 .overlay(
-                    Image(systemName: isOwed ? "creditcard.fill" : "arrow.up.right")
+                    Image(systemName: split.isSettlement == true ? "arrow.left.arrow.right" : (isSender ? "creditcard.fill" : "arrow.up.right"))
                         .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(isOwed ? .green : .orange)
+                        .foregroundColor(.primary)
                 )
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(split.note ?? "Split Expense")
-                    .font(.body)
-                    .fontWeight(.bold)
-                    .foregroundColor(.primary)
+                if split.isSettlement == true {
+                    Text("Settlement")
+                        .font(.body)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
+                } else {
+                    Text(split.note ?? "Split Expense")
+                        .font(.body)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
+                }
                 
                 HStack(spacing: 4) {
-                    if isOwed {
-                        Text("\(split.toName ?? "Friend")").fontWeight(.medium)
-                        Image(systemName: "arrow.right").font(.caption2).foregroundColor(.secondary)
-                        Text("You").fontWeight(.bold)
+                    if split.isSettlement == true {
+                        if isSender {
+                            Text("You paid $\(String(format: "%.2f", split.amount))")
+                        } else {
+                            Text("\(split.fromName ?? "Friend") paid you $\(String(format: "%.2f", split.amount))")
+                        }
                     } else {
-                        Text("You").fontWeight(.bold)
-                        Image(systemName: "arrow.right").font(.caption2).foregroundColor(.secondary)
-                        Text("\(split.fromName ?? "Friend")").fontWeight(.medium)
+                        if isSender {
+                            Text("\(split.toName ?? "Friend")").fontWeight(.medium)
+                            Image(systemName: "arrow.right").font(.caption2).foregroundColor(.secondary)
+                            Text("You").fontWeight(.bold)
+                        } else {
+                            Text("You").fontWeight(.bold)
+                            Image(systemName: "arrow.right").font(.caption2).foregroundColor(.secondary)
+                            Text("\(split.fromName ?? "Friend")").fontWeight(.medium)
+                        }
                     }
                     Text("•").foregroundColor(.secondary.opacity(0.5))
                     Text(split.createdAt.formatted(date: .abbreviated, time: .omitted))
                 }
                 .font(.caption)
                 .foregroundColor(.secondary)
+                .lineLimit(1)
             }
             
             Spacer()
@@ -620,27 +681,47 @@ struct FriendPendingSplitCard: View {
                 Text("$\(String(format: "%.2f", split.amount))")
                     .font(.headline)
                     .fontWeight(.heavy)
-                    .foregroundColor(isOwed ? .green : .orange)
+                    .foregroundColor(.primary)
                 
-                Button(action: {
-                    HapticManager.shared.success()
-                    onToggle()
-                }) {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(Color.backgroundPrimary)
-                        .frame(width: 32, height: 32)
-                        .background(AppColors.functionalIncome)
-                        .clipShape(Circle())
+                HStack(spacing: 8) {
+                    if let onDelete = onDelete, split.isSettlement == true {
+                        Button(action: {
+                            HapticManager.shared.heavy()
+                            onDelete()
+                        }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(Color.backgroundPrimary)
+                                .frame(width: 32, height: 32)
+                                .background(Color.red)
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    
+                    if split.isSettlement == false || !isSender {
+                        Button(action: {
+                            HapticManager.shared.success()
+                            onToggle()
+                        }) {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(Color.backgroundPrimary)
+                                .frame(width: 32, height: 32)
+                                .background(AppColors.functionalIncome)
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
                 }
-                .buttonStyle(PlainButtonStyle())
-                
             }
         }
         .padding(AppSpacing.element)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(AppRadius.medium)
         .overlay(
             RoundedRectangle(cornerRadius: AppRadius.medium)
-                .stroke(isOwed ? .green : .orange, lineWidth: 1)
+                .stroke(split.isSettlement == true ? Color.primary : (isSender ? Color.green : Color.orange), lineWidth: 1)
         )
     }
 }
@@ -652,65 +733,38 @@ struct FriendCardRow: View {
     @State private var fetchedOriginalAmount: Double?
     
     var body: some View {
-        HStack(spacing: AppSpacing.element) {
-            CategoryIconView(
-                category: transaction.subtitle,
-                iconOverride: transaction.icon,
-                colorOverride: transaction.colorHex,
-                type: transaction.type
-            )
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(transaction.title)
-                    .font(.body)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
-                
-                let totalAmount = transaction.originalAmount ?? fetchedOriginalAmount
-                let isYouPaid = transaction.type == "income"
-                
-                if let total = totalAmount {
-                    let formattedTotal = String(format: "$%.2f", total)
-                    Text(isYouPaid ? "You paid \(formattedTotal)" : "\(friendName) paid \(formattedTotal)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                } else {
-                    let shareAmount = abs(transaction.amount)
-                    let formattedShare = String(format: "$%.2f", shareAmount)
-                    Text(isYouPaid ? "You lent \(formattedShare)" : "\(friendName) lent you \(formattedShare)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                
-                // Status Badge
-                if let status = transaction.note, !status.isEmpty, ["pending", "paid", "accepted", "declined"].contains(status) {
-                    Text(status.capitalized)
-                        .font(.caption2)
-                        .fontWeight(.bold)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(statusColor(status).opacity(0.1))
-                        .foregroundColor(statusColor(status))
-                        .clipShape(Capsule())
-                }
-            }
-            
-            Spacer()
-            
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("$\(String(format: "%.2f", abs(transaction.amount)))")
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    // Keep Green/Red for amounts as it's critical info
-                    .foregroundColor(transaction.type == "income" ? .green : .red)
-                
-                Text(transaction.date.formatted(date: .abbreviated, time: .omitted))
-                    .font(.caption2)
-                    .foregroundColor(.tertiaryLabel)
-            }
+        let isYouPaid = transaction.type == "income"
+        let totalAmount = transaction.originalAmount ?? fetchedOriginalAmount
+        
+        let subtitle: String
+        if let total = totalAmount {
+            let formattedTotal = String(format: "$%.2f", total)
+            subtitle = isYouPaid ? "You paid \(formattedTotal)" : "\(friendName) paid \(formattedTotal)"
+        } else {
+            let shareAmount = abs(transaction.amount)
+            let formattedShare = String(format: "$%.2f", shareAmount)
+            subtitle = isYouPaid ? "You lent \(formattedShare)" : "\(friendName) lent you \(formattedShare)"
         }
-        .padding(AppSpacing.element)
-        .contentShape(Rectangle()) // Make tappable
+        
+        var statusBadge: String? = nil
+        if let status = transaction.note, !status.isEmpty, ["pending", "paid", "accepted", "declined"].contains(status.lowercased()) {
+            statusBadge = status
+        }
+        
+        let amountColor: Color = transaction.type == "income" ? .green : .red
+        
+        return SocialTransactionCardView(
+            title: transaction.title,
+            subtitle: subtitle,
+            amount: transaction.amount,
+            date: transaction.date,
+            type: transaction.type,
+            category: transaction.subtitle,
+            iconName: transaction.icon,
+            colorHex: transaction.colorHex,
+            amountColor: amountColor,
+            statusBadge: statusBadge
+        )
     }
     
     func statusColor(_ status: String) -> Color {

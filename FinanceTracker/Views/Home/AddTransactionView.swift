@@ -13,8 +13,8 @@ struct AddTransactionView: View {
     var onSave: ((TransactionFormData) -> Void)?
     
     // Repositories moved to AppState
-    var budgetRepo: BudgetRepository { appState.budgetRepo }
-    var transactionRepo: TransactionRepository { appState.transactionRepo }
+    @EnvironmentObject var budgetRepo: BudgetRepository
+    @EnvironmentObject var transactionRepo: TransactionRepository
     
     @State private var currentStep = 1
     @State private var amount: String = ""

@@ -105,19 +105,19 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
         
         let content = UNMutableNotificationContent()
         
-        // Format: "You have spent $6 (HKD$12) on (Category)"
+        // Format: "You have spent $6.00 (HKD$12.50) on (Category)"
         var bodyString = ""
         if type == "income" {
             content.title = "Income Received"
-            bodyString = "You received $\(Int(abs(amount)))"
+            bodyString = "You received $\(String(format: "%.2f", abs(amount)))"
         } else {
             content.title = "Expense Added"
-            bodyString = "You have spent $\(Int(abs(amount)))"
+            bodyString = "You have spent $\(String(format: "%.2f", abs(amount)))"
         }
         
         // Add Travel Currency info if available
         if let original = originalAmount, let code = currencyCode {
-             bodyString += " (\(code)$\(Int(abs(original))))"
+             bodyString += " (\(code)$\(String(format: "%.2f", abs(original))))"
         }
         
         if type == "income" {

@@ -369,55 +369,11 @@ class SocialTransactionManager: ObservableObject {
         return finalTransaction
     }
     
-    /// Deletes a social transaction and its associated splits/group feed items.
-    
-
-    /// Deletes social artifacts (SplitRequests, GroupTransactions) associated with a personal transaction.
-    /// This is used when deleting a transaction from the personal list.
-    
-    // deleted extra brace
-
-    
-    /// Deletes a single split request (if Payer) or Declines it (if Receiver).
-    /// This ensures data integrity: Receivers cannot delete Payer's private data, so they must Decline.
-    
-
-    /// Helper to decline a request
-    
-
-    /// Deletes a single split request and updates the source transaction (removing the split).
-    /// If no splits remain, the source transaction remains as a personal expense.
-    /// This should ONLY be called by the Payer (request.fromUid).
-    
-
-    /// Marks a split as paid, updates the original transaction (reimbursement), and posts a group feed item.
-    /// NOTE: Income transaction creation is handled by the Cloud Function `v2_onSplitRequestUpdated`
-    /// to avoid duplicate income entries (S2 fix).
-    
-    
-    /// Reverts a paid split to pending
-    
-    
-    // Legacy support or helper
-    
-    
-    /// Reverts a linked split when its "Payment Received" income transaction is deleted.
-    /// Returns true if a linked split was found and reverted.
-    
-
-    /// Merges a Guest's history into a newly added Friend
-    
-
-    /// Settles up a debt between two users
-
-
-    /// Adds new members to a group
-
-
-    /// Sends a nudge notification to a friend for unpaid debts
-
-    
-    /// Hides a split from a specific user's view without deleting it.
-    /// The split remains active for other participants.
-
+    /// `deleteSocialTransaction`, `resolveSplitRequestAction`, `declineSplitRequest`,
+    /// `deleteSplitRequestAndSync`, `markSplitAsPaid`, `unmarkSplitAsPaid`,
+    /// `revertLinkedSplitIfNeeded`, and `settleUp` are defined in extension files:
+    /// - SocialTransactionManager+Deletion.swift
+    /// - SocialTransactionManager+Splits.swift
+    /// - SocialTransactionManager+Settlement.swift
 }
+

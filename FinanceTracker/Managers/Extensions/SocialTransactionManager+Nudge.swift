@@ -22,7 +22,9 @@ extension SocialTransactionManager {
         }
         
         // 3. Commit update
-        try await batch.commit()
+        try await withRetry {
+            try await batch.commit()
+        }
         
         // Note: Real push notification would be triggered via Cloud Functions watching this field update
         // or a separate notifications collection.

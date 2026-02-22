@@ -115,34 +115,32 @@ struct ContentView: View {
         showAddTransaction = false
         showPostOnboardingGuide = false
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            switch link {
-            case "add_budget", "add_category", "add_goal", "add_recurring", "calendar_view":
-                // Switch to Wallet
-                appState.selectedTab = 2
-                // Post notification for WalletView to handle specific sheet
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("SwitchTab"),
-                    object: nil,
-                    userInfo: ["tab": "wallet", "action": link]
-                )
-                
-            case "add_transaction", "add_transaction_split":
-                // Stay on current tab (or switch to Home), open Add Transaction
-                showAddTransaction = true
-                
-            case "travel_mode_guide":
-                appState.showProfile = true
-                
-            case "setup_widget_guide", "setup_backtap_guide":
-                // For now, just show alerts or maybe nothing as guides aren't implemented
-                // Could open a specific guide sheet catch-all
-                // HapticManager.shared.notification(.warning)
-                break
-                
-            default:
-                break
-            }
+        switch link {
+        case "add_budget", "add_category", "add_goal", "add_recurring", "calendar_view":
+            // Switch to Wallet
+            appState.selectedTab = 2
+            // Post notification for WalletView to handle specific sheet
+            NotificationCenter.default.post(
+                name: NSNotification.Name("SwitchTab"),
+                object: nil,
+                userInfo: ["tab": "wallet", "action": link]
+            )
+            
+        case "add_transaction", "add_transaction_split":
+            // Stay on current tab (or switch to Home), open Add Transaction
+            showAddTransaction = true
+            
+        case "travel_mode_guide":
+            appState.showProfile = true
+            
+        case "setup_widget_guide", "setup_backtap_guide":
+            // For now, just show alerts or maybe nothing as guides aren't implemented
+            // Could open a specific guide sheet catch-all
+            // HapticManager.shared.notification(.warning)
+            break
+            
+        default:
+            break
         }
     }
     

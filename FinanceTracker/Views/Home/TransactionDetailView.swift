@@ -16,10 +16,10 @@ struct TransactionDetailView: View {
     
     // Repositories
     // Repositories moved to AppState
-    var transactionRepo: TransactionRepository { appState.transactionRepo }
-    var requestRepo: RequestRepository { appState.requestRepo }
-    var friendRepo: FriendRepository { appState.friendRepo }
-    var budgetRepo: BudgetRepository { appState.budgetRepo }
+    @EnvironmentObject var transactionRepo: TransactionRepository
+    @EnvironmentObject var requestRepo: RequestRepository
+    @EnvironmentObject var friendRepo: FriendRepository
+    @EnvironmentObject var budgetRepo: BudgetRepository
     
     // Error Handling
     @State private var showErrorAlert = false

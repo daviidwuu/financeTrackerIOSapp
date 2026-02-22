@@ -206,29 +206,55 @@ struct AccountSettingsView: View {
         
         Task {
             do {
+                var firestoreUpdates: [String: Any] = [:]
+                
                 if name != appState.userName {
-                    try await FirebaseManager.shared.updateUserProfile(userId: appState.currentUserId, data: ["name": name])
-                    await MainActor.run { appState.userName = name }
+                    firestoreUpdates["name"] = name
                 }
                 
                 if username != initialUsername {
-                    try await FirebaseManager.shared.updateUserProfile(userId: appState.currentUserId, data: ["username": username])
-                    await MainActor.run { 
-                        appState.currentUserUsername = username 
-                        initialUsername = username
-                    }
+                    firestoreUpdates["username"] = username
                 }
                 
                 if email != appState.userEmail {
+                    // Update Auth email first
                     try await FirebaseManager.shared.updateEmail(email)
-                    await MainActor.run { appState.userEmail = email }
+                    firestoreUpdates["email"] = email // Add to Firestore batch
                 }
                 
-                await MainActor.run { isLoading = false }
-            } catch {
+                // Batch Firestore update if there are changes
+                if !firestoreUpdates.isEmpty {
+                    try await FirebaseManager.shared.updateUserProfile(userId: appState.currentUserId, data: firestoreUpdates)
+                }
+                
+                // Update local AppState
                 await MainActor.run {
-                    errorMessage = error.localizedDescription
+                    if let newName = firestoreUpdates["name"] as? String {
+                        appState.userName = newName
+                    }
+                    if let newUsername = firestoreUpdates["username"] as? String {
+                        appState.currentUserUsername = newUsername
+                        initialUsername = newUsername
+                    }
+                    if let newEmail = firestoreUpdates["email"] as? String {
+                        appState.userEmail = newEmail
+                    }
+                    
                     isLoading = false
+                    
+                    // Dismiss the view upon successful update to show feedback
+                    dismiss()
+                }
+            } catch let error as NSError {
+                await MainActor.run {
+                    isLoading = false
+                    
+                    // Handle specific Firebase Auth errors like requiresRecentLogin
+                    if error.domain == "FIRAuthErrorDomain" && error.code == 17014 { // AuthErrorCode.requiresRecentLogin
+                        errorMessage = "For security reasons, please log out and log back in to change your email."
+                    } else {
+                        errorMessage = error.localizedDescription
+                    }
                 }
             }
         }

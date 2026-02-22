@@ -56,6 +56,16 @@ struct FinanceTrackerApp: App {
                         .preferredColorScheme(userTheme == "system" ? nil : (userTheme == "dark" ? .dark : .light))
                 }
             }
+            .environmentObject(appState.transactionRepo)
+            .environmentObject(appState.budgetRepo)
+            .environmentObject(appState.recurringRepo)
+            .environmentObject(appState.savingGoalRepo)
+            .environmentObject(appState.requestRepo)
+            .environmentObject(appState.groupRepo)
+            .environmentObject(appState.friendRepo)
+            .environmentObject(appState.friendRequestRepo)
+            .environmentObject(appState.groupInvitationRepo)
+            .environmentObject(appState.guestRepo)
             .onOpenURL { url in
                 // Handle Widget Deep Link
                 if url.scheme == "wym" && url.host == "widget-launch" {
