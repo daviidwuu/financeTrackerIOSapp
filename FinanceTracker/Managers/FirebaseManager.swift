@@ -52,6 +52,10 @@ class FirebaseManager: ObservableObject {
         do {
             let doc = try await db.collection("usernames").document(username.lowercased()).getDocument()
             if doc.exists {
+                // Return true if the taken username belongs to the current user
+                if let ownerUid = doc.data()?["uid"] as? String, ownerUid == auth.currentUser?.uid {
+                    return true
+                }
                 return false
             }
             
@@ -61,7 +65,13 @@ class FirebaseManager: ObservableObject {
                 .limit(to: 1)
                 .getDocuments()
             
-            return snapshot.documents.isEmpty
+            if !snapshot.documents.isEmpty {
+                 if snapshot.documents.first?.documentID == auth.currentUser?.uid {
+                     return true
+                 }
+                 return false
+            }
+            return true
         } catch {
             DebugLogger.log("Error checking username availability: \(error.localizedDescription)")
             throw error
@@ -304,10 +314,12 @@ class FirebaseManager: ObservableObject {
             // 2. Set the new username document
             transaction.setData(["uid": userId, "createdAt": FieldValue.serverTimestamp()], forDocument: newUsernameRef)
             
-            // 3. Delete the old username document if it exists
+            // 3. Delete the old username document if it exists AND is fundamentally different (ignoring case is fine, but if paths are same, don't delete)
             if let old = oldUsername {
                 let oldUsernameRef = self.db.collection("usernames").document(old.lowercased())
-                transaction.deleteDocument(oldUsernameRef)
+                if oldUsernameRef.path != newUsernameRef.path {
+                    transaction.deleteDocument(oldUsernameRef)
+                }
             }
             
             // 4. Update the user document
