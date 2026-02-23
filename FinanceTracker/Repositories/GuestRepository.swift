@@ -63,6 +63,13 @@ class GuestRepository: ObservableObject {
             userId: userId
         )
         
+        // Optimistic UI update
+        await MainActor.run {
+            if !self.guests.contains(where: { $0.id == newGuest.id }) {
+                self.guests.insert(newGuest, at: 0)
+            }
+        }
+        
         try ref.setData(from: newGuest)
         return newGuest
     }

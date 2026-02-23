@@ -19,6 +19,15 @@ struct SocialDashboardView: View {
         case group(String)
         case friend(String)
     }
+    
+    var searchPlaceholder: String {
+        switch selectedSegment {
+        case 0: return "Search groups..."
+        case 1: return "Search for friend"
+        case 2: return "Search leaderboard..."
+        default: return "Search..."
+        }
+    }
 
     init() {
         print("DEBUG: SocialDashboardView init")
@@ -59,7 +68,7 @@ struct SocialDashboardView: View {
                             .listRowBackground(Color.clear)
                         
                         // 3. Search Bar
-                        SearchBar(text: $searchText, onSearch: performSearch, isLoading: isSearching)
+                        SearchBar(text: $searchText, placeholder: searchPlaceholder, onSearch: performSearch, isLoading: isSearching)
                             .listRowInsets(EdgeInsets(top: 8, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
@@ -410,6 +419,11 @@ struct SocialDashboardView: View {
             !pendingDeletedFriendIds.contains(friend.id ?? "")
         }
         
+        let filteredGuests = guestRepo.guests.filter { guest in
+            (searchText.isEmpty || guest.name.localizedCaseInsensitiveContains(searchText)) &&
+            !pendingDeletedFriendIds.contains(guest.id ?? "")
+        }
+        
         Group {
             // 0. Incoming Requests Section
             if !appState.friendRequestRepo.incomingRequests.isEmpty {
@@ -476,10 +490,24 @@ struct SocialDashboardView: View {
                     }
             }
             
-            if filteredFriends.isEmpty {
+            ForEach(filteredGuests, id: \.id) { guest in
+                GuestCardView(guest: guest)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        if let id = guest.id {
+                            navigationPath.append(SocialDestination.friend(id))
+                        }
+                    }
+                    .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .padding(.bottom, AppSpacing.compact)
+            }
+            
+            if filteredFriends.isEmpty && filteredGuests.isEmpty {
                 EmptyStateView(
                      icon: "person.2.fill",
-                     title: searchText.isEmpty ? "No Friends" : "No Friends Found",
+                     title: searchText.isEmpty ? "No Friends" : "No Friends or Guests Found",
                      message: searchText.isEmpty ? "Add friends to split bills 1-on-1." : "Try a different search term."
                 )
                 .listRowSeparator(.hidden)
