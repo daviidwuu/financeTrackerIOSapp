@@ -198,35 +198,16 @@ struct GroupDetailView: View {
                             let myNetExpenses = myExpensesPaid + settlementsPaid - settlementsReceived
                             
                             // Overview Cards
-                            HStack(spacing: 12) {
-                                // Card 1: Total Expenses
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Total Expenses")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    Text(String(format: "$%.2f", totalSpend))
-                                        .font(AppTypography.sectionHeader)
-                                        .foregroundColor(.primary)
-                                }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding()
-                                .background(Color(UIColor.secondarySystemBackground))
-                                .cornerRadius(AppRadius.medium)
-                                
-                                // Card 2: My Expenses
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("My Expenses")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    Text(String(format: "$%.2f", myNetExpenses))
-                                        .font(AppTypography.sectionHeader)
-                                        .foregroundColor(.primary)
-                                }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding()
-                                .background(Color(UIColor.secondarySystemBackground))
-                                .cornerRadius(AppRadius.medium)
-                            }
+                            SocialTwoCardRow(
+                                left: SocialStatCard(
+                                    title: "Total Expenses",
+                                    value: String(format: "$%.2f", totalSpend)
+                                ),
+                                right: SocialStatCard(
+                                    title: "My Expenses",
+                                    value: String(format: "$%.2f", myNetExpenses)
+                                )
+                            )
                         }
                         .padding(.vertical, 8)
                     }
@@ -820,7 +801,6 @@ struct GroupDetailView: View {
 }
 
 // MARK: - Subviews
-
 
 
 

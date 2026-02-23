@@ -128,70 +128,24 @@ struct FriendDetailView: View {
     // MARK: - Sections
     
     private var headerSection: some View {
-        Section {
-            DetailHeaderView(
-                title: friend.name,
-                onBack: { dismiss() },
-                // onMenu: nil, // Removed explicit nil to use default value and avoid type ambiguity
-                backgroundColor: Color.backgroundPrimary,
-                textColor: .primary,
-                avatar: {
-                    ProfileAvatar(
-                        text: String(friend.name.prefix(1)),
-                        color: Color.random(seed: friend.name),
-                        size: AppSize.avatarHero
-                    )
-                },
-                subtitle: {
+        SocialDetailHeaderSection(
+            title: friend.name,
+            onBack: { dismiss() },
+            avatar: {
+                ProfileAvatar(
+                    text: String(friend.name.prefix(1)),
+                    color: Color.random(seed: friend.name),
+                    size: AppSize.avatarHero
+                )
+            },
+            subtitle: {
+                SocialHeaderPill {
                     Text("@\(friend.username ?? "")")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundColor(.primary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.primary.opacity(0.05))
-                        .clipShape(Capsule())
-                },
-                actions: {
-                    headerActions
                 }
-            )
-        }
-        .listRowInsets(EdgeInsets())
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-    }
-
-    private var headerActions: some View {
-        HStack(spacing: 12) {
-            Button(action: {
-                HapticManager.shared.light()
-                activeSheet = .settleUp
-            }) {
-                Text("Settle")
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(Color.backgroundPrimary)
-                    .padding(.horizontal, AppSpacing.margin)
-                    .frame(height: 44)
-                    .background(Color.primary)
-                    .clipShape(Capsule())
-            }
-            .buttonStyle(.borderless)
-            
-            Button(action: {
-                HapticManager.shared.light()
-                activeSheet = .addExpense
-            }) {
-                Image(systemName: "plus")
-                    .font(.headline)
-                    .foregroundColor(Color.backgroundPrimary)
-                    .frame(width: 44, height: 44)
-                    .background(Color.primary)
-                    .clipShape(Circle())
-            }
-            .buttonStyle(.borderless)
-        }
+            },
+            onSettle: { activeSheet = .settleUp },
+            onAddExpense: { activeSheet = .addExpense }
+        )
     }
     
     @ViewBuilder
@@ -216,7 +170,7 @@ struct FriendDetailView: View {
                     
                     VStack(spacing: 12) {
                         ForEach(pendingSplits) { split in
-                            FriendPendingSplitCard(
+                            PendingSplitCard(
                                 split: split,
                                 userId: appState.currentUserId,
                                 onToggle: {
@@ -229,6 +183,8 @@ struct FriendDetailView: View {
                                 onDelete: {
                                     if split.isSettlement == true {
                                         declineSettlement(split)
+                                    } else {
+                                        resolveSplitAction(split)
                                     }
                                 }
                             )
@@ -258,35 +214,17 @@ struct FriendDetailView: View {
                 let balance = repo.friendBalances.values.reduce(0, +)
                 let totalShared = repo.friendTransactions.filter { $0.type != "income" }.reduce(0) { $0 + abs($1.amount) }
                 
-                HStack(spacing: 12) {
-                    // Card 1: Total Shared
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Total Shared")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text(String(format: "$%.2f", totalShared))
-                            .font(AppTypography.sectionHeader)
-                            .foregroundColor(.primary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-                    .background(Color(UIColor.secondarySystemBackground))
-                    .cornerRadius(AppRadius.medium)
-                    
-                    // Card 2: Net Balance
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(balance >= 0 ? "Owed to You" : "You Owe")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text(String(format: "$%.2f", abs(balance)))
-                            .font(AppTypography.sectionHeader)
-                            .foregroundColor(balance == 0 ? .primary : (balance > 0 ? .green : .red))
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-                    .background(Color(UIColor.secondarySystemBackground))
-                    .cornerRadius(AppRadius.medium)
-                }
+                SocialTwoCardRow(
+                    left: SocialStatCard(
+                        title: "Total Shared",
+                        value: String(format: "$%.2f", totalShared)
+                    ),
+                    right: SocialStatCard(
+                        title: balance >= 0 ? "Owed to You" : "You Owe",
+                        value: String(format: "$%.2f", abs(balance)),
+                        valueColor: balance == 0 ? .primary : (balance > 0 ? .green : .red)
+                    )
+                )
             }
             .padding(.vertical, 8)
         }
@@ -617,120 +555,32 @@ struct FriendDetailView: View {
             }
         }
     }
-}
-
-// MARK: - Subviews
-
-struct FriendPendingSplitCard: View {
-    let split: FirestoreModels.SplitRequest
-    let userId: String
-    let onToggle: () -> Void
-    var onDelete: (() -> Void)? = nil
-    var onAccept: (() -> Void)? = nil
-    var onDecline: (() -> Void)? = nil
     
-    private var isSender: Bool { split.fromUid == userId }
-    
-    var body: some View {
-        HStack(spacing: AppSpacing.element) {
-            Circle()
-                .fill(Color.primary.opacity(0.05))
-                .frame(width: 48, height: 48)
-                .overlay(
-                    Image(systemName: split.isSettlement == true ? "arrow.left.arrow.right" : (isSender ? "creditcard.fill" : "arrow.up.right"))
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(.primary)
-                )
-            
-            VStack(alignment: .leading, spacing: 4) {
-                if split.isSettlement == true {
-                    Text("Settlement")
-                        .font(.body)
-                        .fontWeight(.bold)
-                        .foregroundColor(.primary)
-                } else {
-                    Text(split.note ?? "Split Expense")
-                        .font(.body)
-                        .fontWeight(.bold)
-                        .foregroundColor(.primary)
-                }
-                
-                HStack(spacing: 4) {
-                    if split.isSettlement == true {
-                        if isSender {
-                            Text("You paid $\(String(format: "%.2f", split.amount))")
-                        } else {
-                            Text("\(split.fromName ?? "Friend") paid you $\(String(format: "%.2f", split.amount))")
-                        }
-                    } else {
-                        if isSender {
-                            Text("\(split.toName ?? "Friend")").fontWeight(.medium)
-                            Image(systemName: "arrow.right").font(.caption2).foregroundColor(.secondary)
-                            Text("You").fontWeight(.bold)
-                        } else {
-                            Text("You").fontWeight(.bold)
-                            Image(systemName: "arrow.right").font(.caption2).foregroundColor(.secondary)
-                            Text("\(split.fromName ?? "Friend")").fontWeight(.medium)
-                        }
-                    }
-                    Text("•").foregroundColor(.secondary.opacity(0.5))
-                    Text(split.createdAt.formatted(date: .abbreviated, time: .omitted))
-                }
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .lineLimit(1)
+    private func resolveSplitAction(_ split: FirestoreModels.SplitRequest) {
+        HapticManager.shared.heavy()
+        if let id = split.id {
+            withAnimation {
+                recentlyPaidSplitIds.insert(id)
             }
-            
-            Spacer()
-            
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("$\(String(format: "%.2f", split.amount))")
-                    .font(.headline)
-                    .fontWeight(.heavy)
-                    .foregroundColor(.primary)
-                
-                HStack(spacing: 8) {
-                    if let onDelete = onDelete, split.isSettlement == true {
-                        Button(action: {
-                            HapticManager.shared.heavy()
-                            onDelete()
-                        }) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundColor(Color.backgroundPrimary)
-                                .frame(width: 32, height: 32)
-                                .background(Color.red)
-                                .clipShape(Circle())
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                    
-                    if split.isSettlement == false || !isSender {
-                        Button(action: {
-                            HapticManager.shared.success()
-                            onToggle()
-                        }) {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundColor(Color.backgroundPrimary)
-                                .frame(width: 32, height: 32)
-                                .background(AppColors.functionalIncome)
-                                .clipShape(Circle())
-                        }
-                        .buttonStyle(PlainButtonStyle())
+        }
+        
+        Task {
+            do {
+                try await SocialTransactionManager.shared.resolveSplitRequestAction(request: split)
+                await MainActor.run { loadData() }
+            } catch {
+                await MainActor.run {
+                    HapticManager.shared.error()
+                    if let id = split.id {
+                        recentlyPaidSplitIds.remove(id)
                     }
                 }
             }
         }
-        .padding(AppSpacing.element)
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(AppRadius.medium)
-        .overlay(
-            RoundedRectangle(cornerRadius: AppRadius.medium)
-                .stroke(split.isSettlement == true ? Color.primary : (isSender ? Color.green : Color.orange), lineWidth: 1)
-        )
     }
 }
+
+// MARK: - Subviews
 
 struct FriendCardRow: View {
     let transaction: FirestoreModels.TransactionModel
