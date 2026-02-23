@@ -212,8 +212,9 @@ struct AccountSettingsView: View {
                     firestoreUpdates["name"] = name
                 }
                 
+                // 1. Dedicated Username Call
                 if username != initialUsername {
-                    firestoreUpdates["username"] = username
+                    try await FirebaseManager.shared.updateUsername(userId: appState.currentUserId, oldUsername: initialUsername, newUsername: username)
                 }
                 
                 if email != appState.userEmail {
@@ -222,19 +223,19 @@ struct AccountSettingsView: View {
                     firestoreUpdates["email"] = email // Add to Firestore batch
                 }
                 
-                // Batch Firestore update if there are changes
+                // 2. Regular Profile Call (Batch Firestore update for name/email)
                 if !firestoreUpdates.isEmpty {
                     try await FirebaseManager.shared.updateUserProfile(userId: appState.currentUserId, data: firestoreUpdates)
                 }
                 
-                // Update local AppState
+                // 3. Update local AppState
                 await MainActor.run {
                     if let newName = firestoreUpdates["name"] as? String {
                         appState.userName = newName
                     }
-                    if let newUsername = firestoreUpdates["username"] as? String {
-                        appState.currentUserUsername = newUsername
-                        initialUsername = newUsername
+                    if username != initialUsername {
+                        appState.currentUserUsername = username
+                        initialUsername = username
                     }
                     if let newEmail = firestoreUpdates["email"] as? String {
                         appState.userEmail = newEmail
