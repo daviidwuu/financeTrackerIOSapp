@@ -158,6 +158,11 @@ fileprivate struct NativeAdRepresentable: UIViewRepresentable {
         // It's handled automatically as long as uiView.nativeAd is set.
         
         // key fix: Set the rootViewController so that clicks can present overlays
-        nativeAd.rootViewController = uiView.window?.rootViewController ?? UIApplication.shared.windows.first?.rootViewController
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootVC = windowScene.windows.first?.rootViewController {
+            nativeAd.rootViewController = rootVC
+        } else {
+            nativeAd.rootViewController = uiView.window?.rootViewController
+        }
     }
 }

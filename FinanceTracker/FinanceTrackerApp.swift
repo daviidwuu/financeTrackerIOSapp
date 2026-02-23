@@ -2,6 +2,7 @@ import SwiftUI
 import FirebaseCore
 import FirebaseMessaging
 import GoogleMobileAds
+import RevenueCat
 
 class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
@@ -38,7 +39,10 @@ struct FinanceTrackerApp: App {
     @AppStorage("userTheme") private var userTheme: String = "system"
     @StateObject private var appState = AppState.shared
 
-    init() {}
+    init() {
+        // Initialize RevenueCat
+        PurchaseManager.shared.configure(apiKey: "test_LcSnugjYsJYhoIypaxFdQZFyJMA")
+    }
 
     var body: some Scene {
         WindowGroup {

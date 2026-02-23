@@ -17,7 +17,6 @@ struct AccountStep: View {
             VStack(spacing: 16) {
                 CustomTextField(icon: "envelope.fill", placeholder: "Email", text: $email)
                     .focused(focusedField, equals: .email)
-                    .submitLabel(.next)
                     .onSubmit {
                         focusedField.wrappedValue = .password
                     }
@@ -26,7 +25,6 @@ struct AccountStep: View {
                 
                 CustomSecureField(icon: "lock.fill", placeholder: "Password (min 6 chars)", text: $password)
                     .focused(focusedField, equals: .password)
-                    .submitLabel(.join)
                     .onSubmit {
                         if email.contains("@") && password.count >= 6 {
                             onSubmit()

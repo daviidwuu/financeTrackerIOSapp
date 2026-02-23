@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>identifier</key>
+	<string>7B73F54F</string>
+	<key>nonRenewingSubscriptions</key>
+	<array/>
+	<key>products</key>
+	<array/>
+	<key>settings</key>
+	<dict>
+		<key>_locale</key>
+		<string>en_US</string>
+		<key>_storefront</key>
+		<string>USA</string>
+	</dict>
+	<key>subscriptionGroups</key>
+	<array>
+		<dict>
+			<key>id</key>
+			<string>12345678</string>
+			<key>localizations</key>
+			<array>
+				<dict>
+					<key>description</key>
+					<string>Premium subscription group</string>
+					<key>displayName</key>
+					<string>Premium</string>
+					<key>locale</key>
+					<string>en_US</string>
+				</dict>
+			</array>
+			<key>name</key>
+			<string>Premium</string>
+			<key>subscriptions</key>
+			<array>
+				<dict>
+					<key>adHocOffers</key>
+					<array/>
+					<key>codeOffers</key>
+					<array/>
+					<key>displayPrice</key>
+					<string>2.99</string>
+					<key>familyShareable</key>
+					<false/>
+					<key>groupNumber</key>
+					<integer>1</integer>
+					<key>internalID</key>
+					<string>98765432</string>
+					<key>introductoryOffer</key>
+					<dict>
+						<key>displayPrice</key>
+						<string>0.99</string>
+						<key>internalID</key>
+						<string>87654321</string>
+						<key>paymentMode</key>
+						<string>payAsYouGo</string>
+						<key>subscriptionPeriod</key>
+						<string>P1M</string>
+					</dict>
+					<key>localizations</key>
+					<array>
+						<dict>
+							<key>description</key>
+							<string>Monthly access to all premium features</string>
+							<key>displayName</key>
+							<string>Monthly Plan</string>
+							<key>locale</key>
+							<string>en_US</string>
+						</dict>
+					</array>
+					<key>productID</key>
+					<string>finance_tracker_monthly</string>
+					<key>recurringSubscriptionPeriod</key>
+					<string>P1M</string>
+					<key>referenceName</key>
+					<string>Monthly Plan</string>
+					<key>subscriptionGroupID</key>
+					<string>12345678</string>
+					<key>type</key>
+					<string>RecurringSubscription</string>
+				</dict>
+				<dict>
+					<key>adHocOffers</key>
+					<array/>
+					<key>codeOffers</key>
+					<array/>
+					<key>displayPrice</key>
+					<string>29.99</string>
+					<key>familyShareable</key>
+					<false/>
+					<key>groupNumber</key>
+					<integer>1</integer>
+					<key>internalID</key>
+					<string>87654322</string>
+					<key>introductoryOffer</key>
+					<dict>
+						<key>displayPrice</key>
+						<string>19.99</string>
+						<key>internalID</key>
+						<string>76543210</string>
+						<key>paymentMode</key>
+						<string>payUpFront</string>
+						<key>subscriptionPeriod</key>
+						<string>P1Y</string>
+					</dict>
+					<key>localizations</key>
+					<array>
+						<dict>
+							<key>description</key>
+							<string>Annual access to all premium features</string>
+							<key>displayName</key>
+							<string>Annual Plan</string>
+							<key>locale</key>
+							<string>en_US</string>
+						</dict>
+					</array>
+					<key>productID</key>
+					<string>finance_tracker_annual</string>
+					<key>recurringSubscriptionPeriod</key>
+					<string>P1Y</string>
+					<key>referenceName</key>
+					<string>Annual Plan</string>
+					<key>subscriptionGroupID</key>
+					<string>12345678</string>
+					<key>type</key>
+					<string>RecurringSubscription</string>
+				</dict>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

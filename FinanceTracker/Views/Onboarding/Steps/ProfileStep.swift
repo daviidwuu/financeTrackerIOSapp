@@ -14,7 +14,6 @@ struct ProfileStep: View {
             
             TextField("Your Name", text: $name)
                 .focused(focusedField, equals: .name)
-                .submitLabel(.next)
                 .onSubmit {
                     if !name.isEmpty {
                         onNext()

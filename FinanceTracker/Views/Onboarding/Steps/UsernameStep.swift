@@ -24,7 +24,6 @@ struct UsernameStep: View {
             VStack(spacing: 8) {
                 TextField("username", text: $username)
                     .focused(focusedField, equals: .username)
-                    .submitLabel(.next)
                     .onSubmit {
                         if !username.isEmpty && username.count >= 3 && isAvailable {
                             onNext()

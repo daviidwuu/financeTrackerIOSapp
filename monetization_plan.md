@@ -25,31 +25,31 @@ The app currently has a hybrid monetization structure with partial implementatio
 ## 3. Implementation Steps
 
 ### Phase 1: Configuration & Initialization
-1.  **Setup RevenueCat**:
-    *   Create a Project and App in the RevenueCat Dashboard.
-    *   Configure Apple Small Business Program (if applicable).
-    *   Set up Products (Identifiers: `finance_tracker_monthly`, `finance_tracker_annual`).
-    *   Generate a Public API Key.
-2.  **Initialize SDK**:
-    *   Add `Purchases.configure(withAPIKey: "YOUR_API_KEY")` in `FinanceTrackerApp.swift`.
-    *   Enable debug logs for development.
+- [x] **Setup RevenueCat**:
+    - [ ] Create a Project and App in the RevenueCat Dashboard.
+    - [ ] Configure Apple Small Business Program (if applicable).
+    - [ ] Set up Products (Identifiers: `finance_tracker_monthly`, `finance_tracker_annual`).
+    - [ ] Generate a Public API Key.
+- [x] **Initialize SDK**:
+    - [x] Add `Purchases.configure(withAPIKey: "YOUR_API_KEY")` in `FinanceTrackerApp.swift`.
+    - [x] Enable debug logs for development.
 
 ### Phase 2: Purchase Logic
-1.  **Create `PurchaseManager`**:
-    *   A singleton class to handle RevenueCat interactions.
-    *   Methods: `fetchOfferings()`, `purchase(package:)`, `restorePurchases()`.
-2.  **Integrate with AppState**:
-    *   Listen to `Purchases.shared.customerInfoStream`.
-    *   Update `AppState.shared.isPremiumUser` based on active entitlements (Entitlement ID: `premium`).
+- [x] **Create `PurchaseManager`**:
+    - [x] A singleton class to handle RevenueCat interactions.
+    - [x] Methods: `fetchOfferings()`, `purchase(package:)`, `restorePurchases()`.
+- [x] **Integrate with AppState**:
+    - [x] Listen to `Purchases.shared.customerInfoStream`.
+    - [x] Update `AppState.shared.isPremiumUser` based on active entitlements (Entitlement ID: `premium`).
 
 ### Phase 3: UI Connection
-1.  **Wire up `SubscriptionWizardView`**:
-    *   Fetch real prices and currency symbols from RevenueCat (don't hardcode "$2.99").
-    *   Connect "Subscribe Now" button to `PurchaseManager.purchase()`.
-    *   Add a "Restore Purchases" button (Critical for App Review).
-2.  **Testing**:
-    *   Use StoreKit Configuration File (`.storekit`) for local testing.
-    *   Verify `isPremiumUser` toggles correctly and removes ads.
+- [x] **Wire up `SubscriptionWizardView`**:
+    - [x] Fetch real prices and currency symbols from RevenueCat (don't hardcode "$2.99").
+    - [x] Connect "Subscribe Now" button to `PurchaseManager.purchase()`.
+    - [x] Add a "Restore Purchases" button (Critical for App Review).
+- [ ] **Testing**:
+    - [ ] Use StoreKit Configuration File (`.storekit`) for local testing.
+    - [ ] Verify `isPremiumUser` toggles correctly and removes ads.
 
 ## 4. Next Steps
 

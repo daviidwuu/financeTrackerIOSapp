@@ -50,6 +50,9 @@
             ReferencedContainer = "container:FinanceTracker.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <StoreKitConfigurationFileReference
+         identifier = "../../../../Library/Developer/Xcode/DerivedData/FinanceTracker-ffcqtednipmvlzghnyjritffewjn/SourcePackages/checkouts/purchases-ios-spm/Examples/rc-maestro/rc-maestro/Resources/StoreKit/StoreKitConfiguration.storekit">
+      </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"

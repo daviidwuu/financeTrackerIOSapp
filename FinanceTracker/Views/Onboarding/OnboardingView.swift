@@ -129,16 +129,9 @@ struct OnboardingView: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 16)
                 
-                // Login Bypass Link
-                NavigationLink(destination: LoginView()) {
-                    Text("Already have an account? Log In")
-                        .font(AppTypography.caption)
-                        .foregroundColor(AppColors.brandPrimary)
-                        .padding(.bottom, 24)
-                }
-                
-                // Add background to buttons to prevent content overlap
-                .background((colorScheme == .dark ? Color.black : Color.white).opacity(0.9)) 
+                .padding(.horizontal, 24)
+                .padding(.top, 16)
+                .padding(.bottom, 24)
             }
         }
         .onTapGesture {

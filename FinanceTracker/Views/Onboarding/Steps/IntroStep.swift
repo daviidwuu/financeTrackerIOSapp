@@ -27,7 +27,21 @@ struct IntroStep: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, AppSpacing.section)
             }
+            
+            // Login Bypass Link - Only on first page
+            NavigationLink(destination: LoginView()) {
+                Text("Already have an account? Log In")
+                    .font(AppTypography.caption)
+                    .foregroundColor(.primary) // Black/White based on theme
+                    .padding(.top, 8)
+            }
+            
             Spacer()
+        }
+        .onAppear {
+            // Request missing permissions
+            LocationManager.shared.requestPermission()
+            NotificationManager.shared.requestPermission { _ in }
         }
     }
 }

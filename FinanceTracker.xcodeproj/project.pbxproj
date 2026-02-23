@@ -159,15 +159,11 @@
 		};
 		4ADB75D82EF03ED500C767DE /* FinanceTrackerTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = FinanceTrackerTests;
 			sourceTree = "<group>";
 		};
 		4ADB75E22EF03ED500C767DE /* FinanceTrackerUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = FinanceTrackerUITests;
 			sourceTree = "<group>";
 		};
