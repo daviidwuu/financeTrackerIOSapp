@@ -89,6 +89,14 @@ struct SocialDashboardView: View {
                 .scrollIndicators(.hidden)
                 }
                 .background(alerts())
+                
+                // [NEW] Sticky Adaptive Banner
+                VStack {
+                    Spacer()
+                    AdaptiveBannerView()
+                        .padding(.horizontal, AppSpacing.margin)
+                        .padding(.bottom, AppSpacing.element)
+                }
             }
             .navigationBarHidden(true)
             .navigationDestination(for: SocialDestination.self) { destination in
@@ -534,6 +542,12 @@ struct SocialDashboardView: View {
                     .listRowBackground(Color.clear)
                     .padding(.bottom, AppSpacing.compact)
                 }
+                
+                // [NEW] Mock Native Ad
+                NativeAdView()
+                    .listRowInsets(EdgeInsets(top: 8, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
             }
         }
     }

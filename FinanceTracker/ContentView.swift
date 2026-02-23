@@ -95,6 +95,8 @@ struct ContentView: View {
                     showPostOnboardingGuide = true
                 }
             }
+            // Request Ad Tracking Permission
+            AdManager.shared.requestATT()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SwitchTab"))) { notification in
             if let tabName = notification.userInfo?["tab"] as? String {

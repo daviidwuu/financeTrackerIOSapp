@@ -7,6 +7,7 @@ struct UsernameStep: View {
     @State private var isChecking = false
     @State private var availabilityMessage = ""
     @State private var isAvailable = false
+    @State private var checkTask: Task<Void, Never>?
     
     var body: some View {
         VStack(spacing: 24) {
@@ -61,6 +62,8 @@ struct UsernameStep: View {
     }
     
     private func checkAvailability(_ name: String) {
+        checkTask?.cancel()
+        
         guard name.count >= 3 else {
             isAvailable = false
             availabilityMessage = "Too short"
@@ -69,7 +72,7 @@ struct UsernameStep: View {
         
         isChecking = true
         // Simple debounce by delaying task
-        Task {
+        checkTask = Task {
             try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s
             if Task.isCancelled { return }
             

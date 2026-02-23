@@ -209,6 +209,15 @@ struct WalletView: View {
                     }
                     .listRowBackground(Color.clear) // Ensure Section background is clear
                     
+                    // [NEW] Native Ad
+                    Section {
+                        NativeAdView()
+                            .listRowInsets(EdgeInsets(top: AppSpacing.compact, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                    }
+                    .listRowBackground(Color.clear)
+                    
                     // Section 3: Calendar
                     Section {
                         VStack(spacing: 8) {

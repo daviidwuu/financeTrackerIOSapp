@@ -12,6 +12,7 @@ class AppState: ObservableObject {
     @Published var userEmail = ""
     @Published var currentUserUsername = ""
     @Published var isLoadingAuth = true // Track initial auth check
+    @Published var isPremiumUser = false // ✅ NEW: Tracks premium status
     
     // Repositories
     // Repositories

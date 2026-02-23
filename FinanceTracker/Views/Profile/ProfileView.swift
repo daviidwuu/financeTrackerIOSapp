@@ -8,6 +8,7 @@ struct ProfileView: View {
     @AppStorage("hapticFeedbackStyle") private var currentHapticStyle: HapticFeedbackStyle = .medium
     @State private var showSetUsername = false
     @State private var showEditProfile = false
+    @State private var showSubscriptionWizard = false
     
     var body: some View {
         NavigationStack {
@@ -75,13 +76,19 @@ struct ProfileView: View {
                             )
                             MenuDivider()
                             
-                            // Plan (Visual only)
-                            MenuRowView(
-                                icon: "crown.fill",
-                                title: "Subscription",
-                                value: "Free Plan",
-                                showChevron: false
-                            )
+                            // Plan
+                            Button(action: {
+                                HapticManager.shared.light()
+                                showSubscriptionWizard = true
+                            }) {
+                                MenuRowView(
+                                    icon: "crown.fill",
+                                    title: "Subscription",
+                                    value: "Free Plan",
+                                    showChevron: true // Indicate it's clickable
+                                )
+                            }
+                            .buttonStyle(.plain)
                         }
                         
                         // 4. App Settings
@@ -258,6 +265,9 @@ struct ProfileView: View {
 }
 .sheet(isPresented: $showSetUsername) {
     SetUsernameView()
+}
+.sheet(isPresented: $showSubscriptionWizard) {
+    SubscriptionWizardView()
 }
 .preferredColorScheme(userTheme == "system" ? nil : (userTheme == "dark" ? .dark : .light))
 }

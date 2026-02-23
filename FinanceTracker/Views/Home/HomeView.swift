@@ -328,7 +328,13 @@ struct HomeView: View {
                         } else {
                             // Filter hidden transactions (Undo logic) is now handled globally in TransactionRepository
                             
-                            ForEach(transactionRepo.transactions.prefix(5)) { transaction in
+                            NativeAdView()
+                                .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                                .padding(.bottom, AppSpacing.compact)
+                                
+                            ForEach(transactionRepo.transactions.prefix(appState.isPremiumUser ? 5 : 4)) { transaction in
                                 TransactionRow(transaction: transaction)
                                     .background(Color(uiColor: .secondarySystemBackground))
                                     .cornerRadius(AppRadius.medium)

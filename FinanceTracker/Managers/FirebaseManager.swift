@@ -276,15 +276,65 @@ class FirebaseManager: ObservableObject {
         self.currentUserUsername = data["username"] as? String
     }
     
+    /// Update user's username atomically across `users` and `usernames` collections
+    func updateUsername(userId: String, oldUsername: String?, newUsername: String) async throws {
+        if newUsername.contains(" ") {
+            throw NSError(domain: "Auth", code: 400, userInfo: [NSLocalizedDescriptionKey: "Username cannot contain spaces"])
+        }
+        
+        let newUsernameRef = db.collection("usernames").document(newUsername.lowercased())
+        let userRef = db.collection("users").document(userId)
+        
+        // 1. Transaction to update username atomically
+        _ = try await db.runTransaction { (transaction, errorPointer) -> Any? in
+            let doc: DocumentSnapshot
+            do {
+                doc = try transaction.getDocument(newUsernameRef)
+            } catch let fetchError as NSError {
+                errorPointer?.pointee = fetchError
+                return nil
+            }
+            
+            if doc.exists {
+                let error = NSError(domain: "Auth", code: 409, userInfo: [NSLocalizedDescriptionKey: "Username is already taken"])
+                errorPointer?.pointee = error
+                return nil
+            }
+            
+            // 2. Set the new username document
+            transaction.setData(["uid": userId, "createdAt": FieldValue.serverTimestamp()], forDocument: newUsernameRef)
+            
+            // 3. Delete the old username document if it exists
+            if let old = oldUsername {
+                let oldUsernameRef = self.db.collection("usernames").document(old.lowercased())
+                transaction.deleteDocument(oldUsernameRef)
+            }
+            
+            // 4. Update the user document
+            transaction.updateData(["username": newUsername], forDocument: userRef)
+            
+            return true
+        }
+        
+        // Refresh local cache
+        await MainActor.run { self.currentUserUsername = newUsername }
+    }
+    
     /// Update user profile
     func updateUserProfile(userId: String, data: [String: Any]) async throws {
-        try await db.collection("users").document(userId).updateData(data)
-        // Refresh local cache if needed
-        if let newName = data["name"] as? String {
-            await MainActor.run { self.currentUserName = newName }
+        var mutableData = data
+        // Prevent accidental misuse for username updates
+        if mutableData.keys.contains("username") {
+            DebugLogger.log("Warning: updateUserProfile should not be used for username updates. Use updateUsername instead.")
+            mutableData.removeValue(forKey: "username")
         }
-        if let newUsername = data["username"] as? String {
-            await MainActor.run { self.currentUserUsername = newUsername }
+        
+        guard !mutableData.isEmpty else { return }
+        
+        try await db.collection("users").document(userId).updateData(mutableData)
+        // Refresh local cache if needed
+        if let newName = mutableData["name"] as? String {
+            await MainActor.run { self.currentUserName = newName }
         }
     }
     // MARK: - Notification

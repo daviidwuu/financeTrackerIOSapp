@@ -645,7 +645,7 @@ struct TransactionDetailView: View {
                 // Note: We use the manager function but ignore result since we checked blocking above
                 let _ = await SocialTransactionManager.shared.revertLinkedSplitIfNeeded(transaction: transaction, currentUserId: appState.currentUserId)
                 if let splits = transaction.splits, !splits.isEmpty {
-                    if let id = transaction.id {
+                    if transaction.id != nil {
                         await MainActor.run {
                             transactionRepo.optimisticDelete(transaction: transaction)
                         }

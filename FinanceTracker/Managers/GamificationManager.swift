@@ -319,7 +319,7 @@ class GamificationManager: ObservableObject {
         
         Task {
             do {
-                try await db.runTransaction { (transaction, errorPointer) -> Any? in
+                _ = try await db.runTransaction { (transaction, errorPointer) -> Any? in
                     let doc: DocumentSnapshot
                     do {
                         doc = try transaction.getDocument(docRef)

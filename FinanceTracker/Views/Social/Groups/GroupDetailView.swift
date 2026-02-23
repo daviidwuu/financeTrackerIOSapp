@@ -330,7 +330,12 @@ struct GroupDetailView: View {
                                     .listRowSeparator(.hidden)
                                     .listRowBackground(Color.clear)
                             }
-                        }
+                            // [NEW] Native Ad
+                            NativeAdView()
+                                .listRowInsets(EdgeInsets(top: AppSpacing.compact, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                    }
                     }
                     .headerProminence(.increased)
                 }

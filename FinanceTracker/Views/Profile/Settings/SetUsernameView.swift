@@ -11,6 +11,7 @@ struct SetUsernameView: View {
     @State private var isAvailable = false
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var checkTask: Task<Void, Never>?
     
     var body: some View {
         NavigationStack {
@@ -95,6 +96,8 @@ struct SetUsernameView: View {
     }
     
     private func checkAvailability(_ name: String) {
+        checkTask?.cancel()
+        
         guard name.count >= 3 else {
             isAvailable = false
             availabilityMessage = "Too short"
@@ -104,8 +107,8 @@ struct SetUsernameView: View {
         isChecking = true
         errorMessage = nil
         
-        // Simple debounce
-        Task {
+        // Cancellable debounce
+        checkTask = Task {
             try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s
             if Task.isCancelled { return }
             
@@ -135,7 +138,7 @@ struct SetUsernameView: View {
         Task {
             do {
                 guard let userId = FirebaseManager.shared.currentUser?.uid else { return }
-                try await FirebaseManager.shared.updateUserProfile(userId: userId, data: ["username": username])
+                try await FirebaseManager.shared.updateUsername(userId: userId, oldUsername: appState.currentUserUsername, newUsername: username)
                 
                 await MainActor.run {
                     appState.currentUserUsername = username

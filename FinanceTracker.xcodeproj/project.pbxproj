@@ -9,13 +9,14 @@
 /* Begin PBXBuildFile section */
 		4A6660D42EF0CBAC00917527 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 4A6660D32EF0CBAC00917527 /* FirebaseAuth */; };
 		4A6660D62EF0CBB400917527 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 4A6660D52EF0CBB400917527 /* FirebaseFirestore */; };
-		4A6660D82EF0CBD200917527 /* FirebaseFirestoreCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 4A6660D72EF0CBD200917527 /* FirebaseFirestoreCombine-Community */; };
 		4A66623F2F1DC8C100917527 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4A66623E2F1DC8C100917527 /* WidgetKit.framework */; };
 		4A6662412F1DC8C100917527 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4A6662402F1DC8C100917527 /* SwiftUI.framework */; };
 		4A6662522F1DC8C500917527 /* FinanceWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4A66623D2F1DC8C100917527 /* FinanceWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4A6683462F4C82E5008C1870 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 4A6683452F4C82E5008C1870 /* RevenueCat */; };
+		4A6683482F4C82E5008C1870 /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 4A6683472F4C82E5008C1870 /* RevenueCatUI */; };
+		4A66834D2F4C833A008C1870 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 4A66834C2F4C833A008C1870 /* GoogleMobileAds */; };
 		4A7997CD2F34FFBB00F57974 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 4A7997CC2F34FFBB00F57974 /* FirebaseMessaging */; };
 		4A7997E22F3661B800F57974 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 4A7997DF2F3661B800F57974 /* FirebaseMessaging */; };
-		4A7997E32F3661B800F57974 /* FirebaseFirestoreCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 4A7997DE2F3661B800F57974 /* FirebaseFirestoreCombine-Community */; };
 		4A7997E42F3661B800F57974 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 4A7997DB2F3661B800F57974 /* FirebaseAuth */; };
 		4A7997E52F3661B800F57974 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 4A7997DD2F3661B800F57974 /* FirebaseFirestore */; };
 		4A7997E82F3661B800F57974 /* FinanceWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4A66623D2F1DC8C100917527 /* FinanceWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -158,11 +159,15 @@
 		};
 		4ADB75D82EF03ED500C767DE /* FinanceTrackerTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = FinanceTrackerTests;
 			sourceTree = "<group>";
 		};
 		4ADB75E22EF03ED500C767DE /* FinanceTrackerUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = FinanceTrackerUITests;
 			sourceTree = "<group>";
 		};
@@ -183,7 +188,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				4A7997E22F3661B800F57974 /* FirebaseMessaging in Frameworks */,
-				4A7997E32F3661B800F57974 /* FirebaseFirestoreCombine-Community in Frameworks */,
 				4A7997E42F3661B800F57974 /* FirebaseAuth in Frameworks */,
 				4A7997E52F3661B800F57974 /* FirebaseFirestore in Frameworks */,
 			);
@@ -194,7 +198,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				4A7997CD2F34FFBB00F57974 /* FirebaseMessaging in Frameworks */,
-				4A6660D82EF0CBD200917527 /* FirebaseFirestoreCombine-Community in Frameworks */,
+				4A6683482F4C82E5008C1870 /* RevenueCatUI in Frameworks */,
+				4A66834D2F4C833A008C1870 /* GoogleMobileAds in Frameworks */,
+				4A6683462F4C82E5008C1870 /* RevenueCat in Frameworks */,
 				4A6660D42EF0CBAC00917527 /* FirebaseAuth in Frameworks */,
 				4A6660D62EF0CBB400917527 /* FirebaseFirestore in Frameworks */,
 			);
@@ -271,8 +277,6 @@
 				4A6662422F1DC8C100917527 /* FinanceWidget */,
 			);
 			name = FinanceWidgetExtension;
-			packageProductDependencies = (
-			);
 			productName = FinanceWidgetExtension;
 			productReference = 4A66623D2F1DC8C100917527 /* FinanceWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
@@ -298,7 +302,6 @@
 			packageProductDependencies = (
 				4A7997DB2F3661B800F57974 /* FirebaseAuth */,
 				4A7997DD2F3661B800F57974 /* FirebaseFirestore */,
-				4A7997DE2F3661B800F57974 /* FirebaseFirestoreCombine-Community */,
 				4A7997DF2F3661B800F57974 /* FirebaseMessaging */,
 			);
 			productName = FinanceTracker;
@@ -326,8 +329,10 @@
 			packageProductDependencies = (
 				4A6660D32EF0CBAC00917527 /* FirebaseAuth */,
 				4A6660D52EF0CBB400917527 /* FirebaseFirestore */,
-				4A6660D72EF0CBD200917527 /* FirebaseFirestoreCombine-Community */,
 				4A7997CC2F34FFBB00F57974 /* FirebaseMessaging */,
+				4A6683452F4C82E5008C1870 /* RevenueCat */,
+				4A6683472F4C82E5008C1870 /* RevenueCatUI */,
+				4A66834C2F4C833A008C1870 /* GoogleMobileAds */,
 			);
 			productName = FinanceTracker;
 			productReference = 4ADB75BC2EF03ED200C767DE /* FinanceTracker.app */;
@@ -350,8 +355,6 @@
 				4ADB75D82EF03ED500C767DE /* FinanceTrackerTests */,
 			);
 			name = FinanceTrackerTests;
-			packageProductDependencies = (
-			);
 			productName = FinanceTrackerTests;
 			productReference = 4ADB75D52EF03ED500C767DE /* FinanceTrackerTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -373,8 +376,6 @@
 				4ADB75E22EF03ED500C767DE /* FinanceTrackerUITests */,
 			);
 			name = FinanceTrackerUITests;
-			packageProductDependencies = (
-			);
 			productName = FinanceTrackerUITests;
 			productReference = 4ADB75DF2EF03ED500C767DE /* FinanceTrackerUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
@@ -416,6 +417,8 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				4A6660CF2EF0CA9A00917527 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				4A6683422F4C82E5008C1870 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
+				4A66834B2F4C833A008C1870 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4ADB75BD2EF03ED200C767DE /* Products */;
@@ -1038,6 +1041,22 @@
 				minimumVersion = 12.7.0;
 			};
 		};
+		4A6683422F4C82E5008C1870 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios-spm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.59.2;
+			};
+		};
+		4A66834B2F4C833A008C1870 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
 		4A7997DC2F3661B800F57974 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
@@ -1059,10 +1078,20 @@
 			package = 4A6660CF2EF0CA9A00917527 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFirestore;
 		};
-		4A6660D72EF0CBD200917527 /* FirebaseFirestoreCombine-Community */ = {
+		4A6683452F4C82E5008C1870 /* RevenueCat */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 4A6660CF2EF0CA9A00917527 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = "FirebaseFirestoreCombine-Community";
+			package = 4A6683422F4C82E5008C1870 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCat;
+		};
+		4A6683472F4C82E5008C1870 /* RevenueCatUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4A6683422F4C82E5008C1870 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCatUI;
+		};
+		4A66834C2F4C833A008C1870 /* GoogleMobileAds */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4A66834B2F4C833A008C1870 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
+			productName = GoogleMobileAds;
 		};
 		4A7997CC2F34FFBB00F57974 /* FirebaseMessaging */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -1078,11 +1107,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4A7997DC2F3661B800F57974 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFirestore;
-		};
-		4A7997DE2F3661B800F57974 /* FirebaseFirestoreCombine-Community */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 4A7997DC2F3661B800F57974 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = "FirebaseFirestoreCombine-Community";
 		};
 		4A7997DF2F3661B800F57974 /* FirebaseMessaging */ = {
 			isa = XCSwiftPackageProductDependency;
