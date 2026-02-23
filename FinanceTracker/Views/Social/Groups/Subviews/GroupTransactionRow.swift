@@ -50,12 +50,24 @@ struct GroupTransactionRow: View {
             if let statuses = transaction.involvedUserStatuses, !statuses.isEmpty {
                 if transaction.payerId == appState.currentUserId {
                     // Current User is the Payer
-                    let hasPending = statuses.values.contains("pending") || statuses.values.contains("declined")
-                    dynamicBadge = hasPending ? "Awaiting Payments" : "Fully Settled"
+                    let hasBlocking = statuses.values.contains("pending") || statuses.values.contains("declined")
+                    if hasBlocking {
+                        dynamicBadge = "Awaiting Payments"
+                    } else {
+                        let allPaid = statuses.values.allSatisfy { $0 == "paid" }
+                        if allPaid {
+                            dynamicBadge = "Fully Paid"
+                        } else {
+                            let allAcceptedOrPaid = statuses.values.allSatisfy { $0 == "accepted" || $0 == "paid" }
+                            dynamicBadge = allAcceptedOrPaid ? "All Accepted" : nil
+                        }
+                    }
                 } else if let myStatus = statuses[appState.currentUserId] {
                     // Current User is a Debtor
                     if myStatus == "pending" {
                         dynamicBadge = "You Owe"
+                    } else if myStatus == "accepted" {
+                        dynamicBadge = "Accepted"
                     } else if myStatus == "paid" {
                         dynamicBadge = "Paid"
                     }

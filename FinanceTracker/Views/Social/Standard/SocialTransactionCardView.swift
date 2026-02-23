@@ -67,7 +67,9 @@ struct SocialTransactionCardView: View {
         switch status.lowercased() {
         case "pending", "awaiting payments", "you owe": 
             return .orange
-        case "paid", "settled", "accepted", "fully settled": 
+        case "accepted", "all accepted":
+            return .blue
+        case "paid", "settled", "fully settled", "fully paid": 
             return .green
         case "declined": 
             return .red

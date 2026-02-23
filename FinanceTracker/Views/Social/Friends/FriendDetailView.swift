@@ -603,7 +603,9 @@ struct FriendCardRow: View {
         }
         
         var statusBadge: String? = nil
-        if let status = transaction.note, !status.isEmpty, ["pending", "paid", "accepted", "declined"].contains(status.lowercased()) {
+        if transaction.type == "income", (transaction.subtitle ?? "") == "You requested" {
+            statusBadge = nil
+        } else if let status = transaction.note, !status.isEmpty, ["pending", "paid", "accepted", "declined"].contains(status.lowercased()) {
             statusBadge = status
         }
         
