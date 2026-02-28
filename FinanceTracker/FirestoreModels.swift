@@ -490,6 +490,7 @@ enum FirestoreModels {
         var name: String
         var email: String
         var username: String
+        var isPremium: Bool? = false
         var createdAt: Date
         
         // Gamification
@@ -503,6 +504,7 @@ enum FirestoreModels {
             case name
             case email
             case username
+            case isPremium
             case createdAt
             case points
             case completedMissionIds

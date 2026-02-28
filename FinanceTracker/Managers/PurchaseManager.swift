@@ -8,6 +8,7 @@ class PurchaseManager: NSObject, ObservableObject {
     
     @Published var customerInfo: CustomerInfo?
     @Published var offerings: Offerings?
+    @Published var offeringsError: String?
     @Published var isPremium = false
     
     private override init() {
@@ -16,7 +17,11 @@ class PurchaseManager: NSObject, ObservableObject {
     
     func configure(apiKey: String) {
         Purchases.configure(withAPIKey: apiKey)
+        #if DEBUG
         Purchases.logLevel = .debug
+        #else
+        Purchases.logLevel = .info
+        #endif
         
         // Listen for changes in customer info (premium status)
         Purchases.shared.delegate = self
@@ -30,11 +35,16 @@ class PurchaseManager: NSObject, ObservableObject {
         Purchases.shared.getOfferings { [weak self] (offerings, error) in
             if let error = error {
                 DebugLogger.log("Error fetching offerings: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    self?.offerings = nil
+                    self?.offeringsError = error.localizedDescription
+                }
                 return
             }
             
             DispatchQueue.main.async {
                 self?.offerings = offerings
+                self?.offeringsError = nil
             }
         }
     }
@@ -42,10 +52,31 @@ class PurchaseManager: NSObject, ObservableObject {
     func purchase(package: Package) async throws -> CustomerInfo {
         let result = try await Purchases.shared.purchase(package: package)
         
-        // Update local state
-        await MainActor.run {
-            self.customerInfo = result.customerInfo
-            self.updatePremiumStatus(from: result.customerInfo)
+        let entitlementID = AppConfig.revenueCatEntitlementID
+        let entitlementActive = result.customerInfo.entitlements[entitlementID]?.isActive == true
+        let anyEntitlementActive = !result.customerInfo.entitlements.active.isEmpty
+        let anySubscriptionActive = !result.customerInfo.activeSubscriptions.isEmpty
+        let isPremiumFromResult = entitlementActive || anyEntitlementActive || anySubscriptionActive
+        
+        if isPremiumFromResult {
+            await MainActor.run {
+                self.customerInfo = result.customerInfo
+                self.updatePremiumStatus(from: result.customerInfo)
+            }
+        } else {
+            await MainActor.run {
+                self.customerInfo = result.customerInfo
+                self.isPremium = true
+                AppState.shared.isPremiumUser = true
+                AppState.shared.userPremiumRepo.setPremium(userId: AppState.shared.currentUserId, isPremium: true)
+            }
+            
+            DebugLogger.log("Purchase succeeded but premium not active yet; refreshing CustomerInfo.")
+            refreshCustomerInfo()
+            Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                self?.refreshCustomerInfo()
+            }
         }
         
         return result.customerInfo
@@ -74,17 +105,38 @@ class PurchaseManager: NSObject, ObservableObject {
     }
     
     private func updatePremiumStatus(from info: CustomerInfo) {
-        // Check for specific entitlement
-        let isPremium = info.entitlements["wym King"]?.isActive == true
-        self.isPremium = isPremium
+        let entitlementID = AppConfig.revenueCatEntitlementID
+        let entitlementActive = info.entitlements[entitlementID]?.isActive == true
+        let anyEntitlementActive = !info.entitlements.active.isEmpty
+        let anySubscriptionActive = !info.activeSubscriptions.isEmpty
         
-        // Sync with AppState
-        DispatchQueue.main.async {
+        let isPremium = entitlementActive || anyEntitlementActive || anySubscriptionActive
+        
+        let apply = {
+            self.isPremium = isPremium
             AppState.shared.isPremiumUser = isPremium
+            AppState.shared.userPremiumRepo.setPremium(userId: AppState.shared.currentUserId, isPremium: isPremium)
+        }
+        
+        if Thread.isMainThread {
+            apply()
+        } else {
+            DispatchQueue.main.async {
+                apply()
+            }
+        }
+        
+        let userId = AppState.shared.currentUserId
+        if !userId.isEmpty {
+            Task {
+                try? await FirebaseManager.shared.updateUserProfile(userId: userId, data: ["isPremium": isPremium])
+            }
         }
         
         DebugLogger.log("Premium Status Updated: \(isPremium)")
+        DebugLogger.log("Entitlement ID: \(entitlementID)")
         DebugLogger.log("Active Entitlements: \(info.entitlements.active.keys)")
+        DebugLogger.log("Active Subscriptions: \(info.activeSubscriptions)")
     }
 }
 

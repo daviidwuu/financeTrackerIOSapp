@@ -8,8 +8,14 @@ struct PendingSplitCard: View {
     let onDelete: () -> Void
     var onNudge: (() -> Void)? = nil
     
+    @EnvironmentObject var userPremiumRepo: UserPremiumRepository
+    
     /// Whether the current user is the sender (creditor) of this split request
     private var isSender: Bool { split.fromUid == userId }
+    
+    private var otherUserId: String {
+        isSender ? split.toUid : split.fromUid
+    }
     
     // Helper to determine display name
     private var displayName: String {
@@ -40,6 +46,10 @@ struct PendingSplitCard: View {
                         .font(.body)
                         .fontWeight(.semibold)
                         .foregroundColor(.primary)
+                    
+                    if split.isGuest != true, userPremiumRepo.isPremium(userId: otherUserId) == true {
+                        PremiumBadge(size: .small)
+                    }
                     
                     // FIX 3.5: Guest indicator badge
                     if split.isGuest == true {
@@ -160,6 +170,11 @@ struct PendingSplitCard: View {
             RoundedRectangle(cornerRadius: AppRadius.medium)
                 .stroke(accentColor, lineWidth: 1)
         )
+        .onAppear {
+            if split.isGuest != true {
+                userPremiumRepo.prefetch(userIds: [otherUserId])
+            }
+        }
     }
     
     private func timeAgo(from date: Date) -> String {

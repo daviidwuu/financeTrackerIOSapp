@@ -26,6 +26,7 @@ class AppState: ObservableObject {
     @Published var friendRequestRepo = FriendRequestRepository() // ✅ NEW: For incoming/outgoing requests
     @Published var groupInvitationRepo = GroupInvitationRepository() // ✅ NEW: For group invites
     @Published var guestRepo = GuestRepository() // ✅ NEW: For guests
+    let userPremiumRepo = UserPremiumRepository()
     
     private var authStateListener: AuthStateDidChangeListenerHandle?
     private let firebaseManager = FirebaseManager.shared
@@ -90,6 +91,7 @@ class AppState: ObservableObject {
                     self?.friendRequestRepo.stopListening()
                     self?.groupInvitationRepo.stopListening()
                     self?.guestRepo.stopListening()
+                    self?.userPremiumRepo.clear()
                 }
             }
         }

@@ -89,8 +89,6 @@ class SocialTransactionManager: ObservableObject {
         
         // --- 2a. Determine Currency Logic ---
         let mainCurrency = CurrencyManager.shared.mainCurrency
-        let travelCurrency = CurrencyManager.shared.travelCurrency
-        let isTravelMode = CurrencyManager.shared.isTravelModeEnabled
         
         // Target Currency: The currency the GROUP uses (Default or Main)
         var targetCurrency = mainCurrency
@@ -99,14 +97,15 @@ class SocialTransactionManager: ObservableObject {
         }
         
         // Source Currency: The currency of the TRANSACTION
-        // If transaction has specific currency, use it. Otherwise rely on Travel Mode state.
-        let sourceCurrency = finalTransaction.currencyCode ?? (isTravelMode ? travelCurrency : mainCurrency)
+        // If the transaction carries foreign metadata (Home-style), the stored amount is mainCurrency.
+        let hasForeignMetadata = finalTransaction.currencyCode != nil && finalTransaction.originalAmount != nil && finalTransaction.exchangeRate != nil
+        let sourceCurrency = hasForeignMetadata ? mainCurrency : (finalTransaction.currencyCode ?? mainCurrency)
         
         // Conversion Rate: Source -> Target
         // FIX 1.1: Use universal getRate instead of narrow travelCurrency→mainCurrency check
         var conversionRate: Double = 1.0
         if sourceCurrency != targetCurrency {
-            if let txRate = finalTransaction.exchangeRate {
+            if !hasForeignMetadata, let txRate = finalTransaction.exchangeRate {
                 // Transaction has a manually-specified exchange rate (user override)
                 conversionRate = txRate
             } else {
@@ -376,4 +375,3 @@ class SocialTransactionManager: ObservableObject {
     /// - SocialTransactionManager+Splits.swift
     /// - SocialTransactionManager+Settlement.swift
 }
-

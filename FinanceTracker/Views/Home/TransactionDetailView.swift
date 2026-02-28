@@ -10,6 +10,7 @@ struct TransactionDetailView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var userPremiumRepo: UserPremiumRepository
     
     // Callback for saving changes
     var onSave: ((FirestoreModels.TransactionModel, TransactionFormData) -> Void)?
@@ -149,10 +150,16 @@ struct TransactionDetailView: View {
                                                 }
                                                 
                                                 VStack(alignment: .leading, spacing: 2) {
-                                                    Text(split.name)
-                                                        .font(.body)
-                                                        .fontWeight(.medium)
-                                                        .foregroundColor(.primary)
+                                                    HStack(spacing: 8) {
+                                                        Text(split.name)
+                                                            .font(.body)
+                                                            .fontWeight(.medium)
+                                                            .foregroundColor(.primary)
+                                                        
+                                                        if let friendId = split.friendId, userPremiumRepo.isPremium(userId: friendId) == true {
+                                                            PremiumBadge(size: .small)
+                                                        }
+                                                    }
                                                 }
                                                 
                                                 Spacer()
@@ -307,6 +314,10 @@ struct TransactionDetailView: View {
                     await MainActor.run {
                         self.transaction = fresh
                     }
+                }
+                
+                if let friendIds = transaction.splits?.compactMap({ $0.friendId }), !friendIds.isEmpty {
+                    userPremiumRepo.prefetch(userIds: friendIds)
                 }
                 
                 // Look up groupId from existing SplitRequest for re-editing context

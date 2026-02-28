@@ -46,9 +46,15 @@ struct FriendSearchView: View {
                                 )
                                 
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(user.name)
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
+                                    HStack(spacing: 8) {
+                                        Text(user.name)
+                                            .font(.headline)
+                                            .foregroundColor(.primary)
+                                        
+                                        if user.isPremium == true {
+                                            PremiumBadge(size: .small)
+                                        }
+                                    }
                                     Text("@\(user.username)")
                                         .font(.subheadline)
                                         .foregroundColor(.secondary)

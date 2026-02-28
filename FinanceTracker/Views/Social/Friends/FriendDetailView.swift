@@ -73,8 +73,8 @@ struct FriendDetailView: View {
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .addExpense:
-                EditGroupTransactionWizardView(group: nil, preSelectedFriend: friend, transactionToEdit: nil) { amount, note, category, splits in
-                    handleAddExpense(amount: amount, note: note, category: category, splits: splits)
+                EditGroupTransactionWizardView(group: nil, preSelectedFriend: friend, transactionToEdit: nil) { amount, note, category, splits, originalAmount, currencyCode, exchangeRate in
+                    handleAddExpense(amount: amount, note: note, category: category, splits: splits, originalAmount: originalAmount, currencyCode: currencyCode, exchangeRate: exchangeRate)
                 }
                 .presentationDetents([.large])
             case .settleUp:
@@ -113,8 +113,8 @@ struct FriendDetailView: View {
                  editHistory: nil
              )
              
-             EditGroupTransactionWizardView(group: nil, preSelectedFriend: friend, transactionToEdit: groupTx) { amount, note, category, splits in
-                 handleUpdateTransaction(originalTx: tx, amount: amount, note: note, category: category, splits: splits)
+             EditGroupTransactionWizardView(group: nil, preSelectedFriend: friend, transactionToEdit: groupTx) { amount, note, category, splits, originalAmount, currencyCode, exchangeRate in
+                 handleUpdateTransaction(originalTx: tx, amount: amount, note: note, category: category, splits: splits, originalAmount: originalAmount, currencyCode: currencyCode, exchangeRate: exchangeRate)
              }
              .presentationDetents([.large])
         }
@@ -212,12 +212,13 @@ struct FriendDetailView: View {
                     .font(.headline)
                 
                 let balance = repo.friendBalances.values.reduce(0, +)
-                let totalShared = repo.friendTransactions.filter { $0.type != "income" }.reduce(0) { $0 + abs($1.amount) }
+                let totalSharedByCurrency = calculateTotalSharedByCurrency(transactions: repo.friendTransactions)
+                let totalSharedText = formatCurrencyBreakdown(totalSharedByCurrency)
                 
                 SocialTwoCardRow(
                     left: SocialStatCard(
                         title: "Total Shared",
-                        value: String(format: "$%.2f", totalShared)
+                        value: totalSharedText
                     ),
                     right: SocialStatCard(
                         title: balance >= 0 ? "Owed to You" : "You Owe",
@@ -231,6 +232,55 @@ struct FriendDetailView: View {
         .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
+    }
+
+    private func calculateTotalSharedByCurrency(transactions: [FirestoreModels.TransactionModel]) -> [String: Double] {
+        var totals: [String: Double] = [:]
+        var seen: Set<String> = []
+        
+        for tx in transactions {
+            if (tx.subtitle ?? "") == "Settlement" {
+                continue
+            }
+            
+            let currency = tx.currencyCode ?? CurrencyManager.shared.mainCurrency
+            let identity = tx.source ?? tx.id ?? UUID().uuidString
+            let key = "\(currency)|\(identity)"
+            
+            if seen.contains(key) {
+                continue
+            }
+            seen.insert(key)
+            
+            let value = abs(tx.originalAmount ?? tx.amount)
+            totals[currency, default: 0] += value
+        }
+        
+        return totals.filter { abs($0.value) > 0.01 }
+    }
+    
+    private func formatCurrencyBreakdown(_ totals: [String: Double]) -> String {
+        let sorted = totals.sorted(by: { $0.key < $1.key })
+        if sorted.isEmpty {
+            return String(format: "$%.2f", 0.0)
+        }
+        
+        func format(amount: Double, currencyCode: String) -> String {
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .currency
+            formatter.currencyCode = currencyCode
+            formatter.maximumFractionDigits = 2
+            formatter.minimumFractionDigits = 2
+            return formatter.string(from: NSNumber(value: amount)) ?? String(format: "%.2f %@", amount, currencyCode)
+        }
+        
+        if sorted.count == 1, let (code, amount) = sorted.first {
+            return format(amount: amount, currencyCode: code)
+        }
+        
+        return sorted
+            .map { code, amount in "\(code) \(format(amount: amount, currencyCode: code))" }
+            .joined(separator: "\n")
     }
     
     private var recentActivitySection: some View {
@@ -307,7 +357,7 @@ struct FriendDetailView: View {
         }
     }
     
-    private func handleAddExpense(amount: Double, note: String, category: FirestoreModels.CategoryBudget?, splits: [FirestoreModels.Split]) {
+    private func handleAddExpense(amount: Double, note: String, category: FirestoreModels.CategoryBudget?, splits: [FirestoreModels.Split], originalAmount: Double?, currencyCode: String?, exchangeRate: Double?) {
         // Construct TransactionModel
         // NOTE: In Friend context, we don't have a groupId.
         // We create a generic transaction and the Manager handles creating split requests.
@@ -323,7 +373,10 @@ struct FriendDetailView: View {
             icon: category?.icon ?? "person.2.fill",
             colorHex: category?.colorHex ?? "#808080",
             note: note,
-            splits: splits
+            splits: splits,
+            originalAmount: originalAmount,
+            currencyCode: currencyCode,
+            exchangeRate: exchangeRate
         )
         
         Task {
@@ -358,7 +411,7 @@ struct FriendDetailView: View {
         }
     }
     
-    private func handleUpdateTransaction(originalTx: FirestoreModels.TransactionModel, amount: Double, note: String, category: FirestoreModels.CategoryBudget?, splits: [FirestoreModels.Split]) {
+    private func handleUpdateTransaction(originalTx: FirestoreModels.TransactionModel, amount: Double, note: String, category: FirestoreModels.CategoryBudget?, splits: [FirestoreModels.Split], originalAmount: Double?, currencyCode: String?, exchangeRate: Double?) {
         let transaction = FirestoreModels.TransactionModel(
             id: originalTx.id,
             userId: appState.currentUserId,
@@ -371,7 +424,10 @@ struct FriendDetailView: View {
             icon: category?.icon ?? originalTx.icon,
             colorHex: category?.colorHex ?? originalTx.colorHex,
             note: note,
-            splits: splits
+            splits: splits,
+            originalAmount: originalAmount ?? originalTx.originalAmount,
+            currencyCode: currencyCode ?? originalTx.currencyCode,
+            exchangeRate: exchangeRate ?? originalTx.exchangeRate
         )
         
         Task {
@@ -559,7 +615,7 @@ struct FriendDetailView: View {
     private func resolveSplitAction(_ split: FirestoreModels.SplitRequest) {
         HapticManager.shared.heavy()
         if let id = split.id {
-            withAnimation {
+            _ = withAnimation {
                 recentlyPaidSplitIds.insert(id)
             }
         }

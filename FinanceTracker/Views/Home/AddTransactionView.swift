@@ -399,7 +399,8 @@ struct AddTransactionView: View {
                         // 2. Expense Categories
                         ForEach(budgetRepo.budgets.filter { $0.category.lowercased() != "income" }) { budget in
                             let remaining = budget.remainingAmount(transactions: transactionRepo.transactions)
-                            let progress = min(max(1.0 - (remaining / budget.totalAmount), 0.0), 1.0)
+                            let rawProgress: Double = budget.totalAmount > 0 ? (1.0 - (remaining / budget.totalAmount)) : 0.0
+                            let progress = rawProgress.isFinite ? min(max(rawProgress, 0.0), 1.0) : 0.0
                             
                             Button(action: {
                                 selectedCategory = budget

@@ -85,11 +85,17 @@ struct PodiumUser: View {
             .frame(width: 72 * scale, height: 72 * scale + 12) // Adjust for badge offset
             
             VStack(spacing: 2) {
-                Text(entry.name)
-                    .font(rank == 1 ? .headline : .subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(entry.name)
+                        .font(rank == 1 ? .headline : .subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                    
+                    if entry.isPremium {
+                        PremiumBadge(size: .small)
+                    }
+                }
                 
                 Text("\(entry.points)")
                     .font(.system(size: rank == 1 ? 18 : 14, weight: .bold, design: .rounded))
@@ -123,10 +129,16 @@ struct LeaderboardRow: View {
             )
             
             // Name
-            Text(entry.name)
-                .font(.body)
-                .fontWeight(isCurrentUser ? .semibold : .medium)
-                .foregroundColor(.primary)
+            HStack(spacing: 8) {
+                Text(entry.name)
+                    .font(.body)
+                    .fontWeight(isCurrentUser ? .semibold : .medium)
+                    .foregroundColor(.primary)
+                
+                if entry.isPremium {
+                    PremiumBadge(size: .small)
+                }
+            }
             
             if isCurrentUser {
                 Text("(You)")

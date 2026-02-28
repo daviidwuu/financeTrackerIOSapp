@@ -4,6 +4,8 @@ import WidgetKit
 struct AboutView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.dismiss) var dismiss
+    @State private var showTerms = false
+    @State private var showPrivacy = false
     
     var body: some View {
         ZStack(alignment: .top) {
@@ -25,7 +27,7 @@ struct AboutView: View {
                             .font(.title2)
                             .fontWeight(.bold)
                         
-                        Text("Version 1.0.0")
+                        Text(AppConfig.versionDisplayString)
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
@@ -44,20 +46,6 @@ struct AboutView: View {
                         }
                         .padding(.vertical, 14)
                         .padding(.horizontal, 16)
-                        
-                        MenuDivider()
-                        
-                        HStack {
-                            Text("Website")
-                                .font(.body)
-                                .foregroundColor(.primary)
-                            Spacer()
-                            Text("example.com")
-                                .font(.body)
-                                .foregroundColor(.secondary)
-                        }
-                        .padding(.vertical, 14)
-                        .padding(.horizontal, 16)
                     }
                     .padding(.top, 0)
                     
@@ -69,14 +57,14 @@ struct AboutView: View {
                         
                         MenuDivider()
                         
-                        Button(action: {}) {
+                        Button(action: { showTerms = true }) {
                             MenuRowView(title: "Terms of Service", showChevron: true)
                         }
                         
                         
                         MenuDivider()
                         
-                        Button(action: {}) {
+                        Button(action: { showPrivacy = true }) {
                             MenuRowView(title: "Privacy Policy", showChevron: true)
                         }
                         
@@ -113,5 +101,11 @@ struct AboutView: View {
             .padding(.top, 16)
         }
         .navigationBarBackButtonHidden(true)
+        .sheet(isPresented: $showTerms) {
+            LegalDocumentView(document: .terms)
+        }
+        .sheet(isPresented: $showPrivacy) {
+            LegalDocumentView(document: .privacy)
+        }
     }
 }

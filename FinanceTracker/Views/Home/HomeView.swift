@@ -84,6 +84,10 @@ struct HomeView: View {
                                             isAnimating = true
                                         }
                                     }
+                                    if appState.isPremiumUser {
+                                        PremiumBadge(size: .small)
+                                            .padding(.top, 2)
+                                    }
                                 }
                                 
                                 Spacer()
@@ -352,13 +356,15 @@ struct HomeView: View {
                                         .tint(.red)
                                     }
                                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                        Button {
-                                            HapticManager.shared.medium()
-                                            transactionToEdit = transaction
-                                        } label: {
-                                            Label("Edit", systemImage: "pencil")
+                                        if !transaction.isReimbursementIncome {
+                                            Button {
+                                                HapticManager.shared.medium()
+                                                transactionToEdit = transaction
+                                            } label: {
+                                                Label("Edit", systemImage: "pencil")
+                                            }
+                                            .tint(.blue)
                                         }
-                                        .tint(.blue)
                                     }
                                     .onTapGesture {
                                         HapticManager.shared.light()

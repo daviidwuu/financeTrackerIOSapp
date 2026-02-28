@@ -82,9 +82,10 @@ exports.v2_onSplitRequestUpdated = onDocumentUpdated('split_requests/{requestId}
                         if (!splits[splitIndex].incomeTransactionId) {
                             // Create "Payment Received" income transaction for the Creditor (fromUid)
                             const incomeRef = admin.firestore().collection('users').doc(after.fromUid).collection('transactions').doc();
+                            const categorySubtitle = txData.subtitle || 'Income';
                             const incomeData = {
                                 title: `Payment received from ${after.toName || 'User'}`,
-                                subtitle: 'Income',
+                                subtitle: categorySubtitle,
                                 amount: after.amount,
                                 date: new Date(),
                                 icon: 'arrow.turn.down.left',

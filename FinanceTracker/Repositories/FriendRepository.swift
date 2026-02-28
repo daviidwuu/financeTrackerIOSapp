@@ -18,6 +18,7 @@ class FriendRepository: ObservableObject {
         var name: String
         var username: String
         var email: String?
+        var isPremium: Bool?
     }
     
     func startListening(userId: String) {
@@ -95,8 +96,12 @@ class FriendRepository: ObservableObject {
             .whereField("username", isGreaterThanOrEqualTo: queryText)
             .whereField("username", isLessThanOrEqualTo: endText)
             .getDocuments()
-            
-        return snapshot.documents.compactMap { try? $0.data(as: UserSearchResult.self) }
+        
+        let results = snapshot.documents.compactMap { try? $0.data(as: UserSearchResult.self) }
+        await MainActor.run {
+            self.searchResults = results
+        }
+        return results
     }
     
     func deleteFriend(friendId: String) async throws {

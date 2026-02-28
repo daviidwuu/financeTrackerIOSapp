@@ -64,6 +64,7 @@ struct GroupMembersView: View {
                             LazyVStack(spacing: 12) {
                                 ForEach(group.members, id: \.self) { memberId in
                                     MemberRow(
+                                        memberId: memberId,
                                         name: resolveName(id: memberId),
                                         isAdmin: memberId == group.createdBy,
                                         isYou: memberId == appState.currentUserId
@@ -123,6 +124,9 @@ struct GroupMembersView: View {
 }
 
 struct MemberRow: View {
+    @EnvironmentObject var userPremiumRepo: UserPremiumRepository
+    
+    let memberId: String
     let name: String
     let isAdmin: Bool
     let isYou: Bool
@@ -141,6 +145,10 @@ struct MemberRow: View {
                         .font(.body)
                         .fontWeight(.medium)
                         .foregroundColor(.primary)
+                    
+                    if userPremiumRepo.isPremium(userId: memberId) == true {
+                        PremiumBadge(size: .small)
+                    }
                     
                     if isYou {
                         Text("(You)")
@@ -166,5 +174,8 @@ struct MemberRow: View {
         .padding(12)
         .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(AppRadius.medium)
+        .onAppear {
+            userPremiumRepo.prefetch(userIds: [memberId])
+        }
     }
 }

@@ -105,6 +105,26 @@ extension SocialTransactionManager {
     func acceptSettlement(request: FirestoreModels.SplitRequest, currentUserId: String, currentUserName: String) async throws {
         guard let requestId = request.id else { return }
         
+        var incomeSubtitle: String = "Income"
+        do {
+            let payerTxRef = db.collection("users")
+                .document(request.fromUid)
+                .collection("transactions")
+                .document(request.transactionId)
+            let payerSnapshot = try await payerTxRef.getDocument()
+            if let payerTx = try? payerSnapshot.data(as: FirestoreModels.TransactionModel.self),
+               let subtitle = payerTx.subtitle,
+               !subtitle.isEmpty {
+                incomeSubtitle = subtitle
+            } else if request.isSettlement == true {
+                incomeSubtitle = "Settlement"
+            }
+        } catch {
+            if request.isSettlement == true {
+                incomeSubtitle = "Settlement"
+            }
+        }
+        
         let batch = db.batch()
         
         // 1. Mark the settlement request as paid
@@ -120,14 +140,15 @@ extension SocialTransactionManager {
             id: incomeRef.documentID,
             userId: currentUserId,
             title: "Settlement from \(request.fromName ?? "Friend")",
-            subtitle: "Income",
+            subtitle: incomeSubtitle,
             amount: request.amount, // Positive = income
             date: Date(),
             type: "income",
             createdAt: Date(),
             icon: "dollarsign.circle.fill",
             colorHex: "#34C759",
-            note: "Settlement from \(request.fromName ?? "Friend")"
+            note: "Settlement from \(request.fromName ?? "Friend")",
+            source: requestId
         )
         try batch.setData(from: incomeTransaction, forDocument: incomeRef)
         

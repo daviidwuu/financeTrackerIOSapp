@@ -37,10 +37,16 @@ struct ProfileView: View {
                             
                             // Text Info
                             VStack(spacing: 4) {
-                                Text(appState.userName.isEmpty ? "User" : appState.userName)
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.primary)
+                                HStack(spacing: 8) {
+                                    Text(appState.userName.isEmpty ? "User" : appState.userName)
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.primary)
+                                    
+                                    if appState.isPremiumUser {
+                                        PremiumBadge(size: .small)
+                                    }
+                                }
                                 
                                 Text(appState.currentUserUsername.isEmpty ? "Set username" : "@\(appState.currentUserUsername)")
                                     .font(.subheadline)
@@ -84,7 +90,7 @@ struct ProfileView: View {
                                 MenuRowView(
                                     icon: "crown.fill",
                                     title: "Subscription",
-                                    value: "Free Plan",
+                                    value: appState.isPremiumUser ? "King" : "Free Plan",
                                     showChevron: true // Indicate it's clickable
                                 )
                             }
@@ -226,7 +232,7 @@ struct ProfileView: View {
                     Text("wym for iOS")
                         .font(.caption2)
                         .foregroundColor(.secondary)
-                    Text("Version 1.0.0 (Build 1)")
+                    Text(AppConfig.versionDisplayString)
                         .font(.caption2)
                         .foregroundColor(Color(UIColor.tertiaryLabel))
                 }

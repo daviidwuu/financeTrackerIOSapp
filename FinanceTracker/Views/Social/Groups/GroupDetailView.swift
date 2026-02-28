@@ -246,6 +246,7 @@ struct GroupDetailView: View {
                                                     ForEach(memberIds, id: \.self) { memberId in
                                                         if let bal = nonZeroBalances[memberId] {
                                                             BalanceCard(
+                                                                userId: memberId,
                                                                 name: getMemberName(id: memberId, group: group),
                                                                 amount: abs(bal),
                                                                 isOwed: bal > 0,
@@ -389,8 +390,8 @@ struct GroupDetailView: View {
                  if let group = group {
                      switch sheet {
                      case .addExpense:
-                         EditGroupTransactionWizardView(group: group, preSelectedFriend: nil, transactionToEdit: transactionToEdit) { amount, note, category, splits in
-                             handleAddExpense(amount: amount, note: note, category: category, splits: splits, group: group)
+                         EditGroupTransactionWizardView(group: group, preSelectedFriend: nil, transactionToEdit: transactionToEdit) { amount, note, category, splits, originalAmount, currencyCode, exchangeRate in
+                             handleAddExpense(amount: amount, note: note, category: category, splits: splits, originalAmount: originalAmount, currencyCode: currencyCode, exchangeRate: exchangeRate, group: group)
                          }
                          .presentationDetents([.large])
                      case .settings:
@@ -444,8 +445,8 @@ struct GroupDetailView: View {
         }
         .sheet(item: $transactionToEdit) { tx in
              if let group = group {
-                 EditGroupTransactionWizardView(group: group, preSelectedFriend: nil, transactionToEdit: tx) { amount, note, category, splits in
-                     handleUpdateTransaction(originalTx: tx, amount: amount, note: note, category: category, splits: splits, group: group)
+                 EditGroupTransactionWizardView(group: group, preSelectedFriend: nil, transactionToEdit: tx) { amount, note, category, splits, originalAmount, currencyCode, exchangeRate in
+                     handleUpdateTransaction(originalTx: tx, amount: amount, note: note, category: category, splits: splits, originalAmount: originalAmount, currencyCode: currencyCode, exchangeRate: exchangeRate, group: group)
                  }
                  .presentationDetents([.large])
              }
@@ -663,7 +664,7 @@ struct GroupDetailView: View {
         return "Member"
     }
     
-    private func handleAddExpense(amount: Double, note: String, category: FirestoreModels.CategoryBudget?, splits: [FirestoreModels.Split], group: FirestoreModels.Group) {
+    private func handleAddExpense(amount: Double, note: String, category: FirestoreModels.CategoryBudget?, splits: [FirestoreModels.Split], originalAmount: Double?, currencyCode: String?, exchangeRate: Double?, group: FirestoreModels.Group) {
         let transaction = FirestoreModels.TransactionModel(
             userId: appState.currentUserId,
             title: note.isEmpty ? (category?.category ?? "Group Expense") : note,
@@ -675,7 +676,10 @@ struct GroupDetailView: View {
             icon: category?.icon ?? "person.2.fill", // Or group icon
             colorHex: category?.colorHex ?? group.color,
             note: note,
-            splits: splits
+            splits: splits,
+            originalAmount: originalAmount,
+            currencyCode: currencyCode,
+            exchangeRate: exchangeRate
         )
         
         Task {
@@ -700,9 +704,10 @@ struct GroupDetailView: View {
         }
     }
     
-    private func handleUpdateTransaction(originalTx: FirestoreModels.GroupTransaction, amount: Double, note: String, category: FirestoreModels.CategoryBudget?, splits: [FirestoreModels.Split], group: FirestoreModels.Group) {
+    private func handleUpdateTransaction(originalTx: FirestoreModels.GroupTransaction, amount: Double, note: String, category: FirestoreModels.CategoryBudget?, splits: [FirestoreModels.Split], originalAmount: Double?, currencyCode: String?, exchangeRate: Double?, group: FirestoreModels.Group) {
         // Use the original source ID to ensure we update the existing transaction
         let txId = originalTx.originalTransactionId ?? originalTx.id
+        let existingTx = appState.transactionRepo.transactions.first { $0.id == txId }
         
         let transaction = FirestoreModels.TransactionModel(
             id: txId,
@@ -716,7 +721,10 @@ struct GroupDetailView: View {
             icon: category?.icon ?? originalTx.icon,
             colorHex: category?.colorHex ?? originalTx.colorHex,
             note: note,
-            splits: splits
+            splits: splits,
+            originalAmount: originalAmount ?? existingTx?.originalAmount,
+            currencyCode: currencyCode ?? existingTx?.currencyCode,
+            exchangeRate: exchangeRate ?? existingTx?.exchangeRate
         )
         
         Task {
@@ -801,9 +809,6 @@ struct GroupDetailView: View {
 }
 
 // MARK: - Subviews
-
-
-
 
 
 

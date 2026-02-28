@@ -4,11 +4,17 @@ struct GuestCardView: View {
     let guest: FirestoreModels.Guest
     
     var body: some View {
+        let avatarColor: Color = {
+            let hex = guest.avatarColor.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !hex.isEmpty else { return Color.random(seed: guest.name) }
+            return Color(hex: hex)
+        }()
+        
         HStack(spacing: AppSpacing.element) {
             // Gradient Icon / Avatar
             ProfileAvatar(
                 text: String(guest.name.prefix(1)),
-                color: Color(hex: guest.avatarColor ?? "#007AFF") ?? Color.random(seed: guest.name),
+                color: avatarColor,
                 size: AppSize.avatarList
             )
             

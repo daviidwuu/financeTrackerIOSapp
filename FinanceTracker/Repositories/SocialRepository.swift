@@ -21,6 +21,7 @@ class SocialRepository: ObservableObject {
         let id: String
         let name: String
         let points: Int
+        let isPremium: Bool
     }
 
     @Published var friendBalances: [String: Double] = [:] // Real-time balance
@@ -175,12 +176,13 @@ class SocialRepository: ObservableObject {
             // 1. Map Transactions
             let combined = allRequests.map { req -> FirestoreModels.TransactionModel in
                 let isPayer = req.fromUid == currentUserId
+                let isSettlement = req.isSettlement == true
                 
                 return FirestoreModels.TransactionModel(
                     id: req.id,
                     userId: currentUserId,
                     title: req.note ?? "Split Request",
-                    subtitle: isPayer ? "You requested" : "\(req.fromName ?? "Friend") requested",
+                    subtitle: isSettlement ? "Settlement" : (isPayer ? "You requested" : "\(req.fromName ?? "Friend") requested"),
                     amount: req.amount,
                     date: req.createdAt,
                     type: isPayer ? "income" : "expense",
@@ -189,7 +191,8 @@ class SocialRepository: ObservableObject {
                     colorHex: isPayer ? "#34C759" : "#FF3B30",
                     note: req.status.rawValue,
                     source: req.transactionId, // Pass Original Transaction ID
-                    originalAmount: req.originalTotalAmount // ✅ Pass the original full amount
+                    originalAmount: req.originalTotalAmount, // ✅ Pass the original full amount
+                    currencyCode: req.currency ?? CurrencyManager.shared.mainCurrency
                 )
             }
             
@@ -503,7 +506,8 @@ class SocialRepository: ObservableObject {
                         let data = doc.data()
                         let name = data["name"] as? String ?? "Unknown"
                         let points = data["points"] as? Int ?? 0
-                        return LeaderboardEntry(id: doc.documentID, name: name, points: points)
+                        let isPremium = data["isPremium"] as? Bool ?? false
+                        return LeaderboardEntry(id: doc.documentID, name: name, points: points, isPremium: isPremium)
                     }
                     entries.append(contentsOf: chunkEntries)
                 } catch {

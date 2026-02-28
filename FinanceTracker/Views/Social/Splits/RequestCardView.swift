@@ -6,6 +6,7 @@ struct RequestCardView: View {
     let onDecline: () -> Void
     
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var userPremiumRepo: UserPremiumRepository
     
     var body: some View {
         HStack(spacing: AppSpacing.element) {
@@ -37,15 +38,31 @@ struct RequestCardView: View {
                         .fontWeight(.semibold)
                         .foregroundColor(.primary)
                     
-                    Text("\(senderName) paid you $\(String(format: "%.2f", abs(request.amount)))")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
+                    HStack(spacing: 6) {
+                        Text(senderName)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        if userPremiumRepo.isPremium(userId: request.fromUid) == true {
+                            PremiumBadge(size: .small)
+                        }
+                        
+                        Text("paid you $\(String(format: "%.2f", abs(request.amount)))")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
                 } else {
-                    Text(senderName)
-                        .font(.body)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.primary)
+                    HStack(spacing: 8) {
+                        Text(senderName)
+                            .font(.body)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
+                        
+                        if userPremiumRepo.isPremium(userId: request.fromUid) == true {
+                            PremiumBadge(size: .small)
+                        }
+                    }
                     
                     // Secondary Info: Request Details
                     let note = request.note?.isEmpty == false ? request.note! : "Expense"
@@ -97,6 +114,9 @@ struct RequestCardView: View {
             RoundedRectangle(cornerRadius: AppRadius.medium)
                 .stroke(Color.orange, lineWidth: 1)
         )
+        .onAppear {
+            userPremiumRepo.prefetch(userIds: [request.fromUid])
+        }
         // Removed gray background as requested
     }
     

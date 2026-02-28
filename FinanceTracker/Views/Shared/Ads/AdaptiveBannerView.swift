@@ -5,15 +5,36 @@ import GoogleMobileAds
 struct BannerViewController: UIViewControllerRepresentable {
     let adUnitID: String
     
+    final class Coordinator: NSObject, GADBannerViewDelegate {
+        func bannerViewDidReceiveAd(_ bannerView: GADBannerView) {
+            DebugLogger.log("Banner ad loaded: \(bannerView.adUnitID ?? "")")
+        }
+        
+        func bannerView(_ bannerView: GADBannerView, didFailToReceiveAdWithError error: Error) {
+            DebugLogger.log("Banner ad failed: \(bannerView.adUnitID ?? "") - \(error.localizedDescription)")
+        }
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+    
     func makeUIViewController(context: Context) -> UIViewController {
         let viewViewController = UIViewController()
         let bannerView = GADBannerView(adSize: GADAdSizeBanner)
         bannerView.adUnitID = adUnitID
         bannerView.rootViewController = viewViewController
+        bannerView.delegate = context.coordinator
+        bannerView.translatesAutoresizingMaskIntoConstraints = false
         
         viewViewController.view.addSubview(bannerView)
-        viewViewController.view.frame = CGRect(origin: .zero, size: GADAdSizeBanner.size)
-        bannerView.load(GADRequest())
+        NSLayoutConstraint.activate([
+            bannerView.centerXAnchor.constraint(equalTo: viewViewController.view.centerXAnchor),
+            bannerView.centerYAnchor.constraint(equalTo: viewViewController.view.centerYAnchor),
+            bannerView.widthAnchor.constraint(equalToConstant: GADAdSizeBanner.size.width),
+            bannerView.heightAnchor.constraint(equalToConstant: GADAdSizeBanner.size.height)
+        ])
+        bannerView.load(AdManager.shared.makeAdRequest())
         
         return viewViewController
     }
@@ -24,9 +45,7 @@ struct BannerViewController: UIViewControllerRepresentable {
 /// The stylized SwiftUI view that holds the banner
 struct AdaptiveBannerView: View {
     @EnvironmentObject var appState: AppState
-    // Standard Test Banner ID
-    // WAS: ca-app-pub-1865245598004495~1854386845 (This was an App ID, not an Ad Unit ID)
-    let adUnitID = "ca-app-pub-3940256099942544/2934735716"
+    let adUnitID = AppConfig.adMobBannerAdUnitID
     
     var body: some View {
         if !appState.isPremiumUser {

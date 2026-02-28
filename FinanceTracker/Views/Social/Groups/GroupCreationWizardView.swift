@@ -4,6 +4,7 @@ struct GroupCreationWizardView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var userPremiumRepo: UserPremiumRepository
     
     // Callback
     var onGroupCreated: ((String) -> Void)?
@@ -324,10 +325,16 @@ struct GroupCreationWizardView: View {
                                         size: AppSize.avatarList
                                     )
                                     
-                                    Text(friend.name)
-                                        .font(.body)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.primary)
+                                    HStack(spacing: 8) {
+                                        Text(friend.name)
+                                            .font(.body)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.primary)
+                                        
+                                        if let id = friend.id, userPremiumRepo.isPremium(userId: id) == true {
+                                            PremiumBadge(size: .small)
+                                        }
+                                    }
                                     
                                     Spacer()
                                     
@@ -339,6 +346,11 @@ struct GroupCreationWizardView: View {
                                 .padding(.vertical, 12)
                                 .padding(.horizontal)
                                 .contentShape(Rectangle())
+                            }
+                            .onAppear {
+                                if let id = friend.id {
+                                    userPremiumRepo.prefetch(userIds: [id])
+                                }
                             }
                         }
                         
@@ -367,10 +379,16 @@ struct GroupCreationWizardView: View {
                                             )
                                             
                                             VStack(alignment: .leading) {
-                                                Text(user.name)
-                                                    .font(.body)
-                                                    .fontWeight(.medium)
-                                                    .foregroundColor(.primary)
+                                                HStack(spacing: 8) {
+                                                    Text(user.name)
+                                                        .font(.body)
+                                                        .fontWeight(.medium)
+                                                        .foregroundColor(.primary)
+                                                    
+                                                    if user.isPremium == true {
+                                                        PremiumBadge(size: .small)
+                                                    }
+                                                }
                                                 Text("@" + user.username)
                                                     .font(.caption)
                                                     .foregroundColor(.secondary)

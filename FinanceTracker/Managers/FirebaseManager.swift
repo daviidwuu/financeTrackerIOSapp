@@ -225,6 +225,7 @@ class FirebaseManager: ObservableObject {
             "name": name,
             "email": email,
             "username": username,
+            "isPremium": false,
             "createdAt": FieldValue.serverTimestamp()
         ]
         

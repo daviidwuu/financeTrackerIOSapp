@@ -5,6 +5,7 @@ import FirebaseFirestore
 struct SplitRequestDetailView: View {
     let request: FirestoreModels.SplitRequest
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var userPremiumRepo: UserPremiumRepository
     @Environment(\.dismiss) var dismiss
     
     @StateObject private var repo = SocialRepository()
@@ -94,7 +95,80 @@ struct SplitRequestDetailView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.top, AppSpacing.element)
                         
-                        // 2. Details & Map Card (matches TransactionDetailView)
+                        // 2. Split Status Section
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("SPLIT STATUS")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(.secondary)
+                                .padding(.leading, 8)
+                            
+                            VStack(spacing: 0) {
+                                if allSplits.isEmpty {
+                                    HStack(spacing: 12) {
+                                        ProgressView()
+                                        Text("Loading split status")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 16)
+                                } else {
+                                    ForEach(Array(allSplits.enumerated()), id: \.element.id) { index, split in
+                                        HStack(spacing: 12) {
+                                            Circle()
+                                                .fill(splitStatusColor(split.status).opacity(0.15))
+                                                .frame(width: 36, height: 36)
+                                                .overlay(
+                                                    Image(systemName: splitStatusIcon(split.status))
+                                                        .font(.system(size: 14, weight: .bold))
+                                                        .foregroundColor(splitStatusColor(split.status))
+                                                )
+                                            
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                HStack(spacing: 8) {
+                                                    Text(resolveName(uid: split.toUid, name: split.toName))
+                                                        .font(.body)
+                                                        .fontWeight(.medium)
+                                                        .foregroundColor(.primary)
+                                                    
+                                                    if userPremiumRepo.isPremium(userId: split.toUid) == true {
+                                                        PremiumBadge(size: .small)
+                                                    }
+                                                }
+                                                
+                                                Text(split.status.rawValue.capitalized)
+                                                    .font(.caption)
+                                                    .foregroundColor(splitStatusColor(split.status))
+                                            }
+                                            
+                                            Spacer()
+                                            
+                                            Text(String(format: "$%.2f", split.amount))
+                                                .font(.subheadline)
+                                                .fontWeight(.semibold)
+                                                .foregroundColor(.primary)
+                                        }
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 12)
+                                        
+                                        if index < allSplits.count - 1 {
+                                            Divider().padding(.leading, 64)
+                                        }
+                                    }
+                                }
+                            }
+                            .background(Color(UIColor.secondarySystemBackground))
+                            .cornerRadius(AppRadius.medium)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppRadius.medium)
+                                    .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+                            )
+                        }
+                        .padding(.horizontal, AppSpacing.margin)
+                        
+                        // 3. Details & Map Card (matches TransactionDetailView)
                         VStack(alignment: .leading, spacing: 16) {
                             Text("DETAILS")
                                 .font(.caption)
@@ -122,18 +196,38 @@ struct SplitRequestDetailView: View {
                                 TransactionDetailRow(
                                     icon: "person.fill",
                                     title: "Payer",
-                                    value: resolveName(uid: request.fromUid, name: request.fromName),
                                     color: .secondary
-                                )
+                                ) {
+                                    HStack(spacing: 8) {
+                                        Text(resolveName(uid: request.fromUid, name: request.fromName))
+                                            .font(.body)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.primary)
+                                        
+                                        if userPremiumRepo.isPremium(userId: request.fromUid) == true {
+                                            PremiumBadge(size: .small)
+                                        }
+                                    }
+                                }
                                 
                                 Divider().padding(.leading, 52)
                                 
                                 TransactionDetailRow(
                                     icon: "person.2.fill",
                                     title: "Recipient",
-                                    value: resolveName(uid: request.toUid, name: request.toName),
                                     color: .secondary
-                                )
+                                ) {
+                                    HStack(spacing: 8) {
+                                        Text(resolveName(uid: request.toUid, name: request.toName))
+                                            .font(.body)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.primary)
+                                        
+                                        if userPremiumRepo.isPremium(userId: request.toUid) == true {
+                                            PremiumBadge(size: .small)
+                                        }
+                                    }
+                                }
                                 
                                 if let groupId = request.groupId,
                                    let group = appState.groupRepo.groups.first(where: { $0.id == groupId }) {
@@ -199,65 +293,8 @@ struct SplitRequestDetailView: View {
                             .padding(.horizontal, AppSpacing.margin)
                             .padding(.top, -AppSpacing.element)
                         }
-                        
-                        // 2.5. Split Status Section
-                        if !allSplits.isEmpty {
-                            VStack(alignment: .leading, spacing: 16) {
-                                Text("SPLIT STATUS")
-                                    .font(.caption)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.secondary)
-                                    .padding(.leading, 8)
-                                
-                                VStack(spacing: 0) {
-                                    ForEach(Array(allSplits.enumerated()), id: \.element.id) { index, split in
-                                        HStack(spacing: 12) {
-                                            Circle()
-                                                .fill(splitStatusColor(split.status).opacity(0.15))
-                                                .frame(width: 36, height: 36)
-                                                .overlay(
-                                                    Image(systemName: splitStatusIcon(split.status))
-                                                        .font(.system(size: 14, weight: .bold))
-                                                        .foregroundColor(splitStatusColor(split.status))
-                                                )
-                                            
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                Text(resolveName(uid: split.toUid, name: split.toName))
-                                                    .font(.body)
-                                                    .fontWeight(.medium)
-                                                    .foregroundColor(.primary)
-                                                
-                                                Text(split.status.rawValue.capitalized)
-                                                    .font(.caption)
-                                                    .foregroundColor(splitStatusColor(split.status))
-                                            }
-                                            
-                                            Spacer()
-                                            
-                                            Text(String(format: "$%.2f", split.amount))
-                                                .font(.subheadline)
-                                                .fontWeight(.semibold)
-                                                .foregroundColor(.primary)
-                                        }
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 12)
-                                        
-                                        if index < allSplits.count - 1 {
-                                            Divider().padding(.leading, 64)
-                                        }
-                                    }
-                                }
-                                .background(Color(UIColor.secondarySystemBackground))
-                                .cornerRadius(AppRadius.medium)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: AppRadius.medium)
-                                        .stroke(Color.primary.opacity(0.05), lineWidth: 1)
-                                )
-                            }
-                            .padding(.horizontal, AppSpacing.margin)
-                        }
                     
-                    // 3. Actions
+                    // 4. Actions
                     VStack(spacing: 16) {
                         if isIncoming {
                             // --- Receiver (User B) Actions ---
@@ -375,6 +412,7 @@ struct SplitRequestDetailView: View {
         .onAppear {
             loadOriginalTransaction()
             loadAllSplits()
+            userPremiumRepo.prefetch(userIds: [request.fromUid, request.toUid])
         }
         .sheet(isPresented: $showAcceptWizard) {
             AddTransactionView(requestToAccept: request, onSave: { transaction in
@@ -453,11 +491,13 @@ struct SplitRequestDetailView: View {
             if let groupId = request.groupId {
                 do {
                     allSplits = try await repo.fetchSplitsForTransaction(transactionId: request.transactionId, groupId: groupId)
+                    userPremiumRepo.prefetch(userIds: allSplits.map { $0.toUid })
                 } catch {
                     print("Error loading splits: \(error)")
                 }
             } else {
                 allSplits = [request]
+                userPremiumRepo.prefetch(userIds: [request.toUid])
             }
         }
     }

@@ -7,6 +7,23 @@ struct TransactionDetailRow: View {
     let title: String
     let value: String
     let color: Color
+    private let valueView: AnyView?
+    
+    init(icon: String, title: String, value: String, color: Color) {
+        self.icon = icon
+        self.title = title
+        self.value = value
+        self.color = color
+        self.valueView = nil
+    }
+    
+    init<V: View>(icon: String, title: String, color: Color, @ViewBuilder value: () -> V) {
+        self.icon = icon
+        self.title = title
+        self.value = ""
+        self.color = color
+        self.valueView = AnyView(value())
+    }
     
     var body: some View {
         HStack(spacing: 16) {
@@ -24,10 +41,14 @@ struct TransactionDetailRow: View {
                 .font(.caption2)
                 .fontWeight(.bold)
                 .foregroundColor(.secondary)
-                Text(value)
-                .font(.body)
-                .fontWeight(.medium)
-                .foregroundColor(.primary)
+                if let valueView {
+                    valueView
+                } else {
+                    Text(value)
+                        .font(.body)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                }
             }
             Spacer()
         }

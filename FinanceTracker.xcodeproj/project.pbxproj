@@ -16,9 +16,9 @@
 		4A6683482F4C82E5008C1870 /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 4A6683472F4C82E5008C1870 /* RevenueCatUI */; };
 		4A66834D2F4C833A008C1870 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 4A66834C2F4C833A008C1870 /* GoogleMobileAds */; };
 		4A7997CD2F34FFBB00F57974 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 4A7997CC2F34FFBB00F57974 /* FirebaseMessaging */; };
-		4A7997E22F3661B800F57974 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 4A7997DF2F3661B800F57974 /* FirebaseMessaging */; };
-		4A7997E42F3661B800F57974 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 4A7997DB2F3661B800F57974 /* FirebaseAuth */; };
-		4A7997E52F3661B800F57974 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 4A7997DD2F3661B800F57974 /* FirebaseFirestore */; };
+		4A7997E22F3661B800F57974 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 4A7997CC2F34FFBB00F57974 /* FirebaseMessaging */; };
+		4A7997E42F3661B800F57974 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 4A6660D32EF0CBAC00917527 /* FirebaseAuth */; };
+		4A7997E52F3661B800F57974 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 4A6660D52EF0CBB400917527 /* FirebaseFirestore */; };
 		4A7997E82F3661B800F57974 /* FinanceWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4A66623D2F1DC8C100917527 /* FinanceWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -296,9 +296,9 @@
 			);
 			name = "FinanceTracker copy";
 			packageProductDependencies = (
-				4A7997DB2F3661B800F57974 /* FirebaseAuth */,
-				4A7997DD2F3661B800F57974 /* FirebaseFirestore */,
-				4A7997DF2F3661B800F57974 /* FirebaseMessaging */,
+				4A6660D32EF0CBAC00917527 /* FirebaseAuth */,
+				4A6660D52EF0CBB400917527 /* FirebaseFirestore */,
+				4A7997CC2F34FFBB00F57974 /* FirebaseMessaging */,
 			);
 			productName = FinanceTracker;
 			productReference = 4A7997EC2F3661B800F57974 /* FinanceTracker copy.app */;
@@ -1053,14 +1053,6 @@
 				minimumVersion = 11.0.0;
 			};
 		};
-		4A7997DC2F3661B800F57974 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 12.7.0;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -1092,21 +1084,6 @@
 		4A7997CC2F34FFBB00F57974 /* FirebaseMessaging */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 4A6660CF2EF0CA9A00917527 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseMessaging;
-		};
-		4A7997DB2F3661B800F57974 /* FirebaseAuth */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 4A7997DC2F3661B800F57974 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseAuth;
-		};
-		4A7997DD2F3661B800F57974 /* FirebaseFirestore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 4A7997DC2F3661B800F57974 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseFirestore;
-		};
-		4A7997DF2F3661B800F57974 /* FirebaseMessaging */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 4A7997DC2F3661B800F57974 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseMessaging;
 		};
 /* End XCSwiftPackageProductDependency section */

@@ -859,6 +859,7 @@ struct InvitationCard: View {
 struct FriendRequestCard: View {
     let request: FirestoreModels.FriendRequest
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var userPremiumRepo: UserPremiumRepository
     
     var body: some View {
         HStack(spacing: AppSpacing.element) {
@@ -872,10 +873,16 @@ struct FriendRequestCard: View {
                 )
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(request.fromName ?? "Unknown User")
-                    .font(.body)
-                    .fontWeight(.medium)
-                    .foregroundColor(.primary)
+                HStack(spacing: 8) {
+                    Text(request.fromName ?? "Unknown User")
+                        .font(.body)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                    
+                    if userPremiumRepo.isPremium(userId: request.fromUid) == true {
+                        PremiumBadge(size: .small)
+                    }
+                }
                 
                 Text("wants to be friends")
                     .font(.caption)
@@ -914,6 +921,9 @@ struct FriendRequestCard: View {
             RoundedRectangle(cornerRadius: AppRadius.medium)
                 .stroke(Color.blue, lineWidth: 1)
         )
+        .onAppear {
+            userPremiumRepo.prefetch(userIds: [request.fromUid])
+        }
     }
     
     private func timeAgo(from date: Date) -> String {

@@ -9,9 +9,7 @@ class NativeAdViewModel: NSObject, ObservableObject, GADNativeAdLoaderDelegate, 
     @Published var isError: Bool = false
     
     private var adLoader: GADAdLoader!
-    // Standard test ad unit ID for Native Advanced
-    // WAS: ca-app-pub-1865245598004495~1854386845 (This was an App ID, not an Ad Unit ID)
-    private let adUnitID = "ca-app-pub-3940256099942544/3986624511"
+    private let adUnitID = AppConfig.adMobNativeAdUnitID
     
     override init() {
         super.init()
@@ -36,7 +34,7 @@ class NativeAdViewModel: NSObject, ObservableObject, GADNativeAdLoaderDelegate, 
         )
         
         adLoader.delegate = self
-        adLoader.load(GADRequest())
+        adLoader.load(AdManager.shared.makeAdRequest())
     }
     
     // MARK: - NativeAdLoaderDelegate
@@ -52,7 +50,7 @@ class NativeAdViewModel: NSObject, ObservableObject, GADNativeAdLoaderDelegate, 
     
     func adLoader(_ adLoader: GADAdLoader, didFailToReceiveAdWithError error: Error) {
         DispatchQueue.main.async {
-            print("Native ad failed to load with error: \(error.localizedDescription)")
+            DebugLogger.log("Native ad failed: \(error.localizedDescription)")
             self.isLoading = false
             self.isError = true
         }

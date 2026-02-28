@@ -3,6 +3,7 @@ import SwiftUI
 struct WelcomeView: View {
     @State private var showOnboarding = false
     @State private var showLogin = false
+    @State private var showSubscriptionWizard = false
     @State private var animateLogo = false
     @Environment(\.colorScheme) var colorScheme
     
@@ -73,6 +74,19 @@ struct WelcomeView: View {
                                 .background(Color(UIColor.secondarySystemBackground))
                                 .cornerRadius(AppRadius.medium)
                         }
+                        
+                        Button(action: { showSubscriptionWizard = true }) {
+                            HStack(spacing: 6) {
+                                Text("See plans & pricing")
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 4)
+                        }
+                        .buttonStyle(.plain)
                     }
                     .padding(.horizontal, 24)
                     .padding(.bottom, 40)
@@ -85,6 +99,9 @@ struct WelcomeView: View {
             }
             .navigationDestination(isPresented: $showLogin) {
                 LoginView()
+            }
+            .sheet(isPresented: $showSubscriptionWizard) {
+                SubscriptionWizardView()
             }
             .onAppear {
                 withAnimation(.easeOut(duration: 0.8)) {

@@ -6,6 +6,7 @@ struct GroupTransactionDetailView: View {
     let transaction: FirestoreModels.GroupTransaction
     let group: FirestoreModels.Group?
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var userPremiumRepo: UserPremiumRepository
     @Environment(\.dismiss) var dismiss
     @StateObject private var repo = SocialRepository()
     
@@ -70,9 +71,15 @@ struct GroupTransactionDetailView: View {
                             HStack(spacing: 4) {
                                 Text("Paid by")
                                     .foregroundColor(.secondary)
-                                Text(transaction.payerId == appState.currentUserId ? "You" : transaction.payerName)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.primary)
+                                HStack(spacing: 8) {
+                                    Text(transaction.payerId == appState.currentUserId ? "You" : transaction.payerName)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.primary)
+                                    
+                                    if userPremiumRepo.isPremium(userId: transaction.payerId) == true {
+                                        PremiumBadge(size: .small)
+                                    }
+                                }
                             }
                             .font(.caption)
                             
@@ -144,10 +151,16 @@ struct GroupTransactionDetailView: View {
                                                 }
                                                 
                                                 VStack(alignment: .leading, spacing: 2) {
-                                                    Text(split.toName ?? "Friend")
-                                                        .font(.body)
-                                                        .fontWeight(.medium)
-                                                        .foregroundColor(.primary)
+                                                    HStack(spacing: 8) {
+                                                        Text(split.toName ?? "Friend")
+                                                            .font(.body)
+                                                            .fontWeight(.medium)
+                                                            .foregroundColor(.primary)
+                                                        
+                                                        if userPremiumRepo.isPremium(userId: split.toUid) == true {
+                                                            PremiumBadge(size: .small)
+                                                        }
+                                                    }
                                                 }
                                                 
                                                 Spacer()
@@ -315,10 +328,11 @@ struct GroupTransactionDetailView: View {
         .onAppear {
             loadSplits()
             loadOriginalTransaction()
+            userPremiumRepo.prefetch(userIds: [transaction.payerId, transaction.receiverId].compactMap { $0 })
         }
         .sheet(isPresented: $showingEditWizard) {
-            EditGroupTransactionWizardView(group: group, preSelectedFriend: nil, transactionToEdit: transaction) { newAmount, newNote, newCategory, newSplits in
-                handleEdit(amount: newAmount, note: newNote, category: newCategory, splits: newSplits)
+            EditGroupTransactionWizardView(group: group, preSelectedFriend: nil, transactionToEdit: transaction) { newAmount, newNote, newCategory, newSplits, originalAmount, currencyCode, exchangeRate in
+                handleEdit(amount: newAmount, note: newNote, category: newCategory, splits: newSplits, originalAmount: originalAmount, currencyCode: currencyCode, exchangeRate: exchangeRate)
             }
         }
         .sheet(isPresented: $showHistory) {
@@ -366,7 +380,7 @@ struct GroupTransactionDetailView: View {
     
     // MARK: - Handlers
     
-    private func handleEdit(amount: Double, note: String, category: FirestoreModels.CategoryBudget?, splits: [FirestoreModels.Split]) {
+    private func handleEdit(amount: Double, note: String, category: FirestoreModels.CategoryBudget?, splits: [FirestoreModels.Split], originalAmount: Double?, currencyCode: String?, exchangeRate: Double?) {
         guard let originalTx = originalTransaction else { return }
         
         Task {
@@ -377,6 +391,9 @@ struct GroupTransactionDetailView: View {
                 updatedTx.splits = splits
                 updatedTx.note = note.isEmpty ? nil : note
                 updatedTx.title = note.isEmpty ? updatedTx.title : note // Update title if note is used as title logic
+                updatedTx.originalAmount = originalAmount ?? updatedTx.originalAmount
+                updatedTx.currencyCode = currencyCode ?? updatedTx.currencyCode
+                updatedTx.exchangeRate = exchangeRate ?? updatedTx.exchangeRate
                 
                 // Update category if provided
                 if let cat = category {
@@ -427,6 +444,7 @@ struct GroupTransactionDetailView: View {
         Task {
             do {
                 splits = try await repo.fetchSplitsForTransaction(transactionId: queryId, groupId: group?.id)
+                userPremiumRepo.prefetch(userIds: splits.map { $0.toUid })
             } catch {
                 print("Error loading splits: \(error)")
             }

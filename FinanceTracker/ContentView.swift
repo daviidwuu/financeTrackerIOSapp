@@ -11,7 +11,16 @@ struct ContentView: View {
     @Environment(\.colorScheme) var colorScheme
     // @State private var selectedTab = 0 // Moved to AppState
     @State private var showPostOnboardingGuide = false
+    @State private var showWhatsNew = false
     @AppStorage("budgetAlertThreshold") private var budgetAlertThreshold: Double = 0.8
+    
+    private var whatsNewItems: [String] {
+        [
+            "Monetization is now production-ready: configurable ad unit IDs and paywall links.",
+            "Improved subscription purchase flow with better cancellation handling.",
+            "Better release UX with in-app What’s New and dynamic version display."
+        ]
+    }
     
     var body: some View {
         TabView(selection: Binding(
@@ -87,6 +96,16 @@ struct ContentView: View {
             PostOnboardingGuideView()
                 .environmentObject(appState)
         }
+        .sheet(isPresented: $showWhatsNew) {
+            WhatsNewView(
+                version: AppConfig.versionDisplayString,
+                items: whatsNewItems,
+                onDismiss: {
+                    WhatsNewManager.shared.markSeen()
+                }
+            )
+            .presentationBackground(Color.backgroundPrimary)
+        }
         .onAppear {
             // Check if user is new and hasn't seen the guide
             if appState.hasCompletedOnboarding && !appState.hasSeenPostOnboardingGuide {
@@ -97,6 +116,12 @@ struct ContentView: View {
             }
             // Request Ad Tracking Permission
             AdManager.shared.requestATT()
+            
+            if appState.hasCompletedOnboarding && WhatsNewManager.shared.shouldShow() {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    showWhatsNew = true
+                }
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SwitchTab"))) { notification in
             if let tabName = notification.userInfo?["tab"] as? String {

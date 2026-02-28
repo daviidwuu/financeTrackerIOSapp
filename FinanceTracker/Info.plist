@@ -23,6 +23,22 @@
 	</dict>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-1865245598004495~1854386845</string>
+	<key>AdMobBannerAdUnitID</key>
+	<string>ca-app-pub-1865245598004495/6122603219</string>
+	<key>AdMobNativeAdUnitID</key>
+	<string>ca-app-pub-1865245598004495/7615502496</string>
+	<key>RevenueCatAPIKey</key>
+	<string>YOUR_REVENUECAT_API_KEY</string>
+	<key>RevenueCatAPIKeyDebug</key>
+	<string>YOUR_REVENUECAT_DEBUG_API_KEY</string>
+	<key>RevenueCatEntitlementID</key>
+	<string>King</string>
+	<key>TermsOfServiceURL</key>
+	<string>https://example.com/terms</string>
+	<key>PrivacyPolicyURL</key>
+	<string>https://example.com/privacy</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>We use your device identifier to deliver relevant ads and measure ad performance.</string>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>wym sends notifications when you add transactions and reach budget limits.</string>
 	<key>SKAdNetworkItems</key>

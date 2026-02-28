@@ -40,8 +40,13 @@ struct FinanceTrackerApp: App {
     @StateObject private var appState = AppState.shared
 
     init() {
-        // Initialize RevenueCat
-        PurchaseManager.shared.configure(apiKey: "test_LcSnugjYsJYhoIypaxFdQZFyJMA")
+        if let apiKey = AppConfig.revenueCatAPIKey, !apiKey.isEmpty, apiKey != "REPLACE_WITH_PRODUCTION_KEY" {
+            PurchaseManager.shared.configure(apiKey: apiKey)
+        } else if let apiKey = AppConfig.revenueCatAPIKey, !apiKey.isEmpty, apiKey.hasPrefix("test_") {
+            PurchaseManager.shared.configure(apiKey: apiKey)
+        } else {
+            DebugLogger.log("RevenueCat API key missing or placeholder. Set RevenueCatAPIKey/RevenueCatAPIKeyDebug in Info.plist.")
+        }
     }
 
     var body: some Scene {
@@ -72,6 +77,7 @@ struct FinanceTrackerApp: App {
             .environmentObject(appState.friendRequestRepo)
             .environmentObject(appState.groupInvitationRepo)
             .environmentObject(appState.guestRepo)
+            .environmentObject(appState.userPremiumRepo)
             .onOpenURL { url in
                 // Handle Widget Deep Link
                 if url.scheme == "wym" && url.host == "widget-launch" {

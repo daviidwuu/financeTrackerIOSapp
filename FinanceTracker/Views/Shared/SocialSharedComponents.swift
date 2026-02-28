@@ -34,6 +34,9 @@ struct UndoToast: View {
 }
 
 struct BalanceCard: View {
+    @EnvironmentObject var userPremiumRepo: UserPremiumRepository
+    
+    var userId: String? = nil
     let name: String
     let amount: Double
     let isOwed: Bool 
@@ -49,11 +52,17 @@ struct BalanceCard: View {
             ProfileAvatar(text: String(name.prefix(1)), color: Color.random(seed: name), size: 40)
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(name)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
+                HStack(spacing: 8) {
+                    Text(name)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                    
+                    if let userId, userPremiumRepo.isPremium(userId: userId) == true {
+                        PremiumBadge(size: .small)
+                    }
+                }
                 
                 Text(isOwed ? "gets \(currencySymbol) \(String(format: "%.0f", amount))" : "owes \(currencySymbol) \(String(format: "%.0f", amount))")
                     .font(.subheadline)
@@ -69,5 +78,10 @@ struct BalanceCard: View {
                 .stroke(isSelf ? Color.primary.opacity(0.1) : Color.clear, lineWidth: 1)
         )
         .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+        .onAppear {
+            if let userId {
+                userPremiumRepo.prefetch(userIds: [userId])
+            }
+        }
     }
 }

@@ -8,8 +8,8 @@ struct EditGroupTransactionWizardView: View {
     // Optional: Only present for editing
     let transactionToEdit: FirestoreModels.GroupTransaction?
     
-    // Callback: Returns (Amount, Note, Category?, Splits)
-    var onSave: (Double, String, FirestoreModels.CategoryBudget?, [FirestoreModels.Split]) -> Void
+    // Callback: Returns (Amount, Note, Category?, Splits, OriginalAmount?, CurrencyCode?, ExchangeRate?)
+    var onSave: (Double, String, FirestoreModels.CategoryBudget?, [FirestoreModels.Split], Double?, String?, Double?) -> Void
     
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
@@ -24,6 +24,11 @@ struct EditGroupTransactionWizardView: View {
     @State private var direction: Edge = .trailing
     @FocusState private var isAmountFocused: Bool
     @State private var isLoadingSplits = false // Fix for race condition
+    
+    @State private var isUsingTravelCurrency = false
+    @State private var originalAmount: Double?
+    @State private var currencyCode: String?
+    @State private var exchangeRate: Double?
     
     // Step 2: Members
     @State private var selectedMemberIds: Set<String> = []
@@ -75,18 +80,14 @@ struct EditGroupTransactionWizardView: View {
                     if currentStep < totalSteps {
                         // Validation Logic
                         if currentStep == 1 {
-                            if let val = Double(amountString) {
-                                self.amount = val
-                                // Recalculate splits with new amount
-                                recalculateSplits(for: splitMode)
-                            }
+                            syncAmountFromInput()
                         }
                         
                         direction = .trailing
                         withAnimation { currentStep += 1 }
                     } else {
                         print("DEBUG: EditGroupTransactionWizardView onSave called")
-                        onSave(amount, note, selectedCategory, splits)
+                        onSave(amount, note, selectedCategory, splits, originalAmount, currencyCode, exchangeRate)
                         dismiss()
                     }
                 }) {
@@ -229,10 +230,7 @@ struct EditGroupTransactionWizardView: View {
     // MARK: - Step 1: Amount
     
     var stepOneAmount: some View {
-        let isTravelMode = CurrencyManager.shared.isTravelModeEnabled
-        let mainCode = CurrencyManager.shared.mainCurrency
-        let travelCode = CurrencyManager.shared.travelCurrency
-        let _ = isTravelMode ? getSymbol(for: travelCode) : getSymbol(for: mainCode)
+        let currencyManager = CurrencyManager.shared
         
         return VStack(spacing: 24) {
             Spacer()
@@ -240,6 +238,21 @@ struct EditGroupTransactionWizardView: View {
             Text(isEditing ? "How much was the total bill?" : "How much did you pay?")
                 .font(.headline)
                 .foregroundColor(.secondary)
+            
+            if currencyManager.isTravelModeEnabled && currencyManager.mainCurrency != currencyManager.travelCurrency {
+                Picker("Currency", selection: $isUsingTravelCurrency) {
+                    Text(currencyManager.mainCurrency).tag(false)
+                    Text(currencyManager.travelCurrency).tag(true)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, AppSpacing.margin)
+                
+                if isUsingTravelCurrency {
+                    Text("Converting to approx \(String(format: "%.2f", currencyManager.convertToMain(amount: CurrencyInput.parseOrZero(amountString), from: currencyManager.travelCurrency))) \(currencyManager.mainCurrency)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
             
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 // Removed explicit symbol to match AddTransactionView style
@@ -259,6 +272,27 @@ struct EditGroupTransactionWizardView: View {
             Spacer()
         }
         .padding(.horizontal)
+    }
+
+    private func syncAmountFromInput() {
+        let currencyManager = CurrencyManager.shared
+        let raw = CurrencyInput.parseOrZero(amountString)
+        
+        if currencyManager.isTravelModeEnabled,
+           currencyManager.mainCurrency != currencyManager.travelCurrency,
+           isUsingTravelCurrency {
+            amount = currencyManager.convertToMain(amount: raw, from: currencyManager.travelCurrency)
+            originalAmount = raw
+            currencyCode = currencyManager.travelCurrency
+            exchangeRate = currencyManager.exchangeRate
+        } else {
+            amount = raw
+            originalAmount = nil
+            currencyCode = nil
+            exchangeRate = nil
+        }
+        
+        recalculateSplits(for: splitMode)
     }
     
     // MARK: - Step 2 (Friend Mode): Category

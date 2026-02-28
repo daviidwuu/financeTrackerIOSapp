@@ -11,6 +11,16 @@ class AdManager: ObservableObject {
     
     private init() {}
     
+    func makeAdRequest() -> GADRequest {
+        let request = GADRequest()
+        if !isPersonalizedAdAllowed {
+            let extras = GADExtras()
+            extras.additionalParameters = ["npa": "1"]
+            request.register(extras)
+        }
+        return request
+    }
+    
     func requestATT() {
         if #available(iOS 14, *) {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
@@ -19,10 +29,8 @@ class AdManager: ObservableObject {
                         switch status {
                         case .authorized:
                             self.isPersonalizedAdAllowed = true
-                            print("ATT Status: Authorized")
                         case .denied, .restricted, .notDetermined:
                             self.isPersonalizedAdAllowed = false
-                            print("ATT Status: Not Authorized")
                         @unknown default:
                             self.isPersonalizedAdAllowed = false
                         }
