@@ -1,20 +1,32 @@
 import SwiftUI
 
 struct IntroStep: View {
+    @Environment(\.colorScheme) var colorScheme
+    
     @ViewBuilder
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
-            // Using a standard color directly to avoid closure type issues if Environment isn't cooperating in this specific context context
-            Image(systemName: "sparkles")
-                .font(.system(size: 80))
-                .foregroundColor(AppColors.brandPrimary) 
-                .padding()
-                .background(
-                    Circle()
-                        .fill(Color.primary.opacity(0.1))
-                        .frame(width: 160, height: 160)
-                )
+            
+            ZStack {
+                Circle()
+                    .fill(AppColors.brandPrimary.opacity(0.08))
+                    .frame(width: 160, height: 160)
+                
+                Circle()
+                    .fill(AppColors.brandPrimary.opacity(0.04))
+                    .frame(width: 200, height: 200)
+                
+                Image(systemName: "creditcard.fill")
+                    .font(.system(size: 80))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [AppColors.brandPrimary, AppColors.brandPrimary.opacity(0.7)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
             
             VStack(spacing: 12) {
                 Text("Welcome to wym")
@@ -22,7 +34,7 @@ struct IntroStep: View {
                     .multilineTextAlignment(.center)
                 
                 Text("Let's set up your profile and financial goals in just a few steps.")
-                    .font(.body)
+                    .font(AppTypography.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, AppSpacing.section)
@@ -32,14 +44,13 @@ struct IntroStep: View {
             NavigationLink(destination: LoginView()) {
                 Text("Already have an account? Log In")
                     .font(AppTypography.caption)
-                    .foregroundColor(.primary) // Black/White based on theme
+                    .foregroundColor(.primary)
                     .padding(.top, 8)
             }
             
             Spacer()
         }
         .onAppear {
-            // Request missing permissions
             LocationManager.shared.requestPermission()
             NotificationManager.shared.requestPermission { _ in }
         }

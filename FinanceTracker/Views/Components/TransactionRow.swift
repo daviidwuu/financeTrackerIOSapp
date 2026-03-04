@@ -7,18 +7,23 @@ struct TransactionRow: View {
     @EnvironmentObject var appState: AppState
     
     // Dynamic lookup of category icon/color
-    private var categoryIcon: String {
-        if let budget = budgetRepo.budgets.first(where: { $0.category.lowercased() == (transaction.subtitle?.lowercased() ?? "") }) {
-            return budget.icon
+    private var resolvedCategory: FirestoreModels.CategoryBudget? {
+        if let categoryId = transaction.categoryId {
+            return budgetRepo.getCategory(for: categoryId)
         }
-        return "questionmark.circle.fill" // Fallback for "Others"
+        return nil // No fallback to subtitle anymore
+    }
+
+    private var categoryIcon: String {
+        return resolvedCategory?.icon ?? "questionmark.circle.fill"
     }
     
     private var categoryColor: String {
-        if let budget = budgetRepo.budgets.first(where: { $0.category.lowercased() == (transaction.subtitle?.lowercased() ?? "") }) {
-            return budget.colorHex
-        }
-        return "#808080" // Gray for "Others"
+        return resolvedCategory?.colorHex ?? "#808080"
+    }
+
+    private var categoryName: String {
+        return resolvedCategory?.category ?? transaction.title
     }
     
     private func formattedDate(_ date: Date) -> String {
@@ -38,57 +43,40 @@ struct TransactionRow: View {
         }
     }
     
-    private func getSubtitleText() -> String? {
-        let noteText = (transaction.note?.isEmpty == false) ? transaction.note : nil
-        
-        var amountText: String? = nil
-        if let originalAmount = transaction.originalAmount,
-           let currency = transaction.currencyCode {
-            let amountString = String(format: "%.2f", abs(originalAmount))
-            amountText = "(\(currency)$\(amountString))"
-        }
-        
-        if let n = noteText, let a = amountText {
-            return "\(n) \(a)"
-        } else if let n = noteText {
-            return n
-        } else if let a = amountText {
-            return a
-        }
-        return nil
-    }
 
     var body: some View {
         HStack(alignment: .center, spacing: AppSpacing.element) {
-            Circle()
-                .fill(Color(hex: categoryColor).opacity(0.1))
-                .frame(width: 48, height: 48)
-                .overlay(
-                    Image(systemName: categoryIcon)
-                        .font(.system(size: 20))
-                        .foregroundColor(Color(hex: categoryColor))
-                )
+            if budgetRepo.isLoading && budgetRepo.budgets.isEmpty {
+                // Show a blank placeholder while loading to prevent "questionmark" flash
+                Circle()
+                    .fill(Color.gray.opacity(0.1))
+                    .frame(width: 48, height: 48)
+            } else {
+                Circle()
+                    .fill(Color(hex: categoryColor).opacity(0.1))
+                    .frame(width: 48, height: 48)
+                    .overlay(
+                        Image(systemName: categoryIcon)
+                            .font(.system(size: 20))
+                            .foregroundColor(Color(hex: categoryColor))
+                    )
+            }
             
             VStack(alignment: .leading, spacing: 4) {
                 // NEW: Show Category as Title
-                Text(transaction.subtitle ?? "Uncategorized")
+                Text(categoryName)
                     .font(.body)
                     .fontWeight(.semibold)
                     .foregroundColor(transaction.amount > 0 ? Color(hex: "#34C759") : .primary)
                 
                 // NEW: Show Note or Merchant (Title) as Subtitle
                 if let note = transaction.note, !note.isEmpty {
-                    Text(transaction.currencyCode != nil ? "\(note) (\(transaction.currencyCode!))" : note)
+                    Text(note)
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
-                } else if transaction.title != (transaction.subtitle ?? "") {
-                    Text(transaction.currencyCode != nil ? "\(transaction.title) (\(transaction.currencyCode!))" : transaction.title)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                } else if let currencyCode = transaction.currencyCode {
-                    Text("(\(currencyCode))")
+                } else if transaction.title != categoryName {
+                    Text(transaction.title)
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
@@ -108,10 +96,18 @@ struct TransactionRow: View {
                     .foregroundColor(.secondary)
             }
             
-            Text(String(format: "%@$%.2f", transaction.amount > 0 ? "+" : "", abs(transaction.amount)))
-                .font(.headline)
-                .fontWeight(.bold)
-                .foregroundColor(transaction.amount > 0 ? Color(hex: "#34C759") : .primary)
+            VStack(alignment: .trailing, spacing: 4) {
+                Text(String(format: "%@$%.2f", transaction.amount > 0 ? "+" : "", abs(transaction.amount)))
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(transaction.amount > 0 ? Color(hex: "#34C759") : .primary)
+                
+                if let originalAmount = transaction.originalAmount, let currencyCode = transaction.currencyCode {
+                    Text(String(format: "%@%@ %.2f", transaction.amount > 0 ? "+" : "", currencyCode, abs(originalAmount)))
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
         }
         .padding(AppSpacing.element)
         .contentShape(Rectangle())

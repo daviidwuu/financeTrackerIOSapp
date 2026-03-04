@@ -25,36 +25,15 @@ struct AddGroupMemberView: View {
     
     var body: some View {
         ZStack {
-            // Background
-            (colorScheme == .dark ? Color.black : Color(UIColor.systemBackground))
+            Color.backgroundPrimary
                 .ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                // Header
-                // Header
-                ZStack {
-                    Text("Add Members")
-                        .font(.headline)
-                    
-                    HStack {
-                        Button(action: {
-                            HapticManager.shared.light()
-                            dismiss()
-                        }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.title2)
-                                .foregroundColor(.secondary.opacity(0.5))
-                        }
-                        Spacer()
-                    }
-                }
-                .padding(AppSpacing.margin)
-                
-                // Content
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        
-                        // 0. Search Bar (Pill Shape)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    ScrollOffsetTracker()
+                    Spacer().frame(height: 60)
+
+                    // 0. Search Bar (Pill Shape)
                         HStack {
                             Image(systemName: "magnifyingglass")
                                 .foregroundColor(.secondary)
@@ -69,7 +48,7 @@ struct AddGroupMemberView: View {
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
-                        .background(Color(UIColor.secondarySystemBackground))
+                        .background(Color.cardBackground)
                         .clipShape(Capsule())
                         .padding(.horizontal)
                         
@@ -87,7 +66,7 @@ struct AddGroupMemberView: View {
                                 }
                                 
                                 ForEach(filteredFriends) { friend in
-                                    Button(action: { toggleFriendSelection(friend) }) {
+                                    Button(action: { HapticManager.shared.light();  toggleFriendSelection(friend) }) {
                                         HStack(spacing: 16) {
                                             // Avatar
                                             ZStack {
@@ -146,7 +125,7 @@ struct AddGroupMemberView: View {
                                             .padding(.top, 16)
                                         
                                         ForEach(nonFriends) { user in
-                                            Button(action: { addPendingFriend(user) }) {
+                                            Button(action: { HapticManager.shared.light();  addPendingFriend(user) }) {
                                                 HStack(spacing: 16) {
                                                     ZStack {
                                                         Circle()
@@ -187,7 +166,7 @@ struct AddGroupMemberView: View {
                                 }
                                 
                                 // Guest Button
-                            Button(action: { showGuestInput = true }) {
+                            Button(action: { HapticManager.shared.light();  showGuestInput = true }) {
                                 HStack(spacing: 16) {
                                     ZStack {
                                         Circle()
@@ -239,7 +218,7 @@ struct AddGroupMemberView: View {
                                         
                                         Spacer()
                                         
-                                        Button(action: { removeGuest(guest) }) {
+                                        Button(action: { HapticManager.shared.light();  removeGuest(guest) }) {
                                             Image(systemName: "xmark.circle.fill")
                                                 .font(.title2)
                                                 .foregroundColor(.secondary.opacity(0.5))
@@ -253,12 +232,10 @@ struct AddGroupMemberView: View {
                         
                         Spacer().frame(height: 100)
                     }
-                    .padding(.top)
                 }
-            }
             .safeAreaInset(edge: .bottom) {
                 VStack {
-                   Button(action: {
+                   Button(action: { HapticManager.shared.light(); 
                        let friends = friendRepo.friends.filter { selectedFriendIds.contains($0.id ?? "") }
                        onAddMembers(friends, createdGuests)
                        dismiss()
@@ -276,6 +253,7 @@ struct AddGroupMemberView: View {
                // Removed ignoresSafeArea(.keyboard) to allow button to move up
             }
         }
+        .overlayHeader(.navigation(title: "Add Members", onBack: { dismiss() }, backIcon: "xmark"))
         .onAppear {
             if !appState.currentUserId.isEmpty {
                 friendRepo.startListening(userId: appState.currentUserId)
@@ -335,7 +313,7 @@ struct AddGroupMemberView: View {
                     createdGuests.append(newGuest)
                 }
             } catch {
-                print("Error creating guest: \(error)")
+                DebugLogger.log("Error creating guest: \(error)")
             }
         }
     }

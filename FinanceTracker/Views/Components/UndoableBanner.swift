@@ -89,8 +89,11 @@ struct UndoableBanner: View {
                 .foregroundColor(.primary)
             
             Spacer()
-            
-            Button(action: onUndo) {
+
+            Button(action: {
+                HapticManager.shared.light()
+                onUndo()
+            }) {
                 Text("Undo")
                     .font(.subheadline)
                     .fontWeight(.bold)

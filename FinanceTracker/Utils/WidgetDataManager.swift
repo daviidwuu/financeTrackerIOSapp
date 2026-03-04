@@ -44,8 +44,8 @@ class WidgetDataManager {
         let title: String
         let amount: Double
         let date: Date
-        let icon: String
-        let colorHex: String
+        let categoryId: String?
+        let type: String? // FIX #22: Filter by transaction type instead of category name
     }
     
     struct WidgetCategory: Codable, Identifiable {

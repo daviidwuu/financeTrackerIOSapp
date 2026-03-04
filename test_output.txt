@@ -1,0 +1,28 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild test -scheme FinanceTracker -destination "platform=iOS Simulator,name=iPhone 16 Pro"
+
+Resolve Package Graph
+
+
+Resolved source packages:
+  GoogleAppMeasurement: https://github.com/google/GoogleAppMeasurement.git @ 12.5.0
+  RevenueCat: https://github.com/RevenueCat/purchases-ios-spm.git @ 5.59.2
+  GoogleUtilities: https://github.com/google/GoogleUtilities.git @ 8.1.0
+  leveldb: https://github.com/firebase/leveldb.git @ 1.22.5
+  gRPC: https://github.com/google/grpc-binary.git @ 1.69.1
+  GoogleMobileAds: https://github.com/googleads/swift-package-manager-google-mobile-ads.git @ 11.13.0
+  abseil: https://github.com/google/abseil-cpp-binary.git @ 1.2024072200.0
+  GoogleAdsOnDeviceConversion: https://github.com/googleads/google-ads-on-device-conversion-ios-sdk @ 3.2.0
+  GoogleUserMessagingPlatform: https://github.com/googleads/swift-package-manager-google-user-messaging-platform.git @ 2.7.0
+  Firebase: https://github.com/firebase/firebase-ios-sdk @ 12.7.0
+  Promises: https://github.com/google/promises.git @ 2.4.0
+  AppCheck: https://github.com/google/app-check.git @ 11.2.0
+  nanopb: https://github.com/firebase/nanopb.git @ 2.30910.0
+  GTMSessionFetcher: https://github.com/google/gtm-session-fetcher.git @ 5.0.0
+  SwiftProtobuf: https://github.com/apple/swift-protobuf.git @ 1.33.3
+  InteropForGoogle: https://github.com/google/interop-ios-for-google-sdks.git @ 101.0.0
+  GoogleDataTransport: https://github.com/google/GoogleDataTransport.git @ 10.1.0
+
+2026-03-04 18:35:11.754 xcodebuild[98408:1952903] Writing error result bundle to /var/folders/gz/_t1hsvqs69vgn60dtfrlvgq40000gn/T/ResultBundle_2026-04-03_18-35-0011.xcresult
+xcodebuild: error: Scheme FinanceTracker is not currently configured for the test action.
+

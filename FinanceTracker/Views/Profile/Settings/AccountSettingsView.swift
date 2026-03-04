@@ -19,13 +19,14 @@ struct AccountSettingsView: View {
     @State private var initialUsername: String = ""
     
     var body: some View {
-        ZStack(alignment: .top) {
+        ZStack {
             // Background
-            (colorScheme == .dark ? Color.black : Color(UIColor.systemBackground))
+            Color.backgroundPrimary
                 .ignoresSafeArea()
-            
+
             ScrollView {
                 VStack(spacing: 24) {
+                    ScrollOffsetTracker()
                     Spacer().frame(height: 60)
                     
                     // Profile Information Section
@@ -62,6 +63,15 @@ struct AccountSettingsView: View {
 
                         MenuDivider()
                         MenuInputRow(title: "Email", text: $email, keyboardType: .emailAddress, autocapitalization: .none)
+                        
+                        MenuDivider()
+                        NavigationLink(destination: ProfileColorSettingsView()) {
+                            MenuRowView(
+                                icon: "paintpalette.fill",
+                                title: "Profile Color",
+                                showChevron: true
+                            )
+                        }
                     }
                     .padding(.top, 0)
                     
@@ -72,75 +82,53 @@ struct AccountSettingsView: View {
                     }
                     
                     // Actions
-                    VStack {
-                        Button(action: updateProfile) {
-                            if isLoading {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: colorScheme == .dark ? .black : .white))
-                            } else {
-                                Text("Update Profile")
-                                    .font(.headline)
+                    if !(name == appState.userName && email == appState.userEmail && username == initialUsername) {
+                        VStack {
+                            Button(action: updateProfile) {
+                                if isLoading {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: colorScheme == .dark ? .black : .white))
+                                } else {
+                                    Text("Update Profile")
+                                        .font(.headline)
+                                }
                             }
+                            .foregroundColor(colorScheme == .dark ? .black : .white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(colorScheme == .dark ? Color.white : Color.black)
+                            .clipShape(Capsule())
+                            .disabled(isLoading || name.isEmpty || email.isEmpty || username.isEmpty || !usernameAvailable)
+                            .opacity((isLoading || name.isEmpty || email.isEmpty || username.isEmpty || !usernameAvailable) ? 0.6 : 1)
                         }
-                        .foregroundColor(colorScheme == .dark ? .black : .white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(colorScheme == .dark ? Color.white : Color.black)
-                        .clipShape(Capsule())
-                        .disabled(isLoading || name.isEmpty || email.isEmpty || username.isEmpty || !usernameAvailable || (name == appState.userName && email == appState.userEmail && username == initialUsername))
-                        .opacity((isLoading || name.isEmpty || email.isEmpty || username.isEmpty || !usernameAvailable || (name == appState.userName && email == appState.userEmail && username == initialUsername)) ? 0.6 : 1)
+                        .padding(.horizontal, AppSpacing.margin)
                     }
-                    .padding(.horizontal, AppSpacing.margin)
                     
                     // Security
                     MenuSection("Security") {
-                         Button(action: { sendPasswordReset() }) {
+                         Button(action: { HapticManager.shared.light();  sendPasswordReset() }) {
                              MenuRowView(icon: "lock.rotation", title: "Reset Password", showChevron: true)
                          }
                          
                     }
                     
                     // Danger Zone
-                    MenuSection {
-                        Button(action: { showDeleteConfirmation = true }) {
-                            Text("Delete Account")
-                                .font(.body)
-                                .foregroundColor(.red)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                        }
+                    Button(action: { HapticManager.shared.light();  showDeleteConfirmation = true }) {
+                        Text("Delete Account")
+                            .font(.footnote)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.red.opacity(0.8))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
                     }
+                    .padding(.top, 16)
                     
                     Spacer()
                 }
                 .padding(.top, 20)
             }
-            
-            // Fixed Navigation Bar
-            HStack {
-                Button(action: { dismiss() }) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
-                        .frame(width: 44, height: 44)
-                        .background((colorScheme == .dark ? Color.white : Color.black).opacity(0.05))
-                        .clipShape(Circle())
-                }
-                
-                Spacer()
-                
-                Text("Account Settings")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
-                
-                Spacer()
-                
-                Color.clear.frame(width: 44, height: 44)
-            }
-            .padding(.horizontal, AppSpacing.margin + AppSpacing.compact)
-            .padding(.top, 16)
         }
+        .overlayHeader(.navigation(title: "Account Settings", onBack: { dismiss() }))
         .navigationBarBackButtonHidden(true)
         .onAppear {
             name = appState.userName
@@ -149,8 +137,8 @@ struct AccountSettingsView: View {
             initialUsername = appState.currentUserUsername
         }
         .alert("Delete Account", isPresented: $showDeleteConfirmation) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) {
+            Button("Cancel", role: .cancel) { HapticManager.shared.light();  }
+            Button("Delete", role: .destructive) { HapticManager.shared.light(); 
                 deleteAccount()
             }
         } message: {

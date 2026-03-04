@@ -2,6 +2,8 @@ import SwiftUI
 
 struct SocialDashboardView: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var groupRepo: GroupRepository
+    @EnvironmentObject var friendRepo: FriendRepository
     @StateObject private var repo = SocialRepository() // In a real app, might be shared
     @StateObject private var guestRepo = GuestRepository()
     
@@ -23,60 +25,55 @@ struct SocialDashboardView: View {
     var searchPlaceholder: String {
         switch selectedSegment {
         case 0: return "Search groups..."
-        case 1: return "Search for friend"
+        case 1: return "Search friends..."
         case 2: return "Search leaderboard..."
         default: return "Search..."
         }
     }
 
     init() {
-        print("DEBUG: SocialDashboardView init")
+        DebugLogger.log("SocialDashboardView init")
     }
+
+    @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            ZStack {
+            ZStack(alignment: .top) {
                 Color.backgroundPrimary.ignoresSafeArea()
-                    .onTapGesture {
+                    .onTapGesture { HapticManager.shared.light(); 
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     }
-                
-                VStack(spacing: 0) {
-                    // 1. Custom Header
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Social")
-                                .font(AppTypography.titleDisplay)
-                                .foregroundColor(.primary)
-                            Text("Split bills and track shared expenses")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Spacer()
-                    }
-                    .padding(.horizontal, AppSpacing.margin)
-                    .padding(.top, 16)
-                    .padding(.bottom, 16)
-                    
-                    List {
-                    // 2. Custom Segmented Control
+
+                List {
+                    // Scroll offset tracker + spacer for fixed header
+                    ScrollOffsetTracker()
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets())
+
+                    Color.clear.frame(height: 0)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+
+                    // Custom Segmented Control
                     Section {
                         CustomSegmentedControl(selection: $selectedSegment, options: ["Groups", "Friends", "Leaderboard"])
                             .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
-                        
-                        // 3. Search Bar
+
+                        // Search Bar
                         SearchBar(text: $searchText, placeholder: searchPlaceholder, onSearch: performSearch, isLoading: isSearching)
                             .listRowInsets(EdgeInsets(top: 8, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
                     }
-                    
-                    // 4. Content List
-                    if (selectedSegment == 0 && appState.groupRepo.isLoading) ||
-                       (selectedSegment == 1 && appState.friendRepo.isLoading) ||
+
+                    // Content
+                    if (selectedSegment == 0 && groupRepo.isLoading) ||
+                       (selectedSegment == 1 && friendRepo.isLoading) ||
                        (selectedSegment == 2 && repo.isLoading) {
                         ProgressView()
                             .frame(maxWidth: .infinity, alignment: .center)
@@ -92,14 +89,19 @@ struct SocialDashboardView: View {
                             leaderboardList
                         }
                     }
+
+                    // Bottom spacer for ad banner
+                    Color.clear.frame(height: 70)
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
                 .scrollIndicators(.hidden)
-                }
+                .padding(.top, -20)
                 .background(alerts())
-                
-                // [NEW] Sticky Adaptive Banner
+
+                // Sticky Adaptive Banner
                 VStack {
                     Spacer()
                     AdaptiveBannerView()
@@ -107,6 +109,7 @@ struct SocialDashboardView: View {
                         .padding(.bottom, AppSpacing.element)
                 }
             }
+            .overlayHeader(.root(title: "Social", subtitle: "Split bills and track shared expenses"))
             .navigationBarHidden(true)
             .navigationDestination(for: SocialDestination.self) { destination in
                 switch destination {
@@ -130,7 +133,7 @@ struct SocialDashboardView: View {
                 get: { groupForDeletionAction != nil },
                 set: { _ in groupForDeletionAction = nil }
             )) {
-                Button("Keep Transaction History") {
+                Button("Keep Transaction History") { HapticManager.shared.light(); 
                     if let group = groupForDeletionAction {
                         if let id = group.id {
                             pendingDeletedGroupIds.insert(id)
@@ -138,28 +141,28 @@ struct SocialDashboardView: View {
                         // Using the group repo from app state
                         Task {
                             do {
-                                try await appState.groupRepo.submitDeletionAction(group: group, action: "keep")
+                                try await groupRepo.submitDeletionAction(group: group, action: "keep")
                             } catch {
                                 // Handle errors silently for optimistic UI
                             }
                         }
                     }
                 }
-                Button("Delete All History", role: .destructive) {
+                Button("Delete All History", role: .destructive) { HapticManager.shared.light(); 
                     if let group = groupForDeletionAction {
                         if let id = group.id {
                             pendingDeletedGroupIds.insert(id)
                         }
                         Task {
                             do {
-                                try await appState.groupRepo.submitDeletionAction(group: group, action: "delete")
+                                try await groupRepo.submitDeletionAction(group: group, action: "delete")
                             } catch {
                                 // Handle errors
                             }
                         }
                     }
                 }
-                Button("Cancel", role: .cancel) { }
+                Button("Cancel", role: .cancel) { HapticManager.shared.light();  }
             } message: {
                 if let group = groupForDeletionAction {
                     Text("\(group.name) has been deleted by the creator. What would you like to do with your transaction history?")
@@ -167,7 +170,7 @@ struct SocialDashboardView: View {
             }
         }
         .onChange(of: navigationPath) { _, newPath in
-            print("DEBUG: Navigation path changed. Count: \(newPath.count)")
+            DebugLogger.log("Navigation path changed. Count: \(newPath.count)")
         }
         .onReceive(repo.$errorMessage) { msg in
             if let msg = msg {
@@ -184,7 +187,7 @@ struct SocialDashboardView: View {
                  // Fetch Leaderboard if needed
                  if repo.leaderboardData.isEmpty {
                      repo.fetchLeaderboard(
-                         friends: appState.friendRepo.friends,
+                         friends: friendRepo.friends,
                          currentUser: (id: appState.currentUserId, name: appState.userName)
                      )
                  }
@@ -216,13 +219,13 @@ struct SocialDashboardView: View {
             if let group = groupToDelete {
                 Text("") // Placeholder to attach alert
                     .alert("Delete Group?", isPresented: $showGroupDeleteDialog) {
-                        Button("Keep Transaction History") {
+                        Button("Keep Transaction History") { HapticManager.shared.light(); 
                             confirmGroupDeletion(group: group, action: "keep")
                         }
-                        Button("Delete All History", role: .destructive) {
+                        Button("Delete All History", role: .destructive) { HapticManager.shared.light(); 
                             confirmGroupDeletion(group: group, action: "delete")
                         }
-                        Button("Cancel", role: .cancel) { groupToDelete = nil }
+                        Button("Cancel", role: .cancel) { HapticManager.shared.light();  groupToDelete = nil }
                     } message: {
                         Text("Are you sure you want to delete '\(group.name)'? What would you like to do with your transaction history?")
                     }
@@ -231,32 +234,44 @@ struct SocialDashboardView: View {
             if let friend = friendToDelete {
                 Text("") // Placeholder
                     .alert("Remove Friend?", isPresented: $showFriendDeleteAlert) {
-                        Button("Remove", role: .destructive) {
+                        Button("Remove", role: .destructive) { HapticManager.shared.light(); 
                             removeFriend(friend)
                         }
-                        Button("Cancel", role: .cancel) {}
+                        Button("Cancel", role: .cancel) { HapticManager.shared.light(); }
                     } message: {
                         Text("Are you sure you want to remove '\(friend.name)'? Transactions involving them might be affected.")
                     }
             }
+            
+            if let guest = guestToDelete {
+                Text("") // Placeholder
+                    .alert("Remove Guest?", isPresented: $showGuestDeleteAlert) {
+                        Button("Remove", role: .destructive) { HapticManager.shared.light(); 
+                            removeGuest(guest)
+                        }
+                        Button("Cancel", role: .cancel) { HapticManager.shared.light(); }
+                    } message: {
+                        Text("Are you sure you want to remove '\(guest.name)'? Transactions involving them might be affected.")
+                    }
+            }
         }
         .alert(resultTitle, isPresented: $showingResultAlert) {
-            Button("OK", role: .cancel) { }
+            Button("OK", role: .cancel) { HapticManager.shared.light();  }
         } message: {
             Text(resultMessage)
         }
         .alert("Found Existing Guest", isPresented: $showingMergeAlert) {
-            Button("Merge & Add") {
+            Button("Merge & Add") { HapticManager.shared.light(); 
                 if let guest = detectedGuest {
                     searchAndSendRequest(username: searchText, mergeGuestId: guest.id)
                 } else {
                     searchAndSendRequest(username: searchText)
                 }
             }
-            Button("Just Add") {
+            Button("Just Add") { HapticManager.shared.light(); 
                 searchAndSendRequest(username: searchText)
             }
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) { HapticManager.shared.light();  }
         } message: {
             if let guest = detectedGuest {
                 Text("You already have a guest named '\(guest.name)'. Do you want to try and link this new friend request to them?")
@@ -268,13 +283,13 @@ struct SocialDashboardView: View {
 
     @ViewBuilder
     var groupsList: some View {
-        let allGroups = appState.groupRepo.groups.filter { group in
+        let allGroups = groupRepo.groups.filter { group in
             let matchesSearch = searchText.isEmpty || group.name.localizedCaseInsensitiveContains(searchText)
             let isNotDeleted = !pendingDeletedGroupIds.contains(group.id ?? "")
             return matchesSearch && isNotDeleted
         }
         
-        let pendingDeletionGroups = appState.groupRepo.groups.filter { 
+        let pendingDeletionGroups = groupRepo.groups.filter { 
             $0.deletionStatus == "requested" && 
             $0.memberActions?[appState.currentUserId] == "pending" &&
             !pendingDeletedGroupIds.contains($0.id ?? "")
@@ -286,46 +301,32 @@ struct SocialDashboardView: View {
             if !pendingDeletionGroups.isEmpty {
                 Section(header: Text("Action Required").font(.headline).foregroundColor(.red)) {
                     ForEach(pendingDeletionGroups) { group in
-                        HStack(spacing: 12) {
-                            ZStack {
-                                Circle()
-                                    .fill(AppColors.functionalExpense.opacity(0.1))
-                                    .frame(width: 48, height: 48)
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(.red)
-                            }
-                            
+                        HStack(spacing: AppSpacing.element) {
+                            IconAvatar(systemName: "exclamationmark.triangle.fill", color: AppColors.functionalExpense)
+
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(group.name)
-                                    .font(.body)
-                                    .fontWeight(.medium)
+                                    .font(.headline)
                                     .foregroundColor(.primary)
                                 Text("Group deletion requested")
-                                    .font(.caption)
+                                    .font(.subheadline)
                                     .foregroundColor(.red)
                             }
-                            
+
                             Spacer()
-                            
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+
+                            CardChevron()
                         }
-                        .padding(AppSpacing.element)
-                        .background(Color(.secondarySystemBackground)) // Distinct background
-                        .cornerRadius(AppRadius.small)
+                        .appCardStyle()
                         .overlay(
-                            RoundedRectangle(cornerRadius: 12)
+                            RoundedRectangle(cornerRadius: AppRadius.medium)
                                 .stroke(AppColors.functionalExpense.opacity(0.5), lineWidth: 1)
                         )
                         .contentShape(Rectangle())
-                        .onTapGesture {
+                        .onTapGesture { HapticManager.shared.light(); 
                             groupForDeletionAction = group
                         }
-                        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-                        .padding(.bottom, AppSpacing.compact)
+                        .appListRow()
                     }
                 }
             }
@@ -335,58 +336,27 @@ struct SocialDashboardView: View {
                 Section(header: Text("Group Invitations").font(.headline)) {
                     ForEach(appState.groupInvitationRepo.incomingInvitations) { invite in
                         InvitationCard(invite: invite)
-                            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
-                            .padding(.bottom, AppSpacing.compact)
+                            .appListRow()
                     }
                 }
             }
             
             // Create New Group Button
-            Button(action: { showingAddSheet = true }) {
-                HStack(spacing: 12) {
-                    Circle()
-                        .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
-                        .foregroundColor(.secondary)
-                        .frame(width: 48, height: 48)
-                        .overlay(
-                            Image(systemName: "plus")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(.secondary)
-                        )
-                    
-                    Text("Create New Group")
-                        .font(.body)
-                        .fontWeight(.medium)
-                        .foregroundColor(.primary)
-                    
-                    Spacer()
-                }
-                .padding(AppSpacing.element)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(PlainButtonStyle())
-            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
-            .padding(.bottom, AppSpacing.compact)
+            DashedAddButton(label: "Create New Group") { HapticManager.shared.light();  showingAddSheet = true }
+                .appListRow()
 
             ForEach(activeGroups) { group in
                 GroupCardView(group: group)
-                    .contentShape(Rectangle()) // Ensure tap area covers the whole card
-                    .onTapGesture {
+                    .contentShape(Rectangle())
+                    .onTapGesture { HapticManager.shared.light(); 
                         if let id = group.id {
                             navigationPath.append(SocialDestination.group(id))
                         }
                     }
-                    .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                    .padding(.bottom, AppSpacing.compact)
+                    .appListRow()
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         if group.createdBy == appState.currentUserId {
-                            Button(role: .destructive) {
+                            Button(role: .destructive) { HapticManager.shared.light(); 
                                 groupToDelete = group
                                 showGroupDeleteDialog = true
                             } label: {
@@ -414,7 +384,7 @@ struct SocialDashboardView: View {
     
     @ViewBuilder
     var friendsList: some View {
-        let filteredFriends = appState.friendRepo.friends.filter { friend in
+        let filteredFriends = friendRepo.friends.filter { friend in
             (searchText.isEmpty || friend.name.localizedCaseInsensitiveContains(searchText) || (friend.username ?? "").localizedCaseInsensitiveContains(searchText)) &&
             !pendingDeletedFriendIds.contains(friend.id ?? "")
         }
@@ -430,57 +400,26 @@ struct SocialDashboardView: View {
                 Section(header: Text("Pending Requests").font(.headline)) {
                     ForEach(appState.friendRequestRepo.incomingRequests) { request in
                         FriendRequestCard(request: request)
-                            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
-                            .padding(.bottom, AppSpacing.compact)
+                            .appListRow()
                     }
                 }
             }
-            
-            // Add Guest Button (Bottom)
-            Button(action: { showingAddSheet = true }) {
-                HStack(spacing: 12) {
-                    Circle()
-                        .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
-                        .foregroundColor(.secondary)
-                        .frame(width: 48, height: 48)
-                        .overlay(
-                            Image(systemName: "plus")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(.secondary)
-                        )
-                    
-                    Text("Add Guest")
-                        .font(.body)
-                        .fontWeight(.medium)
-                        .foregroundColor(.primary)
-                    
-                    Spacer()
-                }
-                .padding(AppSpacing.element)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(PlainButtonStyle())
-            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
-            .padding(.bottom, AppSpacing.compact)
-            
+
+            // Add Guest Button
+            DashedAddButton(label: "Add Guest") { HapticManager.shared.light();  showingAddSheet = true }
+                .appListRow()
+
             ForEach(filteredFriends, id: \.id) { friend in
                 FriendCardView(friend: friend)
                     .contentShape(Rectangle())
-                    .onTapGesture {
+                    .onTapGesture { HapticManager.shared.light(); 
                         if let id = friend.id {
                             navigationPath.append(SocialDestination.friend(id))
                         }
                     }
-                    .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                    .padding(.bottom, AppSpacing.compact)
+                    .appListRow()
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button(role: .destructive) {
+                        Button(role: .destructive) { HapticManager.shared.light(); 
                             friendToDelete = friend
                             showFriendDeleteAlert = true
                         } label: {
@@ -489,19 +428,25 @@ struct SocialDashboardView: View {
                         .tint(.red)
                     }
             }
-            
+
             ForEach(filteredGuests, id: \.id) { guest in
                 GuestCardView(guest: guest)
                     .contentShape(Rectangle())
-                    .onTapGesture {
+                    .onTapGesture { HapticManager.shared.light(); 
                         if let id = guest.id {
                             navigationPath.append(SocialDestination.friend(id))
                         }
                     }
-                    .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                    .padding(.bottom, AppSpacing.compact)
+                    .appListRow()
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) { HapticManager.shared.light(); 
+                            guestToDelete = guest
+                            showGuestDeleteAlert = true
+                        } label: {
+                            Label("Remove", systemImage: "trash")
+                        }
+                        .tint(.red)
+                    }
             }
             
             if filteredFriends.isEmpty && filteredGuests.isEmpty {
@@ -565,10 +510,7 @@ struct SocialDashboardView: View {
                         rank: startIndex + index + 1,
                         isCurrentUser: entry.id == appState.currentUserId
                     )
-                    .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                    .padding(.bottom, AppSpacing.compact)
+                    .appListRow()
                 }
                 
                 // [NEW] Mock Native Ad
@@ -588,6 +530,9 @@ struct SocialDashboardView: View {
     @State private var friendToDelete: FirestoreModels.Friend?
     @State private var showFriendDeleteAlert = false
     
+    @State private var guestToDelete: FirestoreModels.Guest?
+    @State private var showGuestDeleteAlert = false
+    
     // Optimistic Deletion State
     @State private var pendingDeletedGroupIds: Set<String> = []
     @State private var pendingDeletedFriendIds: Set<String> = []
@@ -597,13 +542,13 @@ struct SocialDashboardView: View {
         
         Task {
             do {
-                try await appState.groupRepo.requestGroupDeletion(group: group)
-                try await appState.groupRepo.submitDeletionAction(group: group, action: action)
+                try await groupRepo.requestGroupDeletion(group: group)
+                try await groupRepo.submitDeletionAction(group: group, action: action)
                 await MainActor.run {
                     HapticManager.shared.success()
                 }
             } catch {
-                print("Error requesting group deletion: \(error)")
+                DebugLogger.log("Error requesting group deletion: \(error)")
                 await MainActor.run {
                     HapticManager.shared.error()
                     errorState.show("Failed to delete group: \(error.localizedDescription)")
@@ -622,9 +567,9 @@ struct SocialDashboardView: View {
         
         Task {
             do {
-                try await appState.friendRepo.deleteFriend(friendId: friendId)
+                try await friendRepo.deleteFriend(friendId: friendId)
             } catch {
-                print("Error removing friend: \(error)")
+                DebugLogger.log("Error removing friend: \(error)")
                 await MainActor.run {
                      _ = withAnimation {
                         pendingDeletedFriendIds.remove(friendId)
@@ -635,7 +580,30 @@ struct SocialDashboardView: View {
         }
     }
 
-    
+    private func removeGuest(_ guest: FirestoreModels.Guest) {
+        guard let guestId = guest.id else { return }
+        
+        _ = withAnimation {
+            pendingDeletedFriendIds.insert(guestId)
+        }
+        HapticManager.shared.success()
+        
+        Task {
+            do {
+                try await guestRepo.deleteGuest(guestId: guestId)
+            } catch {
+                DebugLogger.log("Error removing guest: \(error)")
+                await MainActor.run {
+                     _ = withAnimation {
+                        pendingDeletedFriendIds.remove(guestId)
+                    }
+                     HapticManager.shared.error()
+                     errorState.show("Failed to remove guest: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
     // MARK: - Search & Add Logic
     @State private var isSearching = false
     @State private var showingMergeAlert = false
@@ -664,7 +632,7 @@ struct SocialDashboardView: View {
         
         Task {
             do {
-                if appState.friendRepo.friends.contains(where: { 
+                if friendRepo.friends.contains(where: { 
                     ($0.username ?? "").localizedCaseInsensitiveCompare(username) == .orderedSame 
                 }) {
                     await MainActor.run {
@@ -676,7 +644,7 @@ struct SocialDashboardView: View {
                     return
                 }
                 
-                let results = try await appState.friendRepo.searchUsers(username: username)
+                let results = try await friendRepo.searchUsers(username: username)
                 
                 guard let user = results.first else {
                     await MainActor.run {
@@ -721,7 +689,7 @@ struct SocialDashboardView: View {
                         }
                         
                     } catch {
-                        print("Error sending request in background: \(error)")
+                        DebugLogger.log("Error sending request in background: \(error)")
                     }
                 }
                 
@@ -748,7 +716,7 @@ struct CustomSegmentedControl: View {
     var body: some View {
         HStack(spacing: 0) {
             ForEach(options.indices, id: \.self) { index in
-                Button(action: {
+                Button(action: { HapticManager.shared.light(); 
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                         selection = index
                     }
@@ -776,7 +744,7 @@ struct CustomSegmentedControl: View {
             }
         }
         .padding(5)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(Color.secondaryCardBackground)
         .clipShape(Capsule())
     }
 }
@@ -785,69 +753,36 @@ struct CustomSegmentedControl: View {
 struct InvitationCard: View {
     let invite: FirestoreModels.GroupInvitation
     @EnvironmentObject var appState: AppState
-    
+
     var body: some View {
-        HStack(spacing: 12) {
-            Circle()
-                .fill(Color.orange.opacity(0.1))
-                .frame(width: 48, height: 48)
-                .overlay(
-                    Image(systemName: "envelope.fill")
-                        .font(.headline)
-                        .foregroundColor(.orange)
-                )
-            
+        HStack(spacing: AppSpacing.element) {
+            IconAvatar(systemName: "envelope.fill", color: .orange)
+
             VStack(alignment: .leading, spacing: 2) {
                 Text("Join \"\(invite.groupName)\"")
-                    .font(.body)
-                    .fontWeight(.medium)
+                    .font(.headline)
                     .foregroundColor(.primary)
-                
+
                 Text("Invited by friend")
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundColor(.secondary)
-                    
-                Text(timeAgo(from: invite.createdAt))
+
+                Text(invite.createdAt.timeAgo())
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
-            
+
             Spacer()
-            
-            HStack(spacing: 8) {
-                Button(action: { decline() }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.secondary)
-                        .frame(width: 32, height: 32)
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .clipShape(Circle())
-                }
-                
-                Button(action: { accept() }) {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(Color.backgroundPrimary)
-                        .frame(width: 32, height: 32)
-                        .background(Color.functionalSuccess)
-                        .clipShape(Circle())
-                }
-            }
-            .buttonStyle(PlainButtonStyle())
+
+            AcceptDeclineButtons(onAccept: accept, onDecline: decline)
         }
-        .padding(AppSpacing.element)
+        .appCardStyle()
         .overlay(
             RoundedRectangle(cornerRadius: AppRadius.medium)
                 .stroke(Color.orange, lineWidth: 1)
         )
     }
-    
-    private func timeAgo(from date: Date) -> String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .full
-        return formatter.localizedString(for: date, relativeTo: Date())
-    }
-    
+
     func accept() {
         Task { try? await appState.groupInvitationRepo.acceptInvitation(invite); HapticManager.shared.success() }
     }
@@ -860,92 +795,87 @@ struct FriendRequestCard: View {
     let request: FirestoreModels.FriendRequest
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var userPremiumRepo: UserPremiumRepository
+    @EnvironmentObject var friendRepo: FriendRepository
     
+    @State private var resolvedFromName: String?
+
+    private var displayName: String {
+        // Use resolved name from Firestore fetch if available, otherwise fall back to existing resolution
+        let fallback = resolvedFromName ?? request.fromName
+        return appState.userResolver.resolveName(for: request.fromUid, fallbackName: fallback)
+    }
+
     var body: some View {
         HStack(spacing: AppSpacing.element) {
-            Circle()
-                .fill(Color.blue.opacity(0.1))
-                .frame(width: 48, height: 48)
-                .overlay(
-                    Text(String((request.fromName ?? "?").prefix(1)).uppercased())
-                        .font(.headline)
-                        .foregroundColor(.blue)
-                )
-            
-            VStack(alignment: .leading, spacing: 4) {
+            ProfileAvatar(
+                text: String(displayName.prefix(1)).uppercased(),
+                color: Color.random(seed: displayName),
+                size: AppSize.avatarList
+            )
+
+            VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 8) {
-                    Text(request.fromName ?? "Unknown User")
-                        .font(.body)
-                        .fontWeight(.medium)
+                    Text(displayName)
+                        .font(.headline)
                         .foregroundColor(.primary)
-                    
+
                     if userPremiumRepo.isPremium(userId: request.fromUid) == true {
                         PremiumBadge(size: .small)
                     }
                 }
-                
+
                 Text("wants to be friends")
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundColor(.secondary)
-                    
-                Text(timeAgo(from: request.createdAt))
+
+                Text(request.createdAt.timeAgo())
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
-            
+
             Spacer()
-            
-            HStack(spacing: 8) {
-                Button(action: { decline() }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.secondary)
-                        .frame(width: 32, height: 32)
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .clipShape(Circle())
-                }
-                
-                Button(action: { accept() }) {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(Color.backgroundPrimary)
-                        .frame(width: 32, height: 32)
-                        .background(Color.functionalSuccess)
-                        .clipShape(Circle())
-                }
-            }
-            .buttonStyle(PlainButtonStyle())
+
+            AcceptDeclineButtons(onAccept: accept, onDecline: decline)
         }
-        .padding(AppSpacing.element)
+        .appCardStyle()
         .overlay(
             RoundedRectangle(cornerRadius: AppRadius.medium)
                 .stroke(Color.blue, lineWidth: 1)
         )
         .onAppear {
             userPremiumRepo.prefetch(userIds: [request.fromUid])
+            // Fetch sender's profile name if fromName is nil/empty
+            if request.fromName == nil || (request.fromName ?? "").isEmpty {
+                Task {
+                    do {
+                        let profile = try await FirebaseManager.shared.getUserProfile(userId: request.fromUid)
+                        let name = profile["name"] as? String ?? ""
+                        if !name.isEmpty {
+                            await MainActor.run {
+                                resolvedFromName = name
+                            }
+                        }
+                    } catch {
+                        DebugLogger.log("Failed to fetch sender profile for friend request: \(error)")
+                    }
+                }
+            }
         }
     }
-    
-    private func timeAgo(from date: Date) -> String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .full
-        return formatter.localizedString(for: date, relativeTo: Date())
-    }
 
-func accept() {
+    func accept() {
         Task {
-            // MVP: Client-side accept
             do {
-                try await appState.friendRepo.createFriendship(
+                try await friendRepo.createFriendship(
                     requestId: request.id ?? "",
-                    fromUser: (uid: request.fromUid, name: request.fromName ?? "Unknown", username: request.fromUsername ?? ""),
+                    fromUser: (uid: request.fromUid, name: displayName, username: request.fromUsername ?? ""),
                     toUser: (uid: appState.currentUserId, name: appState.userName, username: appState.currentUserUsername, email: appState.userEmail)
                 )
                 await MainActor.run {
                     HapticManager.shared.success()
                 }
             } catch {
-                print("Error accepting friend request: \(error)")
+                DebugLogger.log("Error accepting friend request: \(error)")
                 await MainActor.run {
                     HapticManager.shared.error()
                 }

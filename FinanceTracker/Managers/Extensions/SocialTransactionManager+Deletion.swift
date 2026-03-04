@@ -70,7 +70,7 @@ func deleteSocialTransaction(groupTransaction: FirestoreModels.GroupTransaction,
         // If current user is NOT the payer, we cannot modify the payer's private transactions.
         // We stop here to avoid permission errors.
         if let currentUserId = currentUserId, currentUserId != groupTransaction.payerId {
-            print("⚠️ User \(currentUserId) is not the payer (\(groupTransaction.payerId)). Skipping private transaction deletion.")
+            DebugLogger.log("⚠️ User \(currentUserId) is not the payer (\(groupTransaction.payerId)). Skipping private transaction deletion.")
             try await withRetry {
                 try await batch.commit()
             }
@@ -92,7 +92,7 @@ func deleteSocialTransaction(groupTransaction: FirestoreModels.GroupTransaction,
                 }
             }
         } catch {
-            print("DEBUG: Error fetching original transaction for income cleanup: \(error)")
+            DebugLogger.log("Error fetching original transaction for income cleanup: \(error)")
         }
         
         // 4. Delete Original User Transaction (Archive First)
@@ -234,7 +234,7 @@ func deleteSplitRequestAndSync(request: FirestoreModels.SplitRequest) async thro
                     }
                 }
             } catch {
-                print("DEBUG: Error syncing delete of split request: \(error)")
+                DebugLogger.log("Error syncing delete of split request: \(error)")
                 // We continue, as deleting the request is the primary action
             }
         } else {
@@ -242,7 +242,7 @@ func deleteSplitRequestAndSync(request: FirestoreModels.SplitRequest) async thro
              // However, this leaves the Payer's transaction in an inconsistent state if we delete the request.
              // This method should ideally NOT be called if we are not the Payer.
              // Use `resolveSplitRequestAction` instead.
-             print("⚠️ Warning: Non-Payer deleting request. Private transaction not updated.")
+             DebugLogger.log("⚠️ Warning: Non-Payer deleting request. Private transaction not updated.")
         }
         
         // 3. Delete from Group Feed if applicable

@@ -25,9 +25,9 @@ struct WelcomeView: View {
                                 .frame(width: 120, height: 120)
                                 .shadow(color: .white.opacity(0.3), radius: 20, x: 0, y: 10)
                             
-                            Image(systemName: "chart.bar.fill")
+                            Image(systemName: "creditcard.fill")
                                 .font(.system(size: 50))
-                            Image(systemName: "chart.bar.fill")
+                            Image(systemName: "creditcard.fill")
                                 .font(.system(size: 50))
                                 .foregroundColor(.black)
                                 .scaleEffect(animateLogo ? 1.0 : 0.8)
@@ -36,11 +36,11 @@ struct WelcomeView: View {
                         
                         VStack(spacing: 12) {
                             Text("wym")
-                                .font(.system(size: 36, weight: .bold, design: .rounded))
+                                .font(AppTypography.titleDisplay)
                                 .foregroundColor(.primary)
                             
                             Text("Master your money with ease")
-                                .font(.title3)
+                                .font(AppTypography.subheadline)
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
                         }
@@ -52,37 +52,34 @@ struct WelcomeView: View {
                     
                     // Action Buttons
                     VStack(spacing: 16) {
-                        Button(action: { showOnboarding = true }) {
+                        Button(action: { HapticManager.shared.light();  showOnboarding = true }) {
                             Text("Get Started")
-                                .font(.headline)
-                                .fontWeight(.bold)
+                                .font(AppTypography.headline)
                                 .foregroundColor(.black)
                                 .frame(maxWidth: .infinity)
                                 .padding()
                                 .background(Color.white)
-                                .cornerRadius(AppRadius.medium)
+                                .clipShape(Capsule())
                                 .shadow(color: .white.opacity(0.3), radius: 10, x: 0, y: 5)
                         }
                         
-                        Button(action: { showLogin = true }) {
+                        Button(action: { HapticManager.shared.light();  showLogin = true }) {
                             Text("I already have an account")
-                                .font(.headline)
-                                .fontWeight(.medium)
+                                .font(AppTypography.headline)
                                 .foregroundColor(.primary)
                                 .frame(maxWidth: .infinity)
                                 .padding()
-                                .background(Color(UIColor.secondarySystemBackground))
-                                .cornerRadius(AppRadius.medium)
+                                .background(Color.cardBackground)
+                                .clipShape(Capsule())
                         }
                         
-                        Button(action: { showSubscriptionWizard = true }) {
+                        Button(action: { HapticManager.shared.light();  showSubscriptionWizard = true }) {
                             HStack(spacing: 6) {
                                 Text("See plans & pricing")
                                 Image(systemName: "chevron.right")
                                     .font(.system(size: 12, weight: .semibold))
                             }
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
+                            .font(AppTypography.subheadline)
                             .foregroundColor(.secondary)
                             .padding(.top, 4)
                         }

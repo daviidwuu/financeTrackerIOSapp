@@ -3,13 +3,6 @@ const admin = require('firebase-admin');
 const { getIconForCategory, getColorForCategory } = require('../helpers');
 
 exports.addTransaction = functions.https.onRequest(async (req, res) => {
-  res.set('Access-Control-Allow-Origin', '*');
-  if (req.method === 'OPTIONS') {
-    res.set('Access-Control-Allow-Methods', 'POST');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.status(204).send('');
-    return;
-  }
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
@@ -66,6 +59,6 @@ exports.addTransaction = functions.https.onRequest(async (req, res) => {
     res.status(200).json({ success: true, transactionId: docRef.id });
   } catch (error) {
     console.error('Error adding transaction:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to process transaction' });
   }
 });

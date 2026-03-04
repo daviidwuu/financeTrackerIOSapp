@@ -49,7 +49,7 @@ struct MockNativeAdView: View {
         .background(hasBackground ? Color(uiColor: .secondarySystemBackground) : Color.clear)
         .cornerRadius(hasBackground ? AppRadius.medium : 0)
         .contentShape(Rectangle())
-        .onTapGesture {
+        .onTapGesture { HapticManager.shared.light(); 
             // Placeholder: Do nothing for now
         }
     }

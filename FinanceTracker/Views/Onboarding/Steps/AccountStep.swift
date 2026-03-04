@@ -10,9 +10,16 @@ struct AccountStep: View {
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
+            
             Text("Create your account")
                 .font(AppTypography.heroRounded(size: 28))
                 .multilineTextAlignment(.center)
+            
+            Text("Your data is securely stored and never shared.")
+                .font(AppTypography.body)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, AppSpacing.section)
             
             VStack(spacing: 16) {
                 CustomTextField(icon: "envelope.fill", placeholder: "Email", text: $email)
@@ -35,8 +42,8 @@ struct AccountStep: View {
             
             if let error = errorMessage {
                 Text(error)
-                    .foregroundColor(.red)
-                    .font(.caption)
+                    .foregroundColor(AppColors.functionalExpense)
+                    .font(AppTypography.caption)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, AppSpacing.section)
             }

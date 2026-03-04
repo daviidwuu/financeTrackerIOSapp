@@ -13,41 +13,14 @@ struct MissionHubView: View {
             ZStack {
                 // Background
                 Color.backgroundPrimary.ignoresSafeArea()
-                
-                VStack(spacing: 0) {
-                    // Custom Header (Dismiss + Title)
-                    HStack {
-                        Button(action: {
-                            HapticManager.shared.light()
-                            dismiss()
-                        }) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.primary)
-                                .frame(width: 44, height: 44)
-                                .background(Color.primary.opacity(0.05))
-                                .clipShape(Circle())
-                        }
-                        
-                        Spacer()
-                        
-                        Text("Your Journey")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                        
-                        Spacer()
-                        
-                        // Placeholder for alignment
-                        Color.clear.frame(width: 44, height: 44)
-                    }
-                    .padding(.horizontal, AppSpacing.margin)
-                    .padding(.top, 16)
-                    .padding(.bottom, 8)
-                    
-                    ScrollView {
-                        VStack(spacing: AppSpacing.section) {
-                            // Points & Phase Header
-                            VStack(spacing: 8) {
+
+                ScrollView {
+                    VStack(spacing: AppSpacing.section) {
+                        ScrollOffsetTracker()
+                        Spacer().frame(height: 60)
+
+                        // Points & Phase Header
+                        VStack(spacing: 8) {
                                 ZStack {
                                     Circle()
                                         .fill(Color.primary.opacity(0.05))
@@ -115,7 +88,7 @@ struct MissionHubView: View {
                         }
                     }
                 }
-            }
+            .overlayHeader(.navigation(title: "Your Journey", onBack: { dismiss() }, backIcon: "xmark"))
             .sheet(item: $selectedMission) { mission in
                 MissionDetailView(mission: mission) {
                     handleMissionAction(mission)
@@ -185,7 +158,7 @@ struct MissionHubView: View {
             }
         }
         .padding(AppSpacing.margin)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(Color.cardBackground)
         .cornerRadius(AppRadius.medium)
         .opacity(isLocked ? 0.6 : 1.0)
     }

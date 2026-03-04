@@ -9,27 +9,24 @@ struct RequestCardView: View {
     @EnvironmentObject var userPremiumRepo: UserPremiumRepository
     
     var body: some View {
+        let iconName = request.isSettlement == true ? "arrow.turn.down.left" : (request.icon ?? "banknote.fill")
+        let colorHex = request.isSettlement == true ? "#34C759" : (request.colorHex ?? "#FF9F0A") // Default orange
+        
         HStack(spacing: AppSpacing.element) {
             // Avatar / Icon
             Circle()
-                .fill(Color.orange.opacity(0.1))
+                .fill(Color(hex: colorHex).opacity(0.1))
                 .frame(width: 48, height: 48)
                 .overlay(
-                    Image(systemName: request.isSettlement == true ? "arrow.left.arrow.right" : "banknote.fill")
+                    Image(systemName: iconName)
                         .font(.headline)
-                        .foregroundColor(.orange)
+                        .foregroundColor(Color(hex: colorHex))
                 )
             
             VStack(alignment: .leading, spacing: 4) {
                 // Primary Info: Sender Name
                 let senderName: String = {
-                    if let name = request.fromName, !name.isEmpty {
-                        return name
-                    }
-                    if let friend = appState.friendRepo.friends.first(where: { $0.id == request.fromUid }) {
-                        return friend.name
-                    }
-                    return "Friend"
+                    return appState.userResolver.resolveName(for: request.fromUid, fallbackName: request.fromName)
                 }()
                 
                 if request.isSettlement == true {
@@ -90,20 +87,20 @@ struct RequestCardView: View {
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.secondary)
                         .frame(width: 32, height: 32)
-                        .background(Color(UIColor.secondarySystemBackground))
+                        .background(Color.secondaryCardBackground)
                         .clipShape(Circle())
                 }
                 .buttonStyle(PlainButtonStyle())
-                
+
                 Button(action: {
                     HapticManager.shared.success()
                     onAccept()
                 }) {
                     Image(systemName: "checkmark")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(Color.backgroundPrimary)
+                        .foregroundColor(.white)
                         .frame(width: 32, height: 32)
-                        .background(Color.functionalSuccess)
+                        .background(Color.themeAccent)
                         .clipShape(Circle())
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -112,7 +109,7 @@ struct RequestCardView: View {
         .padding(AppSpacing.element)
         .overlay(
             RoundedRectangle(cornerRadius: AppRadius.medium)
-                .stroke(Color.orange, lineWidth: 1)
+                .stroke(Color(hex: colorHex), lineWidth: 1)
         )
         .onAppear {
             userPremiumRepo.prefetch(userIds: [request.fromUid])
@@ -140,10 +137,14 @@ struct RequestCardView: View {
             amount: 25.0,
             currency: "USD",
             note: "Dinner",
+            category: "Food",
+            icon: "fork.knife",
+            colorHex: "#FFA500",
             status: .pending,
             dependencyId: nil,
             lastNudgedAt: nil,
             originalTotalAmount: 50.0,
+            isGuest: false,
             createdAt: Date()
         ),
         onAccept: {},

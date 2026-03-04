@@ -87,7 +87,7 @@ struct SetUsernameView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
+                    Button("Cancel") { HapticManager.shared.light(); 
                         dismiss()
                     }
                 }
@@ -98,9 +98,11 @@ struct SetUsernameView: View {
     private func checkAvailability(_ name: String) {
         checkTask?.cancel()
         
-        guard name.count >= 3 else {
+        // FIX #23: Trim whitespace before validation
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 3 else {
             isAvailable = false
-            availabilityMessage = "Too short"
+            availabilityMessage = trimmed.isEmpty ? "Required" : "Too short"
             return
         }
         

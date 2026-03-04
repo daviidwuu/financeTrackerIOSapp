@@ -40,7 +40,12 @@ class RecurringTransactionRepository: ObservableObject {
                 
                 self.errorMessage = nil
                 self.recurringTransactions = documents.compactMap { document in
-                    try? document.data(as: FirestoreModels.RecurringTransaction.self)
+                    do {
+                        return try document.data(as: FirestoreModels.RecurringTransaction.self)
+                    } catch {
+                        DebugLogger.log("Failed to decode RecurringTransaction (\(document.documentID)): \(error)")
+                        return nil
+                    }
                 }
             }
     }

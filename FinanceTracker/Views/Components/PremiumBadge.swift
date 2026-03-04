@@ -5,8 +5,33 @@ enum PremiumBadgeSize {
     case medium
 }
 
+enum PremiumBadgeType: String, CaseIterable, Identifiable {
+    case king = "king"
+    case pro = "pro"
+    case saver = "saver"
+    
+    var id: String { rawValue }
+    
+    var title: String {
+        switch self {
+        case .king: return "king"
+        case .pro: return "pro"
+        case .saver: return "saver"
+        }
+    }
+    
+    var color: Color {
+        switch self {
+        case .king: return Color(hex: "#F5A623")
+        case .pro: return Color.blue
+        case .saver: return Color.green
+        }
+    }
+}
+
 struct PremiumBadge: View {
     let size: PremiumBadgeSize
+    @AppStorage("premiumBadgeType") private var badgeType: PremiumBadgeType = .king
     
     private var font: Font {
         switch size {
@@ -45,12 +70,12 @@ struct PremiumBadge: View {
     }
     
     var body: some View {
-        Text("king")
+        Text(badgeType.title)
             .font(font)
-            .foregroundColor(Color(hex: "#F5A623"))
+            .foregroundColor(badgeType.color)
             .padding(.horizontal, horizontalPadding)
             .padding(.vertical, verticalPadding)
-            .background(Color(hex: "#F5A623").opacity(0.15))
+            .background(badgeType.color.opacity(0.15))
             .cornerRadius(cornerRadius)
     }
 }

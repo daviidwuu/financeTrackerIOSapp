@@ -4,17 +4,40 @@ struct RecurringTransactionCard: View {
     let transaction: FirestoreModels.RecurringTransaction
     let onDelete: () -> Void
     let onEdit: () -> Void
+    @EnvironmentObject var budgetRepo: BudgetRepository
+    
+    /// Resolve icon from stored value, or look up from budget category
+    private var resolvedIcon: String {
+        if let icon = transaction.icon { return icon }
+        if let budget = matchedBudget { return budget.icon }
+        return "arrow.2.squarepath"
+    }
+    
+    /// Resolve color from stored value, or look up from budget category
+    private var resolvedColorHex: String {
+        if let color = transaction.colorHex { return color }
+        if let budget = matchedBudget { return budget.colorHex }
+        return "#8E8E93"
+    }
+    
+    /// Find the matching budget by categoryId or name
+    private var matchedBudget: FirestoreModels.CategoryBudget? {
+        if let catId = transaction.categoryId {
+            return budgetRepo.budgets.first(where: { $0.id == catId })
+        }
+        return budgetRepo.budgets.first(where: { $0.category.lowercased() == transaction.name.lowercased() })
+    }
     
     var body: some View {
         HStack(spacing: AppSpacing.element) {
             // Icon
             ZStack {
                 Circle()
-                    .fill(Color(hex: transaction.colorHex).opacity(0.15))
+                    .fill(Color(hex: resolvedColorHex).opacity(0.15))
                     .frame(width: 48, height: 48)
-                Image(systemName: transaction.icon)
+                Image(systemName: resolvedIcon)
                     .font(.system(size: 20))
-                    .foregroundColor(Color(hex: transaction.colorHex))
+                    .foregroundColor(Color(hex: resolvedColorHex))
             }
             
             // Content
@@ -46,12 +69,12 @@ struct RecurringTransactionCard: View {
                     .foregroundColor(.secondary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(Color(hex: transaction.colorHex).opacity(0.1))
+                    .background(Color(hex: resolvedColorHex).opacity(0.1))
                     .cornerRadius(AppRadius.small)
             }
         }
         .padding()
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(Color.cardBackground)
         .cornerRadius(AppRadius.medium)
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {

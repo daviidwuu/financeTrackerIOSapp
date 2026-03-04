@@ -103,12 +103,15 @@ struct OnboardingView: View {
                 // Navigation Buttons (Sticky at bottom)
                 HStack(spacing: 16) {
                     if currentStep > 1 {
-                        Button(action: prevStep) {
+                        Button(action: {
+                            HapticManager.shared.light()
+                            prevStep()
+                        }) {
                             Image(systemName: "arrow.left")
-                                .font(.headline)
+                                .font(.system(size: 20, weight: .semibold))
                                 .foregroundColor(.primary)
                                 .frame(width: 50, height: 50)
-                                .background(Color(UIColor.secondarySystemBackground))
+                                .background(Color.cardBackground)
                                 .clipShape(Circle())
                         }
                     }
@@ -128,13 +131,10 @@ struct OnboardingView: View {
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 16)
-                
-                .padding(.horizontal, 24)
-                .padding(.top, 16)
-                .padding(.bottom, 24)
+                .padding(.bottom, 34)
             }
         }
-        .onTapGesture {
+        .onTapGesture { HapticManager.shared.light(); 
             hideKeyboard()
         }
         .gesture(
@@ -148,7 +148,6 @@ struct OnboardingView: View {
                 }
         )
         .navigationBarHidden(true)
-        .onAppear { onAppearAction() }
     }
     
     // MARK: - Logic
@@ -168,8 +167,7 @@ struct OnboardingView: View {
     private func nextStep() {
         hideKeyboard()
         if currentStep < 6 {
-            direction = .trailing
-            HapticManager.shared.light() // Navigation haptic
+            direction = .trailing // Navigation haptic
             currentStep += 1
             updateFocus()
         } else {
@@ -181,8 +179,7 @@ struct OnboardingView: View {
     private func prevStep() {
         hideKeyboard()
         if currentStep > 1 {
-            direction = .leading
-            HapticManager.shared.light() // Navigation haptic
+            direction = .leading // Navigation haptic
             currentStep -= 1
             updateFocus()
         }
@@ -215,15 +212,17 @@ struct OnboardingView: View {
                 let result = try await FirebaseManager.shared.signUp(email: emailInput, password: passwordInput, name: nameInput, username: usernameInput)
                 let userId = result.uid
                 
-                // 2. Create Recurring Income Transaction
+                // Pre-generate the Income budget ID so recurring transaction can reference it
+                let incomeBudgetId = UUID().uuidString
+                
+                // 2. Create Recurring Income Transaction (linked to Income budget via categoryId)
                 let recurringIncome = FirestoreModels.RecurringTransaction(
                     id: UUID().uuidString,
                     name: "Income",
                     amount: Double(incomeInput) ?? 0.0,
                     frequency: "Monthly",
                     startDate: getFirstOfNextMonth(),
-                    icon: "dollarsign.circle.fill",
-                    colorHex: "#34C759", // Green
+                    categoryId: incomeBudgetId,
                     note: "Salary",
                     type: "income",
                     userId: userId,
@@ -290,9 +289,9 @@ struct OnboardingView: View {
 
                 try await batch.commit()
                 
-                // 5. create Default Income Category
+                // 5. Create Default Income Category (using pre-generated ID)
                 let incomeBudget = FirestoreModels.CategoryBudget(
-                    id: UUID().uuidString,
+                    id: incomeBudgetId,
                     category: "Income",
                     totalAmount: 0,
                     icon: "plus.circle.fill",
@@ -307,12 +306,7 @@ struct OnboardingView: View {
                 
                 // 5. Update AppState
                 await MainActor.run {
-                    appState.userName = nameInput
-                    appState.currentUserUsername = usernameInput
-                    appState.userEmail = emailInput
-                    appState.currentUserId = userId
-                    appState.isUserLoggedIn = true
-                    appState.hasCompletedOnboarding = true
+                    appState.completeOnboarding(userId: userId, name: nameInput, email: emailInput, username: usernameInput)
                     UserDefaults.standard.set(Date(), forKey: "userSignupDate")
                     isLoading = false
                 }
@@ -347,12 +341,4 @@ struct OnboardingView: View {
 
 #Preview {
     OnboardingView()
-}
-
-extension OnboardingView {
-    func onAppearAction() {
-        Task {
-            try? await FirebaseManager.shared.signInAnonymously()
-        }
-    }
 }

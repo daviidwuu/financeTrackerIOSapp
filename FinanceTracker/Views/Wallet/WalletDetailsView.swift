@@ -5,17 +5,16 @@ struct WalletDetailsView: View {
     @Environment(\.colorScheme) var colorScheme
     @Binding var initialBalance: Double
     
-    let income: Double
-    let expense: Double
-    let netFlow: Double
+    let totalBalance: Double
+    let aggregatedIncome: Double
+    let aggregatedExpense: Double
     
     @State private var amount: String = ""
     @FocusState private var isFocused: Bool
     
     var body: some View {
         ZStack {
-            // Background
-            (colorScheme == .dark ? Color.black : Color.white)
+            Color.backgroundPrimary
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
@@ -31,83 +30,96 @@ struct WalletDetailsView: View {
                 ScrollView {
                     VStack(spacing: AppSpacing.section) {
                         
-                        // Monthly Statistics Grid
-                        VStack(spacing: 16) {
-                            HStack {
-                                Text("This Month")
-                                    .font(.headline)
-                                    .foregroundColor(.primary)
-                                Spacer()
-                            }
+                        // Hero Section
+                        VStack(spacing: 12) {
+                            Text(String(format: "$%.2f", totalBalance))
+                                .font(.system(size: 40, weight: .bold, design: .rounded))
+                                .foregroundColor(totalBalance >= 0 ? .primary : .red)
+                            
+                            Text("Total Balance")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 24)
+                        
+                        // All-Time Statistics Grid
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("ALL TIME")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(.secondary)
+                                .padding(.leading, 8)
                             
                             VStack(spacing: 0) {
                                 // Income
-                                DetailRow(title: "Total Income", amount: income, color: .green)
+                                DetailRow(title: "Total Income", amount: aggregatedIncome, color: .green)
                                 
                                 Divider()
                                     .padding(.leading, 16)
                                 
                                 // Expense
-                                DetailRow(title: "Total Expense", amount: expense, color: .red)
-                                
-                                Divider()
-                                    .padding(.leading, 16)
-                                
-                                // Net Flow
-                                DetailRow(title: "Net Cash Flow", amount: netFlow, color: netFlow >= 0 ? .green : .red)
+                                DetailRow(title: "Total Spent", amount: aggregatedExpense, color: .red)
                             }
-                            .background(Color.listBackground)
+                            .background(Color.cardBackground)
                             .cornerRadius(AppRadius.medium)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppRadius.medium)
+                                    .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+                            )
                         }
                         
                         // Edit Balance Section
-                        VStack(spacing: 12) {
-                            Text("Starting Balance")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(.secondary)
-                            
-                            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                Text("$")
-                                    .font(.system(size: 44, weight: .bold, design: .rounded))
-                                    .foregroundColor(.primary)
-                                
-                                TextField("0.00", text: $amount)
-                                    .keyboardType(.decimalPad)
-                                    .font(.system(size: 44, weight: .bold, design: .rounded))
-                                    .focused($isFocused)
-                                    .multilineTextAlignment(.leading)
-                                    .fixedSize() // Keeps width fitting content to prevent jumping
-                            }
-                            
-                            Text("This base amount is added to your calculated total.")
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("STARTING BALANCE")
                                 .font(.caption)
+                                .fontWeight(.bold)
                                 .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.top, 4)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(24)
-                        .background(Color.listBackground)
-                        .cornerRadius(AppRadius.large)
-                        .onTapGesture {
-                            isFocused = true
+                                .padding(.leading, 8)
+                            
+                            VStack(spacing: 12) {
+                                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                    Text("$")
+                                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                                        .foregroundColor(.primary)
+                                    
+                                    TextField("0.00", text: $amount)
+                                        .keyboardType(.decimalPad)
+                                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                                        .focused($isFocused)
+                                        .multilineTextAlignment(.leading)
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.top, 16)
+                                
+                                Text("This base amount is added to your calculated total.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.leading)
+                                    .padding(.horizontal, 16)
+                                    .padding(.bottom, 16)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.cardBackground)
+                            .cornerRadius(AppRadius.medium)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppRadius.medium)
+                                    .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+                            )
+                            .onTapGesture { HapticManager.shared.light()
+                                isFocused = true
+                            }
                         }
                     }
-                    .padding(AppSpacing.margin)
+                    .padding(.horizontal, AppSpacing.margin)
+                    .padding(.bottom, AppSpacing.margin)
                 }
                 
                 // Save Button
                 Button(action: saveBalance) {
                     Text("Save Changes")
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(!amount.isEmpty ? (colorScheme == .dark ? .black : .white) : .secondary)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(!amount.isEmpty ? Color.primary : Color(UIColor.systemGray5))
-                        .cornerRadius(AppRadius.button)
                 }
+                .buttonStyle(PrimaryButtonStyle())
                 .disabled(amount.isEmpty)
                 .padding(.horizontal, AppSpacing.margin)
                 .padding(.bottom, 8)
@@ -135,16 +147,19 @@ struct DetailRow: View {
     let color: Color
     
     var body: some View {
-        HStack {
+        HStack(spacing: 16) {
             Text(title)
-                .font(.subheadline)
+                .font(.body)
                 .foregroundColor(.primary)
+            
             Spacer()
+            
             Text("$\(String(format: "%.2f", amount))")
-                .font(.system(.body, design: .rounded))
-                .fontWeight(.semibold)
+                .font(.body)
                 .foregroundColor(color)
         }
-        .padding(AppSpacing.element)
+        .padding(.vertical, 14)
+        .padding(.horizontal, 16)
+        .contentShape(Rectangle())
     }
 }

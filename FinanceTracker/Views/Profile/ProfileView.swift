@@ -8,25 +8,27 @@ struct ProfileView: View {
     @AppStorage("hapticFeedbackStyle") private var currentHapticStyle: HapticFeedbackStyle = .medium
     @State private var showSetUsername = false
     @State private var showEditProfile = false
-    @State private var showSubscriptionWizard = false
+    @State private var devTapCount = 0
+    @State private var showDevSettings = false
+    @AppStorage("premiumBadgeType") private var badgeType: PremiumBadgeType = .king
     
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .top) {
+            ZStack {
                 // Background
-                (colorScheme == .dark ? Color.black : Color.white)
+                Color.backgroundPrimary
                     .ignoresSafeArea()
-                
+
                 ScrollView {
-                    VStack(spacing: 0) {
-                        // Spacer for fixed Navigation Bar
-                        Spacer().frame(height: 60)
+                    VStack(spacing: 24) {
+                        ScrollOffsetTracker()
+                        Spacer().frame(height: 80)
                         
-                        // Scrollable Header Content
+                        // Profile Header
                         VStack(spacing: 12) {
                             // Avatar
                             Circle()
-                                .fill(Color.orange)
+                                .fill(appState.userAvatarColor.map { Color(hex: $0) } ?? Color.orange)
                                 .frame(width: 86, height: 86)
                                 .overlay(
                                     Text(appState.userName.prefix(1).uppercased())
@@ -37,23 +39,23 @@ struct ProfileView: View {
                             
                             // Text Info
                             VStack(spacing: 4) {
-                                HStack(spacing: 8) {
-                                    Text(appState.userName.isEmpty ? "User" : appState.userName)
-                                        .font(.title2)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.primary)
-                                    
-                                    if appState.isPremiumUser {
-                                        PremiumBadge(size: .small)
-                                    }
+                                Text(appState.userName.isEmpty ? "User" : appState.userName)
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.primary)
+                                
+                                if appState.isPremiumUser {
+                                    PremiumBadge(size: .small)
+                                        .padding(.top, 2)
                                 }
                                 
                                 Text(appState.currentUserUsername.isEmpty ? "Set username" : "@\(appState.currentUserUsername)")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
+                                    .padding(.top, appState.isPremiumUser ? 2 : 0)
                             }
                             
-                            // Actions (Edit Profile) - Directly to Account Settings
+                            // Edit Profile Button
                             NavigationLink(destination: AccountSettingsView()) {
                                 Text("Edit profile")
                                     .font(.subheadline)
@@ -64,41 +66,40 @@ struct ProfileView: View {
                                     .background(colorScheme == .dark ? Color.white : Color.black)
                                     .clipShape(Capsule())
                             }
-                            
                             .padding(.top, 4)
                         }
-                        .padding(.bottom, AppSpacing.section)
-                        .padding(.top, 24)
                         
-                        VStack(spacing: AppSpacing.section) {
-                            // 2. Account Section
-                        MenuSection("Account") {
-                            // Email (Static)
-                            MenuRowView(
-                                icon: "envelope.fill",
-                                title: "Email",
-                                value: appState.userEmail,
-                                showChevron: false
-                            )
-                            MenuDivider()
-                            
-                            // Plan
-                            Button(action: {
-                                HapticManager.shared.light()
-                                showSubscriptionWizard = true
-                            }) {
+                        // Subscription Section
+                        MenuSection("Subscription") {
+
+                            // Subscription
+                            NavigationLink(destination: SubscriptionView()) {
                                 MenuRowView(
                                     icon: "crown.fill",
                                     title: "Subscription",
                                     value: appState.isPremiumUser ? "King" : "Free Plan",
-                                    showChevron: true // Indicate it's clickable
+                                    showChevron: true
                                 )
                             }
-                            .buttonStyle(.plain)
+
+                            if appState.isPremiumUser {
+                                MenuDivider()
+
+                                NavigationLink(destination: PremiumBadgeSettingsView()) {
+                                    MenuRowView(
+                                        icon: "star.fill",
+                                        title: "Badge Prefix",
+                                        value: badgeType.title.capitalized
+                                    )
+                                }
+                            }
                         }
-                        
-                        // 4. App Settings
-                        MenuSection("App Settings") {
+
+                        // Travel Mode Toggle
+                        TravelModeRow()
+
+                        // Preferences
+                        MenuSection("Preferences") {
                             NavigationLink(destination: AppearanceSettingsView()) {
                                 MenuRowView(
                                     icon: "paintbrush.fill",
@@ -106,104 +107,69 @@ struct ProfileView: View {
                                     value: userTheme.capitalized
                                 )
                             }
-                            
-                            
+
                             MenuDivider()
-                            
-                            NavigationLink(destination: CurrencySettingsView()) {
-                                MenuRowView(
-                                    icon: "banknote.fill",
-                                    title: "Currency",
-                                    value: CurrencyManager.shared.mainCurrency
-                                )
-                            }
-                            
-                            
-                            MenuDivider()
-                            
+
                             NavigationLink(destination: NotificationsSettingsView()) {
                                 MenuRowView(
                                     icon: "bell.fill",
                                     title: "Notifications"
                                 )
                             }
-                            
-                            
+
                             MenuDivider()
                             
-                            NavigationLink(destination: HapticSettingsView()) {
-                                MenuRowView(
-                                    icon: "waveform",
-                                    title: "Haptic Feedback",
-                                    value: currentHapticStyle.displayName
-                                )
+                            MenuControlRow(
+                                icon: "waveform",
+                                title: "Haptic Feedback"
+                            ) {
+                                Picker("Haptic Style", selection: $currentHapticStyle) {
+                                    ForEach(HapticFeedbackStyle.allCases, id: \.self) { style in
+                                        Text(style.displayName).tag(style)
+                                    }
+                                }
+                                .pickerStyle(MenuPickerStyle())
+                                .tint(.secondary)
+                                .onChange(of: currentHapticStyle) { _, newValue in
+                                    switch newValue {
+                                    case .light: HapticManager.shared.light()
+                                    case .medium: HapticManager.shared.medium()
+                                    case .heavy: HapticManager.shared.heavy()
+                                    case .none: break
+                                    }
+                                }
                             }
-                            
-                        }
-                        
-                        // 5. Security & Privacy
-                        MenuSection("Privacy & Security") {
-                            NavigationLink(destination: AccountSettingsView()) {
-                                MenuRowView(
-                                    icon: "gearshape.fill",
-                                    title: "Account Settings"
-                                )
-                            }
-                            
-                            
+
                             MenuDivider()
-                            
+
                             NavigationLink(destination: PrivacySettingsView()) {
                                 MenuRowView(
                                     icon: "lock.fill",
                                     title: "Privacy & Security"
                                 )
                             }
-                            
-                            
-                            MenuDivider()
-                            
-                            NavigationLink(destination: LocationSettingsView()) {
-                                MenuRowView(
-                                    icon: "location.fill",
-                                    title: "Location"
-                                )
-                            }
-                            
                         }
-                        
-                        // 6. Support
-                        MenuSection("Support") {
+
+                        // Support & About
+                        MenuSection("Support & About") {
                             NavigationLink(destination: HelpCenterView()) {
                                 MenuRowView(
                                     icon: "questionmark.circle.fill",
-                                    title: "Help Center"
+                                    title: "Support & About"
                                 )
                             }
-                            
-                            
+
                             MenuDivider()
-                            
+
                             NavigationLink(destination: GuidesListView()) {
                                 MenuRowView(
                                     icon: "book.fill",
                                     title: "Guides"
                                 )
                             }
-                            
-                            
-                            MenuDivider()
-                            
-                            NavigationLink(destination: AboutView()) {
-                                MenuRowView(
-                                    icon: "info.circle.fill",
-                                    title: "About Us"
-                                )
-                            }
-                            
                         }
                         
-                        // 7. Log Out
+                        // Log Out
                         VStack {
                             Button(action: {
                                 HapticManager.shared.medium()
@@ -215,68 +181,114 @@ struct ProfileView: View {
                                     .foregroundColor(.red)
                                     .frame(maxWidth: .infinity)
                                     .padding()
-                                    .background(Color(UIColor.secondarySystemBackground))
-                                    .cornerRadius(AppRadius.medium)
+                                    .background(Color.cardBackground)
+                                    .clipShape(Capsule())
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: AppRadius.medium)
+                                        Capsule()
                                             .stroke(Color.primary.opacity(0.05), lineWidth: 1)
                                     )
                             }
                         }
                         .padding(.horizontal, AppSpacing.margin)
                         .padding(.bottom, 40)
+                        
+                        // Version info footer
+                        VStack(spacing: 4) {
+                            Text("wym for iOS")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            Text(AppConfig.versionDisplayString)
+                                .font(.caption2)
+                                .foregroundColor(Color(UIColor.tertiaryLabel))
+                                .onTapGesture { HapticManager.shared.light(); 
+                                    devTapCount += 1
+                                    if devTapCount >= 5 {
+                                        devTapCount = 0
+                                        showDevSettings = true
+                                        HapticManager.shared.success()
+                                    }
+                                }
+                        }
+                        .padding(.bottom, 20)
                     }
-                    
-                    // Version info footer
-                VStack(spacing: 4) {
-                    Text("wym for iOS")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                    Text(AppConfig.versionDisplayString)
-                        .font(.caption2)
-                        .foregroundColor(Color(UIColor.tertiaryLabel))
+                    .padding(.bottom, 40)
                 }
-                .padding(.bottom, 20)
+                .scrollContentBackground(.hidden)
             }
-            .padding(.bottom, 40) // Add bottom padding for scroll content
-        }
-        .scrollContentBackground(.hidden)
-        
-        // Fixed Navigation Bar
-        HStack {
-            Button(action: { dismiss() }) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
-                    .frame(width: 44, height: 44)
-                    .background((colorScheme == .dark ? Color.white : Color.black).opacity(0.05))
-                    .clipShape(Circle())
+            .overlayHeader(.navigation(title: "Settings", onBack: { dismiss() }, backIcon: "xmark"))
+            .navigationBarBackButtonHidden(true)
+            .navigationDestination(isPresented: $showDevSettings) {
+                DeveloperSettingsView()
             }
-            
-            Spacer()
-            
-            Text("Settings")
-                .font(.headline)
-                .fontWeight(.semibold)
-                .foregroundColor(colorScheme == .dark ? .white : .black)
-            
-            Spacer()
-            
-            // Placeholder to balance layout
-            Color.clear.frame(width: 44, height: 44)
+            .sheet(isPresented: $showSetUsername) {
+                SetUsernameView()
+            }
+            .preferredColorScheme(userTheme == "system" ? nil : (userTheme == "dark" ? .dark : .light))
         }
-        .padding(.horizontal, AppSpacing.margin + AppSpacing.compact)
-        .padding(.top, 16)
     }
 }
-.sheet(isPresented: $showSetUsername) {
-    SetUsernameView()
-}
-.sheet(isPresented: $showSubscriptionWizard) {
-    SubscriptionWizardView()
-}
-.preferredColorScheme(userTheme == "system" ? nil : (userTheme == "dark" ? .dark : .light))
-}
+
+// MARK: - Travel Mode Row Component
+
+struct TravelModeRow: View {
+    @ObservedObject private var currencyManager = CurrencyManager.shared
+    @State private var showCurrencySettings = false
+
+    private var subtitle: String {
+        if currencyManager.isTravelModeEnabled {
+            return "\(currencyManager.travelCurrency) → \(currencyManager.mainCurrency) @ \(String(format: "%.2f", currencyManager.exchangeRate))"
+        } else {
+            return "Tap to manage currencies"
+        }
+    }
+
+    var body: some View {
+        MenuSection("Travel") {
+            Button(action: {
+                HapticManager.shared.light()
+                showCurrencySettings = true
+            }) {
+                HStack(spacing: 16) {
+                    // Icon
+                    Image(systemName: "airplane")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(AppTheme.activeTheme == .system ? Color.primary : Color.themeAccent)
+                        .frame(width: 28, height: 28)
+
+                    // Content
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Travel Mode")
+                            .font(.body)
+                            .foregroundColor(.primary)
+
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    // Toggle
+                    Toggle("", isOn: Binding(
+                        get: { currencyManager.isTravelModeEnabled },
+                        set: { newValue in
+                            HapticManager.shared.light()
+                            currencyManager.isTravelModeEnabled = newValue
+                        }
+                    ))
+                    .labelsHidden()
+                    .toggleStyle(MonochromaticToggleStyle())
+                }
+                .padding(.vertical, 14)
+                .padding(.horizontal, 16)
+                .contentShape(Rectangle())
+            }
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showCurrencySettings) {
+            CurrencySettingsView()
+        }
+    }
 }
 
 #Preview {

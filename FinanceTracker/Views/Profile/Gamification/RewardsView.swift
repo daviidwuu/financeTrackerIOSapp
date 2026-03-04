@@ -130,7 +130,7 @@ struct RewardCard: View {
             .disabled(!canAfford)
         }
         .padding(AppSpacing.element)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(Color.cardBackground)
         .cornerRadius(AppRadius.medium)
     }
 }
@@ -158,7 +158,7 @@ struct RedemptionCard: View {
                     .foregroundColor(.primary)
             }
             .padding(AppSpacing.element)
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(Color.cardBackground)
             
             Divider()
                 .background(Color(UIColor.systemBackground))
@@ -177,9 +177,16 @@ struct RedemptionCard: View {
                 
                 Spacer()
                 
-                Button(action: {
+                Button(action: { HapticManager.shared.light(); 
                     UIPasteboard.general.string = redemption.code
                     HapticManager.shared.light()
+                    // Clear clipboard after 60 seconds for security
+                    let copiedCode = redemption.code
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 60) {
+                        if UIPasteboard.general.string == copiedCode {
+                            UIPasteboard.general.string = ""
+                        }
+                    }
                 }) {
                     Image(systemName: "doc.on.doc")
                         .font(.caption)
@@ -187,7 +194,7 @@ struct RedemptionCard: View {
                 }
             }
             .padding(AppSpacing.element)
-            .background(Color(UIColor.secondarySystemBackground).opacity(0.5))
+            .background(Color.cardBackground.opacity(0.5))
         }
         .cornerRadius(AppRadius.medium)
         .overlay(

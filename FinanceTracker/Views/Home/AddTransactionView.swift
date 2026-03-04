@@ -4,7 +4,6 @@ import CoreLocation
 
 struct AddTransactionView: View {
     @Environment(\.dismiss) var dismiss
-    @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var appState: AppState
     
     var transactionToEdit: FirestoreModels.TransactionModel?
@@ -50,7 +49,7 @@ struct AddTransactionView: View {
         Group {
             if isReimbursement {
                 ZStack {
-                    (colorScheme == .dark ? Color.black : Color.white)
+                    Color.backgroundPrimary
                         .ignoresSafeArea()
                     readOnlyView
                 }
@@ -68,7 +67,7 @@ struct AddTransactionView: View {
                 ) {
                     currentStepView
                 } actionBar: {
-                    Button(action: {
+                    Button(action: { HapticManager.shared.light(); 
                         // Sticky Logic: Enforce Large Detent on Interaction
                         availableDetents = [.large]
                         presentationDetent = .large
@@ -97,25 +96,24 @@ struct AddTransactionView: View {
             }
 
             // Repos are handled in AppState, no need to manually start listening
-            
-            // Delay setting initial category to allow repo to load
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                if let transaction = transactionToEdit, selectedCategory == nil {
-                    // Try to find the category by name
-                    if let categoryName = transaction.subtitle {
-                        if let budget = budgetRepo.budgets.first(where: { $0.category == categoryName }) {
-                            selectedCategory = budget
-                        }
-                    }
-                } else if let initialName = initialCategoryName, selectedCategory == nil {
-                    // Pre-select category from deep link
-                    if let budget = budgetRepo.budgets.first(where: { $0.category == initialName }) {
+        }
+        // FIX #25: Replace hardcoded delay with reactive .task that re-fires when budgets change
+        .task(id: budgetRepo.budgets.count) {
+            guard selectedCategory == nil else { return }
+            if let transaction = transactionToEdit {
+                if let categoryId = transaction.categoryId {
+                    if let budget = budgetRepo.budgets.first(where: { $0.id == categoryId }) {
                         selectedCategory = budget
                     }
+                }
+            } else if let initialName = initialCategoryName {
+                if let budget = budgetRepo.budgets.first(where: { $0.category == initialName }) {
+                    selectedCategory = budget
                 }
             }
         }
         .presentationDetents(availableDetents, selection: $presentationDetent)
+        .presentationBackground(Color.backgroundPrimary)
         .presentationDragIndicator(.visible)
         .onChange(of: presentationDetent) { _, newValue in
             // Sticky Logic: Once expanded to large, lock it there.
@@ -138,7 +136,7 @@ struct AddTransactionView: View {
             // Header
             HStack {
                 Spacer()
-                Button(action: { dismiss() }) {
+                Button(action: { HapticManager.shared.light();  dismiss() }) {
                     Image(systemName: "xmark")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.primary)
@@ -151,12 +149,12 @@ struct AddTransactionView: View {
             .padding(.top, 16)
             
             // Icon
-            if let t = transactionToEdit {
-                Image(systemName: t.icon ?? "dollarsign.circle.fill")
+            if let _ = transactionToEdit {
+                Image(systemName: "dollarsign.circle.fill")
                     .font(.system(size: 48))
-                    .foregroundColor(Color(hex: t.colorHex ?? "#000000"))
+                    .foregroundColor(Color(hex: "#34C759"))
                     .padding()
-                    .background(Color(hex: t.colorHex ?? "#000000").opacity(0.1))
+                    .background(Color(hex: "#34C759").opacity(0.1))
                     .clipShape(Circle())
             }
             
@@ -190,7 +188,7 @@ struct AddTransactionView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding()
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(Color.cardBackground)
             .cornerRadius(AppRadius.medium)
             .padding(.horizontal, AppSpacing.margin)
             
@@ -217,10 +215,8 @@ struct AddTransactionView: View {
         
         var newTransaction = TransactionFormData(
             title: !transactionNotes.isEmpty ? transactionNotes : category.category,
-            subtitle: category.category,
+            categoryId: category.id,
             amount: (finalType == "income" || finalType == "settlement" ? "" : "-") + amount,
-            icon: category.icon,
-            color: Color(hex: category.colorHex),
             date: selectedDate,
             notes: transactionNotes,
             type: finalType
@@ -358,7 +354,7 @@ struct AddTransactionView: View {
                 VStack(spacing: AppSpacing.element) {
                     // 1. Featured Income Card (if available)
                     if let incomeBudget = budgetRepo.budgets.first(where: { $0.category.lowercased() == "income" }) {
-                        Button(action: {
+                        Button(action: { HapticManager.shared.light(); 
                             selectedCategory = incomeBudget
                             HapticManager.shared.light()
                         }) {
@@ -398,21 +394,21 @@ struct AddTransactionView: View {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: AppSpacing.element) {
                         // 2. Expense Categories
                         ForEach(budgetRepo.budgets.filter { $0.category.lowercased() != "income" }) { budget in
-                            let remaining = budget.remainingAmount(transactions: transactionRepo.transactions)
+                            let remaining = budget.remainingAmount(transactions: transactionRepo.allTransactions)
                             let rawProgress: Double = budget.totalAmount > 0 ? (1.0 - (remaining / budget.totalAmount)) : 0.0
                             let progress = rawProgress.isFinite ? min(max(rawProgress, 0.0), 1.0) : 0.0
                             
-                            Button(action: {
+                            Button(action: { HapticManager.shared.light(); 
                                 selectedCategory = budget
                                 HapticManager.shared.light()
                             }) {
                                 VStack(spacing: 0) {
                                     HStack(spacing: 8) {
-                                        Image(systemName: budget.icon)
+                                        Image(systemName: budget.icon) // Changed from "tag.fill"
                                         .font(.caption)
-                                        .foregroundColor(Color(hex: budget.colorHex))
+                                        .foregroundColor(Color(hex: budget.colorHex)) // Changed from .blue
                                         .frame(width: 32, height: 32)
-                                        .background(Color(hex: budget.colorHex).opacity(0.2))
+                                        .background(Color(hex: budget.colorHex).opacity(0.2)) // Changed from .blue
                                         .clipShape(Circle())
                                         
                                         VStack(alignment: .leading, spacing: 2) {
@@ -427,7 +423,7 @@ struct AddTransactionView: View {
                                         
                                         VStack(alignment: .trailing, spacing: 2) {
                                             if budget.type != "income" {
-                                                Text("$\(Int(remaining))")
+                                                Text("\(CurrencyManager.shared.mainCurrency) \(Int(remaining))")
                                                     .font(.caption2)
                                                     .foregroundColor(.secondary)
                                             }
@@ -451,7 +447,7 @@ struct AddTransactionView: View {
                                     }
                                     .frame(height: 3)
                                 }
-                                .background(selectedCategory?.category == budget.category ? Color(hex: budget.colorHex).opacity(0.1) : Color(UIColor.secondarySystemBackground))
+                                .background(selectedCategory?.category == budget.category ? Color(hex: budget.colorHex).opacity(0.1) : Color.cardBackground)
                                 .cornerRadius(AppRadius.small)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: AppRadius.small)
@@ -485,7 +481,8 @@ struct AddTransactionView: View {
                 .submitLabel(.done)
             
             if transactionToEdit != nil {
-                DatePicker("Date", selection: $selectedDate, displayedComponents: [.date, .hourAndMinute])
+                // FIX #24: Prevent selecting future dates
+                DatePicker("Date", selection: $selectedDate, in: ...Date(), displayedComponents: [.date, .hourAndMinute])
                     .datePickerStyle(.compact)
                     .padding(.top)
             }

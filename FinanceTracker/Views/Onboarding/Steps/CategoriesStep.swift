@@ -14,7 +14,13 @@ struct CategoriesStep: View {
             Text("Customize Categories")
                 .font(AppTypography.heroRounded(size: 28))
                 .multilineTextAlignment(.center)
-                .padding(.top, 40)
+                .padding(.top, 20)
+            
+            Text("Swipe to edit or delete. Tap to customize.")
+                .font(AppTypography.body)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, AppSpacing.section)
             
             if categories.isEmpty {
                 VStack(spacing: 16) {
@@ -23,7 +29,7 @@ struct CategoriesStep: View {
                         .font(.system(size: 60))
                         .foregroundColor(.gray.opacity(0.3))
                     Text("No categories yet")
-                        .font(.subheadline)
+                        .font(AppTypography.subheadline)
                         .foregroundColor(.gray)
                     Spacer()
                 }
@@ -40,13 +46,13 @@ struct CategoriesStep: View {
                                 .clipShape(Circle())
                             
                             Text(category.name)
-                                .font(.headline)
+                                .font(AppTypography.headline)
                             
                             Spacer()
                             
                             if let amount = category.budgetAmount {
                                 Text("$\(Int(amount)) Limit")
-                                    .font(.system(.subheadline, design: .rounded))
+                                    .font(AppTypography.subheadline)
                                     .foregroundColor(.secondary)
                                     .contentShape(Rectangle())
                                     .highPriorityGesture(TapGesture().onEnded {
@@ -55,7 +61,7 @@ struct CategoriesStep: View {
                                     })
                             } else {
                                 Text("Set Budget")
-                                    .font(.system(.subheadline, design: .rounded))
+                                    .font(AppTypography.subheadline)
                                     .foregroundColor(.secondary)
                                     .contentShape(Rectangle())
                                     .highPriorityGesture(TapGesture().onEnded {
@@ -65,14 +71,14 @@ struct CategoriesStep: View {
                             }
                         }
                         .padding()
-                        .background(Color(UIColor.secondarySystemBackground))
+                        .background(Color.cardBackground)
                         .cornerRadius(AppRadius.medium)
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                         .padding(.bottom, 8)
                         .contentShape(Rectangle())
-                        .onTapGesture {
+                        .onTapGesture { HapticManager.shared.light(); 
                             editSheetInitialStep = 1
                             categoryToEdit = category
                         }
@@ -103,8 +109,7 @@ struct CategoriesStep: View {
                 .scrollIndicators(.hidden)
             }
             
-            Button(action: {
-                // Create a new empty category and open the sheet
+            Button(action: { HapticManager.shared.light(); 
                 let newCat = OnboardingCategory(name: "", icon: "tag.fill", colorHex: "#808080")
                 categoryToEdit = newCat
             }) {
@@ -112,7 +117,7 @@ struct CategoriesStep: View {
                     Image(systemName: "plus.circle.fill")
                     Text("Add Category")
                 }
-                .font(.headline)
+                .font(AppTypography.headline)
                 .foregroundColor(.primary)
                 .padding()
                 .frame(maxWidth: .infinity)
@@ -132,7 +137,6 @@ struct CategoriesStep: View {
             }
             .onAppear {
                 if !hasShownGuide {
-                    // Slight delay to allow view to appear fully
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         showSwipeGuide = true
                     }
@@ -146,13 +150,6 @@ struct CategoriesStep: View {
                         if let index = categories.firstIndex(where: { $0.id == updatedCategory.id }) {
                             categories[index] = updatedCategory
                         } else {
-                            // Append new category if ID not found (newly created)
-                            // Note: ID for newCat is created on init, so it won't match any existing category unless we strictly check against the list content which holds value types.
-                            // Actually, OnboardingCategory is a struct and id is let UUID().
-                            // 'categoryToEdit' has a UUID. If that UUID is in 'categories', update. Else, append.
-                            // However, since 'categories' is [OnboardingCategory], we need to check if an item with that ID exists.
-                            // When we created 'newCat', it has a unique ID. It is NOT in 'categories' yet.
-                            // So 'firstIndex' returns nil. We append. Correct.
                             categories.append(updatedCategory)
                         }
                         categoryToEdit = nil

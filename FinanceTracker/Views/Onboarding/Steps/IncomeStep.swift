@@ -10,18 +10,31 @@ struct IncomeStep: View {
             
             ZStack {
                 Circle()
+                    .fill(AppColors.functionalIncome.opacity(0.08))
+                    .frame(width: 200, height: 200)
+                
+                Circle()
                     .fill(AppColors.functionalIncome.opacity(0.1))
                     .frame(width: 160, height: 160)
                 
                 Image(systemName: "dollarsign.circle.fill")
                     .font(.system(size: 80))
-                    .foregroundColor(AppColors.functionalIncome)
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [AppColors.functionalIncome, AppColors.functionalIncome.opacity(0.7)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
             }
             .padding(.bottom, 20)
             
             Text("What is your monthly income?")
                 .font(AppTypography.heroRounded(size: 28))
                 .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+                .fixedSize(horizontal: false, vertical: true)
+                .layoutPriority(1)
             
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text("$")
@@ -34,23 +47,17 @@ struct IncomeStep: View {
                     .font(AppTypography.heroInput)
                     .multilineTextAlignment(.leading)
                     .fixedSize()
-                    .toolbar {
-                        ToolbarItemGroup(placement: .keyboard) {
-                            if focusedField.wrappedValue == .income {
-                                Spacer()
-                                Button("Done") {
-                                    focusedField.wrappedValue = nil
-                                }
-                            }
-                        }
-                    }
             }
             
             Text("This will be set as your recurring monthly salary.")
-                .font(.caption)
+                .font(AppTypography.caption)
                 .foregroundColor(.secondary)
             
             Spacer()
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            focusedField.wrappedValue = nil
         }
     }
 }

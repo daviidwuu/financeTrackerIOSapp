@@ -48,7 +48,7 @@ struct GroupMembersView: View {
                                 Spacer()
                             }
                             .padding(12)
-                            .background(Color(UIColor.secondarySystemBackground))
+                            .background(Color.cardBackground)
                             .cornerRadius(AppRadius.medium)
                             .padding(.horizontal, AppSpacing.margin)
                         }
@@ -85,11 +85,7 @@ struct GroupMembersView: View {
     }
     
     private func resolveName(id: String) -> String {
-        if id == appState.currentUserId { return "You" }
-        if let friend = appState.friendRepo.friends.first(where: { $0.id == id }) { return friend.name }
-        if let guest = appState.guestRepo.guests.first(where: { $0.id == id }) { return guest.name }
-        if let denormalizedName = group.memberNames?[id] { return denormalizedName }
-        return "Unknown Member"
+        return appState.userResolver.resolveName(for: id, groupMemberNames: group.memberNames)
     }
     
     private func addMembers(friends: [FirestoreModels.Friend], guests: [FirestoreModels.Guest]) {
@@ -116,7 +112,7 @@ struct GroupMembersView: View {
             do {
                 try await appState.groupRepo.addMembersToGroup(groupId: groupId, newMembers: newMembers)
             } catch {
-                print("Error adding members: \(error)")
+                DebugLogger.log("Error adding members: \(error)")
                 HapticManager.shared.error()
             }
         }
@@ -172,7 +168,7 @@ struct MemberRow: View {
             Spacer()
         }
         .padding(12)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(Color.cardBackground)
         .cornerRadius(AppRadius.medium)
         .onAppear {
             userPremiumRepo.prefetch(userIds: [memberId])

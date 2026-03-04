@@ -37,12 +37,23 @@ struct TransactionDetailView: View {
         self.onSave = onSave
     }
     
+    private var resolvedCategory: FirestoreModels.CategoryBudget? {
+        if let categoryId = transaction.categoryId {
+            return budgetRepo.getCategory(for: categoryId)
+        }
+        return nil
+    }
+
     private var categoryIcon: String {
-        budgetRepo.budgets.first(where: { $0.category.lowercased() == (transaction.subtitle?.lowercased() ?? "") })?.icon ?? "tag.fill"
+        resolvedCategory?.icon ?? "tag.fill"
     }
     
     private var categoryColor: String {
-        budgetRepo.budgets.first(where: { $0.category.lowercased() == (transaction.subtitle?.lowercased() ?? "") })?.colorHex ?? transaction.colorHex ?? "#808080"
+        resolvedCategory?.colorHex ?? "#808080"
+    }
+
+    private var categoryName: String {
+        resolvedCategory?.category ?? "Uncategorized"
     }
     
     // Computed property for display logic
@@ -89,7 +100,7 @@ struct TransactionDetailView: View {
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
                         
-                        Text(transaction.subtitle ?? "Uncategorized")
+                        Text(categoryName)
                             .font(AppTypography.body)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -137,7 +148,7 @@ struct TransactionDetailView: View {
                                 
                                 VStack(spacing: 0) {
                                     ForEach(splits) { split in
-                                        Button(action: { showSplitSheet = true }) {
+                                        Button(action: { HapticManager.shared.light();  showSplitSheet = true }) {
                                             HStack(spacing: 12) {
                                                 // Mini Avatar
                                                 ZStack {
@@ -182,7 +193,7 @@ struct TransactionDetailView: View {
                                                 }
                                                 
                                                 // Inline Paid Toggle
-                                                Button(action: { toggleSplitPayment(split) }) {
+                                                Button(action: { HapticManager.shared.light();  toggleSplitPayment(split) }) {
                                                     Image(systemName: split.isPaid ? "checkmark.circle.fill" : "circle")
                                                         .font(.title3)
                                                         .foregroundColor(split.isPaid ? .green : .secondary.opacity(0.3))
@@ -213,7 +224,7 @@ struct TransactionDetailView: View {
                                     .padding(AppSpacing.element)
                                     .background(Color.primary.opacity(0.03))
                                 }
-                                .background(Color(UIColor.secondarySystemBackground))
+                                .background(Color.cardBackground)
                                 .cornerRadius(AppRadius.medium)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: AppRadius.medium)
@@ -240,13 +251,13 @@ struct TransactionDetailView: View {
                                     .frame(height: 140)
                                     .overlay(
                                         Color.black.opacity(0.001)
-                                            .onTapGesture { showFullMap = true }
+                                            .onTapGesture { HapticManager.shared.light();  showFullMap = true }
                                     )
                                     
                                     Divider()
                                 }
                                 
-                                TransactionDetailRow(icon: "tag", title: "Category", value: transaction.subtitle ?? "Uncategorized", color: Color(hex: categoryColor))
+                                TransactionDetailRow(icon: "tag", title: "Category", value: categoryName, color: Color(hex: categoryColor))
                                 
                                 if let originalAmount = transaction.originalAmount,
                                    let currencyCode = transaction.currencyCode {
@@ -267,7 +278,7 @@ struct TransactionDetailView: View {
                                 Divider().padding(.leading, 52)
                                 TransactionDetailRow(icon: "clock", title: "Created on", value: transaction.createdAt.formatted(date: .omitted, time: .shortened), color: .secondary)
                             }
-                            .background(Color(UIColor.secondarySystemBackground))
+                            .background(Color.cardBackground)
                             .cornerRadius(AppRadius.medium)
                         }
                         .padding(.horizontal, AppSpacing.margin)
@@ -287,7 +298,7 @@ struct TransactionDetailView: View {
                         Spacer().frame(height: 20)
                         
                         // Delete Button
-                        Button(action: {
+                        Button(action: { HapticManager.shared.light(); 
                             checkAndDelete()
                         }) {
                             Text("Delete Transaction")
@@ -297,7 +308,7 @@ struct TransactionDetailView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding()
                                 .background(AppColors.functionalExpense.opacity(0.1))
-                                .cornerRadius(AppRadius.large)
+                                .clipShape(Capsule())
                         }
                         .padding(.horizontal, AppSpacing.margin)
                         
@@ -347,15 +358,15 @@ struct TransactionDetailView: View {
             }
         }
         .alert("Error", isPresented: $showErrorAlert) {
-            Button("OK", role: .cancel) { }
+            Button("OK", role: .cancel) { HapticManager.shared.light();  }
         } message: {
             Text(errorMessage)
         }
         .alert("Delete Transaction", isPresented: $showDeleteConfirmation) {
-            Button("Delete", role: .destructive) {
+            Button("Delete", role: .destructive) { HapticManager.shared.light(); 
                 deleteTransaction()
             }
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) { HapticManager.shared.light();  }
         } message: {
             Text("Are you sure you want to delete this transaction? This action cannot be undone.")
         }
@@ -368,11 +379,9 @@ struct TransactionDetailView: View {
         let oldAmount = transaction.amount
         var newModel = transaction
         newModel.title = updatedTransaction.title
-        newModel.subtitle = updatedTransaction.subtitle
+        newModel.categoryId = updatedTransaction.categoryId
         newModel.amount = amount
         newModel.date = updatedTransaction.date
-        newModel.icon = updatedTransaction.icon
-        newModel.colorHex = updatedTransaction.color.toHex() ?? "#000000"
         newModel.note = updatedTransaction.notes
         newModel.type = amount < 0 ? "expense" : "income"
         newModel.latitude = updatedTransaction.latitude
@@ -405,14 +414,16 @@ struct TransactionDetailView: View {
             ))
         }
         
-        if newModel.subtitle != transaction.subtitle {
+        if newModel.categoryId != transaction.categoryId {
+            let oldName = transaction.categoryId.flatMap { budgetRepo.getCategory(for: $0)?.category } ?? "None"
+            let newName = newModel.categoryId.flatMap { budgetRepo.getCategory(for: $0)?.category } ?? "None"
             edits.append(FirestoreModels.EditRecord(
                 date: Date(),
                 editorId: appState.currentUserId,
                 editorName: editorName,
                 field: "Category",
-                oldValue: transaction.subtitle ?? "None",
-                newValue: newModel.subtitle ?? "None"
+                oldValue: oldName,
+                newValue: newName
             ))
         }
         
@@ -473,7 +484,7 @@ struct TransactionDetailView: View {
                             self.transaction = finalTx
                         }
                     } catch {
-                        print("DEBUG: Error syncing recalculated splits: \(error)")
+                        DebugLogger.log("Error syncing recalculated splits: \(error)")
                     }
                 }
                 onSave?(newModel, updatedTransaction)
@@ -490,6 +501,11 @@ struct TransactionDetailView: View {
         updatedTransaction.splits = newSplits
         // Optimistic update
         self.transaction = updatedTransaction
+        Task {
+            await MainActor.run {
+                transactionRepo.optimisticUpdateTransaction(updatedTransaction)
+            }
+        }
         // Cache groupId for future re-edits
         if let groupId = groupId {
             self.cachedGroupId = groupId
@@ -526,10 +542,10 @@ struct TransactionDetailView: View {
              targetUid = gid
         }
         
-        print("DEBUG: Toggling split. GuestID: \(split.guestId ?? "nil"), FriendID: \(split.friendId ?? "nil"), TargetUID: \(targetUid ?? "nil")")
+        DebugLogger.log("Toggling split. GuestID: \(split.guestId ?? "nil"), FriendID: \(split.friendId ?? "nil"), TargetUID: \(targetUid ?? "nil")")
         
         guard let friendId = targetUid else {
-            print("DEBUG: targetUid is nil, aborting")
+            DebugLogger.log("targetUid is nil, aborting")
             return
         }
         guard let transactionId = transaction.id else { return }
@@ -544,6 +560,13 @@ struct TransactionDetailView: View {
             // Mirror the expected post-toggle status string:
             // paid → accepted (reverted), anything else → paid
             transaction.splits?[index].status = currentlyPaid ? "accepted" : "paid"
+            
+            let updatedTx = transaction
+            Task {
+                await MainActor.run {
+                    transactionRepo.optimisticUpdateTransaction(updatedTx)
+                }
+            }
         }
         
         Task {
@@ -567,7 +590,7 @@ struct TransactionDetailView: View {
                 }
                 
                 guard request != nil else {
-                    print("DEBUGGING: Could not find split request for split: \(split.id). TransactionID: \(transactionId), ToUid: \(friendId)")
+                    DebugLogger.log("DEBUGGING: Could not find split request for split: \(split.id). TransactionID: \(transactionId), ToUid: \(friendId)")
                     // Revert UI if failed
                     await MainActor.run {
                         if let index = transaction.splits?.firstIndex(where: { $0.id == split.id }) {
@@ -583,12 +606,28 @@ struct TransactionDetailView: View {
                 // We should check the REQUEST status.
                 let currentStatus = request!.status
                 
-                if currentStatus == .accepted || currentStatus == .blocked_by_group {
+                if currentStatus == .accepted || currentStatus == .blocked_by_group || (request?.isGuest == true && (currentStatus == .pending || currentStatus == .declined)) {
                     // Mark as Paid
-                     try await SocialTransactionManager.shared.markSplitAsPaid(request: request!, currentUserId: appState.currentUserId, currentUserName: appState.userName)
+                     if let generatedTx = try await SocialTransactionManager.shared.markSplitAsPaid(request: request!, currentUserId: appState.currentUserId, currentUserName: appState.userName) {
+                         await MainActor.run {
+                             transactionRepo.optimisticAddTransaction(generatedTx)
+                             if let index = transaction.splits?.firstIndex(where: { $0.id == split.id }) {
+                                 transaction.splits?[index].incomeTransactionId = generatedTx.id
+                                 transactionRepo.optimisticUpdateTransaction(transaction)
+                             }
+                         }
+                     }
                 } else if currentStatus == .paid {
                     // Unmark
                      try await SocialTransactionManager.shared.unmarkSplitAsPaid(request: request!, currentUserId: appState.currentUserId)
+                     if let index = transaction.splits?.firstIndex(where: { $0.id == split.id }),
+                        let incomeTxId = transaction.splits?[index].incomeTransactionId {
+                         await MainActor.run {
+                             transactionRepo.finalizeDelete(id: incomeTxId)
+                             transaction.splits?[index].incomeTransactionId = nil
+                             transactionRepo.optimisticUpdateTransaction(transaction)
+                         }
+                     }
                 }
                 
                 // Deliberately NOT re-fetching the transaction here.
@@ -597,13 +636,16 @@ struct TransactionDetailView: View {
                 // optimistic state we just applied above. The onAppear fetch
                 // will sync the authoritative state the next time the view opens.
             } catch {
-                print("Error toggling split payment: \(error)")
+                DebugLogger.log("Error toggling split payment: \(error)")
                 // Revert UI — restore both isPaid and status
                 await MainActor.run {
                     if let index = transaction.splits?.firstIndex(where: { $0.id == split.id }) {
                         let revertedPaid = !transaction.splits![index].isPaid
                         transaction.splits?[index].isPaid = revertedPaid
                         transaction.splits?[index].status = revertedPaid ? "paid" : "accepted"
+                        
+                        let revertedTx = transaction
+                        transactionRepo.optimisticUpdateTransaction(revertedTx)
                     }
                 }
             }
@@ -616,7 +658,7 @@ struct TransactionDetailView: View {
         HapticManager.shared.warning()
         
         // 1. Check if it's a "Payment Received" transaction linked to a split
-        if transaction.type == "income", let requestId = transaction.source, !requestId.isEmpty {
+        if transaction.type == "income", let requestId = transaction.source, !requestId.isEmpty, requestId != "recurring", !requestId.hasPrefix("recurring_") {
             // It's linked. Check status.
             Task {
                 do {

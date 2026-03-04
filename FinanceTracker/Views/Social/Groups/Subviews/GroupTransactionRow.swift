@@ -12,7 +12,7 @@ struct GroupTransactionRow: View {
     
     var body: some View {
         let displayTitle = (transaction.note?.isEmpty == false) ? transaction.note! : transaction.title
-        let payerName = (transaction.payerId == currentUserId) ? "You" : transaction.payerName
+        let payerName = appState.userResolver.resolveName(for: transaction.payerId, fallbackName: transaction.payerName)
         
         let subtitle: String
         let statusBadge: String?
@@ -31,8 +31,8 @@ struct GroupTransactionRow: View {
             let receiverDisplay: String = {
                 if let rid = transaction.receiverId, rid == currentUserId {
                     return "you"
-                } else if let rname = transaction.receiverName {
-                    return rname
+                } else if let rid = transaction.receiverId {
+                    return appState.userResolver.resolveName(for: rid, fallbackName: transaction.receiverName)
                 }
                 return "settlement"
             }()
@@ -40,9 +40,11 @@ struct GroupTransactionRow: View {
             if transaction.payerId == currentUserId {
                 subtitle = "You paid \(receiverDisplay)"
             } else if transaction.receiverId == currentUserId {
-                subtitle = "\(transaction.payerName) paid you"
+                let resolvedPayerName = appState.userResolver.resolveName(for: transaction.payerId, fallbackName: transaction.payerName)
+                subtitle = "\(resolvedPayerName) paid you"
             } else {
-                subtitle = "\(transaction.payerName) paid \(receiverDisplay)"
+                let resolvedPayerName = appState.userResolver.resolveName(for: transaction.payerId, fallbackName: transaction.payerName)
+                subtitle = "\(resolvedPayerName) paid \(receiverDisplay)"
             }
         } else {
             var dynamicBadge: String? = nil
@@ -91,17 +93,31 @@ struct GroupTransactionRow: View {
             return (transaction.type == "income") ? .green : .primary
         }()
         
+        // ✅ FIX: Resolve category dynamically from categoryId
+        let resolvedCat: FirestoreModels.CategoryBudget? = {
+            if let catId = transaction.categoryId {
+                return appState.budgetRepo.getCategory(for: catId)
+            }
+            return nil
+        }()
+        let displayCategory = resolvedCat?.category ?? transaction.category ?? "Shared Expense"
+        let displayIcon = transaction.type == "settlement" ? "arrow.turn.down.left" : (resolvedCat?.icon ?? transaction.icon ?? "person.2.fill")
+        let displayColor = transaction.type == "settlement" ? "#34C759" : (resolvedCat?.colorHex ?? transaction.colorHex ?? "#808080")
+        
         return SocialTransactionCardView(
             title: displayTitle,
             subtitle: subtitle,
             amount: transaction.amount,
             date: transaction.date,
             type: transaction.type,
-            category: transaction.category,
-            iconName: transaction.icon,
-            colorHex: transaction.colorHex,
+            category: displayCategory,
+            iconName: displayIcon,
+            colorHex: displayColor,
             amountColor: amountColor,
-            statusBadge: statusBadge
+            statusBadge: statusBadge,
+            payerName: payerName,
+            originalAmount: transaction.originalAmount,
+            currencyCode: transaction.currencyCode
         )
     }
 }

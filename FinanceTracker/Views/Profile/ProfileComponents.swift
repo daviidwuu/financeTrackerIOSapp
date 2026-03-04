@@ -10,7 +10,7 @@ struct ProfileHeaderView: View {
         VStack(spacing: 16) {
             // Avatar
             Circle()
-                .fill(Color.orange) // Brand color
+                .fill(appState.userAvatarColor.map { Color(hex: $0) } ?? Color.orange)
                 .frame(width: 86, height: 86)
                 .overlay(
                     Text(appState.userName.prefix(1).uppercased())
@@ -53,17 +53,18 @@ struct MenuSection<Content: View>: View {
         VStack(alignment: .leading, spacing: 8) {
             if let title = title {
                 Text(title)
-                    .font(.caption)
+                    .font(.footnote)
                     .fontWeight(.bold)
                     .foregroundColor(.secondary)
-                    .padding(.leading, 8)
+                    .padding(.leading, 12)
                     .textCase(.uppercase)
             }
             
             VStack(spacing: 0) {
                 content
             }
-            .background(Color(UIColor.secondarySystemBackground))
+            .buttonStyle(MenuRowButtonStyle())
+            .background(Color.cardBackground)
             .cornerRadius(AppRadius.medium)
             .overlay(
                 RoundedRectangle(cornerRadius: AppRadius.medium)
@@ -82,14 +83,16 @@ struct MenuRowView: View {
     let showChevron: Bool
     @Binding var showToggle: Bool
     private var hasToggle: Bool
+    let iconColor: Color
     
-    init(icon: String? = nil, title: String, value: String? = nil, showChevron: Bool = true, showToggle: Binding<Bool>? = nil) {
+    init(icon: String? = nil, title: String, value: String? = nil, showChevron: Bool = true, showToggle: Binding<Bool>? = nil, iconColor: Color = .themeAccent) {
         self.icon = icon
         self.title = title
         self.value = value
         self.showChevron = showChevron
         self._showToggle = showToggle ?? Binding.constant(false)
         self.hasToggle = showToggle != nil
+        self.iconColor = iconColor
     }
     
     var body: some View {
@@ -97,9 +100,9 @@ struct MenuRowView: View {
             // Icon (if present)
             if let icon = icon {
                 Image(systemName: icon)
-                    .font(.system(size: 16))
-                    .foregroundColor(.primary)
-                    .frame(width: 24, height: 24)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(AppTheme.activeTheme == .system ? Color.primary : Color.themeAccent)
+                    .frame(width: 28, height: 28)
             }
             
             // Title
@@ -137,11 +140,70 @@ struct MenuRowView: View {
     }
 }
 
+/// A row within a `MenuSection` that contains a custom trailing control (e.g., Picker, TextField).
+struct MenuControlRow<Control: View>: View {
+    let icon: String?
+    var iconColor: Color? = nil
+    let title: String
+    let subtitle: String?
+    let control: Control
+    
+    init(icon: String? = nil, iconColor: Color? = nil, title: String, subtitle: String? = nil, @ViewBuilder control: () -> Control) {
+        self.icon = icon
+        self.iconColor = iconColor
+        self.title = title
+        self.subtitle = subtitle
+        self.control = control()
+    }
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            // Icon
+            if let icon = icon {
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(AppTheme.activeTheme == .system ? Color.primary : Color.themeAccent)
+                    .frame(width: 28, height: 28)
+            }
+            
+            // Content
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body)
+                    .foregroundColor(.primary)
+                
+                if let subtitle = subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            // Custom Control
+            control
+        }
+        .padding(.vertical, 14)
+        .padding(.horizontal, 16)
+        .background(Color.cardBackground)
+    }
+}
+
 // Custom Divider
 struct MenuDivider: View {
     var body: some View {
         Divider()
-            .padding(.leading, 56) // Align with text start (16 padding + 24 icon + 16 spacing)
+            .padding(.leading, 60) // Align with text start (16 padding + 28 icon + 16 spacing)
+    }
+}
+
+// Custom Button Style for Menu Rows
+struct MenuRowButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(configuration.isPressed ? Color.secondary.opacity(0.1) : Color.clear)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
     }
 }
 
@@ -169,7 +231,7 @@ struct MenuInputRow: View {
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 16)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(Color.cardBackground)
         .contentShape(Rectangle())
     }
 }
@@ -183,7 +245,7 @@ struct MonochromaticToggleStyle: ToggleStyle {
             ZStack {
                 // Track
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(configuration.isOn ? Color.primary : Color(UIColor.systemGray5))
+                    .fill(configuration.isOn ? (AppTheme.activeTheme == .system ? Color.primary : Color.themeAccent) : Color(UIColor.systemGray5))
                     .frame(width: 51, height: 31)
                     .animation(.easeInOut(duration: 0.2), value: configuration.isOn)
                 
@@ -196,7 +258,7 @@ struct MonochromaticToggleStyle: ToggleStyle {
                     .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
                     .animation(.easeInOut(duration: 0.2), value: configuration.isOn)
             }
-            .onTapGesture {
+            .onTapGesture { HapticManager.shared.light(); 
                 configuration.isOn.toggle()
             }
         }

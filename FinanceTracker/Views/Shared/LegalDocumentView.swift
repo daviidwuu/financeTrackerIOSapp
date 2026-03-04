@@ -14,7 +14,7 @@ struct LegalDocumentView: View {
     private var title: String {
         switch document {
         case .terms:
-            return "Terms of Service"
+            return "Terms of Use (EULA)"
         case .privacy:
             return "Privacy Policy"
         }
@@ -24,9 +24,9 @@ struct LegalDocumentView: View {
         switch document {
         case .terms:
             return """
-            # Terms of Service
+            # Terms of Use (EULA)
             
-            These Terms of Service govern your use of the app.
+            These Terms of Use (EULA) govern your use of the app.
             
             ## Subscriptions
             - The app may offer auto-renewable subscriptions (e.g., Monthly and Annual).
@@ -82,14 +82,15 @@ struct LegalDocumentView: View {
     }
     
     var body: some View {
-        ZStack(alignment: .top) {
-            (colorScheme == .dark ? Color.black : Color(UIColor.systemBackground))
+        ZStack {
+            Color.backgroundPrimary
                 .ignoresSafeArea()
-            
+
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    ScrollOffsetTracker()
                     Spacer().frame(height: 60)
-                    
+
                     Text(.init(markdown))
                         .font(.body)
                         .foregroundColor(.primary)
@@ -97,31 +98,8 @@ struct LegalDocumentView: View {
                 .padding(.horizontal, AppSpacing.margin)
                 .padding(.bottom, 24)
             }
-            
-            HStack {
-                Button(action: { dismiss() }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
-                        .frame(width: 44, height: 44)
-                        .background((colorScheme == .dark ? Color.white : Color.black).opacity(0.05))
-                        .clipShape(Circle())
-                }
-                
-                Spacer()
-                
-                Text(title)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
-                
-                Spacer()
-                
-                Color.clear.frame(width: 44, height: 44)
-            }
-            .padding(.horizontal, AppSpacing.margin + AppSpacing.compact)
-            .padding(.top, 16)
         }
+        .overlayHeader(.navigation(title: title, onBack: { dismiss() }, backIcon: "xmark"))
     }
 }
 

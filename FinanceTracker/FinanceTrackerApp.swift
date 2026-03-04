@@ -37,6 +37,7 @@ struct FinanceTrackerApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @Environment(\.scenePhase) var scenePhase
     @AppStorage("userTheme") private var userTheme: String = "system"
+    @AppStorage("premiumAppTheme") private var premiumAppTheme: String = "system"
     @StateObject private var appState = AppState.shared
 
     init() {
@@ -60,11 +61,13 @@ struct FinanceTrackerApp: App {
                     ContentView()
                         .environmentObject(appState)
                         .preferredColorScheme(userTheme == "system" ? nil : (userTheme == "dark" ? .dark : .light))
+                        .id(premiumAppTheme) // Force redraw when custom theme changes
                     
                 } else {
                     WelcomeView()
                         .environmentObject(appState)
                         .preferredColorScheme(userTheme == "system" ? nil : (userTheme == "dark" ? .dark : .light))
+                        .id(premiumAppTheme) // Force redraw when custom theme changes
                 }
             }
             .environmentObject(appState.transactionRepo)
@@ -103,6 +106,15 @@ struct FinanceTrackerApp: App {
                 guard isLoggedIn else { return }
                 NotificationManager.shared.syncTokenWithServer()
                 MigrationManager.shared.checkForMigrations()
+                // Backfill notification defaults for existing users who granted permission
+                // but had all toggles off (pre-fix state)
+                NotificationManager.shared.checkPermissionStatus { status in
+                    if status == .authorized || status == .provisional {
+                        NotificationManager.shared.enableDefaultNotificationPreferences()
+                    } else if status == .notDetermined {
+                        NotificationManager.shared.requestPermission { _ in }
+                    }
+                }
             }
     }
 }

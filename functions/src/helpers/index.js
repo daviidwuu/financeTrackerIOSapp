@@ -66,7 +66,7 @@ async function sendNotification(uid, title, body, data, preloadedToken) {
   try {
     const fcmToken = preloadedToken || (await getUserInfo(uid)).fcmToken;
     if (!fcmToken) {
-      console.warn(`[FCM] No token for user ${uid}. Skipping: "${title}"`);
+      console.warn(`[FCM] No token for target user. Skipping notification.`);
       return;
     }
 
@@ -94,20 +94,20 @@ async function sendNotification(uid, title, body, data, preloadedToken) {
     };
 
     await admin.messaging().send(message);
-    console.log(`[FCM] ✅ Sent to ${uid} | type=${stringData.type || 'unknown'} | "${title}"`);
+    console.log(`[FCM] ✅ Sent notification | type=${stringData.type || 'unknown'}`);
   } catch (error) {
     const errorCode = error?.code || error?.errorInfo?.code || '';
 
     if (STALE_TOKEN_ERRORS.includes(errorCode)) {
       // Token is stale or invalid — clear it from user profile
-      console.warn(`[FCM] ⚠️ Stale token for ${uid} (${errorCode}). Clearing fcmToken.`);
+      console.warn(`[FCM] ⚠️ Stale token detected (${errorCode}). Clearing fcmToken.`);
       try {
         await admin.firestore().collection('users').doc(uid).update({ fcmToken: admin.firestore.FieldValue.delete() });
       } catch (clearError) {
-        console.error(`[FCM] Failed to clear stale token for ${uid}:`, clearError.message);
+        console.error(`[FCM] Failed to clear stale token:`, clearError.message);
       }
     } else {
-      console.error(`[FCM] ❌ Failed for ${uid} | "${title}" | Error: ${error.message || error}`);
+      console.error(`[FCM] ❌ Failed to send notification | Error: ${error.message || error}`);
     }
   }
 }

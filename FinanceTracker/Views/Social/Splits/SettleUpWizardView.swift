@@ -51,7 +51,7 @@ struct SettleUpWizardView: View {
                 stepFourView
             }
         } actionBar: {
-            Button(action: {
+            Button(action: { HapticManager.shared.light(); 
                 if currentStep < 4 {
                     HapticManager.shared.light()
                     direction = .trailing
@@ -182,7 +182,7 @@ struct SettleUpWizardView: View {
                             if let group = group {
                                 ForEach(group.members, id: \.self) { memberId in
                                     participantCard(id: memberId, isSelected: payerId == memberId, isPayer: true)
-                                        .onTapGesture {
+                                        .onTapGesture { HapticManager.shared.light(); 
                                             payerId = memberId
                                             if receiverId == memberId { receiverId = "" }
                                             HapticManager.shared.light()
@@ -191,11 +191,11 @@ struct SettleUpWizardView: View {
                             } else {
                                 // Friend Context: Just Me or Friend
                                 participantCard(id: appState.currentUserId, isSelected: payerId == appState.currentUserId, isPayer: true)
-                                    .onTapGesture { payerId = appState.currentUserId; if receiverId == payerId { receiverId = "" } }
+                                    .onTapGesture { HapticManager.shared.light();  payerId = appState.currentUserId; if receiverId == payerId { receiverId = "" } }
                                 
                                 if let friend = preSelectedFriend, let fid = friend.id {
                                     participantCard(id: fid, isSelected: payerId == fid, isPayer: true)
-                                        .onTapGesture { payerId = fid; if receiverId == payerId { receiverId = "" } }
+                                        .onTapGesture { HapticManager.shared.light();  payerId = fid; if receiverId == payerId { receiverId = "" } }
                                 }
                             }
                         }
@@ -217,7 +217,7 @@ struct SettleUpWizardView: View {
                             if let group = group {
                                 ForEach(group.members, id: \.self) { memberId in
                                     participantCard(id: memberId, isSelected: receiverId == memberId, isPayer: false)
-                                        .onTapGesture {
+                                        .onTapGesture { HapticManager.shared.light(); 
                                             receiverId = memberId
                                             if payerId == memberId { payerId = "" }
                                             HapticManager.shared.light()
@@ -226,11 +226,11 @@ struct SettleUpWizardView: View {
                             } else {
                                 // Friend Context
                                 participantCard(id: appState.currentUserId, isSelected: receiverId == appState.currentUserId, isPayer: false)
-                                    .onTapGesture { receiverId = appState.currentUserId; if payerId == receiverId { payerId = "" } }
+                                    .onTapGesture { HapticManager.shared.light();  receiverId = appState.currentUserId; if payerId == receiverId { payerId = "" } }
                                 
                                 if let friend = preSelectedFriend, let fid = friend.id {
                                     participantCard(id: fid, isSelected: receiverId == fid, isPayer: false)
-                                        .onTapGesture { receiverId = fid; if payerId == receiverId { payerId = "" } }
+                                        .onTapGesture { HapticManager.shared.light();  receiverId = fid; if payerId == receiverId { payerId = "" } }
                                 }
                             }
                         }
@@ -246,7 +246,7 @@ struct SettleUpWizardView: View {
         VStack(spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(isSelected ? (isPayer ? AppColors.functionalIncome : Color.blue) : Color(UIColor.secondarySystemBackground))
+                    .fill(isSelected ? (isPayer ? AppColors.functionalIncome : Color.blue) : Color.cardBackground)
                     .frame(width: 64, height: 64)
                     .shadow(color: isSelected ? (isPayer ? AppColors.functionalIncome.opacity(0.4) : Color.blue.opacity(0.4)) : Color.clear, radius: 8, y: 4)
                 
@@ -329,7 +329,7 @@ struct SettleUpWizardView: View {
             ScrollView {
                 VStack(spacing: AppSpacing.element) {
                     if let incomeBudget = budgetRepo.budgets.first(where: { $0.category.lowercased() == "income" }) {
-                        Button(action: {
+                        Button(action: { HapticManager.shared.light(); 
                             selectedCategory = incomeBudget
                             HapticManager.shared.light()
                         }) {
@@ -368,10 +368,10 @@ struct SettleUpWizardView: View {
                     
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: AppSpacing.element) {
                         ForEach(budgetRepo.budgets.filter { $0.category.lowercased() != "income" }) { budget in
-                            let remaining = budget.remainingAmount(transactions: transactionRepo.transactions)
+                            let remaining = budget.remainingAmount(transactions: transactionRepo.allTransactions)
                             let progress = min(max(1.0 - (remaining / budget.totalAmount), 0.0), 1.0)
                             
-                            Button(action: {
+                            Button(action: { HapticManager.shared.light(); 
                                 selectedCategory = budget
                                 HapticManager.shared.light()
                             }) {
@@ -419,7 +419,7 @@ struct SettleUpWizardView: View {
                                     }
                                     .frame(height: 3)
                                 }
-                                .background(selectedCategory?.id == budget.id ? Color(hex: budget.colorHex).opacity(0.1) : Color(UIColor.secondarySystemBackground))
+                                .background(selectedCategory?.id == budget.id ? Color(hex: budget.colorHex).opacity(0.1) : Color.cardBackground)
                                 .cornerRadius(AppRadius.small)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: AppRadius.small)
@@ -488,9 +488,6 @@ struct SettleUpWizardView: View {
     
     private func submit() {
         guard let amountVal = Double(amount) else { return }
-        let categoryName = selectedCategory?.category ?? "Settlement"
-        let icon = selectedCategory?.icon ?? "dollarsign.circle.fill"
-        let color = selectedCategory?.colorHex ?? "#34C759"
         
         isSubmitting = true
         
@@ -505,16 +502,13 @@ struct SettleUpWizardView: View {
                     payerName: getRealName(for: payerId),
                     receiverName: getRealName(for: receiverId),
                     method: "Payment",
-                    category: categoryName,
-                    icon: icon,
-                    colorHex: color,
                     note: transactionNotes.isEmpty ? nil : transactionNotes
                 )
                 HapticManager.shared.success()
                 isSubmitting = false
                 dismiss()
             } catch {
-                print("Failed to settle up: \(error)")
+                DebugLogger.log("Failed to settle up: \(error)")
                 HapticManager.shared.error()
                 isSubmitting = false
             }

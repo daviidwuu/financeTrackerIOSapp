@@ -240,7 +240,7 @@ class GamificationManager: ObservableObject {
             "completedMissionIds": FieldValue.arrayUnion([id])
         ]) { error in
             if let error = error {
-                print("Error updating mission: \(error)")
+                DebugLogger.log("Error updating mission: \(error)")
             }
         }
     }

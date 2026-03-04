@@ -26,53 +26,12 @@ struct EditCategorySheet: View {
     
     var body: some View {
         ZStack {
-            // Background
-            (colorScheme == .dark ? Color.black : Color.white)
+            Color.backgroundPrimary
                 .ignoresSafeArea()
-            
+
             VStack(spacing: 20) {
-                // Header
-                HStack {
-                    Button(action: {
-                        if currentStep > 1 {
-                            HapticManager.shared.light()
-                            direction = .leading
-                            currentStep -= 1
-                        } else {
-                            HapticManager.shared.light()
-                            dismiss()
-                        }
-                    }) {
-                        Image(systemName: currentStep > 1 ? "chevron.left" : "xmark")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    
-                    Spacer()
-                    
-                    Text("Step \(currentStep) of 4")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundColor(.secondary)
-                    
-                    Spacer()
-                    
-                    // Delete Button (Only on Step 1)
-                    if currentStep == 1 {
-                        Button(action: onDelete) {
-                            Image(systemName: "trash")
-                                .font(.system(size: 20, weight: .medium))
-                                .foregroundColor(.red)
-                                .frame(width: 44, height: 44)
-                        }
-                    } else {
-                        Color.clear.frame(width: 44, height: 44)
-                    }
-                }
-                .padding()
-                
+                Spacer().frame(height: 56)
+
                 Spacer()
                 
                 // Content
@@ -89,7 +48,7 @@ struct EditCategorySheet: View {
                 Spacer()
                 
                 // Action Button
-                Button(action: {
+                Button(action: { HapticManager.shared.light(); 
                     // Sticky Logic: Enforce Large Detent
                     presentationDetent = .large
                     
@@ -110,6 +69,29 @@ struct EditCategorySheet: View {
                 .padding(.bottom, 8)
             }
         }
+        .overlayHeader(.navigation(
+            title: "Step \(currentStep) of 4",
+            onBack: {
+                if currentStep > 1 {
+                    direction = .leading
+                    currentStep -= 1
+                } else {
+                    dismiss()
+                }
+            },
+            backIcon: currentStep > 1 ? "chevron.left" : "xmark",
+            trailing: currentStep == 1 ? AnyView(
+                Button(action: {
+                    HapticManager.shared.heavy()
+                    onDelete()
+                }) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(AppColors.functionalExpense)
+                        .frame(width: AppSize.iconButton, height: AppSize.iconButton)
+                }
+            ) : nil
+        ))
         .presentationDetents([.medium, .large], selection: $presentationDetent)
         .presentationDragIndicator(.visible)
         .onAppear {
@@ -166,8 +148,7 @@ struct EditCategorySheet: View {
     private var nameStep: some View {
         VStack(spacing: 16) {
             Text("Category Name")
-                .font(.title2)
-                .fontWeight(.semibold)
+                .font(AppTypography.sectionHeader)
                 .foregroundColor(.secondary)
             
             TextField("e.g. Rent", text: $name)
@@ -182,8 +163,7 @@ struct EditCategorySheet: View {
     private var limitStep: some View {
         VStack(spacing: 16) {
             Text("Budget Limit")
-                .font(.title2)
-                .fontWeight(.semibold)
+                .font(AppTypography.sectionHeader)
                 .foregroundColor(.secondary)
             
             TextField("Optional", text: $amountString)
@@ -193,7 +173,7 @@ struct EditCategorySheet: View {
                 .foregroundColor(.primary)
             
             Text("Leave empty for no limit")
-                .font(.caption)
+                .font(AppTypography.caption)
                 .foregroundColor(.secondary)
         }
     }
@@ -201,14 +181,13 @@ struct EditCategorySheet: View {
     private var iconStep: some View {
         VStack(spacing: 24) {
             Text("Select Icon")
-                .font(.title2)
-                .fontWeight(.semibold)
+                .font(AppTypography.sectionHeader)
                 .foregroundColor(.secondary)
             
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 60))], spacing: 20) {
                     ForEach(icons, id: \.self) { icon in
-                        Button(action: { 
+                        Button(action: { HapticManager.shared.light();  
                             selectedIcon = icon 
                             HapticManager.shared.selection()
                         }) {
@@ -232,15 +211,14 @@ struct EditCategorySheet: View {
     private var colorStep: some View {
         VStack(spacing: 24) {
             Text("Select Color")
-                .font(.title2)
-                .fontWeight(.semibold)
+                .font(AppTypography.sectionHeader)
                 .foregroundColor(.secondary)
             
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 60))], spacing: 20) {
                     ForEach(colors, id: \.self) { color in
                         let hex = color.toHex() ?? "#000000"
-                        Button(action: { 
+                        Button(action: { HapticManager.shared.light();  
                             selectedColorHex = hex
                             HapticManager.shared.selection()
                         }) {

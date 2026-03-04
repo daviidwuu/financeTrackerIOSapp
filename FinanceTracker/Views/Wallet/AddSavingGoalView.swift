@@ -2,8 +2,7 @@ import SwiftUI
 
 struct AddSavingGoalView: View {
     @Environment(\.dismiss) var dismiss
-    @Environment(\.colorScheme) var colorScheme
-    
+
     var goalToEdit: FirestoreModels.SavingGoal?
     var onSave: ((SavingGoalFormData) -> Void)?
     
@@ -36,7 +35,7 @@ struct AddSavingGoalView: View {
     var body: some View {
         ZStack {
             // Background
-            (colorScheme == .dark ? Color.black : Color.white)
+            Color.backgroundPrimary
                 .ignoresSafeArea()
             
             VStack(spacing: 20) {
@@ -80,7 +79,7 @@ struct AddSavingGoalView: View {
     
     private var stickyActionBar: some View {
         VStack {
-            Button(action: {
+            Button(action: { HapticManager.shared.light(); 
                 // Sticky Logic: Enforce Large Detent
                 presentationDetent = .large
                 
@@ -291,7 +290,7 @@ struct AddSavingGoalView: View {
             DatePicker("", selection: $targetDate, displayedComponents: .date)
                 .datePickerStyle(.graphical)
                 .padding()
-                .background(Color(UIColor.secondarySystemBackground))
+                .background(Color.cardBackground)
                 .cornerRadius(AppRadius.medium)
                 .tint(selectedColor)
         }

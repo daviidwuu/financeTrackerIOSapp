@@ -82,18 +82,15 @@ exports.v2_onSplitRequestUpdated = onDocumentUpdated('split_requests/{requestId}
                         if (!splits[splitIndex].incomeTransactionId) {
                             // Create "Payment Received" income transaction for the Creditor (fromUid)
                             const incomeRef = admin.firestore().collection('users').doc(after.fromUid).collection('transactions').doc();
-                            const categorySubtitle = txData.subtitle || 'Income';
                             const incomeData = {
                                 title: `Payment received from ${after.toName || 'User'}`,
-                                subtitle: categorySubtitle,
                                 amount: after.amount,
                                 date: new Date(),
-                                icon: 'arrow.turn.down.left',
-                                colorHex: '#34C759',
                                 note: `Payment received from ${after.toName || 'User'}`,
                                 userId: after.fromUid,
                                 type: 'income',
                                 source: event.params.requestId,
+                                categoryId: txData.categoryId || null,
                                 createdAt: admin.firestore.FieldValue.serverTimestamp()
                             };
 
@@ -133,29 +130,27 @@ exports.v2_onSplitRequestUpdated = onDocumentUpdated('split_requests/{requestId}
                         t.update(transactionRef, {
                             splits: splits.filter(s => s.requestId !== event.params.requestId)
                         });
-                        console.log(`[Split] DECLINED: Removed split ${event.params.requestId} from tx ${after.transactionId} without changing original amount.`);
+                        console.log(`[Split] DECLINED: Removed split from transaction without changing original amount.`);
                         needsUpdate = false; // Already updated above
                     }
 
                     if (needsUpdate) {
                         t.update(transactionRef, { splits: splits });
-                        console.log(`[Split] Synced status '${after.status}' to transaction ${after.transactionId}`);
+                        console.log(`[Split] Synced status '${after.status}' to transaction.`);
                     }
                 }
             });
 
             // --- Send Notifications Based on Status Change ---
             if (after.status === 'paid' && before.status !== 'paid') {
-                console.log(`[Split] PAID notification debug: fromUid=${after.fromUid}, toUid=${after.toUid}, lastUpdatedBy=${after.lastUpdatedBy}`);
+                console.log(`[Split] PAID notification: processing payment status change.`);
                 if (after.lastUpdatedBy === after.fromUid) {
                     // Creditor marked it → Notify Debtor
                     const creditor = await getUserInfo(after.fromUid);
-                    console.log(`[Split] Creditor marked paid. Notifying debtor (toUid=${after.toUid}). Creditor name: ${creditor.name}`);
                     await sendNotification(after.toUid, 'Payment Confirmed', `${creditor.name} marked your split as paid.`, { type: 'split_paid', id: event.params.requestId });
                 } else {
                     // Debtor marked it → Notify Creditor
                     const debtor = await getUserInfo(after.toUid);
-                    console.log(`[Split] Debtor marked paid. Notifying creditor (fromUid=${after.fromUid}). Debtor name: ${debtor.name}`);
                     await sendNotification(after.fromUid, 'Payment Received', `${debtor.name} marked the split as paid.`, { type: 'split_paid', id: event.params.requestId });
                 }
             } else if (after.status === 'declined' && before.status !== 'declined') {
@@ -166,7 +161,7 @@ exports.v2_onSplitRequestUpdated = onDocumentUpdated('split_requests/{requestId}
                 await sendNotification(after.fromUid, 'Split Accepted', `${receiver.name} accepted your request.`, { type: 'split_accepted' });
             } else if (before.status === 'paid' && after.status !== 'paid') {
                 // S3: Notify about payment revert
-                console.log(`[Split] UNPAID notification debug: fromUid=${after.fromUid}, toUid=${after.toUid}, lastUpdatedBy=${after.lastUpdatedBy}`);
+                console.log(`[Split] UNPAID: processing payment revert.`);
                 if (after.lastUpdatedBy === after.fromUid) {
                     const creditor = await getUserInfo(after.fromUid);
                     await sendNotification(after.toUid, 'Payment Reverted', `${creditor.name} unmarked the payment for ${note}.`, { type: 'split_unpaid', id: event.params.requestId });
@@ -187,7 +182,7 @@ exports.v2_onSplitRequestDeleted = onDocumentDeleted('split_requests/{requestId}
     if (await checkIdempotency(event.id)) return;
     const data = event.data.data();
     if (!data) return;
-    console.log(`[Split] Request ${event.params.requestId} deleted. Notifying receiver ${data.toUid}.`);
+    console.log(`[Split] Request deleted. Notifying receiver.`);
     const sender = await getUserInfo(data.fromUid);
     await sendNotification(data.toUid, 'Split Cancelled', `${sender.name} cancelled the $${data.amount.toFixed(2)} request for ${data.note || 'Expense'}.`, { type: 'split_cancelled' });
 
@@ -208,7 +203,7 @@ exports.v2_onSplitRequestDeleted = onDocumentDeleted('split_requests/{requestId}
                     if (split.incomeTransactionId) {
                         const incomeRef = admin.firestore().collection('users').doc(data.fromUid).collection('transactions').doc(split.incomeTransactionId);
                         batch.delete(incomeRef);
-                        console.log(`[Split] Cleaning up creditor income tx: ${split.incomeTransactionId}`);
+                        console.log(`[Split] Cleaning up creditor income transaction.`);
                     }
 
 
@@ -218,7 +213,7 @@ exports.v2_onSplitRequestDeleted = onDocumentDeleted('split_requests/{requestId}
                     batch.update(transactionRef, { splits: updatedSplits });
 
                     await batch.commit();
-                    console.log(`[Split] Paid split cleanup complete for ${event.params.requestId}`);
+                    console.log(`[Split] Paid split cleanup complete.`);
                 }
             }
         } catch (e) {

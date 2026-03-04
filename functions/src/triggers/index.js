@@ -4,6 +4,7 @@ const groupInvites = require('./groupInvites');
 const splitRequests = require('./splitRequests');
 const userProfile = require('./userProfile');
 const groups = require('./groups');
+const budgetAggregator = require('./budgetAggregator');
 
 // Friend Requests
 exports.v2_onFriendRequestCreated = friendRequests.v2_onFriendRequestCreated;
@@ -25,3 +26,6 @@ exports.v2_onUserUpdated = userProfile.v2_onUserUpdated;
 // Groups (Gap #7: Merged v2_onGroupMemberAdded into v2_onGroupUpdated)
 exports.v2_onGroupUpdated = groups.v2_onGroupUpdated;
 exports.v2_onGroupDeleted = groups.v2_onGroupDeleted; // FIX 2.5: Subcollection cleanup
+
+// Budget Aggregation (Phase 3: Server-side spent calculation)
+exports.v2_onTransactionWritten = budgetAggregator.v2_onTransactionWritten;

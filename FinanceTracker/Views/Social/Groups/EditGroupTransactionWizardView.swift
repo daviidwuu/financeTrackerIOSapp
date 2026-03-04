@@ -12,7 +12,6 @@ struct EditGroupTransactionWizardView: View {
     var onSave: (Double, String, FirestoreModels.CategoryBudget?, [FirestoreModels.Split], Double?, String?, Double?) -> Void
     
     @Environment(\.dismiss) var dismiss
-    @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var appState: AppState
     
     // State
@@ -56,7 +55,7 @@ struct EditGroupTransactionWizardView: View {
     
     var body: some View {
         ZStack {
-            (colorScheme == .dark ? Color.black : Color(UIColor.systemGroupedBackground))
+            Color.listBackground
                 .ignoresSafeArea()
                 
             WizardLayout(
@@ -68,7 +67,7 @@ struct EditGroupTransactionWizardView: View {
                     withAnimation { currentStep -= 1 }
                 } : nil,
                 onClose: { 
-                    print("DEBUG: EditGroupTransactionWizardView onClose called")
+                    DebugLogger.log("EditGroupTransactionWizardView onClose called")
                     dismiss() 
                 },
                 direction: direction
@@ -86,14 +85,14 @@ struct EditGroupTransactionWizardView: View {
                         direction = .trailing
                         withAnimation { currentStep += 1 }
                     } else {
-                        print("DEBUG: EditGroupTransactionWizardView onSave called")
+                        DebugLogger.log("EditGroupTransactionWizardView onSave called")
                         onSave(amount, note, selectedCategory, splits, originalAmount, currencyCode, exchangeRate)
                         dismiss()
                     }
                 }) {
                     if isLoadingSplits && isEditing {
                          ProgressView()
-                             .tint(colorScheme == .dark ? .black : .white)
+                             .tint(.primary)
                     } else {
                         Text(currentStep < totalSteps ? "Next" : (isEditing ? "Save Changes" : "Add Expense"))
                     }
@@ -174,7 +173,7 @@ struct EditGroupTransactionWizardView: View {
                                     name: splitRequest.toName ?? "Member",
                                     friendId: uid,
                                     amount: splitRequest.amount,
-                                    isPaid: splitRequest.status == .paid
+                                    splitStatus: splitRequest.status == .paid ? .paid : .pending
                                 )
                                 initialSplits.append(split)
                             }
@@ -189,7 +188,7 @@ struct EditGroupTransactionWizardView: View {
                             self.isLoadingSplits = false // Done loading
                         }
                     } catch {
-                        print("Error loading splits: \(error)")
+                        DebugLogger.log("Error loading splits: \(error)")
                         await MainActor.run { self.isLoadingSplits = false }
                     }
                 }
@@ -207,8 +206,7 @@ struct EditGroupTransactionWizardView: View {
                 let newSplit = FirestoreModels.Split(
                     name: friend.name,
                     friendId: fid,
-                    amount: 0.0, // Will be calculated in distribution step
-                    isPaid: false
+                    amount: 0.0 // Will be calculated in distribution step
                 )
                 splits.append(newSplit)
                 shares[newSplit.id] = 1
@@ -307,7 +305,7 @@ struct EditGroupTransactionWizardView: View {
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: AppSpacing.element) {
                     ForEach(appState.budgetRepo.budgets.filter { $0.category.lowercased() != "income" }) { budget in
-                        Button(action: {
+                        Button(action: { HapticManager.shared.light(); 
                             selectedCategory = budget
                             HapticManager.shared.light()
                             // Auto-advance? Maybe not, let them click Next
@@ -337,7 +335,7 @@ struct EditGroupTransactionWizardView: View {
                                 }
                                 .padding(AppSpacing.compact)
                             }
-                            .background(selectedCategory?.category == budget.category ? Color(hex: budget.colorHex).opacity(0.1) : Color(UIColor.secondarySystemBackground))
+                            .background(selectedCategory?.category == budget.category ? Color(hex: budget.colorHex).opacity(0.1) : Color.cardBackground)
                             .cornerRadius(AppRadius.small)
                             .overlay(
                                 RoundedRectangle(cornerRadius: AppRadius.small)
@@ -413,7 +411,7 @@ struct EditGroupTransactionWizardView: View {
                 }
                 
                 // Add Guest Button
-                Button(action: { showGuestInput = true }) {
+                Button(action: { HapticManager.shared.light();  showGuestInput = true }) {
                     HStack(spacing: 16) {
                         ZStack {
                             Circle()
@@ -453,7 +451,7 @@ struct EditGroupTransactionWizardView: View {
         let isSelected = selectedMemberIds.contains(id)
         let name = getMemberName(id: id)
         
-        return Button(action: { toggleMember(id: id, name: name) }) {
+        return Button(action: { HapticManager.shared.light();  toggleMember(id: id, name: name) }) {
             HStack(spacing: 16) {
                 ZStack {
                     Circle()
@@ -484,7 +482,7 @@ struct EditGroupTransactionWizardView: View {
     func guestRow(guest: FirestoreModels.Guest) -> some View {
         let isSelected = selectedMemberIds.contains(guest.id ?? "")
         
-        return Button(action: { toggleGuest(guest: guest) }) {
+        return Button(action: { HapticManager.shared.light();  toggleGuest(guest: guest) }) {
             HStack(spacing: 16) {
                 ZStack {
                     Circle()
@@ -524,8 +522,7 @@ struct EditGroupTransactionWizardView: View {
             let newSplit = FirestoreModels.Split(
                 name: name,
                 friendId: id,
-                amount: 0.0,
-                isPaid: false
+                amount: 0.0
             )
             splits.append(newSplit)
             shares[newSplit.id] = 1
@@ -557,8 +554,7 @@ struct EditGroupTransactionWizardView: View {
                 friendId: nil, // Guest doesn't have friendId
                 guestId: guestId,
                 isGuest: true,
-                amount: 0.0,
-                isPaid: false
+                amount: 0.0
             )
             splits.append(newSplit)
             shares[newSplit.id] = 1
@@ -601,11 +597,11 @@ struct EditGroupTransactionWizardView: View {
                     HapticManager.shared.success()
                 }
             } catch {
-                print("Error creating guest: \(error)")
+                DebugLogger.log("Error creating guest: \(error)")
             }
         }
     }
-    
+
     // MARK: - Step 4: Distribution
     
     var stepFourDistribution: some View {

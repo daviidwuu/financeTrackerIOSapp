@@ -75,6 +75,12 @@ class GroupRepository: ObservableObject {
         var data = try Firestore.Encoder().encode(newGroup)
         data["lastUpdatedBy"] = userId
         
+        // Optimistic UI update
+        await MainActor.run {
+            self.groups.insert(newGroup, at: 0)
+            self.groups.sort(by: { ($0.updatedAt ?? Date.distantPast) > ($1.updatedAt ?? Date.distantPast) })
+        }
+        
         try await ref.setData(data)
         return ref.documentID
     }
@@ -284,6 +290,14 @@ class GroupRepository: ObservableObject {
         var updatedGroup = group
         updatedGroup.updatedAt = Date()
         updatedGroup.normalizedName = group.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        
+        // Optimistic UI update
+        await MainActor.run {
+            if let index = self.groups.firstIndex(where: { $0.id == groupId }) {
+                self.groups[index] = updatedGroup
+                self.groups.sort(by: { ($0.updatedAt ?? Date.distantPast) > ($1.updatedAt ?? Date.distantPast) })
+            }
+        }
         
         try db.collection("groups").document(groupId).setData(from: updatedGroup, merge: true)
     }

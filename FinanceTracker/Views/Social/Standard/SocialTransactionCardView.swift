@@ -11,15 +11,48 @@ struct SocialTransactionCardView: View {
     let colorHex: String?
     let amountColor: Color // Determines if amount is red, green, or primary
     let statusBadge: String? // "pending", "paid", etc.
+    let payerName: String? // If provided, show payer avatar instead of category icon
+    let payerAvatarColor: String? // Hex color for avatar background
+    let originalAmount: Double? // For foreign currency display
+    let currencyCode: String? // For foreign currency display
+    
+    init(title: String, subtitle: String?, amount: Double, date: Date, type: String, category: String?, iconName: String?, colorHex: String?, amountColor: Color, statusBadge: String?, payerName: String? = nil, payerAvatarColor: String? = nil, originalAmount: Double? = nil, currencyCode: String? = nil) {
+        self.title = title
+        self.subtitle = subtitle
+        self.amount = amount
+        self.date = date
+        self.type = type
+        self.category = category
+        self.iconName = iconName
+        self.colorHex = colorHex
+        self.amountColor = amountColor
+        self.statusBadge = statusBadge
+        self.payerName = payerName
+        self.payerAvatarColor = payerAvatarColor
+        self.originalAmount = originalAmount
+        self.currencyCode = currencyCode
+    }
     
     var body: some View {
         HStack(spacing: AppSpacing.element) {
-            CategoryIconView(
-                category: category ?? "Uncategorized",
-                iconOverride: iconName,
-                colorOverride: colorHex,
-                type: type
-            )
+            if let payer = payerName, type != "settlement" {
+                // Show payer's avatar (initial on colored circle)
+                ZStack {
+                    Circle()
+                        .fill(payerAvatarColor != nil ? Color(hex: payerAvatarColor!) : Color.random(seed: payer))
+                        .frame(width: 48, height: 48)
+                    Text(String(payer.prefix(1)).uppercased())
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+            } else {
+                CategoryIconView(
+                    category: category ?? "Uncategorized",
+                    iconOverride: iconName,
+                    colorOverride: colorHex,
+                    type: type
+                )
+            }
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
@@ -53,6 +86,12 @@ struct SocialTransactionCardView: View {
                     .font(.headline)
                     .fontWeight(.bold)
                     .foregroundColor(amountColor)
+                
+                if let originalAmount = originalAmount, let currencyCode = currencyCode {
+                    Text("\(currencyCode) \(String(format: "%.2f", abs(originalAmount)))")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
                 
                 Text(date.formatted(date: .abbreviated, time: .omitted))
                     .font(.caption2)

@@ -33,7 +33,7 @@ struct SpendingCard: View {
         }
         .padding(AppSpacing.element)
         .frame(maxWidth: .infinity)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(Color.cardBackground)
         .cornerRadius(AppRadius.medium) // Use AppRadius
     }
 }

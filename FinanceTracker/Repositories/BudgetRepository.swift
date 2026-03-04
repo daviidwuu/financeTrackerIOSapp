@@ -49,7 +49,12 @@ class BudgetRepository: ObservableObject {
                 self.errorMessage = nil
                 
                 let allBudgets = documents.compactMap { document in
-                    try? document.data(as: FirestoreModels.CategoryBudget.self)
+                    do {
+                        return try document.data(as: FirestoreModels.CategoryBudget.self)
+                    } catch {
+                        DebugLogger.log("Failed to decode CategoryBudget (\(document.documentID)): \(error)")
+                        return nil
+                    }
                 }
                 
                 // Deduplicate: Keep only the latest budget per category
@@ -103,7 +108,7 @@ class BudgetRepository: ObservableObject {
                         guard let self = self else { return }
                         // Use start of current month
                         let calendar = Calendar.current
-                        let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
+                        let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date())) ?? Date()
                         await self.createDefaultIncomeCategory(userId: userId, monthStartDate: startOfMonth)
                         self.isCreatingIncomeDefault = false
                     }
@@ -172,27 +177,25 @@ class BudgetRepository: ObservableObject {
         try await batch.commit()
     }
     
-
+    // MARK: - Category Lookup Methods
+    
+    /// Retrieve a category budget by its document ID
+    func getCategory(for categoryId: String) -> FirestoreModels.CategoryBudget? {
+        return budgets.first { $0.id == categoryId }
+    }
+    
+    /// Retrieve a category budget by its display name (used for legacy transactions without categoryId)
+    func getCategoryByName(for categoryName: String) -> FirestoreModels.CategoryBudget? {
+        return budgets.first { $0.category.lowercased() == categoryName.lowercased() }
+    }
     
     private func updateWidgetData(budgets: [FirestoreModels.CategoryBudget]) {
         // Calculate Total Monthly Budget (excluding Income)
+        // FIX #3: Use calendar-accurate multiplier instead of yearly averages
         let totalBudget = budgets
             .filter { $0.type == "expense" }
             .reduce(0) { sum, budget in
-                var monthlyAmount = budget.totalAmount
-                
-                // Normalize frequency to Monthly
-                switch budget.frequency {
-                case "Weekly":
-                    monthlyAmount = budget.totalAmount * 52.0 / 12.0
-                case "Bi-Weekly":
-                    monthlyAmount = budget.totalAmount * 26.0 / 12.0
-                case "Yearly":
-                    monthlyAmount = budget.totalAmount / 12.0
-                default: // "Monthly" or others
-                    monthlyAmount = budget.totalAmount
-                }
-                
+                let monthlyAmount = budget.totalAmount * WalletLogic.monthlyMultiplier(for: budget.frequency)
                 return sum + monthlyAmount
             }
             
@@ -200,7 +203,7 @@ class BudgetRepository: ObservableObject {
     }
     func checkAndCopyBudgets(userId: String) async {
         let calendar = Calendar.current
-        let currentMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
+        let currentMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: Date())) ?? Date()
         
         let db = Firestore.firestore()
         let collection = db.collection("users").document(userId).collection("budgets")

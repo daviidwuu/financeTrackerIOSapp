@@ -17,7 +17,7 @@ struct UsernameStep: View {
                 .multilineTextAlignment(.center)
             
             Text("Friends can use this to find you.")
-                .font(.body)
+                .font(AppTypography.body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
             
@@ -44,12 +44,12 @@ struct UsernameStep: View {
                     HStack {
                         if isChecking {
                             ProgressView()
-                                .font(.caption)
+                                .font(AppTypography.caption)
                         } else {
                             Image(systemName: isAvailable ? "checkmark.circle.fill" : "xmark.circle.fill")
                                 .foregroundColor(isAvailable ? AppColors.functionalIncome : AppColors.functionalExpense)
                             Text(availabilityMessage)
-                                .font(.caption)
+                                .font(AppTypography.caption)
                                 .foregroundColor(isAvailable ? AppColors.functionalIncome : AppColors.functionalExpense)
                         }
                     }
@@ -63,19 +63,22 @@ struct UsernameStep: View {
     private func checkAvailability(_ name: String) {
         checkTask?.cancel()
         
-        guard name.count >= 3 else {
+        // FIX #23: Trim whitespace before validation
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 3 else {
             isAvailable = false
-            availabilityMessage = "Too short"
+            availabilityMessage = trimmed.isEmpty ? "Required" : "Too short"
             return
         }
         
         isChecking = true
-        // Simple debounce by delaying task
         checkTask = Task {
             try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s
             if Task.isCancelled { return }
             
             do {
+                try? await FirebaseManager.shared.signInAnonymously()
+                
                 let available = try await FirebaseManager.shared.checkUsernameAvailability(name)
                 await MainActor.run {
                     isChecking = false

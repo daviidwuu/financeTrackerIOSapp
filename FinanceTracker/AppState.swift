@@ -11,6 +11,7 @@ class AppState: ObservableObject {
     @Published var userName = UserDefaults.standard.string(forKey: "user_name") ?? ""
     @Published var userEmail = ""
     @Published var currentUserUsername = ""
+    @Published var userAvatarColor: String? // ✅ NEW: User's profile color
     @Published var isLoadingAuth = true // Track initial auth check
     @Published var isPremiumUser = false // ✅ NEW: Tracks premium status
     
@@ -27,6 +28,7 @@ class AppState: ObservableObject {
     @Published var groupInvitationRepo = GroupInvitationRepository() // ✅ NEW: For group invites
     @Published var guestRepo = GuestRepository() // ✅ NEW: For guests
     let userPremiumRepo = UserPremiumRepository()
+    let userResolver = UserResolver() // ✅ Phase 2: Centralized name resolution
     
     private var authStateListener: AuthStateDidChangeListenerHandle?
     private let firebaseManager = FirebaseManager.shared
@@ -41,6 +43,10 @@ class AppState: ObservableObject {
     @Published var dailySummaryDate: Date?
     @Published var userSignupDate: Date?
     
+    // Server-aggregated balance (written by Cloud Function)
+    @Published var aggregatedIncome: Double = 0
+    @Published var aggregatedExpense: Double = 0
+    
     // Navigation State
     @Published var showProfile = false
     @Published var shouldOpenCurrencySettings = false
@@ -49,6 +55,9 @@ class AppState: ObservableObject {
     static let shared = AppState()
     
     private init() {
+        // Configure UserResolver
+        userResolver.configure(appState: self)
+        
         // Streak will be initialized when user logs in
         
         // Listen to Firebase auth state changes
@@ -152,7 +161,8 @@ class AppState: ObservableObject {
             DispatchQueue.main.async {
                 self.userName = profile["name"] as? String ?? ""
                 self.currentUserUsername = profile["username"] as? String ?? ""
-                
+                self.userAvatarColor = profile["avatarColor"] as? String
+
                 // Parse signup date
                 if let timestamp = profile["createdAt"] as? Timestamp {
                     self.userSignupDate = timestamp.dateValue()
@@ -160,12 +170,16 @@ class AppState: ObservableObject {
                     let userKey = "userSignupDate_\(userId)"
                     UserDefaults.standard.set(self.userSignupDate, forKey: userKey)
                 }
-                
+
+                // Server-aggregated balance
+                self.aggregatedIncome = profile["aggregatedIncome"] as? Double ?? 0
+                self.aggregatedExpense = profile["aggregatedExpense"] as? Double ?? 0
+
                 // Cache username for offline/fast access
                 if !self.userName.isEmpty {
                     UserDefaults.standard.set(self.userName, forKey: "user_name")
                 }
-                
+
                 // Load post-onboarding guide status per user
                 let guideKey = "hasSeenPostOnboardingGuide_\(userId)"
                 self.hasSeenPostOnboardingGuide = UserDefaults.standard.bool(forKey: guideKey)
@@ -198,15 +212,30 @@ class AppState: ObservableObject {
         }
     }
     
-    func completeOnboarding(userId: String, name: String, email: String) {
+    func completeOnboarding(userId: String, name: String, email: String, username: String) {
         self.hasCompletedOnboarding = true
         self.userName = name
+        self.currentUserUsername = username
         UserDefaults.standard.set(name, forKey: "user_name")
         self.userEmail = email
+        self.currentUserId = userId
+        self.isUserLoggedIn = true
+        
         Task {
             await updateStreak(userId: userId)
         }
-        // User is already authenticated via Firebase Auth
+        
+        // Ensure all repositories start listening for the new user
+        self.transactionRepo.startListening(userId: userId)
+        self.budgetRepo.startListening(userId: userId)
+        self.recurringRepo.startListening(userId: userId)
+        self.savingGoalRepo.startListening(userId: userId)
+        self.requestRepo.startListening(userId: userId)
+        self.groupRepo.startListening(userId: userId)
+        self.friendRepo.startListening(userId: userId)
+        self.friendRequestRepo.startListening(userId: userId)
+        self.groupInvitationRepo.startListening(userId: userId)
+        self.guestRepo.startListening(userId: userId)
     }
     
     func markPostOnboardingGuideAsSeen(userId: String) {

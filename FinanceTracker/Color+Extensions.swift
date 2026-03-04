@@ -1,10 +1,11 @@
 import SwiftUI
 
 extension Color {
-    /// True Black for Dark Mode, Pure White for Light Mode
+    /// True Black for Dark Mode, Pure White for Light Mode, or Custom Theme Color
     static var backgroundPrimary: Color {
         Color(UIColor { traitCollection in
-            return traitCollection.userInterfaceStyle == .dark ? .black : .white
+            let theme = AppTheme.activeTheme
+            return traitCollection.userInterfaceStyle == .dark ? theme.backgroundColorDark : theme.backgroundColorLight
         })
     }
     
@@ -83,17 +84,35 @@ extension Color {
         self.init(.sRGB, red: r, green: g, blue: b, opacity: a)
     }
     
-    /// Slightly lighter black for cards in dark mode, off-white for light mode
+    /// Primary card background - lightest themed shade
     static var cardBackground: Color {
         Color(UIColor { traitCollection in
-            return traitCollection.userInterfaceStyle == .dark ? UIColor(white: 0.1, alpha: 1.0) : UIColor(white: 0.97, alpha: 1.0)
+            let theme = AppTheme.activeTheme
+            return traitCollection.userInterfaceStyle == .dark ? theme.cardColorDark : theme.cardColorLight
         })
     }
-    
-    /// Alias for consistent grouped list backgrounds
+
+    /// Secondary card background - medium themed shade
+    static var secondaryCardBackground: Color {
+        Color(UIColor { traitCollection in
+            let theme = AppTheme.activeTheme
+            return traitCollection.userInterfaceStyle == .dark ? theme.secondaryCardColorDark : theme.secondaryCardColorLight
+        })
+    }
+
+    /// Theme accent color - most vibrant themed shade
+    static var themeAccent: Color {
+        Color(UIColor { traitCollection in
+            let theme = AppTheme.activeTheme
+            return traitCollection.userInterfaceStyle == .dark ? theme.accentColorDark : theme.accentColorLight
+        })
+    }
+
+    /// Alias for consistent grouped list backgrounds, or Custom Theme Color
     static var listBackground: Color {
         Color(UIColor { traitCollection in
-            return traitCollection.userInterfaceStyle == .dark ? .black : UIColor.systemGroupedBackground
+            let theme = AppTheme.activeTheme
+            return traitCollection.userInterfaceStyle == .dark ? theme.listBackgroundColorDark : theme.listBackgroundColorLight
         })
     }
     
@@ -142,5 +161,15 @@ extension Color {
         let total = seed.unicodeScalars.reduce(0) { $0 + Int($1.value) }
         let index = total % selectableColors.count
         return selectableColors[index]
+    }
+}
+
+// MARK: - Date Formatting
+
+extension Date {
+    func timeAgo() -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter.localizedString(for: self, relativeTo: Date())
     }
 }

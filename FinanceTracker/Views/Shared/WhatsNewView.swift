@@ -39,7 +39,7 @@ struct WhatsNewView: View {
                     .padding(AppSpacing.margin)
                 }
                 
-                Button {
+                Button { HapticManager.shared.light(); 
                     onDismiss?()
                     dismiss()
                 } label: {
@@ -57,7 +57,7 @@ struct WhatsNewView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
+                    Button { HapticManager.shared.light(); 
                         onDismiss?()
                         dismiss()
                     } label: {

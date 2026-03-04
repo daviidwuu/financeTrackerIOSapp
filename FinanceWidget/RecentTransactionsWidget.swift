@@ -4,8 +4,8 @@ import SwiftUI
 struct RecentTransactionsProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> RecentEntry {
         RecentEntry(date: Date(), configuration: WidgetBackgroundIntent(), transactions: [
-            WidgetDataManager.WidgetTransaction(id: "1", title: "Coffee", amount: -4.50, date: Date(), icon: "cup.and.saucer.fill", colorHex: "#FF9500"),
-            WidgetDataManager.WidgetTransaction(id: "2", title: "Groceries", amount: -120.30, date: Date().addingTimeInterval(-3600), icon: "cart.fill", colorHex: "#4CD964")
+            WidgetDataManager.WidgetTransaction(id: "1", title: "Coffee", amount: -4.50, date: Date(), categoryId: nil, type: "expense"),
+            WidgetDataManager.WidgetTransaction(id: "2", title: "Groceries", amount: -120.30, date: Date().addingTimeInterval(-3600), categoryId: nil, type: "expense")
         ])
     }
 
@@ -55,15 +55,17 @@ struct RecentTransactionsEntryView : View {
             } else {
                 VStack(spacing: 8) {
                     let displayLimit = family == .systemSmall ? 3 : 4
-                    ForEach(entry.transactions.prefix(displayLimit)) { transaction in
+                    ForEach(Array(entry.transactions.prefix(displayLimit))) { transaction in
                         HStack(spacing: 12) {
+                            // FIX #22: Use type field to determine icon/color instead of hardcoded values
+                            let isIncome = transaction.type == "income" || transaction.amount > 0
                             Circle()
-                                .fill(Color(hex: transaction.colorHex))
+                                .fill((isIncome ? Color.green : Color(hex: "#007AFF")).opacity(0.15))
                                 .frame(width: 32, height: 32)
                                 .overlay(
-                                    Image(systemName: transaction.icon)
+                                    Image(systemName: isIncome ? "dollarsign.circle.fill" : "cart.fill")
                                         .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(.white)
+                                        .foregroundColor(isIncome ? .green : Color(hex: "#007AFF"))
                                 )
                             
                             VStack(alignment: .leading, spacing: 2) {

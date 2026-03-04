@@ -100,12 +100,10 @@ service cloud.firestore {
     
     // ✅ NEW: Root collection for friend requests
     match /friend_requests/{requestId} {
-      allow create: if request.auth.uid == request.resource.data.fromUid;
-      allow read: if request.auth.uid == resource.data.fromUid 
-                  || request.auth.uid == resource.data.toUid;
-      allow update: if request.auth.uid == resource.data.toUid;
-      allow delete: if request.auth.uid == resource.data.fromUid
-                    || request.auth.uid == resource.data.toUid;
+      allow create: if isSignedIn();
+      allow read: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     // ✅ NEW: Archived Split Requests
@@ -117,17 +115,16 @@ service cloud.firestore {
     }
     
     match /group_invitations/{inviteId} {
-      allow create: if request.auth.uid == request.resource.data.fromUid;
-      allow read: if request.auth.uid == resource.data.fromUid 
-                  || request.auth.uid == resource.data.toUid;
-      allow update: if request.auth.uid == resource.data.toUid;
-      allow delete: if request.auth.uid == resource.data.fromUid
-                    || request.auth.uid == resource.data.toUid;
+      allow create: if isSignedIn();
+      allow read: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     // ✅ NEW: Root collection for usernames
     match /usernames/{username} {
-      allow read: if isSignedIn();
+      allow get: if true;
+      allow list: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
     }

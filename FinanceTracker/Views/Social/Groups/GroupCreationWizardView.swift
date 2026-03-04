@@ -64,38 +64,12 @@ struct GroupCreationWizardView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                (colorScheme == .dark ? Color.black : Color(UIColor.systemGroupedBackground))
+                Color.backgroundPrimary
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // Custom Header
-                    HStack {
-                        Button(action: {
-                            HapticManager.shared.light()
-                            dismiss()
-                        }) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.primary)
-                                .frame(width: 44, height: 44)
-                                .background(Color.primary.opacity(0.05))
-                                .clipShape(Circle())
-                        }
-                        
-                        Spacer()
-                        
-                        Text(stepTitle)
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                        
-                        Spacer()
-                        
-                        Color.clear
-                            .frame(width: 44, height: 44)
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 16)
-                    
+                    Spacer().frame(height: 60)
+
                     // Header Progress
                     HStack(spacing: 4) {
                         ForEach(0..<3) { index in
@@ -131,6 +105,7 @@ struct GroupCreationWizardView: View {
             .safeAreaInset(edge: .bottom) {
                 stickyActionBar
             }
+            .overlayHeader(.navigation(title: stepTitle, onBack: { dismiss() }, backIcon: "xmark"))
         }
         // Initialize repos
         .onAppear {
@@ -156,7 +131,7 @@ struct GroupCreationWizardView: View {
             .presentationDetents([.fraction(0.4)])
         }
         .alert("Error", isPresented: $showError) {
-             Button("OK", role: .cancel) { }
+             Button("OK", role: .cancel) { HapticManager.shared.light();  }
         } message: {
              Text(errorMessage)
         }
@@ -164,13 +139,13 @@ struct GroupCreationWizardView: View {
             "Leave Group",
             isPresented: $showLeaveGroupDialog
         ) {
-            Button("Keep my data") {
+            Button("Keep my data") { HapticManager.shared.light(); 
                 leaveGroup(keepData: true)
             }
-            Button("Delete my data", role: .destructive) {
+            Button("Delete my data", role: .destructive) { HapticManager.shared.light(); 
                 leaveGroup(keepData: false)
             }
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) { HapticManager.shared.light();  }
         } message: {
             Text("Your splits and transactions from this group will either be kept as personal records or permanently deleted.")
         }
@@ -178,13 +153,13 @@ struct GroupCreationWizardView: View {
             "Delete Group",
             isPresented: $showDeleteGroupDialog
         ) {
-            Button("Keep Transaction History") {
+            Button("Keep Transaction History") { HapticManager.shared.light(); 
                 confirmGroupDeletion(action: "keep")
             }
-            Button("Delete All History", role: .destructive) {
+            Button("Delete All History", role: .destructive) { HapticManager.shared.light(); 
                 confirmGroupDeletion(action: "delete")
             }
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) { HapticManager.shared.light();  }
         } message: {
             Text("What would you like to do with your transaction history?")
         }
@@ -194,7 +169,7 @@ struct GroupCreationWizardView: View {
     
     private var stickyActionBar: some View {
         VStack {
-            Button(action: {
+            Button(action: { HapticManager.shared.light(); 
                 withAnimation { nextStep() }
             }) {
                 Text(isLastStep ? "Create Group" : "Next")
@@ -205,7 +180,7 @@ struct GroupCreationWizardView: View {
         .padding(.horizontal)
         .padding(.top, 12)
         .padding(.bottom, 8)
-        .background(colorScheme == .dark ? Color.black : Color(UIColor.systemGroupedBackground))
+        .background(Color.backgroundPrimary)
     }
     
     // MARK: - Steps
@@ -256,7 +231,7 @@ struct GroupCreationWizardView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .background(Color(UIColor.secondarySystemBackground))
+                .background(Color.cardBackground)
                 .clipShape(Capsule())
                 .padding(.horizontal)
                 
@@ -269,7 +244,7 @@ struct GroupCreationWizardView: View {
                                     Text(user.name)
                                         .font(.caption)
                                         .fontWeight(.bold)
-                                    Button(action: { selectedUsers.remove(user) }) {
+                                    Button(action: { HapticManager.shared.light();  selectedUsers.remove(user) }) {
                                         Image(systemName: "xmark")
                                             .font(.caption2)
                                     }
@@ -316,7 +291,7 @@ struct GroupCreationWizardView: View {
                         
                         ForEach(filteredFriends) { friend in
                             let isSelected = selectedUsers.contains { $0.id == friend.id }
-                            Button(action: { toggleFriend(friend) }) {
+                            Button(action: { HapticManager.shared.light();  toggleFriend(friend) }) {
                                 HStack(spacing: 16) {
                                     // Avatar
                                     ProfileAvatar(
@@ -370,7 +345,7 @@ struct GroupCreationWizardView: View {
                                     .padding(.top, 16)
                                 
                                 ForEach(nonFriends) { user in
-                                    Button(action: { addPendingFriend(user) }) {
+                                    Button(action: { HapticManager.shared.light();  addPendingFriend(user) }) {
                                         HStack(spacing: 16) {
                                             ProfileAvatar(
                                                 text: String(user.name.prefix(1)),
@@ -408,7 +383,7 @@ struct GroupCreationWizardView: View {
                         }
                         
                         // Guest Button
-                        Button(action: { showGuestInput = true }) {
+                        Button(action: { HapticManager.shared.light();  showGuestInput = true }) {
                             HStack(spacing: 16) {
                                 Circle()
                                     .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
@@ -518,7 +493,7 @@ struct GroupCreationWizardView: View {
                 if let group = groupToEdit {
                     let isCreator = group.createdBy == appState.currentUserId
                     
-                    Button(role: .destructive, action: {
+                    Button(role: .destructive, action: { HapticManager.shared.light(); 
                         if isCreator {
                             showDeleteGroupDialog = true
                         } else {
@@ -532,8 +507,8 @@ struct GroupCreationWizardView: View {
                         .foregroundColor(.red)
                         .padding()
                         .frame(maxWidth: .infinity)
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .cornerRadius(AppRadius.small)
+                        .background(Color.cardBackground)
+                        .clipShape(Capsule())
                     }
                     .padding(.horizontal)
                 }
@@ -607,7 +582,7 @@ struct GroupCreationWizardView: View {
                     HapticManager.shared.success()
                 }
             } catch {
-                print("Error creating guest: \(error)")
+                DebugLogger.log("Error creating guest: \(error)")
             }
         }
     }
@@ -739,7 +714,7 @@ struct GroupCreationWizardView: View {
                  try await appState.groupRepo.requestGroupDeletion(group: group)
                  try await appState.groupRepo.submitDeletionAction(group: group, action: action)
             } catch {
-                print("Error requesting group deletion: \(error)")
+                DebugLogger.log("Error requesting group deletion: \(error)")
                 await MainActor.run {
                     HapticManager.shared.error()
                 }
@@ -758,7 +733,7 @@ struct GroupCreationWizardView: View {
                     dismiss()
                 }
             } catch {
-                print("Error leaving group: \(error)")
+                DebugLogger.log("Error leaving group: \(error)")
                 await MainActor.run {
                     HapticManager.shared.error()
                 }

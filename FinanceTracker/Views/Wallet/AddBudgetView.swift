@@ -50,7 +50,7 @@ struct AddBudgetView: View {
         ) {
             currentStepView
         } actionBar: {
-            Button(action: {
+            Button(action: { HapticManager.shared.light(); 
                 // Sticky Logic: Enforce Large Detent
                 availableDetents = [.large]
                 presentationDetent = .large

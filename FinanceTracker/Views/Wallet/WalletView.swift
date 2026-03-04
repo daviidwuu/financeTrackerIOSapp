@@ -16,8 +16,12 @@ struct WalletView: View {
     @State private var undoState = UndoState()
     @State private var hiddenItemIds: Set<String> = []
     
+    // Binding state for CalendarView
+    @State private var calendarMonth = Date()
+    
     @State private var goalToEdit: FirestoreModels.SavingGoal?
     @State private var recurringToEdit: FirestoreModels.RecurringTransaction?
+    @State private var recurringToView: FirestoreModels.RecurringTransaction? // Added for detail view modal
     @State private var budgetToEdit: FirestoreModels.CategoryBudget?
     @State private var showEditBalance = false
     @State private var balanceInput = ""
@@ -31,7 +35,7 @@ struct WalletView: View {
     @State private var showDetails = false
     
     var totalBalance: Double {
-        WalletLogic.calculateTotalBalance(initialBalance: initialBalance, transactions: transactionRepo.transactions)
+        WalletLogic.calculateTotalBalance(initialBalance: initialBalance, aggregatedIncome: appState.aggregatedIncome, aggregatedExpense: appState.aggregatedExpense)
     }
     
     var totalBudget: Double {
@@ -39,65 +43,90 @@ struct WalletView: View {
     }
     
     var incomeLeft: Double {
-        WalletLogic.calculateIncomeLeft(monthlyIncome: monthlyIncome, transactions: transactionRepo.transactions)
+        WalletLogic.calculateIncomeLeft(monthlyIncome: monthlyIncome, transactions: transactionRepo.currentMonthTransactions)
     }
     
     var currentMonthIncome: Double {
-        WalletLogic.calculateCurrentMonthIncome(transactions: transactionRepo.transactions)
+        WalletLogic.calculateCurrentMonthIncome(transactions: transactionRepo.currentMonthTransactions)
     }
     
     var totalExpense: Double {
-        WalletLogic.calculateTotalExpense(transactions: transactionRepo.transactions)
+        WalletLogic.calculateCurrentMonthExpense(transactions: transactionRepo.currentMonthTransactions)
     }
     
     var netCashFlow: Double {
-        WalletLogic.calculateNetCashFlow(transactions: transactionRepo.transactions)
+        WalletLogic.calculateNetCashFlow(transactions: transactionRepo.currentMonthTransactions)
+    }
+    
+    // Extracted Calendar Section to help compiler check types
+    private var calendarSection: some View {
+        Section {
+            VStack(spacing: 8) {
+                CalendarView(
+                    currentDate: $calendarMonth,
+                    transactions: transactionRepo.calendarTransactions,
+                    categories: budgetRepo.budgets,
+                    totalBudget: totalBudget,
+                    signupDate: appState.userSignupDate
+                )
+            }
+            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+            .onAppear {
+                GamificationManager.shared.completeMission(id: "insight_master")
+                let userId = appState.currentUserId
+                if !userId.isEmpty {
+                    transactionRepo.setCalendarMonth(calendarMonth)
+                }
+            }
+            .onChange(of: calendarMonth) { _, newMonth in
+                let userId = appState.currentUserId
+                if !userId.isEmpty {
+                    transactionRepo.setCalendarMonth(newMonth)
+                }
+            }
+        }
     }
     
     var body: some View {
         NavigationStack {
             ZStack {
                 // Background
-                Color(UIColor.systemBackground)
+                Color.backgroundPrimary
                     .ignoresSafeArea()
-                
+
                 List {
-                    // Header Section
-                    Section {
-                        HStack {
-                            Text("Wallet")
-                                .font(AppTypography.titleDisplay)
-                                .foregroundColor(.primary)
-                            Spacer()
-                        }
-                        .padding(.top, 10)
-                        .padding(.bottom, AppSpacing.compact) // Added spacing between header and card
-                        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+                    // Scroll offset tracker + spacer for fixed header
+                    ScrollOffsetTracker()
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
-                    }
+                        .listRowInsets(EdgeInsets())
 
-                    // Section 1: Financial Overview (Balance Card)
+                    Color.clear.frame(height: 0)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+
+                    // Section 1: Financial Overview (Net Worth Card)
                     Section {
-                        VStack(alignment: .leading, spacing: 16) {
-                            // Total Balance
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text("Total Balance")
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.secondary)
-                                    Spacer()
-                                }
-                                
-                                Text("$\(String(format: "%.2f", totalBalance))")
-                                    .font(AppTypography.sectionHeader)
-                                    .foregroundColor(totalBalance >= 0 ? .primary : .red)
+                        // Net Worth Header
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Net Worth")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.secondary)
+                                Spacer()
                             }
+                            
+                            Text("$\(String(format: "%.2f", totalBalance))")
+                                .font(AppTypography.sectionHeader)
+                                .foregroundColor(totalBalance >= 0 ? .primary : .red)
                         }
 
                         .padding(AppSpacing.margin) // Changed from 24 to 20 (standard margin)
-                        .background(Color(UIColor.secondarySystemBackground))
+                        .background(Color.cardBackground)
                         .clipShape(RoundedRectangle(cornerRadius: AppRadius.large)) // Consistent radius
                         .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
                         .listRowSeparator(.hidden)
@@ -179,7 +208,7 @@ struct WalletView: View {
                                         .foregroundColor(.primary)
                                 }
                                 .padding()
-                                .background(Color(UIColor.secondarySystemBackground))
+                                .background(Color.cardBackground)
                                 .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
                                 .contentShape(.dragPreview, RoundedRectangle(cornerRadius: AppRadius.medium))
                                 .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
@@ -219,29 +248,14 @@ struct WalletView: View {
                     .listRowBackground(Color.clear)
                     
                     // Section 3: Calendar
-                    Section {
-                        VStack(spacing: 8) {
-                            CalendarView(
-                                transactions: transactionRepo.transactions,
-                                totalBudget: totalBudget, 
-                                monthlyIncome: monthlyIncome,
-                                signupDate: appState.userSignupDate
-                            )
-                        }
-                        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-                        .onAppear {
-                            GamificationManager.shared.completeMission(id: "insight_master")
-                        }
-                    }
+                    calendarSection
                     
                     // Section 4: Recurring Transactions
                     Section(header:
                         HStack {
                             Text("Recurring").font(.title2).fontWeight(.bold).foregroundColor(.primary)
                             Spacer()
-                            Button(action: { 
+                            Button(action: { HapticManager.shared.light();  
                                 recurringToEdit = nil
                                 showAddRecurring = true 
                             }) {
@@ -266,11 +280,17 @@ struct WalletView: View {
                             .listRowBackground(Color.clear)
                         } else {
                             ForEach(recurringRepo.recurringTransactions) { recurring in
-                                RecurringTransactionCard(
-                                    transaction: recurring,
-                                    onDelete: { deleteRecurringTransaction(recurring) },
-                                    onEdit: { recurringToEdit = recurring }
-                                )
+                                Button(action: {
+                                    HapticManager.shared.light()
+                                    recurringToView = recurring
+                                }) {
+                                    RecurringTransactionCard(
+                                        transaction: recurring,
+                                        onDelete: { deleteRecurringTransaction(recurring) },
+                                        onEdit: { recurringToEdit = recurring }
+                                    )
+                                }
+                                .buttonStyle(.plain)
                                 .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
@@ -284,7 +304,7 @@ struct WalletView: View {
                         HStack {
                             Text("Budgets").font(.title2).fontWeight(.bold).foregroundColor(.primary)
                             Spacer()
-                            Button(action: { 
+                            Button(action: { HapticManager.shared.light();  
                                 budgetToEdit = nil
                                 showAddBudget = true 
                             }) {
@@ -324,18 +344,18 @@ struct WalletView: View {
                                     if budget.totalAmount == 0 {
                                         // Infinite Budget: Show "Spent" instead of "Left"
                                         // remaining = 0 - spent => spent = -remaining
-                                        let spent = abs(budget.remainingAmount(transactions: transactionRepo.transactions))
+                                        let spent = abs(budget.remainingAmount(transactions: transactionRepo.allTransactions))
                                         Text("$\(Int(spent)) spent")
                                             .font(.system(.subheadline, design: .rounded))
                                             .foregroundColor(.secondary)
                                     } else {
-                                        Text("$\(Int(budget.remainingAmount(transactions: transactionRepo.transactions))) left")
+                                        Text("$\(Int(budget.remainingAmount(transactions: transactionRepo.allTransactions))) left")
                                             .font(.system(.subheadline, design: .rounded))
                                             .foregroundColor(.secondary)
                                     }
                                 }
                                 .padding()
-                                .background(Color(UIColor.secondarySystemBackground))
+                                .background(Color.cardBackground)
                                 .cornerRadius(AppRadius.medium)
                                 .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
                                 .listRowSeparator(.hidden)
@@ -366,6 +386,7 @@ struct WalletView: View {
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
                 .scrollIndicators(.hidden)
+                .padding(.top, -20)
                 .onAppear {
                     checkForNewMonth()
                 }
@@ -375,6 +396,7 @@ struct WalletView: View {
                     }
                 }
             }
+            .overlayHeader(.root(title: "Wallet"))
             .navigationBarHidden(true)
             .sheet(isPresented: $showAddSavingGoal) {
                 AddSavingGoalView(onSave: { goal in
@@ -396,6 +418,18 @@ struct WalletView: View {
                     updateRecurringTransaction(transaction, with: updatedTransaction)
                 })
             }
+            .sheet(item: $recurringToView) { transaction in
+                RecurringTransactionDetailView(
+                    transaction: transaction,
+                    onSave: { updatedRecurring, formData in
+                        updateRecurringTransaction(transaction, with: formData)
+                        recurringToView = updatedRecurring
+                    },
+                    onDelete: {
+                        deleteRecurringTransaction(transaction)
+                    }
+                )
+            }
             .sheet(isPresented: $showAddBudget) {
                 AddBudgetView(onSave: { budget in
                     addBudget(budget)
@@ -409,9 +443,9 @@ struct WalletView: View {
             .sheet(isPresented: $showEditBalance) {
                 WalletDetailsView(
                     initialBalance: $initialBalance,
-                    income: currentMonthIncome,
-                    expense: totalExpense,
-                    netFlow: netCashFlow
+                    totalBalance: totalBalance,
+                    aggregatedIncome: appState.aggregatedIncome,
+                    aggregatedExpense: appState.aggregatedExpense
                 )
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
@@ -454,9 +488,9 @@ struct WalletView: View {
     private func calculateAllTimeSavingsPool() -> Double {
         WalletLogic.calculateAllTimeSavingsPool(
             signupDate: appState.userSignupDate,
-            transactions: transactionRepo.transactions,
+            transactions: transactionRepo.allTransactions,
             totalBudget: totalBudget,
-            monthlyIncome: monthlyIncome
+            categories: budgetRepo.budgets
         )
     }
     
@@ -471,10 +505,10 @@ struct WalletView: View {
         
         undoState.schedule(
             label: "Goal deleted",
-            onUndo: { [self] in
+            onUndo: {
                 hiddenItemIds.remove(id)
             },
-            onConfirm: { [self] in
+            onConfirm: {
                 hiddenItemIds.remove(id)
                 Task {
                     do {
@@ -494,10 +528,10 @@ struct WalletView: View {
         
         undoState.schedule(
             label: "Recurring item deleted",
-            onUndo: { [self] in
+            onUndo: {
                 hiddenItemIds.remove(id)
             },
-            onConfirm: { [self] in
+            onConfirm: {
                 hiddenItemIds.remove(id)
                 Task {
                     do {
@@ -517,10 +551,10 @@ struct WalletView: View {
         
         undoState.schedule(
             label: "Budget deleted",
-            onUndo: { [self] in
+            onUndo: {
                 hiddenItemIds.remove(id)
             },
-            onConfirm: { [self] in
+            onConfirm: {
                 hiddenItemIds.remove(id)
                 Task {
                     do {
@@ -595,6 +629,7 @@ struct WalletView: View {
                     amount: transaction.amount,
                     frequency: transaction.frequency,
                     startDate: transaction.startDate,
+                    categoryId: transaction.categoryId,
                     icon: transaction.icon,
                     colorHex: transaction.color.toHex() ?? "#000000",
                     note: transaction.notes,

@@ -5,7 +5,7 @@ const admin = require('firebase-admin');
 // and catch-up logic for missed periods.
 const MAX_ITEMS_PER_BATCH = 250;
 
-exports.processRecurringTransactions = functions.pubsub.schedule('1 0 * * *').onRun(async (context) => {
+exports.processRecurringTransactions = functions.pubsub.schedule('1 0 * * *').timeZone('Asia/Singapore').onRun(async (context) => {
   const db = admin.firestore();
   const today = new Date();
   today.setHours(0, 0, 0, 0);

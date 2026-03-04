@@ -46,7 +46,9 @@ class FirebaseManager: ObservableObject {
     
     /// Check if a username is available
     func checkUsernameAvailability(_ username: String) async throws -> Bool {
-        if username.contains(" ") {
+        // FIX #23: Trim whitespace and reject empty/whitespace-only input
+        let trimmed = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty || trimmed.contains(" ") {
             return false
         }
         do {
@@ -171,33 +173,30 @@ class FirebaseManager: ObservableObject {
         let userId = user.uid
         
         // 1. Client-side best-effort deletion of user data
-        let batch = db.batch()
         let userRef = db.collection("users").document(userId)
+
+        // Delete all documents in each subcollection (paginated to handle >500 docs)
+        let subcollections = ["transactions", "budgets", "recurring_transactions", "recurringTransactions", "savingGoals", "friends"]
+        for subcollection in subcollections {
+            try? await deleteAllDocuments(in: userRef.collection(subcollection))
+        }
+
+        // Delete split requests created by this user
+        try? await deleteAllMatchingDocuments(
+            in: db.collection("split_requests"),
+            field: "fromUid",
+            value: userId
+        )
+
+        // Delete username reservation and user document
+        let batch = db.batch()
         batch.deleteDocument(userRef)
-        
-        if let transactions = try? await userRef.collection("transactions").limit(to: 500).getDocuments() {
-            for doc in transactions.documents {
-                batch.deleteDocument(doc.reference)
-            }
-        }
-        
-        if let budgets = try? await userRef.collection("budgets").limit(to: 500).getDocuments() {
-            for doc in budgets.documents {
-                batch.deleteDocument(doc.reference)
-            }
-        }
-        
-        if let recurring = try? await userRef.collection("recurring_transactions").limit(to: 500).getDocuments() {
-            for doc in recurring.documents {
-                batch.deleteDocument(doc.reference)
-            }
-        }
-        
+
         if let currentUsername = currentUserUsername {
             let usernameRef = db.collection("usernames").document(currentUsername.lowercased())
             batch.deleteDocument(usernameRef)
         }
-        
+
         do {
             try await batch.commit()
             DebugLogger.log("Successfully deleted user data from Firestore")
@@ -209,6 +208,39 @@ class FirebaseManager: ObservableObject {
         try await user.delete()
     }
     
+    // MARK: - Paginated Deletion Helpers
+
+    /// Deletes all documents in a collection reference, paginating in batches of 500.
+    private func deleteAllDocuments(in collectionRef: CollectionReference) async throws {
+        var hasMore = true
+        while hasMore {
+            let snapshot = try await collectionRef.limit(to: 500).getDocuments()
+            if snapshot.documents.isEmpty { hasMore = false; break }
+            let batch = db.batch()
+            for doc in snapshot.documents {
+                batch.deleteDocument(doc.reference)
+            }
+            try await batch.commit()
+        }
+    }
+
+    /// Deletes all documents in a collection where a field matches a value, paginating in batches of 500.
+    private func deleteAllMatchingDocuments(in collectionRef: CollectionReference, field: String, value: String) async throws {
+        var hasMore = true
+        while hasMore {
+            let snapshot = try await collectionRef
+                .whereField(field, isEqualTo: value)
+                .limit(to: 500)
+                .getDocuments()
+            if snapshot.documents.isEmpty { hasMore = false; break }
+            let batch = db.batch()
+            for doc in snapshot.documents {
+                batch.deleteDocument(doc.reference)
+            }
+            try await batch.commit()
+        }
+    }
+
     /// Update email
     func updateEmail(_ email: String) async throws {
         guard let user = auth.currentUser else { return }
@@ -348,6 +380,22 @@ class FirebaseManager: ObservableObject {
         // Refresh local cache if needed
         if let newName = mutableData["name"] as? String {
             await MainActor.run { self.currentUserName = newName }
+            
+            // FIX #15: Sync denormalized names in pending split_requests
+            // Update fromName where this user is the sender
+            let fromSnap = try await db.collectionGroup("split_requests")
+                .whereField("fromUid", isEqualTo: userId)
+                .getDocuments()
+            for doc in fromSnap.documents {
+                try? await doc.reference.updateData(["fromName": newName])
+            }
+            // Update toName where this user is the receiver
+            let toSnap = try await db.collectionGroup("split_requests")
+                .whereField("toUid", isEqualTo: userId)
+                .getDocuments()
+            for doc in toSnap.documents {
+                try? await doc.reference.updateData(["toName": newName])
+            }
         }
     }
     // MARK: - Notification

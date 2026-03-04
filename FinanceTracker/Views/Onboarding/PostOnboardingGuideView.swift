@@ -51,26 +51,31 @@ struct PostOnboardingGuideView: View {
                 // Navigation Buttons
                 HStack(spacing: 16) {
                     if currentStep > 1 && currentStep < 4 {
-                        Button(action: prevStep) {
+                        Button(action: {
+                            HapticManager.shared.light()
+                            prevStep()
+                        }) {
                             Image(systemName: "arrow.left")
                                 .font(.headline)
                                 .foregroundColor(.primary)
                                 .frame(width: 50, height: 50)
-                                .background(Color(UIColor.secondarySystemBackground))
+                                .background(Color.cardBackground)
                                 .clipShape(Circle())
                         }
                     }
-                    
-                    Button(action: nextStep) {
+
+                    Button(action: {
+                        HapticManager.shared.light()
+                        nextStep()
+                    }) {
                         Text(currentStep == 4 ? "Get Started" : "Next")
-                            .font(.headline)
-                            .fontWeight(.bold)
+                            .font(AppTypography.headline)
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
-                    .background(Color.white)
-                    .foregroundColor(.black)
-                    .cornerRadius(AppRadius.medium)
+                    .background(Color.primary)
+                    .foregroundColor(colorScheme == .dark ? .black : .white)
+                    .clipShape(Capsule())
                     .shadow(color: .white.opacity(0.3), radius: 10, x: 0, y: 5)
                 }
                 .padding(24)
@@ -82,10 +87,12 @@ struct PostOnboardingGuideView: View {
                 VStack {
                     HStack {
                         Spacer()
-                        Button(action: completeGuide) {
+                        Button(action: {
+                            HapticManager.shared.light()
+                            completeGuide()
+                        }) {
                             Text("Skip")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
+                                .font(AppTypography.subheadline)
                                 .foregroundColor(.secondary)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
@@ -103,7 +110,6 @@ struct PostOnboardingGuideView: View {
     private func nextStep() {
         if currentStep < 4 {
             direction = .trailing
-            HapticManager.shared.light()
             withAnimation { currentStep += 1 }
         } else {
             HapticManager.shared.success()
@@ -114,7 +120,6 @@ struct PostOnboardingGuideView: View {
     private func prevStep() {
         if currentStep > 1 {
             direction = .leading
-            HapticManager.shared.light()
             withAnimation { currentStep -= 1 }
         }
     }
@@ -154,10 +159,10 @@ struct WelcomeGuideStep: View {
             
             VStack(spacing: 16) {
                 Text("🎉 All Set!")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .font(AppTypography.heroRounded(size: 32))
                 
                 Text("Your account is ready. Let's show you some powerful features to get the most out of wym.")
-                    .font(.body)
+                    .font(AppTypography.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
@@ -179,12 +184,12 @@ struct BackTapGuideStep: View {
                 .padding(.bottom, 12)
             
             Text("Quick Logging with Back Tap")
-                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .font(AppTypography.heroRounded(size: 28))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 24)
             
             Text("Log expenses in seconds without even opening the app")
-                .font(.subheadline)
+                .font(AppTypography.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
@@ -213,11 +218,11 @@ struct WidgetsGuideStep: View {
                         .foregroundColor(.purple)
                     
                     Text("Stay On Top with Widgets")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .font(AppTypography.heroRounded(size: 28))
                         .multilineTextAlignment(.center)
                     
                     Text("Add widgets to your home and lock screens for instant budget tracking")
-                        .font(.subheadline)
+                        .font(AppTypography.subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 32)
@@ -250,7 +255,7 @@ struct WidgetsGuideStep: View {
                 
                 VStack(spacing: 12) {
                     Text("How to Add")
-                        .font(.headline)
+                        .font(AppTypography.headline)
                         .foregroundColor(.primary)
                     
                     VStack(alignment: .leading, spacing: 12) {
@@ -289,10 +294,10 @@ struct CompletionGuideStep: View {
             
             VStack(spacing: 16) {
                 Text("You're All Set!")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .font(AppTypography.heroRounded(size: 32))
                 
                 Text("Start tracking your finances and building better money habits today.")
-                    .font(.body)
+                    .font(AppTypography.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
@@ -312,15 +317,14 @@ struct InstructionRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Text("\(number)")
-                .font(.system(.body, design: .rounded))
-                .fontWeight(.bold)
+                .font(AppTypography.heroRounded(size: 16))
                 .foregroundColor(.white)
                 .frame(width: 28, height: 28)
-                .background(Color.blue)
+                .background(AppColors.brandPrimary)
                 .clipShape(Circle())
             
             Text(text)
-                .font(.body)
+                .font(AppTypography.body)
                 .foregroundColor(.primary)
                 .multilineTextAlignment(.leading)
             
@@ -346,11 +350,11 @@ struct WidgetCard: View {
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.headline)
+                    .font(AppTypography.headline)
                     .foregroundColor(.primary)
                 
                 Text(description)
-                    .font(.subheadline)
+                    .font(AppTypography.subheadline)
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -358,7 +362,7 @@ struct WidgetCard: View {
             Spacer()
         }
         .padding(AppSpacing.element)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(Color.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 }

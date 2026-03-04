@@ -3,9 +3,9 @@ import SwiftUI
 struct PrimaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) var isEnabled
     @Environment(\.colorScheme) var colorScheme
-    
+
     var isLoading: Bool = false
-    
+
     func makeBody(configuration: Configuration) -> some View {
         HStack {
             if isLoading {
@@ -13,18 +13,18 @@ struct PrimaryButtonStyle: ButtonStyle {
                     .progressViewStyle(CircularProgressViewStyle(tint: Color.backgroundPrimary))
                     .padding(.trailing, 8)
             }
-            
+
             configuration.label
                 .font(.headline)
                 .fontWeight(.bold)
         }
-        .foregroundColor(isEnabled ? Color.backgroundPrimary : Color.secondary)
+        .foregroundColor(isEnabled ? (AppTheme.activeTheme == .system ? Color.backgroundPrimary : .white) : Color.secondary)
         .frame(maxWidth: .infinity)
         .frame(height: 50)
         .background(
-            isEnabled 
-                ? Color.primary 
-                : Color(UIColor.systemGray5)
+            isEnabled
+                ? (AppTheme.activeTheme == .system ? Color.textPrimary : Color.themeAccent)
+                : Color.secondaryCardBackground
         )
         .clipShape(Capsule())
         .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
@@ -32,7 +32,7 @@ struct PrimaryButtonStyle: ButtonStyle {
         .animation(.easeInOut(duration: 0.2), value: isEnabled)
         .onChange(of: configuration.isPressed) { _, isPressed in
             if isPressed && isEnabled {
-                HapticManager.shared.light()
+                HapticManager.shared.medium()
             }
         }
     }
@@ -40,7 +40,7 @@ struct PrimaryButtonStyle: ButtonStyle {
 
 struct SecondaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) var isEnabled
-    
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.headline)
@@ -48,7 +48,7 @@ struct SecondaryButtonStyle: ButtonStyle {
             .foregroundColor(isEnabled ? .primary : .secondary)
             .frame(maxWidth: .infinity)
             .frame(height: 50)
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(Color.secondaryCardBackground)
             .clipShape(Capsule())
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
             .animation(.easeInOut(duration: 0.2), value: configuration.isPressed)
@@ -62,21 +62,21 @@ struct SecondaryButtonStyle: ButtonStyle {
 
 struct SmallPrimaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) var isEnabled
-    
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.subheadline) // Smaller font
             .fontWeight(.semibold)
-            .foregroundColor(isEnabled ? Color.backgroundPrimary : Color.secondary)
+            .foregroundColor(isEnabled ? (AppTheme.activeTheme == .system ? Color.backgroundPrimary : .white) : Color.secondary)
             .padding(.horizontal, 16)
             .padding(.vertical, 8) // Reduced padding
-            .background(isEnabled ? Color.primary : Color(UIColor.systemGray5))
+            .background(isEnabled ? (AppTheme.activeTheme == .system ? Color.textPrimary : Color.themeAccent) : Color.secondaryCardBackground)
             .clipShape(Capsule())
             .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
             .animation(.easeInOut(duration: 0.2), value: configuration.isPressed)
             .onChange(of: configuration.isPressed) { _, isPressed in
                 if isPressed && isEnabled {
-                    HapticManager.shared.light()
+                    HapticManager.shared.medium()
                 }
             }
     }
@@ -84,7 +84,7 @@ struct SmallPrimaryButtonStyle: ButtonStyle {
 
 struct SmallSecondaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) var isEnabled
-    
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.subheadline)
@@ -92,7 +92,7 @@ struct SmallSecondaryButtonStyle: ButtonStyle {
             .foregroundColor(isEnabled ? .primary : .secondary)
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(Color.secondaryCardBackground)
             .clipShape(Capsule())
             .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
             .animation(.easeInOut(duration: 0.2), value: configuration.isPressed)
@@ -108,17 +108,17 @@ struct SmallSecondaryButtonStyle: ButtonStyle {
 struct ButtonStyles_Previews: PreviewProvider {
     static var previews: some View {
         VStack(spacing: 20) {
-            Button("Primary Action") {}
+            Button("Primary Action") { HapticManager.shared.light(); }
                 .buttonStyle(PrimaryButtonStyle())
             
-            Button("Loading") {}
+            Button("Loading") { HapticManager.shared.light(); }
                 .buttonStyle(PrimaryButtonStyle(isLoading: true))
             
-            Button("Disabled") {}
+            Button("Disabled") { HapticManager.shared.light(); }
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(true)
             
-            Button("Secondary Action") {}
+            Button("Secondary Action") { HapticManager.shared.light(); }
                 .buttonStyle(SecondaryButtonStyle())
         }
         .padding()

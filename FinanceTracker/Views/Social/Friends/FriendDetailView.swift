@@ -104,9 +104,6 @@ struct FriendDetailView: View {
                  type: tx.type,
                  currencyCode: nil,
                  note: tx.note,
-                 category: tx.subtitle,
-                 icon: tx.icon,
-                 colorHex: tx.colorHex,
                  originalTransactionId: tx.id,
                  originalAmount: nil,
                  exchangeRate: nil,
@@ -188,7 +185,7 @@ struct FriendDetailView: View {
                                     }
                                 }
                             )
-                            .onTapGesture {
+                            .onTapGesture { HapticManager.shared.light(); 
                                 // Find original transaction to select
                                 if let tx = repo.friendTransactions.first(where: { $0.id == split.id }) {
                                     activeSheet = .transactionDetail(tx)
@@ -239,7 +236,7 @@ struct FriendDetailView: View {
         var seen: Set<String> = []
         
         for tx in transactions {
-            if (tx.subtitle ?? "") == "Settlement" {
+            if tx.type == "settlement" {
                 continue
             }
             
@@ -300,24 +297,24 @@ struct FriendDetailView: View {
             } else {
                 ForEach(repo.friendTransactions) { transaction in
                     FriendCardRow(transaction: transaction, friendName: friend.name)
-                        .background(Color(UIColor.secondarySystemBackground))
+                        .background(Color.cardBackground)
                         .cornerRadius(AppRadius.medium)
-                        .onTapGesture { activeSheet = .transactionDetail(transaction) }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            Button(role: .destructive) { deleteTransaction(transaction) } label: {
+                        .onTapGesture { HapticManager.shared.light();  activeSheet = .transactionDetail(transaction) }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) { HapticManager.shared.light();  deleteTransaction(transaction) } label: {
                                 Label("Delete", systemImage: "trash")
                             }
                             .tint(.red)
                             
                             let isPaid = (transaction.note ?? "").lowercased() == "paid"
-                            Button { toggleTransactionStatus(transaction) } label: {
+                            Button { HapticManager.shared.light();  toggleTransactionStatus(transaction) } label: {
                                 Label(isPaid ? "Mark Pending" : "Mark Paid", systemImage: isPaid ? "arrow.uturn.backward" : "checkmark.circle")
                             }
                             .tint(isPaid ? .orange : .green)
                         }
                         .swipeActions(edge: .leading, allowsFullSwipe: true) {
                             if transaction.userId == appState.currentUserId && transaction.type != "income" {
-                                Button {
+                                Button { HapticManager.shared.light(); 
                                     transactionToEdit = transaction
                                 } label: {
                                     Label("Edit", systemImage: "pencil")
@@ -353,7 +350,7 @@ struct FriendDetailView: View {
         Task {
             do {
                 try await repo.sendNudge(friendId: fid)
-            } catch { print("Error sending nudge: \(error)") }
+            } catch { DebugLogger.log("Error sending nudge: \(error)") }
         }
     }
     
@@ -365,13 +362,14 @@ struct FriendDetailView: View {
         let transaction = FirestoreModels.TransactionModel(
             userId: appState.currentUserId,
             title: note.isEmpty ? (category?.category ?? "Expense") : note,
-            subtitle: category?.category ?? "Shared Expense",
+            subtitle: category?.category, // ✅ FIX: Populate category name for social propagation
+            categoryId: category?.id,
             amount: -abs(amount),
             date: Date(),
             type: "expense",
             createdAt: Date(),
-            icon: category?.icon ?? "person.2.fill",
-            colorHex: category?.colorHex ?? "#808080",
+            icon: category?.icon, // ✅ FIX: Populate icon for social propagation
+            colorHex: category?.colorHex, // ✅ FIX: Populate color for social propagation
             note: note,
             splits: splits,
             originalAmount: originalAmount,
@@ -405,24 +403,29 @@ struct FriendDetailView: View {
                     loadData()
                 }
             } catch {
-                print("Error adding friend expense: \(error)")
+                DebugLogger.log("Error adding friend expense: \(error)")
                 HapticManager.shared.error()
             }
         }
     }
     
     private func handleUpdateTransaction(originalTx: FirestoreModels.TransactionModel, amount: Double, note: String, category: FirestoreModels.CategoryBudget?, splits: [FirestoreModels.Split], originalAmount: Double?, currencyCode: String?, exchangeRate: Double?) {
+        // ✅ FIX: Resolve category for social propagation
+        let resolvedCatId = category?.id ?? originalTx.categoryId
+        let resolvedCategory = category ?? (resolvedCatId.flatMap { appState.budgetRepo.getCategory(for: $0) })
+        
         let transaction = FirestoreModels.TransactionModel(
             id: originalTx.id,
             userId: appState.currentUserId,
-            title: note.isEmpty ? (category?.category ?? "Expense") : note,
-            subtitle: category?.category ?? "Shared Expense",
+            title: note.isEmpty ? (resolvedCategory?.category ?? "Expense") : note,
+            subtitle: resolvedCategory?.category, // ✅ FIX: Populate category name
+            categoryId: resolvedCatId,
             amount: -abs(amount),
             date: originalTx.date,
             type: originalTx.type,
             createdAt: originalTx.createdAt,
-            icon: category?.icon ?? originalTx.icon,
-            colorHex: category?.colorHex ?? originalTx.colorHex,
+            icon: resolvedCategory?.icon, // ✅ FIX: Populate icon
+            colorHex: resolvedCategory?.colorHex, // ✅ FIX: Populate color
             note: note,
             splits: splits,
             originalAmount: originalAmount ?? originalTx.originalAmount,
@@ -447,7 +450,7 @@ struct FriendDetailView: View {
                     transactionToEdit = nil
                 }
             } catch {
-                print("Error updating friend expense: \(error)")
+                DebugLogger.log("Error updating friend expense: \(error)")
                 HapticManager.shared.error()
             }
         }
@@ -477,6 +480,9 @@ struct FriendDetailView: View {
             amount: abs(tx.amount),
             currency: nil,
             note: tx.title,
+            category: tx.subtitle,
+            icon: tx.icon,
+            colorHex: tx.colorHex,
             status: status,
             dependencyId: nil,
             lastNudgedAt: nil,
@@ -501,7 +507,7 @@ struct FriendDetailView: View {
         
         Task {
             do {
-                try await SocialTransactionManager.shared.markSplitAsPaid(request: split, currentUserId: appState.currentUserId, currentUserName: appState.userName)
+                _ = try await SocialTransactionManager.shared.markSplitAsPaid(request: split, currentUserId: appState.currentUserId, currentUserName: appState.userName)
                 loadData()
                 try? await Task.sleep(nanoseconds: 2 * 1_000_000_000)
                 await MainActor.run { if let id = split.id { recentlyPaidSplitIds.remove(id) } }
@@ -526,7 +532,7 @@ struct FriendDetailView: View {
         Task {
             do {
                 if targetStatus == "paid" {
-                    try await SocialTransactionManager.shared.markSplitAsPaid(request: req, currentUserId: appState.currentUserId, currentUserName: appState.userName)
+                    _ = try await SocialTransactionManager.shared.markSplitAsPaid(request: req, currentUserId: appState.currentUserId, currentUserName: appState.userName)
                 } else {
                     try await SocialTransactionManager.shared.unmarkSplitAsPaid(request: req, currentUserId: appState.currentUserId)
                 }
@@ -537,7 +543,7 @@ struct FriendDetailView: View {
                     loadData()
                 }
             } catch {
-                print("Error undoing toggle: \(error)")
+                DebugLogger.log("Error undoing toggle: \(error)")
             }
         }
     }
@@ -552,7 +558,7 @@ struct FriendDetailView: View {
         Task {
             do {
                 if !isPaid {
-                    try await SocialTransactionManager.shared.markSplitAsPaid(request: req, currentUserId: appState.currentUserId, currentUserName: appState.userName)
+                    _ = try await SocialTransactionManager.shared.markSplitAsPaid(request: req, currentUserId: appState.currentUserId, currentUserName: appState.userName)
                 } else {
                     try await SocialTransactionManager.shared.unmarkSplitAsPaid(request: req, currentUserId: appState.currentUserId)
                 }
@@ -567,7 +573,7 @@ struct FriendDetailView: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 4, execute: workItem)
                 }
             } catch {
-                print("Error toggling: \(error)")
+                DebugLogger.log("Error toggling: \(error)")
             }
         }
     }
@@ -642,6 +648,7 @@ struct FriendCardRow: View {
     let transaction: FirestoreModels.TransactionModel
     let friendName: String
     
+    @EnvironmentObject var appState: AppState
     @State private var fetchedOriginalAmount: Double?
     
     var body: some View {
@@ -658,26 +665,44 @@ struct FriendCardRow: View {
             subtitle = isYouPaid ? "You lent \(formattedShare)" : "\(friendName) lent you \(formattedShare)"
         }
         
+        // Determine title logic depending on note status
         var statusBadge: String? = nil
-        if transaction.type == "income", (transaction.subtitle ?? "") == "You requested" {
-            statusBadge = nil
-        } else if let status = transaction.note, !status.isEmpty, ["pending", "paid", "accepted", "declined"].contains(status.lowercased()) {
+        
+        if let status = transaction.note, !status.isEmpty, ["pending", "paid", "accepted", "declined"].contains(status.lowercased()) {
             statusBadge = status
         }
         
         let amountColor: Color = transaction.type == "income" ? .green : .red
+        
+        let isSettlement = transaction.categoryId == "settlement"
+        
+        let payerDisplayName = isYouPaid ? (appState.userName.isEmpty ? "You" : appState.userName) : friendName
+        
+        // ✅ FIX: Resolve category dynamically from categoryId
+        let resolvedCat: FirestoreModels.CategoryBudget? = {
+            if let catId = transaction.categoryId, catId != "settlement" {
+                return appState.budgetRepo.getCategory(for: catId)
+            }
+            return nil
+        }()
+        let displayCategory = resolvedCat?.category ?? transaction.subtitle ?? "Shared Expense"
+        let displayIcon = isSettlement ? "arrow.turn.down.left" : (resolvedCat?.icon ?? transaction.icon ?? "person.2.fill")
+        let displayColor = isSettlement ? "#34C759" : (resolvedCat?.colorHex ?? transaction.colorHex ?? "#808080")
         
         return SocialTransactionCardView(
             title: transaction.title,
             subtitle: subtitle,
             amount: transaction.amount,
             date: transaction.date,
-            type: transaction.type,
-            category: transaction.subtitle,
-            iconName: transaction.icon,
-            colorHex: transaction.colorHex,
+            type: isSettlement ? "settlement" : transaction.type,
+            category: displayCategory,
+            iconName: displayIcon,
+            colorHex: displayColor,
             amountColor: amountColor,
-            statusBadge: statusBadge
+            statusBadge: statusBadge,
+            payerName: payerDisplayName,
+            originalAmount: transaction.originalAmount,
+            currencyCode: transaction.currencyCode
         )
     }
     

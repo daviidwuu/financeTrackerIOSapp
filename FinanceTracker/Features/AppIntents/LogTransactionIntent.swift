@@ -56,8 +56,8 @@ struct LogTransactionIntent: AppIntent {
             finalNote = try? await $note.requestValue("Any notes for this transaction?")
         }
         
-        // Use budget category name as title, note as description (consistent with AddTransactionView)
-        let title = budgetData.category
+        // Use the finalNote as the title, falling back to budget category name (consistent with AddTransactionView)
+        let title = finalNote ?? budgetData.category
         
         // Check for Travel Mode
         let defaults = UserDefaults.standard
@@ -98,14 +98,12 @@ struct LogTransactionIntent: AppIntent {
             id: nil,
             userId: user.uid,
             title: title,
-            subtitle: budgetData.category,
+            categoryId: category.id,
             amount: signedAmount,
             date: Date(),
             type: type,
             createdAt: Date(),
-            icon: budgetData.icon,
-            colorHex: budgetData.colorHex,
-            note: finalNote,
+            note: nil, // Shortcut input is mapped to title, so note is nil
             source: "shortcuts",
             originalAmount: originalAmount,
             currencyCode: currencyCode,

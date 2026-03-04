@@ -6,6 +6,14 @@ enum FirestoreModels {
 
 
     
+    // MARK: - Split Status Enum
+    enum SplitStatus: String, Codable {
+        case pending
+        case accepted
+        case declined
+        case paid
+    }
+
     // MARK: - Split Model
     struct Split: Identifiable, Codable {
         var id: String = UUID().uuidString
@@ -15,12 +23,117 @@ enum FirestoreModels {
         var guestId: String? // ✅ NEW: Linked Guest ID
         var isGuest: Bool = false // ✅ NEW: Flag to distinguish guests
         var amount: Double
-        var isPaid: Bool
-        var isAccepted: Bool = false // ✅ NEW: Tracks if receiver accepted
+        var splitStatus: SplitStatus = .pending // Single source of truth
         var paidDate: Date? // When they paid back
         var incomeTransactionId: String? // Linked ID to the "Income" transaction created when they pay
         var requestId: String? // Linked ID of the SplitRequest sent to the friend
-        var status: String? = nil // ✅ NEW: "pending", "accepted", "declined", "paid"
+
+        // MARK: - Computed legacy accessors (backward compatibility)
+        var isPaid: Bool {
+            get { splitStatus == .paid }
+            set { if newValue { splitStatus = .paid } else if splitStatus == .paid { splitStatus = .pending } }
+        }
+
+        var isAccepted: Bool {
+            get { splitStatus == .accepted || splitStatus == .paid }
+            set { if newValue && splitStatus == .pending { splitStatus = .accepted } }
+        }
+
+        var status: String? {
+            get { splitStatus.rawValue }
+            set {
+                if let raw = newValue, let parsed = SplitStatus(rawValue: raw) {
+                    splitStatus = parsed
+                }
+            }
+        }
+
+        // MARK: - Custom Codable (reads legacy isPaid/isAccepted/status fields from old documents)
+        enum CodingKeys: String, CodingKey {
+            case id, name, friendId, username, guestId, isGuest, amount
+            case splitStatus
+            case paidDate, incomeTransactionId, requestId
+            // Legacy keys for decoding old documents
+            case isPaid, isAccepted, status
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            id = try container.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
+            name = try container.decodeIfPresent(String.self, forKey: .name) ?? "Unknown"
+            friendId = try container.decodeIfPresent(String.self, forKey: .friendId)
+            username = try container.decodeIfPresent(String.self, forKey: .username)
+            guestId = try container.decodeIfPresent(String.self, forKey: .guestId)
+            isGuest = try container.decodeIfPresent(Bool.self, forKey: .isGuest) ?? false
+            amount = try container.decodeIfPresent(Double.self, forKey: .amount) ?? 0.0
+            paidDate = try container.decodeIfPresent(Date.self, forKey: .paidDate)
+            incomeTransactionId = try container.decodeIfPresent(String.self, forKey: .incomeTransactionId)
+            requestId = try container.decodeIfPresent(String.self, forKey: .requestId)
+
+            // Derive splitStatus: prefer new field, fall back to legacy fields
+            if let decoded = try container.decodeIfPresent(SplitStatus.self, forKey: .splitStatus) {
+                splitStatus = decoded
+            } else if let legacyStatus = try container.decodeIfPresent(String.self, forKey: .status),
+                      let parsed = SplitStatus(rawValue: legacyStatus) {
+                splitStatus = parsed
+            } else {
+                let legacyPaid = try container.decodeIfPresent(Bool.self, forKey: .isPaid) ?? false
+                let legacyAccepted = try container.decodeIfPresent(Bool.self, forKey: .isAccepted) ?? false
+                if legacyPaid {
+                    splitStatus = .paid
+                } else if legacyAccepted {
+                    splitStatus = .accepted
+                } else {
+                    splitStatus = .pending
+                }
+            }
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(id, forKey: .id)
+            try container.encode(name, forKey: .name)
+            try container.encodeIfPresent(friendId, forKey: .friendId)
+            try container.encodeIfPresent(username, forKey: .username)
+            try container.encodeIfPresent(guestId, forKey: .guestId)
+            try container.encode(isGuest, forKey: .isGuest)
+            try container.encode(amount, forKey: .amount)
+            try container.encode(splitStatus, forKey: .splitStatus)
+            try container.encodeIfPresent(paidDate, forKey: .paidDate)
+            try container.encodeIfPresent(incomeTransactionId, forKey: .incomeTransactionId)
+            try container.encodeIfPresent(requestId, forKey: .requestId)
+            // Write legacy fields for backward compatibility with cloud functions / older clients
+            try container.encode(isPaid, forKey: .isPaid)
+            try container.encode(isAccepted, forKey: .isAccepted)
+            try container.encodeIfPresent(status, forKey: .status)
+        }
+
+        // Memberwise init for code that constructs splits directly
+        init(
+            id: String = UUID().uuidString,
+            name: String,
+            friendId: String? = nil,
+            username: String? = nil,
+            guestId: String? = nil,
+            isGuest: Bool = false,
+            amount: Double,
+            splitStatus: SplitStatus = .pending,
+            paidDate: Date? = nil,
+            incomeTransactionId: String? = nil,
+            requestId: String? = nil
+        ) {
+            self.id = id
+            self.name = name
+            self.friendId = friendId
+            self.username = username
+            self.guestId = guestId
+            self.isGuest = isGuest
+            self.amount = amount
+            self.splitStatus = splitStatus
+            self.paidDate = paidDate
+            self.incomeTransactionId = incomeTransactionId
+            self.requestId = requestId
+        }
     }
 
     // MARK: - Guest Model
@@ -94,10 +207,14 @@ enum FirestoreModels {
         var icon: String
         var colorHex: String
         var frequency: String // "Monthly", "Weekly", etc.
-        var type: String? = "expense" // Added type
+        var type: String? // Removed inline default to allow synthesize `decodeIfPresent`
         var userId: String
         var monthStartDate: Date
         var createdAt: Date
+        
+        // Backend Aggregation Fields (Must exist to satisfy CodingKeys if present in DB)
+        var currentPeriodSpent: Double?
+        var lastAggregatedAt: Date?
         
         enum CodingKeys: String, CodingKey {
             case id
@@ -110,32 +227,54 @@ enum FirestoreModels {
             case userId
             case monthStartDate
             case createdAt
+            case currentPeriodSpent
+            case lastAggregatedAt
         }
         
         // Computed property for remaining amount (calculated from transactions)
         func remainingAmount(transactions: [TransactionModel]) -> Double {
-            return totalAmount - spentAmount(transactions: transactions)
+            return DecimalPrecision.subtract(totalAmount, spentAmount(transactions: transactions))
         }
-        
-        // Calculate amount spent in the current period
-        func spentAmount(transactions: [TransactionModel]) -> Double {
-            // Use centralized calculator for consistent windows anchored to monthStartDate
+
+        /// Filters transactions matching this budget's category within the current period.
+        private func matchingTransactions(from transactions: [TransactionModel]) -> [TransactionModel] {
             let calculator = BudgetPeriodCalculator(calendar: Calendar.current, anchor: monthStartDate)
             let window = calculator.window(frequency: frequency)
-            
-            // Filter transactions and calculate Net Spend
-            let netDiff = transactions
-                .filter { transaction in
-                    // Match category
-                    // Include both Expenses (negative) and Reimbursements (positive)
-                    guard transaction.subtitle == category else { return false }
-                    return transaction.date >= window.start && transaction.date < window.end
+
+            return transactions.filter { transaction in
+                if let txCategoryId = transaction.categoryId, txCategoryId == id {
+                    // categoryId matches this budget's document ID
+                } else if let subtitle = transaction.subtitle, subtitle == category {
+                    // Legacy fallback: match by category name (pre-migration data)
+                } else {
+                    return false
                 }
-                .reduce(0) { $0 + $1.amount }
-            
-            // If netDiff is -25 (Net Expense), Spent is 25.
-            // If netDiff is +10 (Net Profit), Spent is 0.
+                return transaction.date >= window.start && transaction.date < window.end
+            }
+        }
+
+        /// FIX #2: Net spent (expenses minus reimbursements) — used for budget remaining calculation.
+        func spentAmount(transactions: [TransactionModel]) -> Double {
+            let matched = matchingTransactions(from: transactions)
+            let netDiff = DecimalPrecision.sum(matched.map { $0.amount })
             return netDiff < 0 ? abs(netDiff) : 0
+        }
+
+        /// FIX #2: Gross spent — actual total expenses regardless of reimbursements.
+        /// Shows users their real spending when reimbursements are involved.
+        func grossSpentAmount(transactions: [TransactionModel]) -> Double {
+            let matched = matchingTransactions(from: transactions)
+            return DecimalPrecision.sum(
+                matched.filter { $0.amount < 0 }.map { abs($0.amount) }
+            )
+        }
+
+        /// FIX #2: Total reimbursements received in this category.
+        func reimbursedAmount(transactions: [TransactionModel]) -> Double {
+            let matched = matchingTransactions(from: transactions)
+            return DecimalPrecision.sum(
+                matched.filter { $0.amount > 0 }.map { $0.amount }
+            )
         }
     }
 
@@ -173,10 +312,11 @@ enum FirestoreModels {
         var amount: Double
         var frequency: String // "Daily", "Weekly", "Monthly"
         var startDate: Date
-        var icon: String
-        var colorHex: String
+        var categoryId: String? // Backfilled by migration from name → budget lookup
+        var icon: String? // Made optional: migration deletes this field
+        var colorHex: String? // Made optional: migration deletes this field
         var note: String?
-        var type: String? = "expense" // "expense" or "income"
+        var type: String? // Removed inline default to allow synthesize `decodeIfPresent`
         var userId: String
         var createdAt: Date
         var lastProcessedDate: Date? // For tracking auto-execution
@@ -187,6 +327,7 @@ enum FirestoreModels {
             case amount
             case frequency
             case startDate
+            case categoryId
             case icon
             case colorHex
             case note
@@ -205,13 +346,39 @@ enum FirestoreModels {
         var field: String
         var oldValue: String
         var newValue: String
+        
+        enum CodingKeys: String, CodingKey {
+            case id, date, editorId, editorName, field, oldValue, newValue
+        }
+        
+        init(id: String = UUID().uuidString, date: Date, editorId: String, editorName: String, field: String, oldValue: String, newValue: String) {
+            self.id = id
+            self.date = date
+            self.editorId = editorId
+            self.editorName = editorName
+            self.field = field
+            self.oldValue = oldValue
+            self.newValue = newValue
+        }
+        
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            id = try container.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
+            date = try container.decodeIfPresent(Date.self, forKey: .date) ?? Date()
+            editorId = try container.decodeIfPresent(String.self, forKey: .editorId) ?? ""
+            editorName = try container.decodeIfPresent(String.self, forKey: .editorName) ?? "Unknown"
+            field = try container.decodeIfPresent(String.self, forKey: .field) ?? ""
+            oldValue = try container.decodeIfPresent(String.self, forKey: .oldValue) ?? ""
+            newValue = try container.decodeIfPresent(String.self, forKey: .newValue) ?? ""
+        }
     }
 
     struct TransactionModel: Codable, Identifiable {
         @DocumentID var id: String?
         var userId: String
         var title: String
-        var subtitle: String? // Category
+        var subtitle: String? // Category (Legacy)
+        var categoryId: String? // Reference to CategoryBudget
         var amount: Double
         var date: Date
         var type: String // "income" or "expense"
@@ -239,6 +406,7 @@ enum FirestoreModels {
             userId: String,
             title: String,
             subtitle: String? = nil,
+            categoryId: String? = nil,
             amount: Double,
             date: Date,
             type: String,
@@ -260,7 +428,9 @@ enum FirestoreModels {
             self.userId = userId
             self.title = title
             self.subtitle = subtitle
-            self.amount = amount
+            self.categoryId = categoryId
+            // FIX #11: Enforce sign convention — expenses are always negative, income always positive
+            self.amount = TransactionModel.normalizeAmount(amount, type: type)
             self.date = date
             self.type = type
             self.createdAt = createdAt
@@ -278,27 +448,15 @@ enum FirestoreModels {
             self.editHistory = editHistory
         }
 
-        enum CodingKeys: String, CodingKey {
-            case id
-            case userId
-            case title
-            case subtitle
-            case amount
-            case date
-            case type
-            case createdAt
-            case icon
-            case colorHex
-            case note
-            case source
-            case latitude
-            case longitude
-            case locationName
-            case splits
-            case originalAmount
-            case currencyCode
-            case exchangeRate
-            case editHistory
+
+
+        /// FIX #11: Ensures expenses are negative and income is positive.
+        static func normalizeAmount(_ amount: Double, type: String) -> Double {
+            switch type.lowercased() {
+            case "expense": return amount > 0 ? -amount : amount
+            case "income": return amount < 0 ? -amount : amount
+            default: return amount
+            }
         }
     }
     // MARK: - Group Model
@@ -359,6 +517,7 @@ enum FirestoreModels {
         var type: String // "expense" or "income" (reimbursement)
         var currencyCode: String?
         var note: String? // ✅ NEW: Separated from title
+        var categoryId: String? // Reference to CategoryBudget
         var category: String? // ✅ NEW: For icon lookup
         var icon: String? // ✅ NEW
         var colorHex: String? // ✅ NEW
@@ -382,6 +541,7 @@ enum FirestoreModels {
             case type
             case currencyCode
             case note
+            case categoryId
             case category
             case icon
             case colorHex
@@ -405,8 +565,16 @@ enum FirestoreModels {
         var fromName: String? // Denormalized sender name
         var toName: String? // ✅ NEW: Denormalized receiver name (Friend or Guest)
         var amount: Double
-        var currency: String? // ✅ NEW: Multi-currency support
+        var currency: String? // ✅ NEW: Multi-currency support (FIX #9: defaults to mainCurrency on read)
+        
+        /// FIX #9: Resolved currency — never nil. Falls back to user's main currency for legacy splits.
+        var resolvedCurrency: String {
+            currency ?? CurrencyManager.shared.mainCurrency
+        }
         var note: String?
+        var category: String? // ✅ NEW: For UI display
+        var icon: String? // ✅ NEW: For UI display
+        var colorHex: String? // ✅ NEW: For UI display
         var status: RequestStatus // ✅ CHANGED to enum
         var dependencyId: String? // ✅ NEW: Links to blocking document
         var lastNudgedAt: Date? // ✅ NEW: For nudge feature
@@ -491,20 +659,22 @@ enum FirestoreModels {
         var email: String
         var username: String
         var isPremium: Bool? = false
+        var avatarColor: String? // ✅ NEW: User's profile color (hex string)
         var createdAt: Date
-        
+
         // Gamification
         var points: Int? = 0
         var completedMissionIds: [String]? = []
         var streakCount: Int? = 1
         var lastVisitDate: Date?
-        
+
         enum CodingKeys: String, CodingKey {
             case id
             case name
             case email
             case username
             case isPremium
+            case avatarColor
             case createdAt
             case points
             case completedMissionIds

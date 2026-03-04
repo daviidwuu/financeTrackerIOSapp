@@ -59,9 +59,51 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
                 if let error = error {
                     DebugLogger.log("Notification permission error: \(error)")
                 }
+                if granted {
+                    self.enableDefaultNotificationPreferences()
+                }
                 completion(granted)
             }
         }
+    }
+
+    /// Enables sensible default notification preferences when the user first grants permission.
+    /// Only sets defaults if no preferences have been configured yet (i.e., all are still false).
+    func enableDefaultNotificationPreferences() {
+        let defaults = UserDefaults.standard
+
+        // Check if user has already configured preferences (any toggle is true)
+        let keys = [
+            "notificationsEnabled_transactions",
+            "notificationsEnabled_budgets",
+            "notificationsEnabled_dailySummary",
+            "notificationsEnabled_weeklyReport",
+            "notificationsEnabled_inactivity",
+            "notificationsEnabled_eod",
+            "notificationsEnabled_tips",
+            "notificationsEnabled_unpaidSplits",
+            "notificationsEnabled_goals",
+            "notificationsEnabled_billReminders",
+            "notificationsEnabled_streaks",
+            "notificationsEnabled_largeExpense"
+        ]
+
+        let anyEnabled = keys.contains { defaults.bool(forKey: $0) }
+        guard !anyEnabled else { return }
+
+        // Enable core notification types by default
+        defaults.set(true, forKey: "notificationsEnabled_transactions")
+        defaults.set(true, forKey: "notificationsEnabled_budgets")
+        defaults.set(true, forKey: "notificationsEnabled_dailySummary")
+        defaults.set(true, forKey: "notificationsEnabled_billReminders")
+        defaults.set(true, forKey: "notificationsEnabled_unpaidSplits")
+        defaults.set(true, forKey: "notificationsEnabled_streaks")
+        defaults.set(true, forKey: "notificationsEnabled_largeExpense")
+
+        DebugLogger.log("✅ Default notification preferences enabled")
+
+        // Schedule the notifications that need scheduling
+        scheduleDailySummary()
     }
     
     func checkPermissionStatus(completion: @escaping (UNAuthorizationStatus) -> Void) {
@@ -756,7 +798,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
     
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         guard let token = fcmToken else { return }
-        DebugLogger.log("FCM Token: \(token)")
+        DebugLogger.log("FCM Token received (length: \(token.count))")
         self.cachedFCMToken = token
         
         // Save to User Profile if logged in

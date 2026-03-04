@@ -26,7 +26,7 @@ struct FriendSearchView: View {
                         .overlay(searchOverlay)
                 }
                 .padding()
-                .background(Color(UIColor.secondarySystemBackground))
+                .background(Color.cardBackground)
                 .cornerRadius(AppRadius.small) // Use AppRadius
                 .padding()
                 
@@ -62,7 +62,7 @@ struct FriendSearchView: View {
                                 
                                 Spacer()
                                 
-                                Button(action: {
+                                Button(action: { HapticManager.shared.light(); 
                                     addFriend(user: user)
                                 }) {
                                     Text("Add")
@@ -142,7 +142,7 @@ struct FriendSearchView: View {
                     self.isSearching = false
                 }
             } catch {
-                print("Search error: \(error)")
+                DebugLogger.log("Search error: \(error)")
                 await MainActor.run { isSearching = false }
             }
         }
@@ -165,7 +165,7 @@ struct FriendSearchView: View {
                  }
              } catch {
                  HapticManager.shared.error()
-                 print("Add friend error: \(error)")
+                 DebugLogger.log("Add friend error: \(error)")
              }
          }
     }

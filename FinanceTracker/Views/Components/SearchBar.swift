@@ -23,7 +23,7 @@ struct SearchBar: View {
                     .scaleEffect(0.8)
                     .padding(.trailing, 4)
             } else if !text.isEmpty {
-                Button(action: { 
+                Button(action: { HapticManager.shared.light();  
                     text = "" 
                     // Optional: trigger empty search or just clear
                 }) {
@@ -34,7 +34,7 @@ struct SearchBar: View {
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(Color.secondaryCardBackground)
         .clipShape(Capsule())
         .frame(height: 44) // Consistent height target
     }

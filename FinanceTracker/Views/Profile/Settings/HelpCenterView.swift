@@ -4,15 +4,17 @@ import WidgetKit
 struct HelpCenterView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.dismiss) var dismiss
+    @State private var showTerms = false
+    @State private var showPrivacy = false
     
     var body: some View {
-        ZStack(alignment: .top) {
-            // Background
-            (colorScheme == .dark ? Color.black : Color(UIColor.systemBackground))
+        ZStack {
+            Color.backgroundPrimary
                 .ignoresSafeArea()
-            
+
             ScrollView {
                 VStack(spacing: 24) {
+                    ScrollOffsetTracker()
                     Spacer().frame(height: 60)
                     
                     MenuSection("FAQ") {
@@ -21,7 +23,7 @@ struct HelpCenterView: View {
                                 .padding()
                                 .navigationTitle("Adding Transactions")
                         } label: {
-                            MenuRowView(icon: "plus.circle", title: "How to add a transaction?")
+                            MenuRowView(icon: "plus.circle.fill", title: "How to add a transaction?", iconColor: .green)
                         }
                         
                         
@@ -32,7 +34,7 @@ struct HelpCenterView: View {
                                 .padding()
                                 .navigationTitle("Setting Budgets")
                         } label: {
-                            MenuRowView(icon: "chart.pie", title: "How to set a budget?")
+                            MenuRowView(icon: "chart.pie.fill", title: "How to set a budget?", iconColor: .orange)
                         }
                         
                         
@@ -43,57 +45,80 @@ struct HelpCenterView: View {
                                 .padding()
                                 .navigationTitle("Export Data")
                         } label: {
-                            MenuRowView(icon: "square.and.arrow.up", title: "Exporting data")
+                            MenuRowView(icon: "square.and.arrow.up.fill", title: "Exporting data", iconColor: .blue)
                         }
                         
                     }
                     .padding(.top, 0)
                     
                     MenuSection("Contact") {
-                        Button(action: { }) {
-                            MenuRowView(icon: "envelope", title: "Contact Support")
+                        Button(action: { HapticManager.shared.light();  }) {
+                            MenuRowView(icon: "envelope.fill", title: "Contact Support", iconColor: .purple)
                         }
                         
                         
                         MenuDivider()
                         
-                        Button(action: { }) {
-                            MenuRowView(icon: "ant", title: "Report a Bug")
+                        Button(action: { HapticManager.shared.light();  }) {
+                            MenuRowView(icon: "ant.fill", title: "Report a Bug", iconColor: .red)
                         }
                         
                     }
+                    
+                    MenuSection("About") {
+                        MenuRowView(icon: "person.fill", title: "Developer", value: "David Wu", showChevron: false, iconColor: .indigo)
+                        
+                        MenuDivider()
+                        
+                        Button(action: { HapticManager.shared.light(); }) {
+                            MenuRowView(icon: "star.fill", title: "Rate App", showChevron: true, iconColor: .yellow)
+                        }
+                        
+                        
+                        MenuDivider()
+                        
+                        Button(action: { HapticManager.shared.light();  showTerms = true }) {
+                            MenuRowView(icon: "doc.text.fill", title: "Terms of Use (EULA)", showChevron: true, iconColor: .gray)
+                        }
+                        
+                        
+                        MenuDivider()
+                        
+                        Button(action: { HapticManager.shared.light();  showPrivacy = true }) {
+                            MenuRowView(icon: "hand.raised.fill", title: "Privacy Policy", showChevron: true, iconColor: .blue)
+                        }
+                        
+                    }
+                    
+                    VStack(spacing: 8) {
+                        Image(systemName: "chart.bar.doc.horizontal.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(.blue)
+                        
+                        Text("wym")
+                            .font(.headline)
+                            .fontWeight(.bold)
+                        
+                        Text(AppConfig.versionDisplayString)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
                     
                     Spacer()
                 }
                 .padding(.top, 20)
             }
-            
-            // Fixed Navigation Bar
-            HStack {
-                Button(action: { dismiss() }) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
-                        .frame(width: 44, height: 44)
-                        .background((colorScheme == .dark ? Color.white : Color.black).opacity(0.05))
-                        .clipShape(Circle())
-                }
-                
-                Spacer()
-                
-                Text("Help Center")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
-                
-                Spacer()
-                
-                Color.clear.frame(width: 44, height: 44)
-            }
-            .padding(.horizontal, AppSpacing.margin + AppSpacing.compact)
-            .padding(.top, 16)
         }
+        .overlayHeader(.navigation(title: "Support & About", onBack: { dismiss() }))
         .navigationBarBackButtonHidden(true)
+        .sheet(isPresented: $showTerms) {
+            LegalDocumentView(document: .terms)
+        }
+        .sheet(isPresented: $showPrivacy) {
+            LegalDocumentView(document: .privacy)
+        }
     }
 }
 

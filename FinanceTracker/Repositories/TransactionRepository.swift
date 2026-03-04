@@ -7,13 +7,22 @@ import WidgetKit
 class TransactionRepository: ObservableObject {
     private let db = Firestore.firestore()
     @Published var transactions: [FirestoreModels.TransactionModel] = []
+    @Published var currentMonthTransactions: [FirestoreModels.TransactionModel] = [] // Full month data for aggregations
+    @Published var calendarTransactions: [FirestoreModels.TransactionModel] = [] // Full month data specifically for the Calendar
+    @Published var allTransactions: [FirestoreModels.TransactionModel] = [] // Full history for savings pool calculation
     @Published var isLoading = true
     @Published var errorMessage: String? = nil
+    @Published var canLoadMore: Bool = false
     
     private var userId: String?
     private var listener: ListenerRegistration?
+    private var currentMonthListener: ListenerRegistration? // For aggregations
+    private var calendarListener: ListenerRegistration? // For Calendar
+    private var allTransactionsListener: ListenerRegistration? // For savings pool
     private var currentLimit: Int = 50
     private var currentMonth: Date? = nil // Track selected month
+    
+    private var calendarMonth: Date = Date() // Track selected month specifically for the Calendar
     
     // Optimistic Deletion Cache
     private var optimisticDeletedTransactions: [String: FirestoreModels.TransactionModel] = [:]
@@ -33,19 +42,42 @@ class TransactionRepository: ObservableObject {
         }
         self.errorMessage = nil
         self.currentLimit = 50 // Reset limit
+        self.currentLimit = 50 // Reset limit
         
         setupListener()
+        
+        // Always maintain a full current-month cache for budget/calendar aggregations
+        if currentMonthListener == nil {
+            startListeningToCurrentMonth()
+        }
+        
+        if calendarListener == nil {
+            startListeningToCalendarMonth()
+        }
+        
+        // Maintain full transaction history for savings pool calculation
+        if allTransactionsListener == nil {
+            startListeningToAllTransactions()
+        }
+    }
+    
+    /// Update the calendar's specific month without affecting the main transaction feed
+    func setCalendarMonth(_ month: Date) {
+        self.calendarMonth = month
+        if self.userId != nil {
+            startListeningToCalendarMonth()
+        }
     }
     
     private func setupListener() {
         guard let userId = userId else { return }
-        
+
         listener?.remove()
-        
+
         var query = db.collection("users").document(userId).collection("transactions")
             .order(by: "date", descending: true)
             
-        // Apply Month Filter if provided
+        // Apply Month Filter if provided (Main Feed)
         if let month = currentMonth {
             let calendar = Calendar.current
             let components = calendar.dateComponents([.year, .month], from: month)
@@ -60,8 +92,8 @@ class TransactionRepository: ObservableObject {
                 .whereField("date", isLessThan: nextMonth)
                 // Remove limit when filtering by month to show ALL transactions for that month
         } else {
-            // Default behavior: Fetch ALL transactions (No Limit)
-            // query = query.limit(to: currentLimit) // DISABLED LIMIT
+            // Paginated: Fetch latest transactions with limit
+            query = query.limit(to: currentLimit)
         }
             
         listener = query.addSnapshotListener { [weak self] snapshot, error in
@@ -81,19 +113,159 @@ class TransactionRepository: ObservableObject {
                 }
                 
                 self.errorMessage = nil
+                // Update canLoadMore: if we got as many docs as our limit, there are likely more
+                self.canLoadMore = self.currentMonth == nil && documents.count >= self.currentLimit
                 // Only keep transactions that are not optimistically deleted
                 self.transactions = documents.compactMap { document in
-                    guard let tx = try? document.data(as: FirestoreModels.TransactionModel.self),
-                          let id = tx.id,
-                          self.optimisticDeletedTransactions[id] == nil else {
+                    do {
+                        var tx = try document.data(as: FirestoreModels.TransactionModel.self)
+                        tx.amount = FirestoreModels.TransactionModel.normalizeAmount(tx.amount, type: tx.type)
+                        guard let id = tx.id,
+                              self.optimisticDeletedTransactions[id] == nil else {
+                            return nil
+                        }
+                        // REMOVED pendingDeleteIds check - if transaction exists in Firestore, show it
+                        return tx
+                    } catch {
+                        DebugLogger.log("Failed to decode transaction \(document.documentID) in setupListener: \(error)")
                         return nil
                     }
-                    return tx
                 }
                 
                 // Update Widget Data
                 self.updateWidgetData(transactions: self.transactions)
             }
+    }
+    
+    private func startListeningToCurrentMonth() {
+        guard let userId = userId else { return }
+        
+        currentMonthListener?.remove()
+        
+        let calendar = Calendar.current
+        let targetMonth = Date() // True current month for homeview and budgets
+        let components = calendar.dateComponents([.year, .month], from: targetMonth)
+        guard let startOfMonth = calendar.date(from: components) else { return }
+        guard let nextMonth = calendar.date(byAdding: .month, value: 1, to: startOfMonth) else { return }
+        
+        let query = db.collection("users").document(userId).collection("transactions")
+            .whereField("date", isGreaterThanOrEqualTo: startOfMonth)
+            .whereField("date", isLessThan: nextMonth)
+            .order(by: "date", descending: true)
+            
+        currentMonthListener = query.addSnapshotListener { [weak self] snapshot, error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                DebugLogger.log("Error fetching current month transactions: \(error.localizedDescription)")
+                return
+            }
+            
+            guard let documents = snapshot?.documents else {
+                self.currentMonthTransactions = []
+                return
+            }
+            
+            self.currentMonthTransactions = documents.compactMap { document in
+                do {
+                    var tx = try document.data(as: FirestoreModels.TransactionModel.self)
+                    tx.amount = FirestoreModels.TransactionModel.normalizeAmount(tx.amount, type: tx.type)
+                    guard let id = tx.id,
+                          self.optimisticDeletedTransactions[id] == nil else {
+                        return nil
+                    }
+                    return tx
+                } catch {
+                    DebugLogger.log("Failed to decode transaction \(document.documentID) in startListeningToCurrentMonth: \(error)")
+                    return nil
+                }
+            }
+            DebugLogger.log("Fetched current month transactions: \(self.currentMonthTransactions.count) items.")
+        }
+    }
+    
+    private func startListeningToCalendarMonth() {
+        guard let userId = userId else { return }
+        
+        calendarListener?.remove()
+        
+        let calendar = Calendar.current
+        let targetMonth = self.calendarMonth
+        let components = calendar.dateComponents([.year, .month], from: targetMonth)
+        guard let startOfMonth = calendar.date(from: components) else { return }
+        guard let nextMonth = calendar.date(byAdding: .month, value: 1, to: startOfMonth) else { return }
+        
+        let query = db.collection("users").document(userId).collection("transactions")
+            .whereField("date", isGreaterThanOrEqualTo: startOfMonth)
+            .whereField("date", isLessThan: nextMonth)
+            .order(by: "date", descending: true)
+            
+        calendarListener = query.addSnapshotListener { [weak self] snapshot, error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                DebugLogger.log("Error fetching calendar month transactions: \(error.localizedDescription)")
+                return
+            }
+            
+            guard let documents = snapshot?.documents else {
+                self.calendarTransactions = []
+                return
+            }
+            
+            self.calendarTransactions = documents.compactMap { document in
+                do {
+                    var tx = try document.data(as: FirestoreModels.TransactionModel.self)
+                    tx.amount = FirestoreModels.TransactionModel.normalizeAmount(tx.amount, type: tx.type)
+                    guard let id = tx.id,
+                          self.optimisticDeletedTransactions[id] == nil else {
+                        return nil
+                    }
+                    return tx
+                } catch {
+                    DebugLogger.log("Failed to decode transaction \(document.documentID) in startListeningToCalendarMonth: \(error)")
+                    return nil
+                }
+            }
+        }
+    }
+    
+    private func startListeningToAllTransactions() {
+        guard let userId = userId else { return }
+        
+        allTransactionsListener?.remove()
+        
+        let query = db.collection("users").document(userId).collection("transactions")
+            .order(by: "date", descending: true)
+        
+        allTransactionsListener = query.addSnapshotListener { [weak self] snapshot, error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                DebugLogger.log("Error fetching all transactions: \(error.localizedDescription)")
+                return
+            }
+            
+            guard let documents = snapshot?.documents else {
+                self.allTransactions = []
+                return
+            }
+            
+            self.allTransactions = documents.compactMap { document in
+                do {
+                    var tx = try document.data(as: FirestoreModels.TransactionModel.self)
+                    tx.amount = FirestoreModels.TransactionModel.normalizeAmount(tx.amount, type: tx.type)
+                    guard let id = tx.id,
+                          self.optimisticDeletedTransactions[id] == nil else {
+                        return nil
+                    }
+                    return tx
+                } catch {
+                    DebugLogger.log("Failed to decode transaction \(document.documentID) in startListeningToAllTransactions: \(error)")
+                    return nil
+                }
+            }
+        }
     }
     
     func loadMore() {
@@ -105,8 +277,18 @@ class TransactionRepository: ObservableObject {
     /// Stop listening to changes
     func stopListening() {
         listener?.remove()
+        listener = nil
+        currentMonthListener?.remove()
+        currentMonthListener = nil
+        calendarListener?.remove()
+        calendarListener = nil
+        allTransactionsListener?.remove()
+        allTransactionsListener = nil
         userId = nil
         transactions = []
+        currentMonthTransactions = []
+        calendarTransactions = []
+        allTransactions = []
         isLoading = false
     }
     
@@ -124,9 +306,7 @@ class TransactionRepository: ObservableObject {
         
         // Optimistic Update
         await MainActor.run {
-            self.transactions.insert(newTransaction, at: 0)
-            // Re-sort just in case, though usually at top
-            self.transactions.sort { $0.date > $1.date }
+            self.optimisticAddTransaction(newTransaction)
         }
         
         try ref.setData(from: newTransaction)
@@ -165,7 +345,75 @@ class TransactionRepository: ObservableObject {
         guard let userId = userId, let id = transaction.id else {
             throw NSError(domain: "TransactionRepository", code: 400, userInfo: [NSLocalizedDescriptionKey: "Transaction ID or UserID is nil"])
         }
+        
+        await MainActor.run {
+            self.optimisticUpdateTransaction(transaction)
+        }
+        
         try db.collection("users").document(userId).collection("transactions").document(id).setData(from: transaction)
+    }
+    
+    /// Optimistically add a transaction to cache
+    @MainActor
+    func optimisticAddTransaction(_ transaction: FirestoreModels.TransactionModel) {
+        if transaction.type == "income" || transaction.type == "settlement" {
+            AppState.shared.aggregatedIncome += abs(transaction.amount)
+        } else {
+            AppState.shared.aggregatedExpense += abs(transaction.amount)
+        }
+        
+        self.transactions.insert(transaction, at: 0)
+        self.allTransactions.insert(transaction, at: 0)
+        
+        let linkedIsCurrentMonth = Calendar.current.isDate(transaction.date, equalTo: Date(), toGranularity: .month)
+        let linkedIsCalendarMonth = Calendar.current.isDate(transaction.date, equalTo: self.calendarMonth, toGranularity: .month)
+        
+        if linkedIsCurrentMonth {
+            self.currentMonthTransactions.insert(transaction, at: 0)
+        }
+        if linkedIsCalendarMonth {
+            self.calendarTransactions.insert(transaction, at: 0)
+        }
+        
+        // Re-sort and update widgets
+        self.transactions.sort { $0.date > $1.date }
+        self.currentMonthTransactions.sort { $0.date > $1.date }
+        self.calendarTransactions.sort { $0.date > $1.date }
+        self.allTransactions.sort { $0.date > $1.date }
+        self.updateWidgetData(transactions: self.transactions)
+    }
+
+    /// Optimistically update a transaction in cache
+    @MainActor
+    func optimisticUpdateTransaction(_ transaction: FirestoreModels.TransactionModel) {
+        if let id = transaction.id {
+            if let index = self.transactions.firstIndex(where: { $0.id == id }) {
+                let oldTx = self.transactions[index]
+                if oldTx.type == "income" || oldTx.type == "settlement" {
+                    AppState.shared.aggregatedIncome -= abs(oldTx.amount)
+                } else {
+                    AppState.shared.aggregatedExpense -= abs(oldTx.amount)
+                }
+                
+                if transaction.type == "income" || transaction.type == "settlement" {
+                    AppState.shared.aggregatedIncome += abs(transaction.amount)
+                } else {
+                    AppState.shared.aggregatedExpense += abs(transaction.amount)
+                }
+                
+                self.transactions[index] = transaction
+            }
+            if let index = self.currentMonthTransactions.firstIndex(where: { $0.id == id }) {
+                self.currentMonthTransactions[index] = transaction
+            }
+            if let index = self.calendarTransactions.firstIndex(where: { $0.id == id }) {
+                self.calendarTransactions[index] = transaction
+            }
+            if let index = self.allTransactions.firstIndex(where: { $0.id == id }) {
+                self.allTransactions[index] = transaction
+            }
+            self.updateWidgetData(transactions: self.transactions)
+        }
     }
     
     /// Delete a transaction with Cascade and Optimistic Update
@@ -248,21 +496,48 @@ class TransactionRepository: ObservableObject {
     func optimisticDelete(transaction: FirestoreModels.TransactionModel) {
         guard let id = transaction.id else { return }
         
+        if transaction.type == "income" || transaction.type == "settlement" {
+            AppState.shared.aggregatedIncome -= abs(transaction.amount)
+        } else {
+            AppState.shared.aggregatedExpense -= abs(transaction.amount)
+        }
+        
         var idsToRemove = [id]
         optimisticDeletedTransactions[id] = transaction
-        
+
         if let splits = transaction.splits {
             for split in splits {
                 if let incomeId = split.incomeTransactionId,
                    let incomeTx = transactions.first(where: { $0.id == incomeId }) {
                     idsToRemove.append(incomeId)
                     optimisticDeletedTransactions[incomeId] = incomeTx
+                    
+                    if incomeTx.type == "income" || incomeTx.type == "settlement" {
+                        AppState.shared.aggregatedIncome -= abs(incomeTx.amount)
+                    } else {
+                        AppState.shared.aggregatedExpense -= abs(incomeTx.amount)
+                    }
                 }
             }
         }
-        
+
         // Remove from the published array
         self.transactions.removeAll { tx in
+            guard let txId = tx.id else { return false }
+            return idsToRemove.contains(txId)
+        }
+        
+        self.currentMonthTransactions.removeAll { tx in
+            guard let txId = tx.id else { return false }
+            return idsToRemove.contains(txId)
+        }
+        
+        self.calendarTransactions.removeAll { tx in
+            guard let txId = tx.id else { return false }
+            return idsToRemove.contains(txId)
+        }
+        
+        self.allTransactions.removeAll { tx in
             guard let txId = tx.id else { return false }
             return idsToRemove.contains(txId)
         }
@@ -276,14 +551,49 @@ class TransactionRepository: ObservableObject {
     func undoDelete(id: String) {
         // Restore main transaction
         if let restoredTx = optimisticDeletedTransactions.removeValue(forKey: id) {
+            if restoredTx.type == "income" || restoredTx.type == "settlement" {
+                AppState.shared.aggregatedIncome += abs(restoredTx.amount)
+            } else {
+                AppState.shared.aggregatedExpense += abs(restoredTx.amount)
+            }
+            
             self.transactions.append(restoredTx)
+            self.allTransactions.append(restoredTx)
+            
+            let calendar = Calendar.current
+            let isCurrentMonth = calendar.isDate(restoredTx.date, equalTo: Date(), toGranularity: .month)
+            let isCalendarMonth = calendar.isDate(restoredTx.date, equalTo: self.calendarMonth, toGranularity: .month)
+            
+            if isCurrentMonth {
+                self.currentMonthTransactions.append(restoredTx)
+            }
+            if isCalendarMonth {
+                self.calendarTransactions.append(restoredTx)
+            }
             
             // Restore linked income transactions
             if let splits = restoredTx.splits {
                 for split in splits {
                     if let incomeId = split.incomeTransactionId,
                        let linkedIncomeTx = optimisticDeletedTransactions.removeValue(forKey: incomeId) {
+                        if linkedIncomeTx.type == "income" || linkedIncomeTx.type == "settlement" {
+                            AppState.shared.aggregatedIncome += abs(linkedIncomeTx.amount)
+                        } else {
+                            AppState.shared.aggregatedExpense += abs(linkedIncomeTx.amount)
+                        }
+                        
                         self.transactions.append(linkedIncomeTx)
+                        self.allTransactions.append(linkedIncomeTx)
+                        
+                        let linkedIsCurrentMonth = calendar.isDate(linkedIncomeTx.date, equalTo: Date(), toGranularity: .month)
+                        let linkedIsCalendarMonth = calendar.isDate(linkedIncomeTx.date, equalTo: self.calendarMonth, toGranularity: .month)
+                        
+                        if linkedIsCurrentMonth {
+                            self.currentMonthTransactions.append(linkedIncomeTx)
+                        }
+                        if linkedIsCalendarMonth {
+                            self.calendarTransactions.append(linkedIncomeTx)
+                        }
                     }
                 }
             }
@@ -291,6 +601,9 @@ class TransactionRepository: ObservableObject {
         
         // Re-sort and update widgets
         self.transactions.sort { $0.date > $1.date }
+        self.currentMonthTransactions.sort { $0.date > $1.date }
+        self.calendarTransactions.sort { $0.date > $1.date }
+        self.allTransactions.sort { $0.date > $1.date }
         self.updateWidgetData(transactions: self.transactions)
     }
     
@@ -312,7 +625,11 @@ class TransactionRepository: ObservableObject {
     func fetchTransaction(id: String) async throws -> FirestoreModels.TransactionModel? {
         guard let userId = userId else { return nil }
         let doc = try await db.collection("users").document(userId).collection("transactions").document(id).getDocument()
-        return try? doc.data(as: FirestoreModels.TransactionModel.self)
+        if var tx = try? doc.data(as: FirestoreModels.TransactionModel.self) {
+            tx.amount = FirestoreModels.TransactionModel.normalizeAmount(tx.amount, type: tx.type)
+            return tx
+        }
+        return nil
     }
     
     private func updateWidgetData(transactions: [FirestoreModels.TransactionModel]) {
@@ -321,7 +638,7 @@ class TransactionRepository: ObservableObject {
         
         // Calculate Daily Spend (Net)
         // Calculate Daily Breakdown
-        let dailyTransactions = transactions.filter { $0.subtitle != "Income" && calendar.isDateInToday($0.date) }
+        let dailyTransactions = transactions.filter { $0.type != "income" && calendar.isDateInToday($0.date) }
         
         // Expense: Sum of negative amounts (e.g. -10, -20 = -30). We store as positive (30).
         let dailyExpense = abs(dailyTransactions.filter { $0.amount < 0 }.reduce(0) { $0 + $1.amount })
@@ -334,7 +651,7 @@ class TransactionRepository: ObservableObject {
         
         // Calculate Monthly Spend (Net)
         let monthlySpend = transactions
-             .filter { $0.subtitle != "Income" && calendar.isDate($0.date, equalTo: today, toGranularity: .month) }
+             .filter { $0.type != "income" && calendar.isDate($0.date, equalTo: today, toGranularity: .month) }
              .reduce(0) { $0 + $1.amount }
         
         // Monthly: Keep original logic for now (Absolute expense only? Or should we fix this too?)
@@ -349,8 +666,8 @@ class TransactionRepository: ObservableObject {
                 title: tx.title,
                 amount: tx.amount,
                 date: tx.date,
-                icon: tx.icon ?? "dollarsign.circle.fill",
-                colorHex: tx.colorHex ?? "#000000"
+                categoryId: tx.categoryId,
+                type: tx.type // FIX #22: Pass type so widget can filter by type instead of category name
             )
         }
         WidgetDataManager.shared.saveRecentTransactions(Array(recentWidgetTxs))

@@ -12,7 +12,7 @@ struct SwipeGuideView: View {
             // Dimmed background
             Color.black.opacity(0.6)
                 .ignoresSafeArea()
-                .onTapGesture {
+                .onTapGesture { HapticManager.shared.light(); 
                     onDismiss()
                 }
             
@@ -66,7 +66,7 @@ struct SwipeGuideView: View {
                             .foregroundColor(.secondary)
                     }
                     .padding()
-                    .background(Color(UIColor.secondarySystemBackground))
+                    .background(Color.cardBackground)
                     .cornerRadius(AppRadius.medium)
                     .offset(x: offset)
                 }

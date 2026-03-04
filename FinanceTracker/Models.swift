@@ -8,10 +8,8 @@ import SwiftUI
 struct TransactionFormData: Identifiable {
     let id = UUID()
     var title: String
-    var subtitle: String
+    var categoryId: String?
     var amount: String
-    var icon: String
-    var color: Color
     var date: Date = Date()
     var notes: String = ""
     var type: String = "expense"
@@ -41,6 +39,7 @@ struct RecurringTransactionFormData: Identifiable {
     let id = UUID()
     var name: String
     var amount: Double
+    var categoryId: String? // Links to CategoryBudget.id
     var icon: String
     var color: Color
     var frequency: String

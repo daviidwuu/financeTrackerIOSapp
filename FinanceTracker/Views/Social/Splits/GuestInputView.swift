@@ -2,16 +2,15 @@ import SwiftUI
 
 struct GuestInputView: View {
     @Environment(\.dismiss) var dismiss
-    @Environment(\.colorScheme) var colorScheme
-    
+
     @State private var guestName: String = ""
     var onSave: (String) -> Void
-    
+
     @FocusState private var isFocused: Bool
-    
+
     var body: some View {
         ZStack {
-            (colorScheme == .dark ? Color.black : Color.white)
+            Color.backgroundPrimary
                 .ignoresSafeArea()
             
             VStack(spacing: 24) {
@@ -42,7 +41,7 @@ struct GuestInputView: View {
                 
                 Spacer()
                 
-                Button(action: {
+                Button(action: { HapticManager.shared.light(); 
                     if !guestName.isEmpty {
                         onSave(guestName)
                         dismiss()

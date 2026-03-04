@@ -51,7 +51,10 @@ struct ErrorBanner: View {
             
             Spacer()
             
-            Button(action: onDismiss) {
+            Button(action: {
+                HapticManager.shared.light()
+                onDismiss()
+            }) {
                 Image(systemName: "xmark.circle.fill")
                     .font(.body)
                     .foregroundColor(.secondary)

@@ -182,13 +182,11 @@ class SocialRepository: ObservableObject {
                     id: req.id,
                     userId: currentUserId,
                     title: req.note ?? "Split Request",
-                    subtitle: isSettlement ? "Settlement" : (isPayer ? "You requested" : "\(req.fromName ?? "Friend") requested"),
+                    categoryId: isSettlement ? "settlement" : nil, // Assuming there's a system category for this
                     amount: req.amount,
                     date: req.createdAt,
                     type: isPayer ? "income" : "expense",
                     createdAt: req.createdAt,
-                    icon: "arrow.left.arrow.right",
-                    colorHex: isPayer ? "#34C759" : "#FF3B30",
                     note: req.status.rawValue,
                     source: req.transactionId, // Pass Original Transaction ID
                     originalAmount: req.originalTotalAmount, // ✅ Pass the original full amount
@@ -225,7 +223,7 @@ class SocialRepository: ObservableObject {
         friendTransactionsListener1 = q1.addSnapshotListener { [weak self] snapshot, error in
             guard let self = self else { return }
             if let error = error {
-                print("Error listening to sent requests: \(error)")
+                DebugLogger.log("Error listening to sent requests: \(error)")
                 DispatchQueue.main.async { self.errorMessage = "Error fetching sent requests: \(error.localizedDescription)" }
                 return
             }
@@ -238,7 +236,7 @@ class SocialRepository: ObservableObject {
         friendTransactionsListener2 = q2.addSnapshotListener { [weak self] snapshot, error in
             guard let self = self else { return }
             if let error = error {
-                print("Error listening to received requests: \(error)")
+                DebugLogger.log("Error listening to received requests: \(error)")
                 DispatchQueue.main.async { self.errorMessage = "Error fetching received requests: \(error.localizedDescription)" }
                 return
             }
@@ -311,7 +309,7 @@ class SocialRepository: ObservableObject {
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self = self else { return }
                 if let error = error {
-                    print("Error listening to group balances: \(error)")
+                    DebugLogger.log("Error listening to group balances: \(error)")
                     return
                 }
                 
@@ -367,7 +365,7 @@ class SocialRepository: ObservableObject {
             
             return balancesByCurrency
         } catch {
-            print("Error calculating group balances: \(error)")
+            DebugLogger.log("Error calculating group balances: \(error)")
             return [:]
         }
     }
@@ -511,7 +509,7 @@ class SocialRepository: ObservableObject {
                     }
                     entries.append(contentsOf: chunkEntries)
                 } catch {
-                    print("Error fetching leaderboard chunk: \(error)")
+                    DebugLogger.log("Error fetching leaderboard chunk: \(error)")
                     // We continue fetching other chunks even if one fails
                 }
             }
@@ -552,7 +550,7 @@ class SocialRepository: ObservableObject {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return nil }
         
         if userId != currentUserId {
-            print("⚠️ Cannot fetch original transaction from another user's private collection. (Privacy Restricted)")
+            DebugLogger.log("⚠️ Cannot fetch original transaction from another user's private collection. (Privacy Restricted)")
             return nil
         }
         

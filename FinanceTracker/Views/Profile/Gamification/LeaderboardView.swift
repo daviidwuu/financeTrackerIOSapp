@@ -110,9 +110,9 @@ struct LeaderboardRow: View {
     let entry: SocialRepository.LeaderboardEntry
     let rank: Int
     let isCurrentUser: Bool
-    
+
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: AppSpacing.element) {
             // Rank
             Text("\(rank)")
                 .font(.subheadline)
@@ -120,34 +120,33 @@ struct LeaderboardRow: View {
                 .monospacedDigit()
                 .foregroundColor(.secondary)
                 .frame(width: 24)
-            
+
             // Avatar
             ProfileAvatar(
                 text: String(entry.name.prefix(1)),
                 color: Color.random(seed: entry.name),
-                size: 40
+                size: AppSize.avatarSmall
             )
-            
+
             // Name
             HStack(spacing: 8) {
                 Text(entry.name)
-                    .font(.body)
-                    .fontWeight(isCurrentUser ? .semibold : .medium)
+                    .font(.headline)
                     .foregroundColor(.primary)
-                
+
                 if entry.isPremium {
                     PremiumBadge(size: .small)
                 }
             }
-            
+
             if isCurrentUser {
                 Text("(You)")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            
+
             Spacer()
-            
+
             // Points (Pill)
             HStack(spacing: 4) {
                 Image(systemName: "star.fill")
@@ -163,9 +162,7 @@ struct LeaderboardRow: View {
             .background(Color(UIColor.tertiarySystemFill))
             .clipShape(Capsule())
         }
-        .padding(AppSpacing.element)
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(AppRadius.medium)
+        .appCardStyle()
         .overlay(
             RoundedRectangle(cornerRadius: AppRadius.medium)
                 .stroke(isCurrentUser ? Color.blue.opacity(0.3) : Color.clear, lineWidth: 1.5)

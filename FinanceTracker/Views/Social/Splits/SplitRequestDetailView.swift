@@ -68,7 +68,14 @@ struct SplitRequestDetailView: View {
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal)
                             
-                            Text(originalTransaction?.subtitle ?? "Split Expense")
+                            let categoryName: String = {
+                                if let id = originalTransaction?.categoryId, let cat = appState.budgetRepo.getCategory(for: id) {
+                                    return cat.category
+                                }
+                                return "Split Expense"
+                            }()
+                            
+                            Text(categoryName)
                                 .font(AppTypography.body)
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
@@ -159,7 +166,7 @@ struct SplitRequestDetailView: View {
                                     }
                                 }
                             }
-                            .background(Color(UIColor.secondarySystemBackground))
+                            .background(Color.cardBackground)
                             .cornerRadius(AppRadius.medium)
                             .overlay(
                                 RoundedRectangle(cornerRadius: AppRadius.medium)
@@ -187,7 +194,7 @@ struct SplitRequestDetailView: View {
                                     .frame(height: 140)
                                     .overlay(
                                         Color.black.opacity(0.001)
-                                            .onTapGesture { showFullMap = true }
+                                            .onTapGesture { HapticManager.shared.light();  showFullMap = true }
                                     )
                                     
                                     Divider()
@@ -236,7 +243,7 @@ struct SplitRequestDetailView: View {
                                 }
                                 
                                 Divider().padding(.leading, 52)
-                                TransactionDetailRow(icon: "tag", title: "Category", value: originalTransaction?.subtitle ?? "General", color: Color(hex: originalTransaction?.colorHex ?? "#808080"))
+                                TransactionDetailRow(icon: "tag", title: "Category", value: originalTransaction?.categoryId ?? "General", color: .primary)
                                 
                                 Divider().padding(.leading, 52)
                                 TransactionDetailRow(
@@ -272,7 +279,7 @@ struct SplitRequestDetailView: View {
                                     color: .secondary
                                 )
                             }
-                            .background(Color(UIColor.secondarySystemBackground))
+                            .background(Color.cardBackground)
                             .cornerRadius(AppRadius.medium)
                             .overlay(
                                 RoundedRectangle(cornerRadius: AppRadius.medium)
@@ -315,7 +322,7 @@ struct SplitRequestDetailView: View {
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 16)
                                     .background(Color.blue)
-                                    .cornerRadius(AppRadius.large)
+                                    .cornerRadius(AppRadius.medium)
                                     .shadow(color: Color.blue.opacity(0.3), radius: 8, y: 4)
                                 }
                                 
@@ -338,9 +345,9 @@ struct SplitRequestDetailView: View {
                             
                             // Mark as Paid (Only Sender can do this now)
                             if request.status == .pending || request.status == .accepted {
-                                let isEnabled = request.status == .accepted
+                                let isEnabled = request.status == .accepted || request.isGuest == true
                                 
-                                Button(action: {
+                                Button(action: { HapticManager.shared.light(); 
                                     if isEnabled {
                                         markAsPaid()
                                     } else {
@@ -357,8 +364,8 @@ struct SplitRequestDetailView: View {
                                     .foregroundColor(isEnabled ? .white : .secondary)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 16)
-                                    .background(isEnabled ? AppColors.functionalIncome : Color(UIColor.secondarySystemBackground))
-                                    .cornerRadius(AppRadius.large)
+                                    .background(isEnabled ? AppColors.functionalIncome : Color.cardBackground)
+                                    .cornerRadius(AppRadius.medium)
                                     .shadow(color: isEnabled ? AppColors.functionalIncome.opacity(0.3) : Color.clear, radius: 8, y: 4)
                                 }
                                 .disabled(!isEnabled)
@@ -377,7 +384,7 @@ struct SplitRequestDetailView: View {
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 16)
                                     .background(Color.blue)
-                                    .cornerRadius(AppRadius.large)
+                                    .cornerRadius(AppRadius.medium)
                                     .shadow(color: Color.blue.opacity(0.3), radius: 8, y: 4)
                                 }
                             }
@@ -395,7 +402,7 @@ struct SplitRequestDetailView: View {
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 16)
                                     .background(AppColors.functionalExpense.opacity(0.1))
-                                    .cornerRadius(AppRadius.large)
+                                    .clipShape(Capsule())
                                 }
                             }
                         }
@@ -423,14 +430,15 @@ struct SplitRequestDetailView: View {
                         let firestoreTransaction = FirestoreModels.TransactionModel(
                             userId: appState.currentUserId,
                             title: transaction.title,
-                            subtitle: transaction.subtitle,
+                            categoryId: transaction.categoryId,
                             amount: amount,
                             date: transaction.date,
                             type: amount < 0 ? "expense" : "income",
                             createdAt: Date(),
-                            icon: transaction.icon,
-                            colorHex: transaction.color.toHex() ?? "#000000",
-                            note: transaction.notes
+                            note: transaction.notes,
+                            latitude: transaction.latitude,
+                            longitude: transaction.longitude,
+                            locationName: transaction.locationName
                         )
                         try await appState.transactionRepo.addTransaction(firestoreTransaction)
                         
@@ -463,7 +471,7 @@ struct SplitRequestDetailView: View {
             do {
                 originalTransaction = try await repo.fetchOriginalTransaction(userId: payerId, transactionId: txId)
             } catch {
-                print("Error loading original transaction for map: \(error)")
+                DebugLogger.log("Error loading original transaction for map: \(error)")
             }
         }
     }
@@ -493,7 +501,7 @@ struct SplitRequestDetailView: View {
                     allSplits = try await repo.fetchSplitsForTransaction(transactionId: request.transactionId, groupId: groupId)
                     userPremiumRepo.prefetch(userIds: allSplits.map { $0.toUid })
                 } catch {
-                    print("Error loading splits: \(error)")
+                    DebugLogger.log("Error loading splits: \(error)")
                 }
             } else {
                 allSplits = [request]
@@ -506,7 +514,7 @@ struct SplitRequestDetailView: View {
         HapticManager.shared.heavy()
         Task {
             do {
-                try await SocialTransactionManager.shared.markSplitAsPaid(
+                _ = try await SocialTransactionManager.shared.markSplitAsPaid(
                     request: request,
                     currentUserId: appState.currentUserId,
                     currentUserName: appState.userName
@@ -548,12 +556,7 @@ struct SplitRequestDetailView: View {
     }
     
     private func resolveName(uid: String, name: String?) -> String {
-        if uid == appState.currentUserId { return "You" }
-        if let name = name, !name.isEmpty, name != "Unknown" { return name }
-        // Fallback lookup
-        if let friend = appState.friendRepo.friends.first(where: { $0.id == uid }) { return friend.name }
-        if let guest = appState.guestRepo.guests.first(where: { $0.id == uid }) { return guest.name }
-        return "Unknown"
+        return appState.userResolver.resolveName(for: uid, fallbackName: name)
     }
     
     private func splitStatusColor(_ status: FirestoreModels.SplitRequest.RequestStatus) -> Color {

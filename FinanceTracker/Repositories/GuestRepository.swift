@@ -82,6 +82,19 @@ class GuestRepository: ObservableObject {
         }
     }
     
+    func deleteGuest(guestId: String) async throws {
+        guard let userId = userId else { throw NSError(domain: "GuestRepository", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not logged in"]) }
+        
+        let ref = db.collection("users").document(userId).collection("guests").document(guestId)
+        
+        // Optimistic UI update
+        await MainActor.run {
+            self.guests.removeAll { $0.id == guestId }
+        }
+        
+        try await ref.delete()
+    }
+    
     private func randomHexColor() -> String {
         let colors = ["#FF5733", "#33FF57", "#3357FF", "#F333FF", "#33FFF3", "#F3FF33"]
         return colors.randomElement() ?? "#CCCCCC"

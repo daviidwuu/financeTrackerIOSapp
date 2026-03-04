@@ -136,7 +136,7 @@ struct SplitConfigurationView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .background(Color(UIColor.secondarySystemBackground))
+                .background(Color.cardBackground)
                 .clipShape(Capsule())
                 .padding(.horizontal)
                 
@@ -565,8 +565,7 @@ struct SplitConfigurationView: View {
                 name: friend.name,
                 friendId: friendId,
                 username: friend.username,
-                amount: 0.0,
-                isPaid: false
+                amount: 0.0
             )
             splits.append(newSplit)
             shares[newSplit.id] = 1
@@ -602,8 +601,7 @@ struct SplitConfigurationView: View {
                     name: friend.name,
                     friendId: fid,
                     username: friend.username,
-                    amount: 0.0,
-                    isPaid: false
+                    amount: 0.0
                 )
                 splits.append(newSplit)
                 shares[newSplit.id] = 1
@@ -631,8 +629,7 @@ struct SplitConfigurationView: View {
                         name: newGuest.name,
                         guestId: newGuest.id,
                         isGuest: true,
-                        amount: 0.0,
-                        isPaid: false
+                        amount: 0.0
                     )
                     splits.append(newSplit)
                     shares[newSplit.id] = 1
@@ -812,7 +809,7 @@ struct CustomSplitRow: View {
                 }
                 .padding(.vertical, 8)
                 .padding(.horizontal, 8)
-                .background(Color(UIColor.secondarySystemBackground))
+                .background(Color.cardBackground)
                 .cornerRadius(AppRadius.small)
             } else {
                 Text(currencySymbol + String(format: "%.2f", split.amount))
@@ -827,7 +824,7 @@ struct CustomSplitRow: View {
             }
         }
         .padding()
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(Color.cardBackground)
         .cornerRadius(AppRadius.medium)
     }
 }
@@ -870,7 +867,7 @@ struct PercentageSplitRow: View {
             }
         }
         .padding()
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(Color.cardBackground)
         .cornerRadius(AppRadius.medium)
     }
 }
@@ -922,7 +919,7 @@ struct ShareSplitRow: View {
             }
         }
         .padding()
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(Color.cardBackground)
         .cornerRadius(AppRadius.medium)
     }
 }

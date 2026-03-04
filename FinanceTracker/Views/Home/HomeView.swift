@@ -32,16 +32,22 @@ struct HomeView: View {
     @State private var pendingDeletedGroupIds: Set<String> = []
     
     var totalBudget: Double {
-        WalletLogic.calculateTotalBudget(budgets: budgetRepo.budgets)
+        let budget = WalletLogic.calculateTotalBudget(budgets: budgetRepo.budgets)
+        DebugLogger.log("HomeView totalBudget: \(budget)")
+        return budget
     }
     
     var totalSpent: Double {
-        return WalletLogic.calculateNetSpent(transactions: transactionRepo.transactions)
+        let spent = WalletLogic.calculateNetSpent(transactions: transactionRepo.currentMonthTransactions, categories: budgetRepo.budgets)
+        DebugLogger.log("HomeView totalSpent: \(spent) from \(transactionRepo.currentMonthTransactions.count) transactions")
+        return spent
     }
     
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottomTrailing) {
+                Color.backgroundPrimary.ignoresSafeArea()
+
                 List {
                     // Section 1: Header & Balance
                     Section {
@@ -141,30 +147,30 @@ struct HomeView: View {
                                         .font(.subheadline)
                                         .fontWeight(.medium)
                                         .foregroundColor(.secondary)
-                                    
-                                    
+
+
                                     HStack(alignment: .firstTextBaseline, spacing: 4) {
                                         Text("$\(String(format: "%.2f", showRemainingBudget ? (totalBudget - totalSpent) : totalSpent))")
                                             .font(AppTypography.prominentBalance)
                                             .foregroundColor(.primary)
                                             .contentTransition(.numericText())
-                                        
+
                                         Text(showRemainingBudget ? "left" : "spent")
                                             .font(.subheadline)
                                             .foregroundColor(.secondary)
                                             .transition(.opacity)
                                     }
-                                    .onTapGesture {
+                                    .onTapGesture { HapticManager.shared.light();
                                         withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
                                             showRemainingBudget.toggle()
                                         }
                                     }
                                 }
-                                
+
                                 // Custom Pill-Shaped Progress Bar
                                 GeometryReader { geometry in
                                     Capsule()
-                                        .fill(Color.secondary.opacity(0.15))
+                                        .fill(Color.secondaryCardBackground)
                                         .frame(height: 24)
                                         .overlay(
                                             Capsule()
@@ -177,7 +183,7 @@ struct HomeView: View {
                                 .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
                             }
                             .padding(24)
-                            .background(Color(UIColor.secondarySystemBackground))
+                            .background(Color.cardBackground)
                             .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
                         }
 
@@ -236,14 +242,14 @@ struct HomeView: View {
                                         .foregroundColor(.secondary)
                                 }
                                 .padding(AppSpacing.element)
-                                .background(Color(.secondarySystemBackground))
+                                .background(Color.secondaryCardBackground)
                                 .cornerRadius(AppRadius.small)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
                                         .stroke(AppColors.functionalExpense.opacity(0.5), lineWidth: 1)
                                 )
                                 .contentShape(Rectangle())
-                                .onTapGesture {
+                                .onTapGesture { HapticManager.shared.light(); 
                                     groupForDeletionAction = group
                                 }
                                 .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
@@ -338,9 +344,10 @@ struct HomeView: View {
                                 .listRowBackground(Color.clear)
                                 .padding(.bottom, AppSpacing.compact)
                                 
-                            ForEach(transactionRepo.transactions.prefix(appState.isPremiumUser ? 5 : 4)) { transaction in
+                            ForEach(transactionRepo.transactions.prefix(appState.isPremiumUser ? 5 : 4), id: \.id) { transaction in
                                 TransactionRow(transaction: transaction)
-                                    .background(Color(uiColor: .secondarySystemBackground))
+                                    .id(transaction.id)
+                                    .background(Color.cardBackground)
                                     .cornerRadius(AppRadius.medium)
                                     .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
                                     .listRowSeparator(.hidden)
@@ -356,7 +363,7 @@ struct HomeView: View {
                                         .tint(.red)
                                     }
                                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                        if !transaction.isReimbursementIncome {
+                                        if !transaction.isReimbursementIncome(categories: budgetRepo.budgets) {
                                             Button {
                                                 HapticManager.shared.medium()
                                                 transactionToEdit = transaction
@@ -424,7 +431,7 @@ struct HomeView: View {
                     get: { groupForDeletionAction != nil },
                     set: { _ in groupForDeletionAction = nil }
                 )) {
-                    Button("Keep Transaction History") {
+                    Button("Keep Transaction History") { HapticManager.shared.light(); 
                         if let group = groupForDeletionAction {
                             if let id = group.id {
                                 pendingDeletedGroupIds.insert(id)
@@ -439,7 +446,7 @@ struct HomeView: View {
                             }
                         }
                     }
-                    Button("Delete All History", role: .destructive) {
+                    Button("Delete All History", role: .destructive) { HapticManager.shared.light(); 
                         if let group = groupForDeletionAction {
                             if let id = group.id {
                                 pendingDeletedGroupIds.insert(id)
@@ -453,7 +460,7 @@ struct HomeView: View {
                             }
                         }
                     }
-                    Button("Cancel", role: .cancel) { }
+                    Button("Cancel", role: .cancel) { HapticManager.shared.light();  }
                 } message: {
                     if let group = groupForDeletionAction {
                         Text("\(group.name) has been deleted by the creator. What would you like to do with your transaction history?")
@@ -485,14 +492,15 @@ struct HomeView: View {
                 let firestoreTransaction = FirestoreModels.TransactionModel(
                     userId: appState.currentUserId, // Use global user ID
                     title: transaction.title,
-                    subtitle: transaction.subtitle,
+                    categoryId: transaction.categoryId,
                     amount: amount,
                     date: transaction.date,
                     type: amount < 0 ? "expense" : "income",
                     createdAt: Date(),
-                    icon: transaction.icon,
-                    colorHex: transaction.color.toHex() ?? "#000000",
                     note: transaction.notes,
+                    latitude: transaction.latitude,
+                    longitude: transaction.longitude,
+                    locationName: transaction.locationName,
                     originalAmount: transaction.originalAmount,
                     currencyCode: transaction.currencyCode,
                     exchangeRate: transaction.exchangeRate
@@ -520,13 +528,14 @@ struct HomeView: View {
                 let amount = CurrencyInput.parseOrZero(transaction.amount)
                 var updatedTransaction = entity
                 updatedTransaction.title = transaction.title
-                updatedTransaction.subtitle = transaction.subtitle
+                updatedTransaction.categoryId = transaction.categoryId
                 updatedTransaction.amount = amount
                 updatedTransaction.date = transaction.date
-                updatedTransaction.icon = transaction.icon
-                updatedTransaction.colorHex = transaction.color.toHex() ?? "#000000"
                 updatedTransaction.note = transaction.notes
                 updatedTransaction.type = amount < 0 ? "expense" : "income"
+                updatedTransaction.latitude = transaction.latitude
+                updatedTransaction.longitude = transaction.longitude
+                updatedTransaction.locationName = transaction.locationName
                 
                 try await transactionRepo.updateTransaction(updatedTransaction)
                 
@@ -565,21 +574,19 @@ struct HomeView: View {
         
         undoState.schedule(
             label: "Transaction deleted",
-            onUndo: { [self] in
+            onUndo: {
                 transactionRepo.undoDelete(id: id)
             },
-            onConfirm: { [self] in
+            onConfirm: {
                 Task {
                     do {
                         // 1. Cleanup Linked Splits (Revert payments if needed)
                         let _ = await SocialTransactionManager.shared.revertLinkedSplitIfNeeded(transaction: transaction, currentUserId: appState.currentUserId)
-                        
+
                         // 2. Delete Transaction
                         if let splits = transaction.splits, !splits.isEmpty {
-                            // Social Delete (optimistic removal handled by repo, calling finalize is not strictly needed if we just call delete, but deleteTransaction handles finalize)
                             try await SocialTransactionManager.shared.deleteSocialTransaction(transaction: transaction)
                         } else {
-                            // Personal Delete (Repo handles optimistic update/finalize)
                             try await transactionRepo.deleteTransaction(id: id)
                         }
                     } catch {

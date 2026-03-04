@@ -9,6 +9,7 @@ struct PendingSplitCard: View {
     var onNudge: (() -> Void)? = nil
     
     @EnvironmentObject var userPremiumRepo: UserPremiumRepository
+    @EnvironmentObject var appState: AppState
     
     /// Whether the current user is the sender (creditor) of this split request
     private var isSender: Bool { split.fromUid == userId }
@@ -20,9 +21,9 @@ struct PendingSplitCard: View {
     // Helper to determine display name
     private var displayName: String {
         if isSender {
-            return split.toName ?? "Friend"   // Sender sees who they requested from
+            return appState.userResolver.resolveName(for: split.toUid, fallbackName: split.toName)
         } else {
-            return split.fromName ?? "Friend" // Receiver sees who requested
+            return appState.userResolver.resolveName(for: split.fromUid, fallbackName: split.fromName)
         }
     }
     
@@ -118,7 +119,7 @@ struct PendingSplitCard: View {
                             .font(.system(size: 14, weight: .bold))
                             .foregroundColor(.secondary)
                             .frame(width: 32, height: 32)
-                            .background(Color(UIColor.secondarySystemBackground))
+                            .background(Color.secondaryCardBackground)
                             .clipShape(Circle())
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -145,13 +146,13 @@ struct PendingSplitCard: View {
                             .font(.system(size: 14, weight: .bold))
                             .foregroundColor(.secondary)
                             .frame(width: 32, height: 32)
-                            .background(Color(UIColor.secondarySystemBackground))
+                            .background(Color.secondaryCardBackground)
                             .clipShape(Circle())
                     }
                     .buttonStyle(PlainButtonStyle())
                     
                     // Accept / Pay
-                    Button(action: {
+                    Button(action: { HapticManager.shared.light(); 
                         onToggle()
                     }) {
                         Image(systemName: "checkmark")

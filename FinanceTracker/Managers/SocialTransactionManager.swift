@@ -84,15 +84,27 @@ class SocialTransactionManager: ObservableObject {
             existingRequestsDocs = snapshot.documents
         }
         
+        // OPTIMIZATION: Convert array to dictionary for O(1) lookups
+        var existingRequestsByUid: [String: QueryDocumentSnapshot] = [:]
+        for doc in existingRequestsDocs {
+            if let uid = (doc.get("toUid") as? String) ?? (doc.data()["toUid"] as? String) {
+                existingRequestsByUid[uid] = doc
+            }
+        }
+        
         // 2. Process Splits & Requests
         let updatedSplits = finalTransaction.splits ?? []
         
         // --- 2a. Determine Currency Logic ---
         let mainCurrency = CurrencyManager.shared.mainCurrency
         
+        // Cache group lookup
+        let targetGroup = groupId.flatMap { id in groupCache.first { $0.id == id } }
+        let groupMembersSet = Set(targetGroup?.members ?? [])
+        
         // Target Currency: The currency the GROUP uses (Default or Main)
         var targetCurrency = mainCurrency
-        if let groupId = groupId, let group = groupCache.first(where: { $0.id == groupId }), let groupCurrency = group.defaultCurrency {
+        if let groupCurrency = targetGroup?.defaultCurrency {
             targetCurrency = groupCurrency
         }
         
@@ -134,16 +146,14 @@ class SocialTransactionManager: ObservableObject {
             let dependencyId: String? = nil
             var requestStatus: FirestoreModels.SplitRequest.RequestStatus = .pending
             
-            if let groupId = groupId {
-                if let group = groupCache.first(where: { $0.id == groupId }) {
-                    if !group.members.contains(friendUid) {
-                        // Check if invite already exists? 
-                        // For simplicity, we just create a request that might be "blocked_by_group" if we enforced it,
-                        // but here we just create a split request.
-                        // Ideally we would create an invitation here.
-                        // check if invitation exists logic would stay here...
-                        // Skipping complex invitation logic to fix build error first, relying on basic split request.
-                    }
+            if targetGroup != nil {
+                if !groupMembersSet.contains(friendUid) {
+                    // Check if invite already exists? 
+                    // For simplicity, we just create a request that might be "blocked_by_group" if we enforced it,
+                    // but here we just create a split request.
+                    // Ideally we would create an invitation here.
+                    // check if invitation exists logic would stay here...
+                    // Skipping complex invitation logic to fix build error first, relying on basic split request.
                 }
             }
             
@@ -151,16 +161,12 @@ class SocialTransactionManager: ObservableObject {
             let requestRef: DocumentReference
             
             // Look for a matching document in our fetched list
-            if let index = existingRequestsDocs.firstIndex(where: { doc in
-                let docToUid = (doc.get("toUid") as? String) ?? (doc.data()["toUid"] as? String)
-                return docToUid == friendUid
-            }) {
+            if let existingDoc = existingRequestsByUid[friendUid] {
                 // FOUND: Reuse this document
-                let existingDoc = existingRequestsDocs[index]
                 requestRef = existingDoc.reference
                 
-                // Remove from list so we don't delete it later
-                existingRequestsDocs.remove(at: index)
+                // Remove from dictionary so we don't delete it later
+                existingRequestsByUid.removeValue(forKey: friendUid)
                 
                 // Preserve status if amount is same
                 if let existingAmount = existingDoc.get("amount") as? Double, abs(existingAmount - split.amount) < 0.01 {
@@ -184,11 +190,15 @@ class SocialTransactionManager: ObservableObject {
                 amount: split.amount,
                 currency: sourceCurrency, // Request is in Source Currency (transaction currency)
                 note: (finalTransaction.note?.isEmpty == false) ? finalTransaction.note : finalTransaction.title, // ✅ Prioritize Note ("Burger King") over Title ("Food")
+                category: finalTransaction.subtitle, // ✅ FIX: Category name (populated by caller)
+                icon: finalTransaction.icon,          // ✅ FIX: Icon (populated by caller)
+                colorHex: finalTransaction.colorHex,  // ✅ FIX: Color (populated by caller)
                 status: requestStatus,
                 dependencyId: dependencyId,
                 lastNudgedAt: nil,
                 originalTotalAmount: abs(finalTransaction.amount), // ✅ Full pre-split expense total
                 isGuest: split.isGuest, // FIX 3.5: Propagate guest flag
+                isSettlement: nil,
                 createdAt: Date()
             )
             
@@ -260,26 +270,42 @@ class SocialTransactionManager: ObservableObject {
             
             // Merge remote status into local splits
             if var localSplits = finalTransaction.splits {
+                // Optimize remoteSplit lookup
+                var remoteSplitsDict: [String: FirestoreModels.Split] = [:]
+                for split in remoteSplits {
+                    remoteSplitsDict[split.id] = split
+                }
+                
                 for i in 0..<localSplits.count {
                     let localSplit = localSplits[i]
-                    // Find corresponding remote split by ID (or friendId for legacy)
-                    // Note: 'remoteSplits' is from the outer scope
-                    if let remoteSplit = remoteSplits.first(where: { $0.id == localSplit.id || ($0.friendId == localSplit.friendId && $0.amount == localSplit.amount) }) {
-                        
-                        // Rule: If remote is PAID, local MUST respect it
+                    // First try fast ID lookup, then fallback to friendId+amount match
+                    var remoteSplit: FirestoreModels.Split? = remoteSplitsDict[localSplit.id]
+                    if remoteSplit == nil {
+                        remoteSplit = remoteSplits.first(where: { $0.friendId == localSplit.friendId && $0.amount == localSplit.amount })
+                    }
+                    
+                    if let remoteSplit = remoteSplit {
+
+                        // FIX #13: Bidirectional merge — preserve whichever side has the more advanced status.
+                        // Use paidDate as tiebreaker when both have been modified.
                         if remoteSplit.isPaid && !localSplit.isPaid {
-                            print("🔍 Safety Merge: Preserving PAID status for \(localSplit.name) from remote.")
+                            DebugLogger.log("Safety Merge: Preserving PAID status for \(localSplit.name) from remote.")
                             localSplits[i].isPaid = true
                             localSplits[i].paidDate = remoteSplit.paidDate
                             localSplits[i].incomeTransactionId = remoteSplit.incomeTransactionId
+                        } else if localSplit.isPaid && !remoteSplit.isPaid {
+                            // Local is paid but remote isn't — keep local paid status
+                            DebugLogger.log("Safety Merge: Preserving PAID status for \(localSplit.name) from local.")
+                            // localSplit already has the right status, no changes needed
                         }
-                        
-                        // Rule: If remote has a status (e.g. Declined), preserve it if local has none or is pending
-                        if let remoteStatus = remoteSplit.status {
-                             if localSplit.status == nil || localSplit.status == "pending" {
-                                 print("🔍 Safety Merge: Preserving Status '\(remoteStatus)' for \(localSplit.name) from remote.")
-                                 localSplits[i].status = remoteStatus
-                             }
+
+                        // Merge status: pick the more advanced status
+                        let statusPriority: [FirestoreModels.SplitStatus: Int] = [.pending: 0, .accepted: 1, .declined: 1, .paid: 2]
+                        let remotePriority = statusPriority[remoteSplit.splitStatus] ?? 0
+                        let localPriority = statusPriority[localSplit.splitStatus] ?? 0
+                        if remotePriority > localPriority {
+                            DebugLogger.log("Safety Merge: Preserving status '\(remoteSplit.splitStatus.rawValue)' for \(localSplit.name) from remote.")
+                            localSplits[i].splitStatus = remoteSplit.splitStatus
                         }
                     }
                 }
@@ -291,8 +317,8 @@ class SocialTransactionManager: ObservableObject {
 
         try batch.setData(from: finalTransaction, forDocument: transactionRef)
         
-        // 4. Cleanup Removed Splits (Any docs left in existingRequestsDocs are orphans)
-        for doc in existingRequestsDocs {
+        // 4. Cleanup Removed Splits (Any docs left in existingRequestsByUid are orphans)
+        for doc in existingRequestsByUid.values {
             batch.deleteDocument(doc.reference)
             
             // Also clean up any income transaction created for this removed split
@@ -338,6 +364,12 @@ class SocialTransactionManager: ObservableObject {
                 if sourceCurrency != targetCurrency && conversionRate > 0 {
                      convertedTotal = finalTransaction.amount / conversionRate
                 }
+                
+                // ✅ FIX: Resolve category metadata from transaction fields for group transaction feed
+                let groupCategoryName = finalTransaction.subtitle
+                let groupCategoryId = finalTransaction.categoryId
+                let groupIcon = finalTransaction.icon
+                let groupColorHex = finalTransaction.colorHex
     
                 let groupTx = FirestoreModels.GroupTransaction(
                     id: nil, // @DocumentID must be nil for writing
@@ -349,12 +381,13 @@ class SocialTransactionManager: ObservableObject {
                     type: finalTransaction.type,
                     currencyCode: targetCurrency, // ✅ Store Target Currency
                     note: finalTransaction.note, // ✅ NEW: Store Note ("Burger King")
-                    category: nil, // ✅ USER REQUEST: Do not show personal category in Group View
-                    icon: finalTransaction.icon, // ✅ NEW
-                    colorHex: finalTransaction.colorHex, // ✅ NEW
+                    categoryId: groupCategoryId, // ✅ FIX: Store category ID
+                    category: groupCategoryName, // ✅ FIX: Store resolved category name
+                    icon: groupIcon, // ✅ FIX: Store resolved icon
+                    colorHex: groupColorHex, // ✅ FIX: Store resolved color
                     originalTransactionId: finalTransaction.id,
-                    originalAmount: (sourceCurrency != targetCurrency) ? finalTransaction.amount : nil, // ✅ NEW: Store Original Amount
-                    exchangeRate: (sourceCurrency != targetCurrency) ? conversionRate : nil, // ✅ NEW: Store Exchange Rate
+                    originalAmount: (sourceCurrency != targetCurrency) ? finalTransaction.amount : nil,
+                    exchangeRate: (sourceCurrency != targetCurrency) ? conversionRate : nil,
                     editHistory: finalTransaction.editHistory // ✅ Sync Edit History
                 )
                 try batch.setData(from: groupTx, forDocument: groupTxRef)

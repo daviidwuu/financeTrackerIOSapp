@@ -44,8 +44,8 @@ private func declineSplitRequest(request: FirestoreModels.SplitRequest) async th
         }
     }
 
-func markSplitAsPaid(request: FirestoreModels.SplitRequest, currentUserId: String, currentUserName: String) async throws {
-        guard let requestId = request.id else { return }
+func markSplitAsPaid(request: FirestoreModels.SplitRequest, currentUserId: String, currentUserName: String) async throws -> FirestoreModels.TransactionModel? {
+        guard let requestId = request.id else { return nil }
         
         let creditorId = request.fromUid
         let originalTxId = request.transactionId
@@ -70,8 +70,10 @@ func markSplitAsPaid(request: FirestoreModels.SplitRequest, currentUserId: Strin
         }
         
         // Perform atomic transaction to avoid race conditions and hidden encoding errors
-        _ = try await db.runTransaction { (transaction, errorPointer) -> Any? in
+        let generatedTx = try await db.runTransaction { (transaction, errorPointer) -> Any? in
             do {
+                var incomeTxDict: [String: Any]? = nil
+                
                 // 1. Fetch transaction and securely serialize
                 let txSnapshot = try transaction.getDocument(txRef)
                 
@@ -81,6 +83,26 @@ func markSplitAsPaid(request: FirestoreModels.SplitRequest, currentUserId: Strin
                         if let index = splits.firstIndex(where: { $0.requestId == requestId || ($0.friendId == request.toUid && !$0.isPaid) }) {
                              splits[index].isPaid = true
                              splits[index].paidDate = Date()
+                             
+                             if currentUserId == creditorId {
+                                 let incomeRef = self.db.collection("users").document(creditorId).collection("transactions").document()
+                                 let incomeTx = FirestoreModels.TransactionModel(
+                                     id: incomeRef.documentID,
+                                     userId: creditorId,
+                                     title: "Payment received from \(request.toName ?? "User")",
+                                     categoryId: txData.categoryId,
+                                     amount: request.amount,
+                                     date: Date(),
+                                     type: "income",
+                                     createdAt: Date(),
+                                     note: "Payment received from \(request.toName ?? "User")",
+                                     source: requestId,
+                                     splits: nil
+                                 )
+                                 try transaction.setData(from: incomeTx, forDocument: incomeRef)
+                                 splits[index].incomeTransactionId = incomeRef.documentID
+                                 incomeTxDict = try? Firestore.Encoder().encode(incomeTx)
+                             }
                              
                              var updatedTx = txData
                              updatedTx.splits = splits
@@ -120,21 +142,23 @@ func markSplitAsPaid(request: FirestoreModels.SplitRequest, currentUserId: Strin
                         type: "settlement",
                         currencyCode: request.currency,
                         note: request.note,
-                        category: "Settlement",
-                        icon: "dollarsign.circle.fill",
-                        colorHex: "#34C759",
                         originalTransactionId: requestId,
                         editHistory: nil
                     )
                     try transaction.setData(from: groupTx, forDocument: groupRef)
                 }
                 
-                return nil
+                return incomeTxDict
             } catch let error as NSError {
                 errorPointer?.pointee = error
                 return nil
             }
         }
+        
+        if let dict = generatedTx as? [String: Any], let tx = try? Firestore.Decoder().decode(FirestoreModels.TransactionModel.self, from: dict) {
+            return tx
+        }
+        return nil
     }
 
 func unmarkSplitAsPaid(request: FirestoreModels.SplitRequest, currentUserId: String) async throws {
@@ -247,10 +271,10 @@ func revertLinkedSplitIfNeeded(transaction: FirestoreModels.TransactionModel, cu
         try await withRetry {
             try await batch.commit()
         }
-            print("DEBUG: Reverted linked split for deleted income transaction \(transaction.id ?? "nil") to status: \(newStatus.rawValue)")
+            DebugLogger.log("Reverted linked split for deleted income transaction \(transaction.id ?? "nil") to status: \(newStatus.rawValue)")
             return true
         } catch {
-            print("DEBUG: Error reverting linked split: \(error)")
+            DebugLogger.log("Error reverting linked split: \(error)")
             return false
         }
     }

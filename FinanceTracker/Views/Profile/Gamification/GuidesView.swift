@@ -72,19 +72,19 @@ struct GuidesListView: View {
     ]
     
     var body: some View {
-        ZStack(alignment: .top) {
-            // Background
-            (colorScheme == .dark ? Color.black : Color(UIColor.systemBackground))
+        ZStack {
+            Color.backgroundPrimary
                 .ignoresSafeArea()
-            
+
             ScrollView {
                 VStack(spacing: 24) {
+                    ScrollOffsetTracker()
                     Spacer().frame(height: 60)
                     
                     MenuSection {
                         ForEach(guides.indices, id: \.self) { index in
                             let guide = guides[index]
-                            Button(action: {
+                            Button(action: { HapticManager.shared.light(); 
                                 selectedGuide = guide
                             }) {
                                 HStack(spacing: 16) {
@@ -122,32 +122,8 @@ struct GuidesListView: View {
                 }
                 .padding(.top, 20)
             }
-            
-            // Fixed Navigation Bar
-            HStack {
-                Button(action: { dismiss() }) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
-                        .frame(width: 44, height: 44)
-                        .background((colorScheme == .dark ? Color.white : Color.black).opacity(0.05))
-                        .clipShape(Circle())
-                }
-                
-                Spacer()
-                
-                Text("Guides")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
-                
-                Spacer()
-                
-                Color.clear.frame(width: 44, height: 44)
-            }
-            .padding(.horizontal, AppSpacing.margin + AppSpacing.compact)
-            .padding(.top, 16)
         }
+        .overlayHeader(.navigation(title: "Guides", onBack: { dismiss() }))
         .navigationBarBackButtonHidden(true)
         .sheet(item: $selectedGuide) { guide in
             GuideDetailView(guide: guide)
@@ -183,7 +159,7 @@ struct GuideDetailView: View {
                 }
                 .frame(height: UIScreen.main.bounds.height * 0.25)
                 .overlay(
-                    Button(action: { dismiss() }) {
+                    Button(action: { HapticManager.shared.light();  dismiss() }) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.title)
                             .foregroundColor(.secondary)
@@ -221,7 +197,7 @@ struct GuideDetailView: View {
                 
                 // Footer
                 VStack {
-                    Button(action: {
+                    Button(action: { HapticManager.shared.light(); 
                         dismiss()
                     }) {
                         Text("Got it!")

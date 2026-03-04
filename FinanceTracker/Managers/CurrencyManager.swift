@@ -25,12 +25,16 @@ class CurrencyManager: ObservableObject {
     // FIX #9: Store all rates keyed by currency code for multi-currency conversion
     // Key = currency code, Value = rate relative to mainCurrency (1 Main = X Target)
     private var allRates: [String: Double] = [:]
+
+    // FIX #8: Track missing exchange rates so the UI can warn users
+    @Published var missingRateCurrencies: Set<String> = []
+    var hasMissingRates: Bool { !missingRateCurrencies.isEmpty }
     
     // Supported Currencies (Simplified List)
     let availableCurrencies = [
         "MYR", "CNY", "THB", "IDR", "VND", "USD", "EUR", "SGD", 
         "JPY", "KRW", "GBP", "AUD", "CAD", "HKD", "TWD", "PHP", 
-        "INR", "MXN", "CHF", "NZD", "TRY", "BRL", "RUB", "ZAR"
+        "INR", "MXN", "CHF", "NZD", "TRY", "BRL", "RUB", "ZAR", "BND"
     ]
     
     let currencyNames: [String: String] = [
@@ -57,7 +61,8 @@ class CurrencyManager: ObservableObject {
         "TRY": "Turkey (Lira)",
         "BRL": "Brazil (Real)",
         "RUB": "Russia (Ruble)",
-        "ZAR": "South Africa (Rand)"
+        "ZAR": "South Africa (Rand)",
+        "BND": "Brunei (Dollar)"
     ]
     
     private var cancellables = Set<AnyCancellable>()
@@ -99,6 +104,8 @@ class CurrencyManager: ObservableObject {
                 await MainActor.run {
                     // FIX #9: Store ALL rates for multi-currency support
                     self.allRates = result.rates
+                    // FIX #8: Clear missing rate warnings now that we have fresh rates
+                    self.missingRateCurrencies = []
                     
                     if let rate = result.rates[self.travelCurrency] {
                         self.exchangeRate = rate
@@ -168,7 +175,9 @@ class CurrencyManager: ObservableObject {
             return amount / exchangeRate
         }
         
+        // FIX #8: Track missing rate and warn user
         DebugLogger.log("Warning: No exchange rate available for \(currency) → \(mainCurrency). Returning unconverted.")
+        DispatchQueue.main.async { self.missingRateCurrencies.insert(currency) }
         return amount // Fallback: no rate available
     }
     
@@ -190,7 +199,9 @@ class CurrencyManager: ObservableObject {
             }
             // Legacy fallback for travel currency
             if target == travelCurrency { return exchangeRate }
+            // FIX #8: Track missing rate and warn user
             DebugLogger.log("⚠️ Missing rate for \(source)→\(target), returning 1.0")
+            DispatchQueue.main.async { self.missingRateCurrencies.formUnion([source, target].filter { $0 != self.mainCurrency }) }
             return 1.0
         }
         
@@ -200,14 +211,18 @@ class CurrencyManager: ObservableObject {
                 return 1.0 / sourceRate // 1 source = (1/sourceRate) main
             }
             if source == travelCurrency && exchangeRate > 0 { return 1.0 / exchangeRate }
+            // FIX #8: Track missing rate and warn user
             DebugLogger.log("⚠️ Missing rate for \(source)→\(target), returning 1.0")
+            DispatchQueue.main.async { self.missingRateCurrencies.formUnion([source, target].filter { $0 != self.mainCurrency }) }
             return 1.0
         }
         
         // General case: source→main→target
         guard let sourceRate = allRates[source], sourceRate > 0,
               let targetRate = allRates[target], targetRate > 0 else {
+            // FIX #8: Track missing rate and warn user
             DebugLogger.log("⚠️ Missing rate for \(source)→\(target), returning 1.0")
+            DispatchQueue.main.async { self.missingRateCurrencies.formUnion([source, target].filter { $0 != self.mainCurrency }) }
             return 1.0
         }
         return targetRate / sourceRate

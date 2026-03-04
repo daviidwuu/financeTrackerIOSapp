@@ -61,11 +61,114 @@ struct AppSpacing {
 }
 
 extension View {
-    func appCardStyle(radius: CGFloat = AppRadius.medium, color: Color = .cardBackground) -> some View {
+    func appCardStyle(radius: CGFloat = AppRadius.medium) -> some View {
         self
-            .padding()
-            .background(color)
+            .padding(AppSpacing.element)
+            .background(Color.cardBackground)
             .cornerRadius(radius)
+    }
+
+    func appListRow() -> some View {
+        self
+            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+            .padding(.bottom, AppSpacing.compact)
+    }
+}
+
+// MARK: - Shared Social Components
+
+struct CardChevron: View {
+    var body: some View {
+        Image(systemName: "chevron.right")
+            .font(.caption)
+            .foregroundColor(Color(UIColor.tertiaryLabel))
+            .accessibilityHidden(true)
+    }
+}
+
+struct IconAvatar: View {
+    let systemName: String
+    let color: Color
+    var size: CGFloat = AppSize.avatarList
+
+    var body: some View {
+        Circle()
+            .fill(color.opacity(0.1))
+            .frame(width: size, height: size)
+            .overlay(
+                Image(systemName: systemName)
+                    .font(.headline)
+                    .foregroundColor(color)
+            )
+    }
+}
+
+struct DashedAddButton: View {
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: {
+            HapticManager.shared.light()
+            action()
+        }) {
+            HStack(spacing: AppSpacing.element) {
+                Circle()
+                    .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
+                    .foregroundColor(.secondary)
+                    .frame(width: AppSize.avatarList, height: AppSize.avatarList)
+                    .overlay(
+                        Image(systemName: "plus")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.secondary)
+                    )
+
+                Text(label)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+
+                Spacer()
+            }
+            .padding(AppSpacing.element)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+struct AcceptDeclineButtons: View {
+    let onAccept: () -> Void
+    let onDecline: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button(action: {
+                HapticManager.shared.light()
+                onDecline()
+            }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.secondary)
+                    .frame(width: AppSize.avatarSmall, height: AppSize.avatarSmall)
+                    .background(Color.secondaryCardBackground)
+                    .clipShape(Circle())
+            }
+
+            Button(action: {
+                HapticManager.shared.success()
+                onAccept()
+            }) {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(width: AppSize.avatarSmall, height: AppSize.avatarSmall)
+                    .background(Color.themeAccent)
+                    .clipShape(Circle())
+            }
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 

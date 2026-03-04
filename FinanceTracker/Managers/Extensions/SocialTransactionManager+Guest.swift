@@ -51,11 +51,11 @@ func mergeGuestToFriend(guestId: String, friend: FirestoreModels.Friend, current
         try await withRetry {
             try await batch.commit()
         }
-            print("✅ Merged \(updateCount) transactions from guest \(guestId) to friend \(friend.name)")
+            DebugLogger.log("✅ Merged \(updateCount) transactions from guest \(guestId) to friend \(friend.name)")
         } else {
             // Even if no transactions, delete the guest
             try await guestRef.delete()
-            print("✅ Guest \(guestId) deleted (no transactions to merge)")
+            DebugLogger.log("✅ Guest \(guestId) deleted (no transactions to merge)")
         }
     }
 

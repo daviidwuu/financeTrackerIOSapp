@@ -22,7 +22,7 @@ struct DebtInstructionRow: View {
             Text("\(currency.isEmpty ? "$" : currency) \(String(format: "%.2f", amount))").font(.subheadline).fontWeight(.bold)
         }
         .padding(12)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(Color.cardBackground)
         .cornerRadius(AppRadius.small)
     }
 }

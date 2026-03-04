@@ -71,7 +71,7 @@ struct SettleUpView: View {
                     TextField("Notes", text: $transactionNotes)
                 }
                 
-                Button(action: {
+                Button(action: { HapticManager.shared.light(); 
                     settleUp()
                 }) {
                     Text("Record Payment")
@@ -85,7 +85,7 @@ struct SettleUpView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") { HapticManager.shared.light();  dismiss() }
                 }
             }
             .onAppear {
@@ -115,11 +115,6 @@ struct SettleUpView: View {
     func settleUp() {
         guard let amountDouble = Double(amount), !selectedReceiverId.isEmpty else { return }
         
-        let category = budgetRepo.budgets.first { $0.id == selectedCategoryId }
-        let categoryName = category?.category ?? "Settlement"
-        let icon = category?.icon ?? "dollarsign.circle.fill"
-        let color = category?.colorHex ?? "#34C759"
-        
         Task {
             do {
                 try await SocialTransactionManager.shared.settleUp(
@@ -131,14 +126,11 @@ struct SettleUpView: View {
                     payerName: getMemberName(id: selectedPayerId),
                     receiverName: getMemberName(id: selectedReceiverId),
                     method: paymentMethod,
-                    category: categoryName,
-                    icon: icon,
-                    colorHex: color,
                     note: transactionNotes.isEmpty ? nil : transactionNotes
                 )
                 dismiss()
             } catch {
-                print("Failed to settle up: \(error)")
+                DebugLogger.log("Failed to settle up: \(error)")
             }
         }
     }

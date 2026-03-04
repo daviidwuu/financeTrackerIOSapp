@@ -5,11 +5,11 @@ import Combine
 
 extension SocialTransactionManager {
 
-    func settleUp(payerId: String, receiverId: String, groupId: String?, amount: Double, currency: String? = nil, payerName: String = "Member", receiverName: String? = nil, method: String = "Cash", category: String = "Settlement", icon: String = "dollarsign.circle.fill", colorHex: String = "#34C759", note: String? = nil) async throws {
+    func settleUp(payerId: String, receiverId: String, groupId: String?, amount: Double, currency: String? = nil, payerName: String = "Member", receiverName: String? = nil, method: String = "Cash", note: String? = nil) async throws {
         // Payer Side (Expense)
         let payerRef = db.collection("users").document(payerId).collection("transactions").document()
         
-        let displayTitle = note?.isEmpty == false ? note! : category
+        let displayTitle = note?.isEmpty == false ? note! : "Settled up via \(method)"
         let displayNote = note?.isEmpty == false ? note! : "Settled up via \(method)"
         
         // 1. Create a "Payment" transaction
@@ -17,13 +17,11 @@ extension SocialTransactionManager {
             id: payerRef.documentID,
             userId: payerId,
             title: displayTitle,
-            subtitle: category,
+            categoryId: nil, // Note: Setting up a specific system category via ID might be better long term
             amount: -amount, // Expense for payer
             date: Date(),
             type: "expense",
             createdAt: Date(),
-            icon: icon,
-            colorHex: colorHex,
             note: displayNote
         )
         
@@ -52,6 +50,9 @@ extension SocialTransactionManager {
              amount: amount,
              currency: currency ?? CurrencyManager.shared.mainCurrency, // FIX 1.2: Store settlement currency
              note: displayNote,
+             category: "Settlement",
+             icon: "arrow.turn.down.left",
+             colorHex: "#34C759",
              status: .pending, // ✅ CHANGED: Pending until receiver accepts
              dependencyId: nil,
              lastNudgedAt: nil,
@@ -77,9 +78,6 @@ extension SocialTransactionManager {
                 type: "settlement", // Special type
                 currencyCode: nil,
                 note: displayNote,
-                category: category,
-                icon: icon,
-                colorHex: colorHex,
                 originalTransactionId: payerRef.documentID, // Linked to payer transaction
                 involvedUserStatuses: [receiverId: "pending"], // ✅ NEW: Track receiver's status
                 editHistory: nil
@@ -105,26 +103,6 @@ extension SocialTransactionManager {
     func acceptSettlement(request: FirestoreModels.SplitRequest, currentUserId: String, currentUserName: String) async throws {
         guard let requestId = request.id else { return }
         
-        var incomeSubtitle: String = "Income"
-        do {
-            let payerTxRef = db.collection("users")
-                .document(request.fromUid)
-                .collection("transactions")
-                .document(request.transactionId)
-            let payerSnapshot = try await payerTxRef.getDocument()
-            if let payerTx = try? payerSnapshot.data(as: FirestoreModels.TransactionModel.self),
-               let subtitle = payerTx.subtitle,
-               !subtitle.isEmpty {
-                incomeSubtitle = subtitle
-            } else if request.isSettlement == true {
-                incomeSubtitle = "Settlement"
-            }
-        } catch {
-            if request.isSettlement == true {
-                incomeSubtitle = "Settlement"
-            }
-        }
-        
         let batch = db.batch()
         
         // 1. Mark the settlement request as paid
@@ -140,13 +118,10 @@ extension SocialTransactionManager {
             id: incomeRef.documentID,
             userId: currentUserId,
             title: "Settlement from \(request.fromName ?? "Friend")",
-            subtitle: incomeSubtitle,
             amount: request.amount, // Positive = income
             date: Date(),
             type: "income",
             createdAt: Date(),
-            icon: "dollarsign.circle.fill",
-            colorHex: "#34C759",
             note: "Settlement from \(request.fromName ?? "Friend")",
             source: requestId
         )
@@ -185,10 +160,12 @@ extension SocialTransactionManager {
             guard remainingAmount > 0.01 else { break }
             
             // FIX 1.2: Only settle splits matching the settlement currency
-            if let settleCurrency = request.currency,
-               let splitCurrency = doc.data()["currency"] as? String,
-               splitCurrency != settleCurrency {
-                continue
+            // FIX #9: Treat nil currency as user's main currency so old splits aren't permanently skipped
+            if let settleCurrency = request.currency {
+                let splitCurrency = doc.data()["currency"] as? String ?? CurrencyManager.shared.mainCurrency
+                if splitCurrency != settleCurrency {
+                    continue
+                }
             }
             
             let splitAmount = doc.data()["amount"] as? Double ?? 0

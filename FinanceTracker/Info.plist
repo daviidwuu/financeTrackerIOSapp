@@ -28,9 +28,9 @@
 	<key>AdMobNativeAdUnitID</key>
 	<string>ca-app-pub-1865245598004495/7615502496</string>
 	<key>RevenueCatAPIKey</key>
-	<string>YOUR_REVENUECAT_API_KEY</string>
+	<string>appl_QRzkaRcwvuCUrMnUZLIwsXxmodC</string>
 	<key>RevenueCatAPIKeyDebug</key>
-	<string>YOUR_REVENUECAT_DEBUG_API_KEY</string>
+	<string>appl_QRzkaRcwvuCUrMnUZLIwsXxmodC</string>
 	<key>RevenueCatEntitlementID</key>
 	<string>King</string>
 	<key>TermsOfServiceURL</key>

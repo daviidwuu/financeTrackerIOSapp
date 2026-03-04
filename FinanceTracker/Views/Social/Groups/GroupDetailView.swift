@@ -4,13 +4,14 @@ import FirebaseFirestore
 struct GroupDetailView: View {
     let groupId: String
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var groupRepo: GroupRepository
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
     @StateObject private var repo = SocialRepository()
     
     // Computed group property from appState
     var group: FirestoreModels.Group? {
-        appState.groupRepo.groups.first(where: { $0.id == groupId })
+        groupRepo.groups.first(where: { $0.id == groupId })
     }
     
     // UI State
@@ -115,7 +116,7 @@ struct GroupDetailView: View {
                                                 splitToDelete = split
                                             }
                                         })
-                                        .onTapGesture { activeSheet = .splitDetail(split) }
+                                        .onTapGesture { HapticManager.shared.light();  activeSheet = .splitDetail(split) }
                                     }
                                 }
                             }
@@ -157,9 +158,9 @@ struct GroupDetailView: View {
                                                 HapticManager.shared.success()
                                             }
                                         })
-                                        .onTapGesture { activeSheet = .splitDetail(split) }
+                                        .onTapGesture { HapticManager.shared.light();  activeSheet = .splitDetail(split) }
                                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                            Button(role: .destructive) { deleteSplit(split) } label: {
+                                            Button(role: .destructive) { HapticManager.shared.light();  deleteSplit(split) } label: {
                                                 Label("Cancel", systemImage: "trash")
                                             }
                                         }
@@ -285,14 +286,14 @@ struct GroupDetailView: View {
                         } else {
                             ForEach(repo.groupTransactions.filter { $0.id != nil }) { transaction in
                                 GroupTransactionRow(transaction: transaction, currentUserId: appState.currentUserId)
-                                    .background(Color(UIColor.secondarySystemBackground))
+                                    .background(Color.cardBackground)
                                     .cornerRadius(AppRadius.medium)
-                                    .onTapGesture { activeSheet = .transactionDetail(transaction) }
+                                    .onTapGesture { HapticManager.shared.light();  activeSheet = .transactionDetail(transaction) }
                                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                         // Only Payer can delete transactions (Expenses or Settlements)
                                         // This ensures data integrity. Receiver cannot delete Payer's record.
                                         if transaction.payerId == appState.currentUserId {
-                                            Button(role: .destructive) { deleteTransaction(transaction, group: group) } label: {
+                                            Button(role: .destructive) { HapticManager.shared.light();  deleteTransaction(transaction, group: group) } label: {
                                                 Label("Delete", systemImage: "trash")
                                             }
                                             .tint(.red)
@@ -300,7 +301,7 @@ struct GroupDetailView: View {
                                     }
                                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
                                         if transaction.payerId == appState.currentUserId && transaction.type != "settlement" {
-                                            Button {
+                                            Button { HapticManager.shared.light(); 
                                                 transactionToEdit = transaction
                                             } label: {
                                                 Label("Edit", systemImage: "pencil")
@@ -351,19 +352,19 @@ struct GroupDetailView: View {
                 set: { if !$0 { splitToDelete = nil } }
             )
         ) {
-            Button("Hide for me") {
+            Button("Hide for me") { HapticManager.shared.light(); 
                 if let split = splitToDelete {
                     hideSplit(split)
                 }
                 splitToDelete = nil
             }
-            Button("Cancel for everyone", role: .destructive) {
+            Button("Cancel for everyone", role: .destructive) { HapticManager.shared.light(); 
                 if let split = splitToDelete {
                     deleteSplit(split)
                 }
                 splitToDelete = nil
             }
-            Button("Never mind", role: .cancel) {
+            Button("Never mind", role: .cancel) { HapticManager.shared.light(); 
                 splitToDelete = nil
             }
         } message: {
@@ -373,13 +374,13 @@ struct GroupDetailView: View {
             "Leave Group",
             isPresented: $showLeaveGroupDialog
         ) {
-            Button("Keep my data") {
+            Button("Keep my data") { HapticManager.shared.light(); 
                 leaveGroup(keepData: true)
             }
-            Button("Delete my data", role: .destructive) {
+            Button("Delete my data", role: .destructive) { HapticManager.shared.light(); 
                 leaveGroup(keepData: false)
             }
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) { HapticManager.shared.light();  }
         } message: {
             Text("Your splits and transactions from this group will either be kept as personal records or permanently deleted.")
         }
@@ -474,7 +475,7 @@ struct GroupDetailView: View {
              }
         }
         .onDisappear {
-            print("DEBUG: GroupDetailView onDisappear - Popped from stack")
+            DebugLogger.log("GroupDetailView onDisappear - Popped from stack")
         }
     }
     
@@ -495,7 +496,7 @@ struct GroupDetailView: View {
         undoWorkItem?.cancel()
         Task {
             do {
-                try await SocialTransactionManager.shared.markSplitAsPaid(request: split, currentUserId: appState.currentUserId, currentUserName: appState.userName)
+                _ = try await SocialTransactionManager.shared.markSplitAsPaid(request: split, currentUserId: appState.currentUserId, currentUserName: appState.userName)
                 loadGroupData()
                 try? await Task.sleep(nanoseconds: 5 * 1_000_000_000)
                 await MainActor.run { if let id = split.id { recentlyPaidSplitIds.remove(id) } }
@@ -545,7 +546,7 @@ struct GroupDetailView: View {
                     loadGroupData()
                 }
             } catch {
-                print("Error deleting transaction: \(error)")
+                DebugLogger.log("Error deleting transaction: \(error)")
                 HapticManager.shared.error()
                 // Revert optimistic update if needed? For now, loadGroupData will fix it.
                 await MainActor.run { loadGroupData() }
@@ -642,20 +643,20 @@ struct GroupDetailView: View {
         
         Task {
             do {
-                try await appState.groupRepo.leaveGroup(groupId: groupId, userId: appState.currentUserId, keepData: keepData)
+                try await groupRepo.leaveGroup(groupId: groupId, userId: appState.currentUserId, keepData: keepData)
                 await MainActor.run {
                     HapticManager.shared.success()
                     dismiss()
                 }
             } catch {
-                print("Error leaving group: \(error)")
+                DebugLogger.log("Error leaving group: \(error)")
                 await MainActor.run {
                     HapticManager.shared.error()
                 }
             }
         }
     }
-    
+
     func getMemberName(id: String, group: FirestoreModels.Group) -> String {
         if id == appState.currentUserId { return "You" }
         if let friend = appState.friendRepo.friends.first(where: { $0.id == id }) { return friend.name }
@@ -668,13 +669,14 @@ struct GroupDetailView: View {
         let transaction = FirestoreModels.TransactionModel(
             userId: appState.currentUserId,
             title: note.isEmpty ? (category?.category ?? "Group Expense") : note,
-            subtitle: category?.category ?? "Group: \(group.name)",
+            subtitle: category?.category, // ✅ FIX: Populate category name for social propagation
+            categoryId: category?.id,
             amount: -abs(amount),
             date: Date(),
             type: "expense",
             createdAt: Date(),
-            icon: category?.icon ?? "person.2.fill", // Or group icon
-            colorHex: category?.colorHex ?? group.color,
+            icon: category?.icon, // ✅ FIX: Populate icon for social propagation
+            colorHex: category?.colorHex, // ✅ FIX: Populate color for social propagation
             note: note,
             splits: splits,
             originalAmount: originalAmount,
@@ -690,7 +692,7 @@ struct GroupDetailView: View {
                     payerName: appState.userName,
                     groupId: group.id,
                     friendCache: appState.friendRepo.friends,
-                    groupCache: appState.groupRepo.groups
+                    groupCache: groupRepo.groups
                 )
                 
                 await MainActor.run {
@@ -698,7 +700,7 @@ struct GroupDetailView: View {
                     loadGroupData()
                 }
             } catch {
-                print("Error adding group expense: \(error)")
+                DebugLogger.log("Error adding group expense: \(error)")
                 HapticManager.shared.error()
             }
         }
@@ -709,17 +711,22 @@ struct GroupDetailView: View {
         let txId = originalTx.originalTransactionId ?? originalTx.id
         let existingTx = appState.transactionRepo.transactions.first { $0.id == txId }
         
+        // ✅ FIX: Resolve category for social propagation
+        let resolvedCatId = category?.id ?? existingTx?.categoryId
+        let resolvedCategory = category ?? (resolvedCatId.flatMap { appState.budgetRepo.getCategory(for: $0) })
+        
         let transaction = FirestoreModels.TransactionModel(
             id: txId,
             userId: appState.currentUserId,
-            title: note.isEmpty ? (category?.category ?? "Group Expense") : note,
-            subtitle: category?.category ?? "Group: \(group.name)",
+            title: note.isEmpty ? (resolvedCategory?.category ?? "Group Expense") : note,
+            subtitle: resolvedCategory?.category, // ✅ FIX: Populate category name
+            categoryId: resolvedCatId,
             amount: -abs(amount),
             date: originalTx.date, // Keep original date
             type: originalTx.type,
             createdAt: originalTx.date,
-            icon: category?.icon ?? originalTx.icon,
-            colorHex: category?.colorHex ?? originalTx.colorHex,
+            icon: resolvedCategory?.icon, // ✅ FIX: Populate icon
+            colorHex: resolvedCategory?.colorHex, // ✅ FIX: Populate color
             note: note,
             splits: splits,
             originalAmount: originalAmount ?? existingTx?.originalAmount,
@@ -735,7 +742,7 @@ struct GroupDetailView: View {
                     payerName: appState.userName,
                     groupId: group.id,
                     friendCache: appState.friendRepo.friends,
-                    groupCache: appState.groupRepo.groups
+                    groupCache: groupRepo.groups
                 )
                 
                 await MainActor.run {
@@ -744,7 +751,7 @@ struct GroupDetailView: View {
                     transactionToEdit = nil
                 }
             } catch {
-                print("Error updating group expense: \(error)")
+                DebugLogger.log("Error updating group expense: \(error)")
                 HapticManager.shared.error()
             }
         }
@@ -766,7 +773,7 @@ struct GroupDetailView: View {
                     pendingSplits.removeAll { $0.id == id }
                 }
             } catch {
-                print("Failed to accept request: \(error)")
+                DebugLogger.log("Failed to accept request: \(error)")
             }
         }
     }
@@ -779,14 +786,15 @@ struct GroupDetailView: View {
                 let firestoreTransaction = FirestoreModels.TransactionModel(
                     userId: appState.currentUserId, // Use global user ID
                     title: transaction.title,
-                    subtitle: transaction.subtitle,
+                    categoryId: transaction.categoryId,
                     amount: amount,
                     date: transaction.date,
                     type: amount < 0 ? "expense" : "income",
                     createdAt: Date(),
-                    icon: transaction.icon,
-                    colorHex: transaction.color.toHex() ?? "#000000",
                     note: transaction.notes,
+                    latitude: transaction.latitude,
+                    longitude: transaction.longitude,
+                    locationName: transaction.locationName,
                     originalAmount: transaction.originalAmount,
                     currencyCode: transaction.currencyCode,
                     exchangeRate: transaction.exchangeRate
@@ -802,7 +810,7 @@ struct GroupDetailView: View {
                     currencyCode: transaction.currencyCode
                 )
             } catch {
-                print("Failed to add transaction: \(error)")
+                DebugLogger.log("Failed to add transaction: \(error)")
             }
         }
     }

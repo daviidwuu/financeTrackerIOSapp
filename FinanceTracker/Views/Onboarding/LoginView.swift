@@ -38,7 +38,7 @@ struct LoginView: View {
                         .foregroundColor(.primary)
                     
                     Text("Sign in to continue")
-                        .font(.subheadline)
+                        .font(AppTypography.subheadline)
                         .foregroundColor(.secondary)
                 }
                 .padding(.top, 40)
@@ -63,10 +63,10 @@ struct LoginView: View {
                     
                     HStack {
                         Spacer()
-                        Button("Forgot Password?") {
+                        Button("Forgot Password?") { HapticManager.shared.light(); 
                             showForgotPassword = true
                         }
-                        .font(.subheadline)
+                        .font(AppTypography.subheadline)
                         .foregroundColor(AppColors.brandPrimary)
                     }
                 }
@@ -77,8 +77,8 @@ struct LoginView: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                         Text(errorMessage)
                     }
-                    .foregroundColor(.red)
-                    .font(.caption)
+                    .foregroundColor(AppColors.functionalExpense)
+                    .font(AppTypography.caption)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, AppSpacing.section)
                     .transition(.opacity)
@@ -96,7 +96,7 @@ struct LoginView: View {
                 .padding(.bottom, AppSpacing.margin)
             }
         }
-        .onTapGesture {
+        .onTapGesture { HapticManager.shared.light(); 
             hideKeyboard()
         }
         .onAppear {
@@ -110,10 +110,10 @@ struct LoginView: View {
             TextField("Email", text: $email)
                 .keyboardType(.emailAddress)
                 .autocapitalization(.none)
-            Button("Send Reset Link") {
+            Button("Send Reset Link") { HapticManager.shared.light(); 
                 resetPassword()
             }
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) { HapticManager.shared.light();  }
         } message: {
             Text("Enter your email address to receive a password reset link.")
         }
@@ -166,7 +166,7 @@ struct CustomTextField: View {
             TextField(placeholder, text: $text)
         }
         .padding()
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(Color.cardBackground)
         .cornerRadius(AppRadius.medium)
     }
 }
@@ -185,7 +185,7 @@ struct CustomSecureField: View {
             SecureField(placeholder, text: $text)
         }
         .padding()
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(Color.cardBackground)
         .cornerRadius(AppRadius.medium)
     }
 }

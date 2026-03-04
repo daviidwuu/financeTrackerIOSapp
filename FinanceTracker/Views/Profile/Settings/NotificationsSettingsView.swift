@@ -29,31 +29,21 @@ struct NotificationsSettingsView: View {
     @State private var summaryDate: Date = Date()
     
     var body: some View {
-        ZStack(alignment: .top) {
+        ZStack {
             // Background
-            (colorScheme == .dark ? Color.black : Color(UIColor.systemBackground))
+            Color.backgroundPrimary
                 .ignoresSafeArea()
-            
+
             ScrollView {
                 VStack(spacing: 24) {
+                    ScrollOffsetTracker()
                     Spacer().frame(height: 60)
                     
                     // Permission Status Section
-                    MenuSection {
-                        HStack {
-                            Image(systemName: permissionIcon)
-                                .foregroundColor(permissionColor)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Notification Permission")
-                                    .font(.subheadline)
-                                    .fontWeight(.semibold)
-                                Text(permissionText)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            Spacer()
+                    MenuSection("System Permission") {
+                        MenuControlRow(icon: permissionIcon, iconColor: permissionColor, title: "Notification Access", subtitle: permissionText) {
                             if permissionStatus == .notDetermined || permissionStatus == .denied {
-                                Button("Enable") {
+                                Button("Enable") { HapticManager.shared.light(); 
                                     requestPermission()
                                 }
                                 .font(.caption)
@@ -65,50 +55,37 @@ struct NotificationsSettingsView: View {
                                 .cornerRadius(AppRadius.small)
                             }
                         }
-                        .padding(AppSpacing.element)
                     }
-                    .padding(.top, 0)
                     
                     // Test Notification Button
-                    MenuSection {
+                    MenuSection(nil) {
                         Button(action: {
+                            HapticManager.shared.light()
                             testNotification()
                         }) {
-                            HStack {
-                                Image(systemName: "bell.badge")
-                                Text("Send Test Notification")
-                                Spacer()
-                                Image(systemName: "paperplane.fill")
-                            }
-                            .foregroundColor(.blue)
-                            .padding(AppSpacing.element)
+                            MenuRowView(icon: "paperplane.fill", title: "Send Test Notification", showChevron: false, iconColor: .blue)
                         }
+                        .buttonStyle(MenuRowButtonStyle())
                     }
                     
                     // Transaction Alerts
                     MenuSection("Transaction Alerts") {
-                        MenuRowView(title: "New Transactions", showChevron: false, showToggle: $transactionNotifs)
+                        MenuRowView(icon: "arrow.left.arrow.right", title: "New Transactions", showChevron: false, showToggle: $transactionNotifs, iconColor: .green)
                         MenuDivider()
-                        MenuRowView(title: "Large Expense Alert", showChevron: false, showToggle: $largeExpenseAlert)
+                        MenuRowView(icon: "exclamationmark.triangle.fill", title: "Large Expense Alert", showChevron: false, showToggle: $largeExpenseAlert, iconColor: .orange)
                         
                         if largeExpenseAlert {
                             MenuDivider()
-                            HStack {
-                                Text("Threshold")
-                                    .font(.body)
-                                    .foregroundColor(.primary)
-                                Spacer()
+                            MenuControlRow(icon: "dollarsign.circle", iconColor: .red, title: "Threshold") {
                                 TextField("Amount", value: $largeExpenseThreshold, format: .currency(code: CurrencyManager.shared.mainCurrency))
                                     .keyboardType(.decimalPad)
                                     .multilineTextAlignment(.trailing)
                                     .frame(width: 100)
                                     .padding(.vertical, 4)
                                     .padding(.horizontal, 8)
-                                    .background(Color(UIColor.secondarySystemBackground))
+                                    .background(Color(UIColor.tertiarySystemFill))
                                     .cornerRadius(6)
                             }
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, 16)
                         }
                     }
                     .onChange(of: transactionNotifs) { _, newValue in
@@ -119,14 +96,10 @@ struct NotificationsSettingsView: View {
                     
                     // Budget & Bills
                     MenuSection("Budget & Bills") {
-                        MenuRowView(title: "Budget Warnings", showChevron: false, showToggle: $budgetNotifs)
+                        MenuRowView(icon: "chart.pie.fill", title: "Budget Warnings", showChevron: false, showToggle: $budgetNotifs, iconColor: .indigo)
                         if budgetNotifs {
                             MenuDivider()
-                            HStack {
-                                Text("Alert Threshold")
-                                    .font(.body)
-                                    .foregroundColor(.primary)
-                                Spacer()
+                            MenuControlRow(icon: "percent", iconColor: .purple, title: "Alert Threshold") {
                                 Picker("Threshold", selection: $budgetAlertThreshold) {
                                     Text("50%").tag(0.5)
                                     Text("80%").tag(0.8)
@@ -134,21 +107,18 @@ struct NotificationsSettingsView: View {
                                     Text("100%").tag(1.0)
                                 }
                                 .pickerStyle(.menu)
-                            .labelsHidden()
-                            .tint(.secondary)
-                            .onChange(of: budgetAlertThreshold) { _, _ in
-                                HapticManager.shared.light()
+                                .labelsHidden()
+                                .tint(.secondary)
+                                .onChange(of: budgetAlertThreshold) { _, _ in
+                                    HapticManager.shared.light()
+                                }
                             }
-                        }
-                            .padding(.vertical, 12)
-                            .padding(.horizontal, 16)
-                            .background(Color(UIColor.secondarySystemBackground))
                         }
                         
                         MenuDivider()
-                        MenuRowView(title: "Bill Reminders", showChevron: false, showToggle: $billReminders)
+                        MenuRowView(icon: "doc.plaintext.fill", title: "Bill Reminders", showChevron: false, showToggle: $billReminders, iconColor: .blue)
                         MenuDivider()
-                        MenuRowView(title: "Unpaid Split Reminders", showChevron: false, showToggle: $unpaidSplitReminders)
+                        MenuRowView(icon: "person.2.fill", title: "Unpaid Split Reminders", showChevron: false, showToggle: $unpaidSplitReminders, iconColor: .cyan)
                     }
                     .onChange(of: budgetNotifs) { _, newValue in if newValue { ensurePermission() } }
                     .onChange(of: billReminders) { _, newValue in if newValue { ensurePermission() } }
@@ -156,25 +126,18 @@ struct NotificationsSettingsView: View {
                     
                     // Scheduled Reports
                     MenuSection("Scheduled Reports") {
-                        MenuRowView(title: "Daily Summary", showChevron: false, showToggle: $dailySummary)
+                        MenuRowView(icon: "sun.max.fill", title: "Daily Summary", showChevron: false, showToggle: $dailySummary, iconColor: .yellow)
                         
                         if dailySummary {
                             MenuDivider()
-                            HStack {
-                                Text("Time")
-                                    .font(.body)
-                                    .foregroundColor(.primary)
-                                Spacer()
+                            MenuControlRow(icon: "clock.fill", iconColor: .gray, title: "Time") {
                                 DatePicker("", selection: $summaryDate, displayedComponents: .hourAndMinute)
                                     .labelsHidden()
                             }
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 16)
-                            .background(Color(UIColor.secondarySystemBackground))
                         }
                         
                         MenuDivider()
-                        MenuRowView(title: "Weekly Report (Sunday 8 PM)", showChevron: false, showToggle: $weeklyReport)
+                        MenuRowView(icon: "calendar", title: "Weekly Report (Sunday 8 PM)", showChevron: false, showToggle: $weeklyReport, iconColor: .red)
                     }
                     .onChange(of: dailySummary) { _, newValue in
                         if newValue {
@@ -202,15 +165,15 @@ struct NotificationsSettingsView: View {
                     
                     // Engagement & Tips
                     MenuSection("Engagement") {
-                        MenuRowView(title: "Inactivity Reminders", showChevron: false, showToggle: $inactivityCheck)
+                        MenuRowView(icon: "moon.zzz.fill", title: "Inactivity Reminders", showChevron: false, showToggle: $inactivityCheck, iconColor: .indigo)
                         MenuDivider()
-                        MenuRowView(title: "Streak Warnings", showChevron: false, showToggle: $streakWarnings)
+                        MenuRowView(icon: "flame.fill", title: "Streak Warnings", showChevron: false, showToggle: $streakWarnings, iconColor: .orange)
                         MenuDivider()
-                        MenuRowView(title: "End of Day Check", showChevron: false, showToggle: $eodCheck)
+                        MenuRowView(icon: "moon.fill", title: "End of Day Check", showChevron: false, showToggle: $eodCheck, iconColor: .blue)
                         MenuDivider()
-                        MenuRowView(title: "Motivational Tips", showChevron: false, showToggle: $motivationalTips)
+                        MenuRowView(icon: "lightbulb.fill", title: "Motivational Tips", showChevron: false, showToggle: $motivationalTips, iconColor: .yellow)
                         MenuDivider()
-                        MenuRowView(title: "Goal Milestones", showChevron: false, showToggle: $goalMilestones)
+                        MenuRowView(icon: "flag.checkered.2.crossed", title: "Goal Milestones", showChevron: false, showToggle: $goalMilestones, iconColor: .green)
                     }
                     .onChange(of: inactivityCheck) { _, newValue in
                          if newValue { ensurePermission(); NotificationManager.shared.scheduleInactivityCheck() }
@@ -236,32 +199,8 @@ struct NotificationsSettingsView: View {
                 }
                 .padding(.top, 20)
             }
-            
-            // Fixed Navigation Bar
-            HStack {
-                Button(action: { dismiss() }) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
-                        .frame(width: 44, height: 44)
-                        .background((colorScheme == .dark ? Color.white : Color.black).opacity(0.05))
-                        .clipShape(Circle())
-                }
-                
-                Spacer()
-                
-                Text("Notifications")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
-                
-                Spacer()
-                
-                Color.clear.frame(width: 44, height: 44)
-            }
-            .padding(.horizontal, AppSpacing.margin + AppSpacing.compact)
-            .padding(.top, 16)
         }
+        .overlayHeader(.navigation(title: "Notifications", onBack: { dismiss() }))
         .navigationBarBackButtonHidden(true)
         .onAppear {
             checkPermissionStatus()
@@ -278,8 +217,8 @@ struct NotificationsSettingsView: View {
             }
         }
         .alert("Open Settings", isPresented: $showingPermissionAlert) {
-            Button("Cancel", role: .cancel) {}
-            Button("Settings") {
+            Button("Cancel", role: .cancel) { HapticManager.shared.light(); }
+            Button("Settings") { HapticManager.shared.light(); 
                 if let url = URL(string: UIApplication.openSettingsURLString) {
                     UIApplication.shared.open(url)
                 }
@@ -296,11 +235,11 @@ struct NotificationsSettingsView: View {
     private var permissionIcon: String {
         switch permissionStatus {
         case .authorized, .provisional:
-            return "checkmark.circle.fill"
+            return "bell.fill"
         case .denied:
-            return "xmark.circle.fill"
+            return "bell.slash.fill"
         default:
-            return "questionmark.circle.fill"
+            return "bell.badge.fill"
         }
     }
     

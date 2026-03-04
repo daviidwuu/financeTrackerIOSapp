@@ -2,7 +2,6 @@ import SwiftUI
 
 struct AddRecurringTransactionView: View {
     @Environment(\.dismiss) var dismiss
-    @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var appState: AppState
     
     var recurringToEdit: FirestoreModels.RecurringTransaction?
@@ -39,7 +38,7 @@ struct AddRecurringTransactionView: View {
     var body: some View {
         ZStack {
             // Background
-            (colorScheme == .dark ? Color.black : Color.white)
+            Color.backgroundPrimary
                 .ignoresSafeArea()
             
             VStack(spacing: 20) {
@@ -102,7 +101,7 @@ struct AddRecurringTransactionView: View {
     
     private var stickyActionBar: some View {
         VStack {
-            Button(action: {
+            Button(action: { HapticManager.shared.light(); 
                 // Sticky Logic: Enforce Large Detent
                 presentationDetent = .large
                 
@@ -118,7 +117,7 @@ struct AddRecurringTransactionView: View {
                 Text(currentStep < 4 ? "Next" : (recurringToEdit != nil ? "Update Recurring" : "Save Recurring"))
                     .font(.headline)
                     .fontWeight(.bold)
-                    .foregroundColor(isStepValid ? (colorScheme == .dark ? .black : .white) : .secondary)
+                    .foregroundColor(isStepValid ? Color.backgroundPrimary : .secondary)
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(isStepValid ? Color.primary : Color(UIColor.systemGray5))
@@ -140,6 +139,7 @@ struct AddRecurringTransactionView: View {
         let newRecurring = RecurringTransactionFormData(
             name: category.category,
             amount: amountValue,
+            categoryId: category.id,
             icon: category.icon,
             color: Color(hex: category.colorHex),
             frequency: frequency,
@@ -213,7 +213,7 @@ struct AddRecurringTransactionView: View {
                 VStack(spacing: 12) {
                     // 1. Featured Income Card (if available)
                     if let incomeBudget = budgetRepo.budgets.first(where: { $0.category.lowercased() == "income" }) {
-                        Button(action: {
+                        Button(action: { HapticManager.shared.light(); 
                             selectedCategory = incomeBudget
                             HapticManager.shared.light()
                         }) {
@@ -252,10 +252,10 @@ struct AddRecurringTransactionView: View {
                     
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: 12) {
                         ForEach(budgetRepo.budgets.filter { $0.category.lowercased() != "income" }) { budget in
-                            let remaining = budget.remainingAmount(transactions: transactionRepo.transactions)
+                            let remaining = budget.remainingAmount(transactions: transactionRepo.allTransactions)
                             let progress = min(max(1.0 - (remaining / budget.totalAmount), 0.0), 1.0)
                             
-                            Button(action: {
+                            Button(action: { HapticManager.shared.light(); 
                                 selectedCategory = budget
                                 HapticManager.shared.light()
                             }) {
@@ -280,7 +280,7 @@ struct AddRecurringTransactionView: View {
                                         
                                         VStack(alignment: .trailing, spacing: 2) {
                                             if budget.type != "income" {
-                                                Text("$\(Int(remaining))")
+                                                Text("\(CurrencyManager.shared.mainCurrency) \(Int(remaining))")
                                                     .font(.caption2)
                                                     .foregroundColor(.secondary)
                                             }
@@ -304,7 +304,7 @@ struct AddRecurringTransactionView: View {
                                     }
                                     .frame(height: 3)
                                 }
-                                .background(selectedCategory?.category == budget.category ? Color(hex: budget.colorHex).opacity(0.1) : Color(UIColor.secondarySystemBackground))
+                                .background(selectedCategory?.category == budget.category ? Color(hex: budget.colorHex).opacity(0.1) : Color.cardBackground)
                                 .cornerRadius(AppRadius.small)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: AppRadius.small)

@@ -16,8 +16,11 @@ struct UndoToast: View {
                 .foregroundColor(.primary)
             
             Spacer()
-            
-            Button(action: onUndo) {
+
+            Button(action: {
+                HapticManager.shared.light()
+                onUndo()
+            }) {
                 Text("Undo")
                     .font(.subheadline)
                     .fontWeight(.bold)
@@ -71,7 +74,7 @@ struct BalanceCard: View {
             }
         }
         .padding(AppSpacing.element)
-        .background(isSelf ? Color(UIColor.systemBackground) : Color(UIColor.secondarySystemBackground))
+        .background(isSelf ? Color(UIColor.systemBackground) : Color.cardBackground)
         .cornerRadius(AppRadius.medium)
         .overlay(
             RoundedRectangle(cornerRadius: AppRadius.medium)

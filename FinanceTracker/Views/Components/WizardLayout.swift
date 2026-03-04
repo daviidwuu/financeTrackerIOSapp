@@ -16,7 +16,7 @@ struct WizardLayout<Content: View, ActionBar: View>: View {
     var body: some View {
         ZStack {
             // Background
-            (colorScheme == .dark ? Color.black : Color.white)
+            Color.backgroundPrimary
                 .ignoresSafeArea()
             
             VStack(spacing: 20) {

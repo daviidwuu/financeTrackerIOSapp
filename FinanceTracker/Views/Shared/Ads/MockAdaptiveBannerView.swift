@@ -60,7 +60,7 @@ struct MockAdaptiveBannerView: View {
                 .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
         )
         .contentShape(Rectangle())
-        .onTapGesture {
+        .onTapGesture { HapticManager.shared.light(); 
             // Placeholder: Do nothing for now
         }
     }

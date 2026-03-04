@@ -11,7 +11,7 @@ struct AllTransactionsView: View {
     
     @State private var searchText: String = ""
     @State private var selectedCategory: String? = nil
-    @State private var selectedMonth: Date = Date()
+    @State private var selectedMonth: Date? = Date()
     @State private var selectedDate: Date? = nil // Specific day filter
     @State private var selectedType: String = "All" // "All", "Income", "Expense"
     @State private var sortBy: String = "Date" // "Date", "Amount", "Category"
@@ -37,31 +37,45 @@ struct AllTransactionsView: View {
     }
     
     var filteredTransactions: [FirestoreModels.TransactionModel] {
-        transactionRepo.transactions.filter { transaction in
-            // Month filter is now handled by Repository, but we keep this check for consistency
-            // in case repo returns data from a transition period or user changes filter rapidly.
-            let matchesMonth: Bool
+        // Use calendarTransactions when a specific month is selected,
+        // otherwise use the main paginated transactions feed
+        // (but use allTransactions when searching to avoid missing older results)
+        let sourceTransactions: [FirestoreModels.TransactionModel]
+        if selectedMonth != nil {
+            sourceTransactions = transactionRepo.calendarTransactions
+        } else if !searchText.isEmpty {
+            // When searching in "All Time", use the full unpaginated history
+            sourceTransactions = transactionRepo.allTransactions
+        } else {
+            sourceTransactions = transactionRepo.transactions
+        }
+        
+        return sourceTransactions.filter { transaction in
+            // Day filter (within the selected month)
+            let matchesDay: Bool
             if let date = selectedDate {
-                matchesMonth = Calendar.current.isDate(transaction.date, inSameDayAs: date)
+                matchesDay = Calendar.current.isDate(transaction.date, inSameDayAs: date)
             } else {
-                matchesMonth = Calendar.current.isDate(transaction.date, equalTo: selectedMonth, toGranularity: .month)
+                matchesDay = true
             }
             
             // Category filter
+            let cName = appState.budgetRepo.getCategory(for: transaction.categoryId ?? "")?.category ?? "Uncategorized"
             let matchesCategory = selectedCategory == nil || 
-                                 transaction.subtitle == selectedCategory
+                                 cName == selectedCategory
             
             // Type filter
             let matchesType = selectedType == "All" ||
                             (selectedType == "Income" && transaction.type == "income") ||
                             (selectedType == "Expense" && transaction.type == "expense")
             
-            // Search filter
+            // Search filter (title, note, or category name)
             let matchesSearch = searchText.isEmpty || 
                                transaction.title.localizedCaseInsensitiveContains(searchText) ||
-                               (transaction.note?.localizedCaseInsensitiveContains(searchText) ?? false)
+                               (transaction.note?.localizedCaseInsensitiveContains(searchText) ?? false) ||
+                               cName.localizedCaseInsensitiveContains(searchText)
             
-            return matchesMonth && matchesCategory && matchesType && matchesSearch
+            return matchesDay && matchesCategory && matchesType && matchesSearch
         }
     }
     
@@ -71,7 +85,9 @@ struct AllTransactionsView: View {
             case "Amount":
                 return sortAscending ? abs(t1.amount) < abs(t2.amount) : abs(t1.amount) > abs(t2.amount)
             case "Category":
-                return sortAscending ? t1.subtitle ?? "" < t2.subtitle ?? "" : t1.subtitle ?? "" > t2.subtitle ?? ""
+                let c1 = appState.budgetRepo.getCategory(for: t1.categoryId ?? "")?.category ?? "Uncategorized"
+                let c2 = appState.budgetRepo.getCategory(for: t2.categoryId ?? "")?.category ?? "Uncategorized"
+                return sortAscending ? c1 < c2 : c1 > c2
             default: // Date
                 return sortAscending ? t1.date < t2.date : t1.date > t2.date
             }
@@ -82,23 +98,35 @@ struct AllTransactionsView: View {
         selectedCategory != nil || selectedType != "All" || !searchText.isEmpty || selectedDate != nil
     }
     
+    /// FIX #7: Separate income and expense stats to avoid meaningless mixed totals.
     var transactionStats: (count: Int, total: Double, average: Double) {
         let count = filteredTransactions.count
-        let total = filteredTransactions.reduce(0) { $0 + $1.amount }
-        let average = count > 0 ? total / Double(count) : 0
+        let expenses = filteredTransactions.filter { $0.amount < 0 }
+        let incomes = filteredTransactions.filter { $0.amount >= 0 }
+
+        // Show expense stats by default (most useful), fall back to income if no expenses
+        let relevantAmounts = expenses.isEmpty ? incomes.map { $0.amount } : expenses.map { abs($0.amount) }
+        let total = DecimalPrecision.sum(relevantAmounts)
+        let average = relevantAmounts.isEmpty ? 0.0 : DecimalPrecision.divide(total, Double(relevantAmounts.count))
         return (count, total, average)
     }
     
     var body: some View {
-        ZStack(alignment: .top) {
+        ZStack {
             // Background
-            (colorScheme == .dark ? Color.black : Color(UIColor.systemGroupedBackground))
+            Color.backgroundPrimary
                 .ignoresSafeArea()
-            
+
             // Main Content
              List {
-                 // Spacer for fixed Navigation Bar
-                 Color.clear.frame(height: 60)
+                 // Scroll offset tracker + spacer for fixed header
+                 ScrollOffsetTracker()
+                     .listRowSeparator(.hidden)
+                     .listRowBackground(Color.clear)
+                     .listRowInsets(EdgeInsets())
+
+                 Color.clear.frame(height: 0)
+                     .listRowInsets(EdgeInsets())
                      .listRowSeparator(.hidden)
                      .listRowBackground(Color.clear)
                  
@@ -112,14 +140,14 @@ struct AllTransactionsView: View {
                         TextField("Search transactions...", text: $searchText)
                             .textFieldStyle(.plain)
                         if !searchText.isEmpty {
-                            Button(action: { searchText = "" }) {
+                            Button(action: { HapticManager.shared.light();  searchText = "" }) {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundColor(.secondary)
                             }
                         }
                     }
                     .padding(12)
-                    .background(Color(UIColor.secondarySystemGroupedBackground))
+                    .background(Color.cardBackground)
                     .clipShape(Capsule())
                     .padding(.horizontal, AppSpacing.margin)
                     
@@ -137,14 +165,14 @@ struct AllTransactionsView: View {
                         HStack(spacing: 8) {
                             // Category Filter
                             Menu {
-                                Button("All Categories") {
+                                Button("All Categories") { HapticManager.shared.light(); 
                                     selectedCategory = nil
                                 }
                                 
                                 Divider()
                                 
                                 ForEach(budgetRepo.budgets.sorted(by: { $0.category < $1.category })) { budget in
-                                    Button(action: {
+                                    Button(action: { HapticManager.shared.light(); 
                                         selectedCategory = budget.category
                                     }) {
                                         HStack {
@@ -170,20 +198,34 @@ struct AllTransactionsView: View {
                                 .foregroundColor(.primary)
                                 .padding(.horizontal, 12)
                                 .frame(height: 36)
-                                .background(Color(UIColor.secondarySystemGroupedBackground))
+                                .background(Color.cardBackground)
                                 .cornerRadius(AppRadius.small)
                             }
                             
                             // Month Filter
                             Menu {
+                                Button(action: { HapticManager.shared.light(); 
+                                    selectedMonth = nil
+                                }) {
+                                    HStack {
+                                        Text("All Time")
+                                        if selectedMonth == nil {
+                                            Spacer()
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                }
+
+                                Divider()
+
                                 ForEach(0..<12, id: \.self) { offset in
                                     let date = Calendar.current.date(byAdding: .month, value: -offset, to: Date())!
-                                    Button(action: {
+                                    Button(action: { HapticManager.shared.light(); 
                                         selectedMonth = date
                                     }) {
                                         HStack {
                                             Text(monthYearString(from: date))
-                                            if Calendar.current.isDate(selectedMonth, equalTo: date, toGranularity: .month) {
+                                            if let selected = selectedMonth, Calendar.current.isDate(selected, equalTo: date, toGranularity: .month) {
                                                 Spacer()
                                                 Image(systemName: "checkmark")
                                             }
@@ -194,7 +236,7 @@ struct AllTransactionsView: View {
                                 HStack(spacing: 6) {
                                     Image(systemName: "calendar")
                                         .font(.system(size: 14))
-                                    Text(monthYearString(from: selectedMonth))
+                                    Text(selectedMonth == nil ? "All Time" : monthYearString(from: selectedMonth!))
                                         .font(.subheadline)
                                     Image(systemName: "chevron.down")
                                         .font(.system(size: 10))
@@ -202,28 +244,36 @@ struct AllTransactionsView: View {
                                 .foregroundColor(.primary)
                                 .padding(.horizontal, 12)
                                 .frame(height: 36)
-                                .background(Color(UIColor.secondarySystemGroupedBackground))
+                                .background(Color.cardBackground)
                                 .cornerRadius(AppRadius.small)
                             }
                             
                             // Date Filter (Specific Day)
                             if selectedDate == nil {
                                 Menu {
-                                    Button("Today") {
-                                        selectedDate = Date()
+                                    if selectedMonth == nil || Calendar.current.isDate(selectedMonth!, equalTo: Date(), toGranularity: .month) {
+                                        Button("Today") { HapticManager.shared.light(); 
+                                            selectedDate = Date()
+                                        }
+                                        Button("Yesterday") { HapticManager.shared.light(); 
+                                            selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: Date())
+                                        }
+                                        Divider()
                                     }
-                                    Button("Yesterday") {
-                                        selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: Date())
-                                    }
-                                    Divider()
-                                    // Pick from current month
-                                    ForEach(0..<31, id: \.self) { offset in
-                                        if let date = Calendar.current.date(byAdding: .day, value: -offset, to: Date()),
-                                           Calendar.current.isDate(date, equalTo: selectedMonth, toGranularity: .month) {
-                                            Button(action: {
-                                                selectedDate = date
-                                            }) {
-                                                Text(date.formatted(date: .abbreviated, time: .omitted))
+                                    
+                                    // Pick from relevant month
+                                    let baseDate = selectedMonth ?? Date()
+                                    let calendar = Calendar.current
+                                    if let range = calendar.range(of: .day, in: .month, for: baseDate) {
+                                        let days = Array(range.reversed())
+                                        ForEach(days, id: \.self) { day in
+                                            if let date = calendar.date(bySetting: .day, value: day, of: baseDate),
+                                               calendar.startOfDay(for: date) <= calendar.startOfDay(for: Date()) {
+                                                Button(action: { HapticManager.shared.light(); 
+                                                    selectedDate = calendar.startOfDay(for: date)
+                                                }) {
+                                                    Text(date.formatted(date: .abbreviated, time: .omitted))
+                                                }
                                             }
                                         }
                                     }
@@ -232,7 +282,7 @@ struct AllTransactionsView: View {
                                         .font(.system(size: 16))
                                         .foregroundColor(.primary)
                                         .frame(width: 36, height: 36)
-                                        .background(Color(UIColor.secondarySystemGroupedBackground))
+                                        .background(Color.cardBackground)
                                         .cornerRadius(AppRadius.small)
                                 }
                             }
@@ -244,31 +294,31 @@ struct AllTransactionsView: View {
                                         .font(.system(size: 16))
                                         .foregroundColor(.primary)
                                         .frame(width: 36, height: 36)
-                                        .background(Color(UIColor.secondarySystemGroupedBackground))
+                                        .background(Color.cardBackground)
                                         .cornerRadius(AppRadius.small)
                                 }
                             }
                             
                             // Sort Menu
                             Menu {
-                                Button(action: { sortBy = "Date"; sortAscending = false }) {
+                                Button(action: { HapticManager.shared.light();  sortBy = "Date"; sortAscending = false }) {
                                     Label("Newest First", systemImage: sortBy == "Date" && !sortAscending ? "checkmark" : "")
                                 }
-                                Button(action: { sortBy = "Date"; sortAscending = true }) {
+                                Button(action: { HapticManager.shared.light();  sortBy = "Date"; sortAscending = true }) {
                                     Label("Oldest First", systemImage: sortBy == "Date" && sortAscending ? "checkmark" : "")
                                 }
                                 Divider()
-                                Button(action: { sortBy = "Amount"; sortAscending = false }) {
+                                Button(action: { HapticManager.shared.light();  sortBy = "Amount"; sortAscending = false }) {
                                     Label("Highest Amount", systemImage: sortBy == "Amount" && !sortAscending ? "checkmark" : "")
                                 }
-                                Button(action: { sortBy = "Amount"; sortAscending = true }) {
+                                Button(action: { HapticManager.shared.light();  sortBy = "Amount"; sortAscending = true }) {
                                     Label("Lowest Amount", systemImage: sortBy == "Amount" && sortAscending ? "checkmark" : "")
                                 }
                                 Divider()
-                                Button(action: { sortBy = "Category"; sortAscending = true }) {
+                                Button(action: { HapticManager.shared.light();  sortBy = "Category"; sortAscending = true }) {
                                     Label("Category A-Z", systemImage: sortBy == "Category" && sortAscending ? "checkmark" : "")
                                 }
-                                Button(action: { sortBy = "Category"; sortAscending = false }) {
+                                Button(action: { HapticManager.shared.light();  sortBy = "Category"; sortAscending = false }) {
                                     Label("Category Z-A", systemImage: sortBy == "Category" && !sortAscending ? "checkmark" : "")
                                 }
                             } label: {
@@ -276,7 +326,7 @@ struct AllTransactionsView: View {
                                     .font(.system(size: 16))
                                     .foregroundColor(.primary)
                                     .frame(width: 36, height: 36)
-                                    .background(Color(UIColor.secondarySystemGroupedBackground))
+                                    .background(Color.cardBackground)
                                     .cornerRadius(AppRadius.small)
                             }
                         }
@@ -343,9 +393,10 @@ struct AllTransactionsView: View {
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
                 } else {
-                    ForEach(sortedTransactions) { transaction in
+                    ForEach(sortedTransactions, id: \.id) { transaction in
                         TransactionRow(transaction: transaction)
-                            .background(Color(UIColor.secondarySystemGroupedBackground))
+                            .id(transaction.id)
+                            .background(Color.cardBackground)
                             .cornerRadius(AppRadius.medium)
                             .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
                             .listRowSeparator(.hidden)
@@ -361,7 +412,7 @@ struct AllTransactionsView: View {
                                 .tint(.red)
                             }
                             .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                if !transaction.isReimbursementIncome {
+                                if !transaction.isReimbursementIncome(categories: budgetRepo.budgets) {
                                     Button {
                                         HapticManager.shared.medium()
                                         transactionToEdit = transaction
@@ -376,48 +427,43 @@ struct AllTransactionsView: View {
                                 selectedTransaction = transaction
                             }
                     }
+
+                    // Load More button (only in "All Time" paginated mode)
+                    if selectedMonth == nil && transactionRepo.canLoadMore {
+                        Button(action: { HapticManager.shared.light(); 
+                            transactionRepo.loadMore()
+                        }) {
+                            HStack {
+                                Spacer()
+                                Text("Load More")
+                                    .fontWeight(.medium)
+                                Spacer()
+                            }
+                            .padding()
+                            .background(Color.cardBackground)
+                            .cornerRadius(AppRadius.medium)
+                        }
+                        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                    }
                 }
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
-            // Fetch transactions when month changes
+            .padding(.top, -20)
+            // Use calendarTransactions for month filtering (does NOT touch main transactions)
             .onChange(of: selectedMonth) { _, newMonth in
-                transactionRepo.startListening(userId: appState.currentUserId, month: newMonth)
+                if let month = newMonth {
+                    transactionRepo.setCalendarMonth(month)
+                }
             }
             .onAppear {
-                // Initial fetch for the selected month
-                transactionRepo.startListening(userId: appState.currentUserId, month: selectedMonth)
-            }
-            .onDisappear {
-                // Reset to default (latest 50) when leaving this view
-                transactionRepo.startListening(userId: appState.currentUserId, month: nil, showLoading: false)
-            }
-            
-            // Fixed Navigation Bar
-            HStack {
-                Button(action: { dismiss() }) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
-                        .frame(width: 44, height: 44)
-                        .background((colorScheme == .dark ? Color.white : Color.black).opacity(0.05))
-                        .clipShape(Circle())
+                // Set calendar month for initial fetch if a month is selected
+                if let month = selectedMonth {
+                    transactionRepo.setCalendarMonth(month)
                 }
-                
-                Spacer()
-                
-                Text("Transactions")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
-                
-                Spacer()
-                
-                // Placeholder to balance layout
-                Color.clear.frame(width: 44, height: 44)
             }
-            .padding(.horizontal, AppSpacing.margin + AppSpacing.compact)
-            .padding(.top, 16)
             
             .errorBanner(errorState)
             .undoableBanner(undoState)
@@ -435,18 +481,19 @@ struct AllTransactionsView: View {
                 })
             }
             .alert("Delete Transaction", isPresented: $showDeleteConfirmation) {
-                Button("Delete", role: .destructive) {
+                Button("Delete", role: .destructive) { HapticManager.shared.light(); 
                     if let tx = transactionToDelete {
                         deleteTransaction(tx)
                     }
                 }
-                Button("Cancel", role: .cancel) { 
+                Button("Cancel", role: .cancel) { HapticManager.shared.light();  
                     transactionToDelete = nil
                 }
             } message: {
                 Text("Are you sure you want to delete this transaction? This action cannot be undone.")
             }
         }
+        .overlayHeader(.navigation(title: "Transactions", onBack: { dismiss() }))
     }
     
     func monthYearString(from date: Date) -> String {
@@ -461,13 +508,14 @@ struct AllTransactionsView: View {
                 let amount = CurrencyInput.parseOrZero(transaction.amount)
                 var updatedTransaction = entity
                 updatedTransaction.title = transaction.title
-                updatedTransaction.subtitle = transaction.subtitle
+                updatedTransaction.categoryId = transaction.categoryId
                 updatedTransaction.amount = amount
                 updatedTransaction.date = transaction.date
-                updatedTransaction.icon = transaction.icon
-                updatedTransaction.colorHex = transaction.color.toHex() ?? "#000000"
                 updatedTransaction.note = transaction.notes
                 updatedTransaction.type = amount < 0 ? "expense" : "income"
+                updatedTransaction.latitude = transaction.latitude
+                updatedTransaction.longitude = transaction.longitude
+                updatedTransaction.locationName = transaction.locationName
                 
                 try await transactionRepo.updateTransaction(updatedTransaction)
                 
@@ -498,7 +546,7 @@ struct AllTransactionsView: View {
     
     private func checkAndDelete(_ transaction: FirestoreModels.TransactionModel) {
         // 1. Check if it's a "Payment Received" transaction linked to a split
-        if transaction.type == "income", let requestId = transaction.source, !requestId.isEmpty {
+        if transaction.type == "income", let requestId = transaction.source, !requestId.isEmpty, requestId != "recurring", !requestId.hasPrefix("recurring_") {
             // It's linked. Check status.
             Task {
                 do {
@@ -580,7 +628,8 @@ struct AllTransactionsView: View {
             let date = formatter.string(from: transaction.date)
             // Escape commas and newlines
             let title = "\"" + transaction.title.replacingOccurrences(of: "\"", with: "\"\"") + "\""
-            let category = "\"" + (transaction.subtitle ?? "Uncategorized").replacingOccurrences(of: "\"", with: "\"\"") + "\""
+            let cName = appState.budgetRepo.getCategory(for: transaction.categoryId ?? "")?.category ?? "Uncategorized"
+            let category = "\"" + cName.replacingOccurrences(of: "\"", with: "\"\"") + "\""
             let amount = String(format: "%.2f", transaction.amount)
             let type = transaction.type
             let note = "\"" + (transaction.note ?? "").replacingOccurrences(of: "\"", with: "\"\"") + "\""
@@ -611,7 +660,7 @@ struct FilterChip: View {
         .foregroundColor(.primary)
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .background(Color.cardBackground)
         .cornerRadius(AppRadius.medium)
     }
 }
@@ -635,7 +684,7 @@ struct StatCard: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
-        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .background(Color.cardBackground)
         .cornerRadius(AppRadius.small)
     }
 }

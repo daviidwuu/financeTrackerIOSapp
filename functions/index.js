@@ -41,3 +41,5 @@ exports.v2_onUserUpdated = triggers.v2_onUserUpdated;
 exports.v2_onGroupUpdated = triggers.v2_onGroupUpdated;
 exports.v2_onGroupDeleted = triggers.v2_onGroupDeleted; // FIX 2.5: Subcollection cleanup
 
+// Triggers — Budget Aggregation (Phase 3: Server-side spent calculation)
+exports.v2_onTransactionWritten = triggers.v2_onTransactionWritten;

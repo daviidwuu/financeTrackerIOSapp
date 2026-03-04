@@ -86,7 +86,12 @@ struct ContentView: View {
                 if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
                    let queryItems = components.queryItems {
                     if let category = queryItems.first(where: { $0.name == "category" })?.value {
-                        deepLinkCategory = category
+                        // FIX #28: Validate category exists before setting it
+                        if budgetRepo.budgets.contains(where: { $0.category == category }) {
+                            deepLinkCategory = category
+                        } else {
+                            DebugLogger.log("Deep link category '\(category)' not found — opening without pre-selection")
+                        }
                     }
                 }
                 showAddTransaction = true
@@ -185,13 +190,11 @@ struct ContentView: View {
                 let firestoreTransaction = FirestoreModels.TransactionModel(
                     userId: appState.currentUserId, // Use global user ID
                     title: transaction.title,
-                    subtitle: transaction.subtitle,
+                    categoryId: transaction.categoryId,
                     amount: amount,
                     date: transaction.date,
                     type: amount < 0 ? "expense" : "income",
                     createdAt: Date(),
-                    icon: transaction.icon,
-                    colorHex: transaction.color.toHex() ?? "#000000",
                     note: transaction.notes,
                     
                     // Travel / Currency Support
@@ -246,7 +249,7 @@ struct ContentView: View {
         
         // Find matching budget
         if let budget = budgetRepo.budgets.first(where: { $0.category == category }) {
-            let spent = budget.spentAmount(transactions: transactionRepo.transactions)
+            let spent = budget.spentAmount(transactions: transactionRepo.allTransactions)
             let totalLimit = budget.totalAmount
             
             // Validate totalLimit to avoid division by zero crash
@@ -276,7 +279,8 @@ extension Date {
     func startOfMonth() -> Date {
         let calendar = Calendar.current
         let components = calendar.dateComponents([.year, .month], from: self)
-        return calendar.date(from: components)!
+        // FIX #21: Remove force unwrap to prevent crash
+        return calendar.date(from: components) ?? self
     }
 }
 

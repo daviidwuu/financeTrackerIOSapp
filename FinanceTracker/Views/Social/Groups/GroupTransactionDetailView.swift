@@ -18,6 +18,36 @@ struct GroupTransactionDetailView: View {
     @State private var showingEditWizard = false
     @State private var selectedSplit: FirestoreModels.SplitRequest?
     
+    // ✅ FIX: Resolve category from multiple sources
+    // 1. GroupTransaction's stored categoryId (try current user's budgets first)
+    // 2. Original transaction's categoryId (payer's transaction)
+    // 3. GroupTransaction's stored category name (fallback)
+    private var resolvedCategory: FirestoreModels.CategoryBudget? {
+        // Try resolving from GroupTransaction's categoryId against current user's budgets
+        if let catId = transaction.categoryId {
+            if let cat = appState.budgetRepo.getCategory(for: catId) {
+                return cat
+            }
+        }
+        // Fallback: resolve from payer's original transaction categoryId
+        if let origTx = originalTransaction, let catId = origTx.categoryId {
+            return appState.budgetRepo.getCategory(for: catId)
+        }
+        return nil
+    }
+
+    private var categoryIcon: String {
+        resolvedCategory?.icon ?? transaction.icon ?? "cart.fill"
+    }
+
+    private var categoryColor: String {
+        resolvedCategory?.colorHex ?? transaction.colorHex ?? "#007AFF"
+    }
+
+    private var categoryName: String {
+        resolvedCategory?.category ?? transaction.category ?? "Uncategorized"
+    }
+    
     var body: some View {
         ZStack {
             Color.backgroundPrimary.ignoresSafeArea()
@@ -43,13 +73,13 @@ struct GroupTransactionDetailView: View {
                         VStack(spacing: 8) {
                             ZStack {
                                 Circle()
-                                    .fill(Color(hex: transaction.colorHex ?? "#007AFF").opacity(0.15))
+                                    .fill(Color(hex: categoryColor).opacity(0.15))
                                     .frame(width: 80, height: 80)
-                                    .shadow(color: Color(hex: transaction.colorHex ?? "#007AFF").opacity(0.2), radius: 15, y: 8)
+                                    .shadow(color: Color(hex: categoryColor).opacity(0.2), radius: 15, y: 8)
                                 
-                                Image(systemName: transaction.type == "settlement" ? "banknote.fill" : (transaction.icon ?? "cart.fill"))
+                                Image(systemName: transaction.type == "settlement" ? "banknote.fill" : categoryIcon)
                                     .font(.system(size: 32, weight: .bold))
-                                    .foregroundColor(Color(hex: transaction.colorHex ?? "#007AFF"))
+                                    .foregroundColor(Color(hex: categoryColor))
                             }
                             
                             Text(transaction.note?.isEmpty == false ? transaction.note! : transaction.title)
@@ -58,7 +88,7 @@ struct GroupTransactionDetailView: View {
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal)
                             
-                            Text(transaction.category ?? "Uncategorized")
+                            Text(categoryName)
                                 .font(AppTypography.body)
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
@@ -72,7 +102,7 @@ struct GroupTransactionDetailView: View {
                                 Text("Paid by")
                                     .foregroundColor(.secondary)
                                 HStack(spacing: 8) {
-                                    Text(transaction.payerId == appState.currentUserId ? "You" : transaction.payerName)
+                                    Text(appState.userResolver.resolveName(for: transaction.payerId, fallbackName: transaction.payerName))
                                         .fontWeight(.semibold)
                                         .foregroundColor(.primary)
                                     
@@ -86,7 +116,7 @@ struct GroupTransactionDetailView: View {
                             HStack(spacing: 4) {
                                 Text(transaction.date.formatted(date: .long, time: .shortened))
                                 if let history = transaction.editHistory, !history.isEmpty {
-                                    Button {
+                                    Button { HapticManager.shared.light(); 
                                         showHistory = true
                                     } label: {
                                         Text("(Edited)")
@@ -118,7 +148,7 @@ struct GroupTransactionDetailView: View {
                                     Spacer()
                                 }
                                 .padding()
-                                .background(Color(UIColor.secondarySystemBackground))
+                                .background(Color.cardBackground)
                                 .cornerRadius(AppRadius.medium)
                             } else if splits.isEmpty {
                                 HStack {
@@ -129,12 +159,12 @@ struct GroupTransactionDetailView: View {
                                     Spacer()
                                 }
                                 .padding()
-                                .background(Color(UIColor.secondarySystemBackground))
+                                .background(Color.cardBackground)
                                 .cornerRadius(AppRadius.medium)
                             } else {
                                 VStack(spacing: 0) {
                                     ForEach(splits) { split in
-                                        Button(action: {
+                                        Button(action: { HapticManager.shared.light(); 
                                             if split.toUid == appState.currentUserId || transaction.payerId == appState.currentUserId {
                                                 selectedSplit = split
                                             }
@@ -145,14 +175,14 @@ struct GroupTransactionDetailView: View {
                                                     Circle()
                                                         .fill(Color.primary.opacity(0.05))
                                                         .frame(width: 36, height: 36)
-                                                    Text(String((split.toName ?? "").prefix(1)).uppercased())
+                                                    Text(String((appState.userResolver.resolveName(for: split.toUid, fallbackName: split.toName)).prefix(1)).uppercased())
                                                         .font(.system(size: 14, weight: .bold))
                                                         .foregroundColor(.primary)
                                                 }
                                                 
                                                 VStack(alignment: .leading, spacing: 2) {
                                                     HStack(spacing: 8) {
-                                                        Text(split.toName ?? "Friend")
+                                                        Text(appState.userResolver.resolveName(for: split.toUid, fallbackName: split.toName))
                                                             .font(.body)
                                                             .fontWeight(.medium)
                                                             .foregroundColor(.primary)
@@ -181,7 +211,7 @@ struct GroupTransactionDetailView: View {
                                                 
                                                 // Inline Paid Toggle
                                                 if transaction.payerId == appState.currentUserId {
-                                                    Button(action: { toggleSplitPayment(split) }) {
+                                                    Button(action: { HapticManager.shared.light();  toggleSplitPayment(split) }) {
                                                         Image(systemName: split.status == .paid ? "checkmark.circle.fill" : "circle")
                                                             .font(.title3)
                                                             .foregroundColor(split.status == .paid ? .green : .secondary.opacity(0.3))
@@ -189,7 +219,7 @@ struct GroupTransactionDetailView: View {
                                                     
                                                 } else if split.toUid == appState.currentUserId {
                                                      // Current User's Split (Friend View)
-                                                    Button(action: { selectedSplit = split }) {
+                                                    Button(action: { HapticManager.shared.light();  selectedSplit = split }) {
                                                         Image(systemName: "chevron.right")
                                                             .font(.caption)
                                                             .foregroundColor(.secondary)
@@ -227,7 +257,7 @@ struct GroupTransactionDetailView: View {
                                         .background(Color.primary.opacity(0.03))
                                     }
                                 }
-                                .background(Color(UIColor.secondarySystemBackground))
+                                .background(Color.cardBackground)
                                 .cornerRadius(AppRadius.medium)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: AppRadius.medium)
@@ -257,7 +287,7 @@ struct GroupTransactionDetailView: View {
                                     .frame(height: 140)
                                     .overlay(
                                         Color.black.opacity(0.001)
-                                            .onTapGesture { showFullMap = true }
+                                            .onTapGesture { HapticManager.shared.light();  showFullMap = true }
                                     )
                                     
                                     Divider()
@@ -288,7 +318,8 @@ struct GroupTransactionDetailView: View {
                                 } else if let originalAmount = transaction.originalAmount, let rate = transaction.exchangeRate {
                                     // Fallback using data from GroupTransaction
                                     Divider().padding(.leading, 52)
-                                    TransactionDetailRow(icon: "banknote", title: "Original Amount", value: String(format: "%.2f (Foreign)", originalAmount), color: .blue)
+                                    let foreignCurrency = transaction.currencyCode ?? "(Foreign)"
+                                    TransactionDetailRow(icon: "banknote", title: "Original Amount", value: String(format: "%.2f %@", originalAmount, foreignCurrency), color: .blue)
                                      
                                     Divider().padding(.leading, 52)
                                     TransactionDetailRow(icon: "arrow.triangle.2.circlepath", title: "Exchange Rate", value: String(format: "Rate: %.2f", rate), color: .orange)
@@ -302,7 +333,7 @@ struct GroupTransactionDetailView: View {
                                 Divider().padding(.leading, 52)
                                 TransactionDetailRow(icon: "clock", title: "Created on", value: transaction.date.formatted(date: .omitted, time: .shortened), color: .secondary)
                             }
-                            .background(Color(UIColor.secondarySystemBackground))
+                            .background(Color.cardBackground)
                             .cornerRadius(AppRadius.medium)
                         }
                         .padding(.horizontal, AppSpacing.margin)
@@ -362,7 +393,7 @@ struct GroupTransactionDetailView: View {
                 .navigationTitle("Edit History")
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("Done") { showHistory = false }
+                        Button("Done") { HapticManager.shared.light();  showHistory = false }
                     }
                 }
             }
@@ -395,13 +426,6 @@ struct GroupTransactionDetailView: View {
                 updatedTx.currencyCode = currencyCode ?? updatedTx.currencyCode
                 updatedTx.exchangeRate = exchangeRate ?? updatedTx.exchangeRate
                 
-                // Update category if provided
-                if let cat = category {
-                    updatedTx.subtitle = cat.category
-                    updatedTx.icon = cat.icon
-                    updatedTx.colorHex = cat.colorHex
-                }
-                
                 // Save to backend
                 _ = try await SocialTransactionManager.shared.createSocialTransaction(
                     transaction: updatedTx,
@@ -418,7 +442,7 @@ struct GroupTransactionDetailView: View {
                     HapticManager.shared.success()
                 }
             } catch {
-                print("Error updating transaction: \(error)")
+                DebugLogger.log("Error updating transaction: \(error)")
                 HapticManager.shared.error()
             }
         }
@@ -446,7 +470,7 @@ struct GroupTransactionDetailView: View {
                 splits = try await repo.fetchSplitsForTransaction(transactionId: queryId, groupId: group?.id)
                 userPremiumRepo.prefetch(userIds: splits.map { $0.toUid })
             } catch {
-                print("Error loading splits: \(error)")
+                DebugLogger.log("Error loading splits: \(error)")
             }
             isLoading = false
         }
@@ -459,7 +483,7 @@ struct GroupTransactionDetailView: View {
             do {
                 originalTransaction = try await repo.fetchOriginalTransaction(userId: payerId, transactionId: originalId)
             } catch {
-                print("Error loading original transaction: \(error)")
+                DebugLogger.log("Error loading original transaction: \(error)")
             }
         }
     }
@@ -482,7 +506,7 @@ struct GroupTransactionDetailView: View {
             do {
                 try await SocialTransactionManager.shared.nudgeSplitRequest(request: split)
             } catch {
-                print("Error nudging user: \(error)")
+                DebugLogger.log("Error nudging user: \(error)")
                 // Revert if failed
                 if let index = splits.firstIndex(where: { $0.id == split.id }) {
                     splits[index].lastNudgedAt = originalDate
@@ -501,7 +525,7 @@ struct GroupTransactionDetailView: View {
             do {
                 let currentStatus = split.status
                 if currentStatus == .pending || currentStatus == .accepted || currentStatus == .blocked_by_group || currentStatus == .declined {
-                     try await SocialTransactionManager.shared.markSplitAsPaid(request: split, currentUserId: appState.currentUserId, currentUserName: appState.userName)
+                     _ = try await SocialTransactionManager.shared.markSplitAsPaid(request: split, currentUserId: appState.currentUserId, currentUserName: appState.userName)
                 } else if currentStatus == .paid {
                      try await SocialTransactionManager.shared.unmarkSplitAsPaid(request: split, currentUserId: appState.currentUserId)
                 }
@@ -509,7 +533,7 @@ struct GroupTransactionDetailView: View {
                 // Refresh to ensure sync
                 loadSplits()
             } catch {
-                print("Error toggling split payment: \(error)")
+                DebugLogger.log("Error toggling split payment: \(error)")
                 // Revert UI
                 await MainActor.run {
                     loadSplits()
