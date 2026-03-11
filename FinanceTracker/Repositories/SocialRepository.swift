@@ -22,6 +22,7 @@ class SocialRepository: ObservableObject {
         let name: String
         let points: Int
         let isPremium: Bool
+        let badgeType: PremiumBadgeType?
     }
 
     @Published var friendBalances: [String: Double] = [:] // Real-time balance
@@ -505,7 +506,8 @@ class SocialRepository: ObservableObject {
                         let name = data["name"] as? String ?? "Unknown"
                         let points = data["points"] as? Int ?? 0
                         let isPremium = data["isPremium"] as? Bool ?? false
-                        return LeaderboardEntry(id: doc.documentID, name: name, points: points, isPremium: isPremium)
+                        let badgeType = (data["badgeType"] as? String).flatMap { PremiumBadgeType(rawValue: $0) }
+                        return LeaderboardEntry(id: doc.documentID, name: name, points: points, isPremium: isPremium, badgeType: badgeType)
                     }
                     entries.append(contentsOf: chunkEntries)
                 } catch {

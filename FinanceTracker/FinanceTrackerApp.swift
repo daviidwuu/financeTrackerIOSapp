@@ -95,6 +95,8 @@ struct FinanceTrackerApp: App {
                 NotificationManager.shared.clearBadge()
                 // Check location for Travel Mode
                 LocationManager.shared.checkLocation()
+                // Sync theme to widgets
+                WidgetDataManager.shared.saveAppTheme(AppTheme(rawValue: premiumAppTheme) ?? .system)
             case .background:
                 // Schedule background refresh if enabled
                 NotificationManager.shared.scheduleDailySummary()

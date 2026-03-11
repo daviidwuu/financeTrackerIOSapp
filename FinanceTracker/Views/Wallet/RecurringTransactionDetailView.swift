@@ -231,7 +231,7 @@ struct RecurringTransactionDetailView: View {
         .onAppear {
             calculateMissedDates()
         }
-        .onChange(of: transactionRepo.transactions.count) { _, _ in
+        .onChange(of: transactionRepo.allTransactions.count) { _, _ in
             // Recalculate if transactions change (e.g., after logging a missed one)
             calculateMissedDates()
         }
@@ -251,7 +251,7 @@ struct RecurringTransactionDetailView: View {
         // Find missed dates using the helper function
         let dates = WalletLogic.calculateMissedOccurrences(
             recurring: transaction,
-            loggedTransactions: transactionRepo.transactions
+            loggedTransactions: transactionRepo.allTransactions
         )
         
         withAnimation {

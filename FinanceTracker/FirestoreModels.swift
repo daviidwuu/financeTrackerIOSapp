@@ -320,7 +320,8 @@ enum FirestoreModels {
         var userId: String
         var createdAt: Date
         var lastProcessedDate: Date? // For tracking auto-execution
-        
+        var source: String? // Identifies auto-created entries (e.g. "subscription")
+
         enum CodingKeys: String, CodingKey {
             case id
             case name
@@ -335,6 +336,7 @@ enum FirestoreModels {
             case userId
             case createdAt
             case lastProcessedDate
+            case source
         }
     }
 
@@ -373,7 +375,11 @@ enum FirestoreModels {
         }
     }
 
-    struct TransactionModel: Codable, Identifiable {
+    struct TransactionModel: Codable, Identifiable, Equatable {
+        static func == (lhs: TransactionModel, rhs: TransactionModel) -> Bool {
+            lhs.id == rhs.id
+        }
+
         @DocumentID var id: String?
         var userId: String
         var title: String
@@ -660,6 +666,7 @@ enum FirestoreModels {
         var username: String
         var isPremium: Bool? = false
         var avatarColor: String? // ✅ NEW: User's profile color (hex string)
+        var badgeType: String? // Premium badge style (king/pro/saver)
         var createdAt: Date
 
         // Gamification
@@ -675,6 +682,7 @@ enum FirestoreModels {
             case username
             case isPremium
             case avatarColor
+            case badgeType
             case createdAt
             case points
             case completedMissionIds

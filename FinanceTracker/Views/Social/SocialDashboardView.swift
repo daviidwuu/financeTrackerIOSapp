@@ -820,7 +820,7 @@ struct FriendRequestCard: View {
                         .foregroundColor(.primary)
 
                     if userPremiumRepo.isPremium(userId: request.fromUid) == true {
-                        PremiumBadge(size: .small)
+                        PremiumBadge(size: .small, overrideBadgeType: userPremiumRepo.badgeType(userId: request.fromUid))
                     }
                 }
 

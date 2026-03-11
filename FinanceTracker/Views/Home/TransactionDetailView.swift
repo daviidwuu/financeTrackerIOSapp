@@ -168,7 +168,7 @@ struct TransactionDetailView: View {
                                                             .foregroundColor(.primary)
                                                         
                                                         if let friendId = split.friendId, userPremiumRepo.isPremium(userId: friendId) == true {
-                                                            PremiumBadge(size: .small)
+                                                            PremiumBadge(size: .small, overrideBadgeType: userPremiumRepo.badgeType(userId: friendId))
                                                         }
                                                     }
                                                 }
@@ -387,6 +387,9 @@ struct TransactionDetailView: View {
         newModel.latitude = updatedTransaction.latitude
         newModel.longitude = updatedTransaction.longitude
         newModel.locationName = updatedTransaction.locationName
+        newModel.originalAmount = updatedTransaction.originalAmount
+        newModel.currencyCode = updatedTransaction.currencyCode
+        newModel.exchangeRate = updatedTransaction.exchangeRate
         
         // Generate Edit History
         var edits: [FirestoreModels.EditRecord] = []
@@ -556,10 +559,11 @@ struct TransactionDetailView: View {
         // reflects the new state immediately, without waiting for Firestore.
         if let index = transaction.splits?.firstIndex(where: { $0.id == split.id }) {
             let currentlyPaid = transaction.splits![index].isPaid
+            let isGuestSplit = transaction.splits![index].isGuest
             transaction.splits?[index].isPaid = !currentlyPaid
             // Mirror the expected post-toggle status string:
-            // paid → accepted (reverted), anything else → paid
-            transaction.splits?[index].status = currentlyPaid ? "accepted" : "paid"
+            // paid → pending (guests skip acceptance), paid → accepted (friends), anything else → paid
+            transaction.splits?[index].status = currentlyPaid ? (isGuestSplit ? "pending" : "accepted") : "paid"
             
             let updatedTx = transaction
             Task {
@@ -594,7 +598,11 @@ struct TransactionDetailView: View {
                     // Revert UI if failed
                     await MainActor.run {
                         if let index = transaction.splits?.firstIndex(where: { $0.id == split.id }) {
+                            let isGuestSplit = transaction.splits![index].isGuest
                             transaction.splits?[index].isPaid.toggle()
+                            let revertedPaid = transaction.splits![index].isPaid
+                            transaction.splits?[index].status = revertedPaid ? "paid" : (isGuestSplit ? "pending" : "accepted")
+                            transactionRepo.optimisticUpdateTransaction(transaction)
                         }
                     }
                     return
@@ -641,8 +649,9 @@ struct TransactionDetailView: View {
                 await MainActor.run {
                     if let index = transaction.splits?.firstIndex(where: { $0.id == split.id }) {
                         let revertedPaid = !transaction.splits![index].isPaid
+                        let isGuestSplit = transaction.splits![index].isGuest
                         transaction.splits?[index].isPaid = revertedPaid
-                        transaction.splits?[index].status = revertedPaid ? "paid" : "accepted"
+                        transaction.splits?[index].status = revertedPaid ? "paid" : (isGuestSplit ? "pending" : "accepted")
                         
                         let revertedTx = transaction
                         transactionRepo.optimisticUpdateTransaction(revertedTx)

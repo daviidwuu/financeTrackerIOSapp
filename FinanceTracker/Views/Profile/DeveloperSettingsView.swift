@@ -10,6 +10,7 @@ struct DeveloperSettingsView: View {
     @State private var isMigrating = false
     @State private var migrationResult: DataMigrationManager.MigrationResult?
     @State private var showResultAlert = false
+    @State private var isProcessingPremium = false
     
     var body: some View {
         ZStack {
@@ -45,6 +46,33 @@ struct DeveloperSettingsView: View {
                                 .stroke(Color.orange.opacity(0.3), lineWidth: 1)
                         )
                         .padding(.horizontal, AppSpacing.margin)
+                        
+                        // Premium Testing
+                        MenuSection("Premium Features") {
+                            Button(action: togglePremium) {
+                                HStack {
+                                    MenuRowView(
+                                        icon: "crown.fill",
+                                        title: appState.isPremiumUser ? "Revoke Premium" : "Grant Premium Instantly",
+                                        value: appState.isPremiumUser ? "Active" : "Tap to grant"
+                                    )
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(isProcessingPremium)
+                            
+                            if isProcessingPremium {
+                                HStack {
+                                    ProgressView()
+                                        .padding(.trailing, 8)
+                                    Text("Processing...")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(.horizontal, AppSpacing.margin)
+                                .padding(.vertical, 8)
+                            }
+                        }
                         
                         // Migration Button
                         MenuSection("Data Migration") {
@@ -128,6 +156,36 @@ struct DeveloperSettingsView: View {
                 .font(.caption)
                 .fontWeight(.semibold)
                 .foregroundColor(.primary)
+        }
+    }
+    
+    private func togglePremium() {
+        guard !isProcessingPremium else { return }
+        isProcessingPremium = true
+        HapticManager.shared.medium()
+        
+        let newValue = !appState.isPremiumUser
+        
+        Task {
+            // Update local state first for immediate UI feedback
+            await MainActor.run {
+                appState.isPremiumUser = newValue
+                appState.userPremiumRepo.setPremium(userId: appState.currentUserId, isPremium: newValue)
+            }
+            
+            let userId = appState.currentUserId
+            if !userId.isEmpty {
+                do {
+                    try await FirebaseManager.shared.updateUserProfile(userId: userId, data: ["isPremium": newValue])
+                } catch {
+                    DebugLogger.log("Failed to update premium status in Firebase: \(error)")
+                }
+            }
+            
+            await MainActor.run {
+                self.isProcessingPremium = false
+                HapticManager.shared.success()
+            }
         }
     }
     

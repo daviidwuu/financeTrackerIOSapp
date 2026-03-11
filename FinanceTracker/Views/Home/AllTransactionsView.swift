@@ -267,7 +267,8 @@ struct AllTransactionsView: View {
                                     if let range = calendar.range(of: .day, in: .month, for: baseDate) {
                                         let days = Array(range.reversed())
                                         ForEach(days, id: \.self) { day in
-                                            if let date = calendar.date(bySetting: .day, value: day, of: baseDate),
+                                            let dayComponents = DateComponents(year: calendar.component(.year, from: baseDate), month: calendar.component(.month, from: baseDate), day: day)
+                                            if let date = calendar.date(from: dayComponents),
                                                calendar.startOfDay(for: date) <= calendar.startOfDay(for: Date()) {
                                                 Button(action: { HapticManager.shared.light(); 
                                                     selectedDate = calendar.startOfDay(for: date)
@@ -467,8 +468,9 @@ struct AllTransactionsView: View {
             
             .errorBanner(errorState)
             .undoableBanner(undoState)
-            .sheet(item: $selectedTransaction) { transaction in
-                TransactionDetailView(transaction: transaction) { original, updated in
+            .sheet(item: $selectedTransaction) { selected in
+                let resolved = sortedTransactions.first(where: { $0.id == selected.id }) ?? selected
+                TransactionDetailView(transaction: resolved) { original, updated in
                     updateTransaction(original, with: updated)
                 }
                 .environmentObject(appState)

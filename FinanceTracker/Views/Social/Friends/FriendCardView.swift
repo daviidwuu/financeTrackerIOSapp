@@ -19,7 +19,7 @@ struct FriendCardView: View {
                         .foregroundColor(.primary)
 
                     if let id = friend.id, userPremiumRepo.isPremium(userId: id) == true {
-                        PremiumBadge(size: .small)
+                        PremiumBadge(size: .small, overrideBadgeType: userPremiumRepo.badgeType(userId: id))
                     }
                 }
 

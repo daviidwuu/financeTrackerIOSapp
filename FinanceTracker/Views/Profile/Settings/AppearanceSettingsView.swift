@@ -45,7 +45,8 @@ struct AppearanceSettingsView: View {
                                 }
                                 .pickerStyle(.menu)
                                 .labelsHidden()
-                                .onChange(of: premiumAppTheme) { _, _ in
+                                .onChange(of: premiumAppTheme) { _, newValue in
+                                    WidgetDataManager.shared.saveAppTheme(AppTheme(rawValue: newValue) ?? .system)
                                     HapticManager.shared.light()
                                 }
                             } else {

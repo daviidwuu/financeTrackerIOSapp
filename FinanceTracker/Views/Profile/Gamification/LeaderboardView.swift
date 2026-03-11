@@ -93,10 +93,10 @@ struct PodiumUser: View {
                         .lineLimit(1)
                     
                     if entry.isPremium {
-                        PremiumBadge(size: .small)
+                        PremiumBadge(size: .small, overrideBadgeType: entry.badgeType)
                     }
                 }
-                
+
                 Text("\(entry.points)")
                     .font(.system(size: rank == 1 ? 18 : 14, weight: .bold, design: .rounded))
                     .foregroundColor(ringColor)
@@ -135,7 +135,7 @@ struct LeaderboardRow: View {
                     .foregroundColor(.primary)
 
                 if entry.isPremium {
-                    PremiumBadge(size: .small)
+                    PremiumBadge(size: .small, overrideBadgeType: entry.badgeType)
                 }
             }
 

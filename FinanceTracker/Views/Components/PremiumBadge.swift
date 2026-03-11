@@ -31,7 +31,12 @@ enum PremiumBadgeType: String, CaseIterable, Identifiable {
 
 struct PremiumBadge: View {
     let size: PremiumBadgeSize
-    @AppStorage("premiumBadgeType") private var badgeType: PremiumBadgeType = .king
+    var overrideBadgeType: PremiumBadgeType? = nil
+    @AppStorage("premiumBadgeType") private var localBadgeType: PremiumBadgeType = .king
+
+    private var badgeType: PremiumBadgeType {
+        overrideBadgeType ?? localBadgeType
+    }
     
     private var font: Font {
         switch size {

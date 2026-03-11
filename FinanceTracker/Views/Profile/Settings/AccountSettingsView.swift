@@ -67,7 +67,6 @@ struct AccountSettingsView: View {
                         MenuDivider()
                         NavigationLink(destination: ProfileColorSettingsView()) {
                             MenuRowView(
-                                icon: "paintpalette.fill",
                                 title: "Profile Color",
                                 showChevron: true
                             )

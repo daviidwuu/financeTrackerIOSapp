@@ -143,7 +143,7 @@ struct MemberRow: View {
                         .foregroundColor(.primary)
                     
                     if userPremiumRepo.isPremium(userId: memberId) == true {
-                        PremiumBadge(size: .small)
+                        PremiumBadge(size: .small, overrideBadgeType: userPremiumRepo.badgeType(userId: memberId))
                     }
                     
                     if isYou {

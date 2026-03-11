@@ -25,6 +25,7 @@ struct SplitConfigurationView: View {
     // State
     @State private var currentStep = 1
     @State private var selectedFriendIds: Set<String> = []
+    @State private var selectedGuestIds: Set<String> = []
     @State private var lockedSplitIds: Set<String> = []
     @State private var selectedGroupId: String? = nil
     
@@ -48,12 +49,17 @@ struct SplitConfigurationView: View {
         self.onSave = onSave
         
         var initialSelection: Set<String> = []
+        var initialGuestSelection: Set<String> = []
         for split in existingSplits {
             if let fid = split.friendId {
                 initialSelection.insert(fid)
             }
+            if split.isGuest, let gid = split.guestId {
+                initialGuestSelection.insert(gid)
+            }
         }
         self._selectedFriendIds = State(initialValue: initialSelection)
+        self._selectedGuestIds = State(initialValue: initialGuestSelection)
         self._selectedGroupId = State(initialValue: initialGroupId)
     }
     
@@ -259,7 +265,7 @@ struct SplitConfigurationView: View {
                                             .foregroundColor(.primary)
                                         
                                         if let id = friend.id, userPremiumRepo.isPremium(userId: id) == true {
-                                            PremiumBadge(size: .small)
+                                            PremiumBadge(size: .small, overrideBadgeType: userPremiumRepo.badgeType(userId: id))
                                         }
                                     }
                                     
@@ -316,7 +322,7 @@ struct SplitConfigurationView: View {
                                                         .foregroundColor(.primary)
                                                     
                                                     if user.isPremium == true {
-                                                        PremiumBadge(size: .small)
+                                                        PremiumBadge(size: .small, overrideBadgeType: user.badgeType.flatMap { PremiumBadgeType(rawValue: $0) })
                                                     }
                                                 }
                                                 Text("@" + user.username)
@@ -363,41 +369,69 @@ struct SplitConfigurationView: View {
                     }
                 }
                 
-                // 3. Guests Section (Feedback)
-                let guests = splits.filter { $0.isGuest }
-                if !guests.isEmpty {
+                // 3. Guests Section
+                if !guestRepo.guests.isEmpty || !splits.filter({ $0.isGuest }).isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("GUESTS ADDED")
+                        Text("GUESTS")
                             .font(.caption)
                             .fontWeight(.bold)
                             .foregroundColor(.secondary)
                             .padding(.horizontal)
-                        
-                        ForEach(guests) { guest in
-                            HStack(spacing: 16) {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color.orange.opacity(0.15)) // Slightly stronger opacity
-                                        .frame(width: 48, height: 48)
-                                    Image(systemName: "person.fill") // Fill icon for weight
-                                        .font(.headline)
-                                        .foregroundColor(.orange)
-                                }
-                                
-                                Text(guest.name)
-                                    .font(.body)
-                                    .fontWeight(.medium)
-                                
-                                Spacer()
-                                
-                                Button(action: { removeSplit(guest) }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.title2)
-                                        .foregroundColor(.secondary.opacity(0.5))
+
+                        LazyVStack(spacing: 0) {
+                            // Show all guests from repo with toggle
+                            ForEach(guestRepo.guests) { guest in
+                                Button(action: { toggleGuestSelection(guest) }) {
+                                    HStack(spacing: 16) {
+                                        ZStack {
+                                            Circle()
+                                                .fill(Color.orange.opacity(0.15))
+                                                .frame(width: 48, height: 48)
+                                            Image(systemName: "person.fill")
+                                                .font(.headline)
+                                                .foregroundColor(.orange)
+                                        }
+
+                                        HStack(spacing: 8) {
+                                            Text(guest.name)
+                                                .font(.body)
+                                                .fontWeight(.medium)
+                                                .foregroundColor(.primary)
+
+                                            if selectedGuestIds.contains(guest.id ?? "") {
+                                                Button(action: {
+                                                    if let gid = guest.id {
+                                                        toggleGuestSelection(guest)
+                                                    }
+                                                }) {
+                                                    Image(systemName: "xmark.circle.fill")
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary.opacity(0.5))
+                                                }
+                                            }
+
+                                            Text("Guest")
+                                                .font(.caption2)
+                                                .foregroundColor(.orange)
+                                                .fontWeight(.medium)
+                                                .padding(.horizontal, 6)
+                                                .padding(.vertical, 2)
+                                                .background(Color.orange.opacity(0.1))
+                                                .cornerRadius(4)
+                                        }
+
+                                        Spacer()
+
+                                        // Checkbox
+                                        Image(systemName: selectedGuestIds.contains(guest.id ?? "") ? "checkmark.circle.fill" : "circle")
+                                            .font(.title2)
+                                            .foregroundColor(selectedGuestIds.contains(guest.id ?? "") ? .primary : (colorScheme == .dark ? .white.opacity(0.3) : .secondary.opacity(0.3)))
+                                    }
+                                    .padding(.vertical, 12)
+                                    .padding(.horizontal)
+                                    .contentShape(Rectangle())
                                 }
                             }
-                            .padding(.vertical, 12)
-                            .padding(.horizontal)
                         }
                     }
                 }
@@ -625,6 +659,9 @@ struct SplitConfigurationView: View {
                 let newGuest = try await guestRepo.createGuest(name: name)
                 await MainActor.run {
                     HapticManager.shared.success()
+                    if let gid = newGuest.id {
+                        selectedGuestIds.insert(gid)
+                    }
                     let newSplit = FirestoreModels.Split(
                         name: newGuest.name,
                         guestId: newGuest.id,
@@ -654,11 +691,45 @@ struct SplitConfigurationView: View {
         if let fid = split.friendId {
             selectedFriendIds.remove(fid)
         }
+        if let gid = split.guestId {
+            selectedGuestIds.remove(gid)
+        }
         splits.removeAll(where: { $0.id == split.id })
         lockedSplitIds.remove(split.id)
         shares.removeValue(forKey: split.id)
         percentages.removeValue(forKey: split.id)
-        
+
+        recalculateSplits(for: splitMode)
+    }
+
+    private func toggleGuestSelection(_ guest: FirestoreModels.Guest) {
+        guard let guestId = guest.id else { return }
+        HapticManager.shared.light()
+
+        if selectedGuestIds.contains(guestId) {
+            selectedGuestIds.remove(guestId)
+            splits.removeAll(where: { $0.guestId == guestId })
+        } else {
+            selectedGuestIds.insert(guestId)
+            let newSplit = FirestoreModels.Split(
+                name: guest.name,
+                guestId: guestId,
+                isGuest: true,
+                amount: 0.0
+            )
+            splits.append(newSplit)
+            shares[newSplit.id] = 1
+            percentages[newSplit.id] = 0
+        }
+
+        if splitMode == .percentage {
+            let count = Double(splits.count)
+            let even = 100.0 / max(1, count)
+            for split in splits {
+                percentages[split.id] = even
+            }
+        }
+
         recalculateSplits(for: splitMode)
     }
     

@@ -380,21 +380,27 @@ class FirebaseManager: ObservableObject {
         // Refresh local cache if needed
         if let newName = mutableData["name"] as? String {
             await MainActor.run { self.currentUserName = newName }
-            
+
             // FIX #15: Sync denormalized names in pending split_requests
-            // Update fromName where this user is the sender
-            let fromSnap = try await db.collectionGroup("split_requests")
-                .whereField("fromUid", isEqualTo: userId)
-                .getDocuments()
-            for doc in fromSnap.documents {
-                try? await doc.reference.updateData(["fromName": newName])
-            }
-            // Update toName where this user is the receiver
-            let toSnap = try await db.collectionGroup("split_requests")
-                .whereField("toUid", isEqualTo: userId)
-                .getDocuments()
-            for doc in toSnap.documents {
-                try? await doc.reference.updateData(["toName": newName])
+            // Wrapped in do/catch to prevent collection group query permission errors
+            // from failing the entire profile update
+            do {
+                // Update fromName where this user is the sender
+                let fromSnap = try await db.collectionGroup("split_requests")
+                    .whereField("fromUid", isEqualTo: userId)
+                    .getDocuments()
+                for doc in fromSnap.documents {
+                    try? await doc.reference.updateData(["fromName": newName])
+                }
+                // Update toName where this user is the receiver
+                let toSnap = try await db.collectionGroup("split_requests")
+                    .whereField("toUid", isEqualTo: userId)
+                    .getDocuments()
+                for doc in toSnap.documents {
+                    try? await doc.reference.updateData(["toName": newName])
+                }
+            } catch {
+                DebugLogger.log("Warning: Failed to sync name in split_requests: \(error.localizedDescription)")
             }
         }
     }

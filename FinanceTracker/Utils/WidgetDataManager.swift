@@ -23,6 +23,7 @@ class WidgetDataManager {
         static let recentTransactions = "widget_recentTransactions"
         static let quickLogCategories = "widget_quickLogCategories"
         static let widgetBackgroundStyle = "widget_backgroundStyle" // New Key
+        static let appTheme = "widget_appTheme"
     }
     
     // MARK: - Enums
@@ -138,5 +139,19 @@ class WidgetDataManager {
             return .pure // Default to pure based on the request context although standard iOS is system
         }
         return style
+    }
+    
+    // MARK: - App Theme
+    
+    func saveAppTheme(_ theme: AppTheme) {
+        userDefaults?.set(theme.rawValue, forKey: Keys.appTheme)
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+    
+    func getAppTheme() -> AppTheme {
+        guard let savedString = userDefaults?.string(forKey: Keys.appTheme), let theme = AppTheme(rawValue: savedString) else {
+            return .system
+        }
+        return theme
     }
 }

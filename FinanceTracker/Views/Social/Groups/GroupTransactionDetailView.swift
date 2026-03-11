@@ -107,7 +107,7 @@ struct GroupTransactionDetailView: View {
                                         .foregroundColor(.primary)
                                     
                                     if userPremiumRepo.isPremium(userId: transaction.payerId) == true {
-                                        PremiumBadge(size: .small)
+                                        PremiumBadge(size: .small, overrideBadgeType: userPremiumRepo.badgeType(userId: transaction.payerId))
                                     }
                                 }
                             }
@@ -188,7 +188,7 @@ struct GroupTransactionDetailView: View {
                                                             .foregroundColor(.primary)
                                                         
                                                         if userPremiumRepo.isPremium(userId: split.toUid) == true {
-                                                            PremiumBadge(size: .small)
+                                                            PremiumBadge(size: .small, overrideBadgeType: userPremiumRepo.badgeType(userId: split.toUid))
                                                         }
                                                     }
                                                 }
