@@ -1,73 +1,64 @@
 import SwiftUI
-import AVKit
 
-// MARK: - Models
-struct Guide: Identifiable, Hashable {
-    let id = UUID()
-    let title: String
-    let icon: String
-    let color: Color
-    let steps: [GuideStep]
-    let videoPlaceholder: String // System Image name for now
-}
-
-struct GuideStep: Identifiable, Hashable {
-    let id = UUID()
-    let number: Int
-    let text: String
-    let isBold: Bool // For emphasized steps
-}
-
-// MARK: - Guides List View
 // MARK: - Guides List View
 struct GuidesListView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
-    @State private var selectedGuide: Guide?
+    @State private var selectedGuide: GuideTutorial?
     
-    // Guide Data
-    let guides: [Guide] = [
-        Guide(
+    // Guide Data using TutorialStep format
+    struct GuideTutorial: Identifiable, Hashable {
+        let id = UUID()
+        let title: String
+        let icon: String
+        let color: Color
+        let tutorialSteps: [TutorialStep]
+        
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(id)
+        }
+        static func == (lhs: GuideTutorial, rhs: GuideTutorial) -> Bool {
+            lhs.id == rhs.id
+        }
+    }
+    
+    let guides: [GuideTutorial] = [
+        GuideTutorial(
             title: "Homescreen & Lockscreen Widget",
             icon: "square.stack.3d.up.fill",
             color: .blue,
-            steps: [
-                GuideStep(number: 1, text: "Go to your Home Screen or Lock Screen.", isBold: false),
-                GuideStep(number: 2, text: "Long press on an empty space until apps jiggle.", isBold: true),
-                GuideStep(number: 3, text: "Tap the + button in the top left corner.", isBold: true),
-                GuideStep(number: 4, text: "Search for 'wym' in the widget gallery.", isBold: true),
-                GuideStep(number: 5, text: "Select your preferred widget and tap 'Add Widget'.", isBold: true),
-                GuideStep(number: 6, text: "Drag to position it, then tap Done.", isBold: false)
-            ],
-            videoPlaceholder: "apps.iphone"
+            tutorialSteps: [
+                TutorialStep(icon: "hand.tap.fill", iconColor: .blue, title: "Go to Your Home Screen", description: "Navigate to your iPhone Home Screen or Lock Screen. Find an empty space to start.", animationType: .bounce),
+                TutorialStep(icon: "hand.draw.fill", iconColor: .purple, title: "Long Press", description: "Long press on an empty area until the apps start jiggling and you enter edit mode.", animationType: .pulse),
+                TutorialStep(icon: "plus.circle.fill", iconColor: Color(hex: "#34C759"), title: "Tap the + Button", description: "Look for the '+' button in the top-left corner. Tap it to open the widget gallery.", animationType: .bounce),
+                TutorialStep(icon: "magnifyingglass", iconColor: .orange, title: "Search for 'wym'", description: "In the widget gallery search bar, type 'wym' to find the app's widgets.", animationType: .float),
+                TutorialStep(icon: "square.grid.2x2.fill", iconColor: .blue, title: "Select Your Widget", description: "Choose your preferred widget size — small, medium, or large. Tap 'Add Widget' to place it.", animationType: .rotate),
+                TutorialStep(icon: "checkmark.circle.fill", iconColor: Color(hex: "#34C759"), title: "Position & Done", description: "Drag your widget to the perfect position on your screen, then tap 'Done'. Your finances are now always one glance away!", animationType: .pulse)
+            ]
         ),
-        Guide(
+        GuideTutorial(
             title: "Shortcut & Back Tap",
             icon: "hand.tap.fill",
             color: .purple,
-            steps: [
-                GuideStep(number: 1, text: "First, ensure you have the 'wym' shortcut enabled.", isBold: false),
-                GuideStep(number: 2, text: "Open iPhone Settings.", isBold: true),
-                GuideStep(number: 3, text: "Go to Accessibility > Touch.", isBold: true),
-                GuideStep(number: 4, text: "Scroll down and select 'Back Tap'.", isBold: true),
-                GuideStep(number: 5, text: "Choose 'Double Tap' or 'Triple Tap'.", isBold: true),
-                GuideStep(number: 6, text: "Scroll down to Shortcuts and select 'wym'.", isBold: true),
-                GuideStep(number: 7, text: "Now just tap the back of your phone to log expenses!", isBold: false)
-            ],
-            videoPlaceholder: "hand.point.up.left.fill"
+            tutorialSteps: [
+                TutorialStep(icon: "gear", iconColor: .gray, title: "Open iPhone Settings", description: "Start by opening the Settings app on your iPhone. We'll set up a quick shortcut to log expenses.", animationType: .rotate),
+                TutorialStep(icon: "hand.raised.fill", iconColor: .blue, title: "Navigate to Accessibility", description: "Go to Settings → Accessibility → Touch. Scroll down to find the 'Back Tap' option.", animationType: .bounce),
+                TutorialStep(icon: "hand.tap.fill", iconColor: .purple, title: "Choose Double or Triple Tap", description: "Select either 'Double Tap' or 'Triple Tap'. Double tap is quicker; triple tap avoids accidental triggers.", animationType: .pulse),
+                TutorialStep(icon: "arrow.down.to.line", iconColor: .orange, title: "Find the Shortcut", description: "Scroll down in the action list to the 'Shortcuts' section. Select the 'wym' shortcut to log transactions.", animationType: .float),
+                TutorialStep(icon: "bolt.fill", iconColor: .yellow, title: "You're All Set!", description: "Now just tap the back of your iPhone to instantly open the transaction logger. The fastest way to track your spending!", animationType: .bounce)
+            ]
         ),
-        Guide(
+        GuideTutorial(
             title: "Splitting Bills",
             icon: "person.2.fill",
             color: .green,
-            steps: [
-                GuideStep(number: 1, text: "When adding a transaction, tap 'Split'.", isBold: true),
-                GuideStep(number: 2, text: "Select friends to split with.", isBold: true),
-                GuideStep(number: 3, text: "Choose split type: Equal, Exact, or Percentage.", isBold: true),
-                GuideStep(number: 4, text: "Save the transaction.", isBold: false),
-                GuideStep(number: 5, text: "Track who owes you in the Friends tab.", isBold: false)
-            ],
-            videoPlaceholder: "banknote.fill"
+            tutorialSteps: [
+                TutorialStep(icon: "plus.circle.fill", iconColor: .blue, title: "Add a Transaction", description: "Start by adding a new transaction as you normally would. Enter the total bill amount.", animationType: .bounce),
+                TutorialStep(icon: "person.2.fill", iconColor: .green, title: "Tap 'Split'", description: "Before saving, look for the 'Split' button. Tap it to enter split mode and choose who to split with.", animationType: .pulse),
+                TutorialStep(icon: "person.crop.circle.badge.plus", iconColor: .purple, title: "Select Friends", description: "Choose the friends you want to split with. You can select multiple people from your friends list or add guests.", animationType: .float),
+                TutorialStep(icon: "slider.horizontal.3", iconColor: .orange, title: "Choose Split Type", description: "Pick how to divide: Equal (same for everyone), Exact (specific amounts), or Percentage (custom percentages).", animationType: .rotate),
+                TutorialStep(icon: "bell.badge.fill", iconColor: .red, title: "Track Payments", description: "Save the transaction. Your friends get notified and you can track who has paid back in the Social tab!", animationType: .bounce)
+            ]
         )
     ]
     
@@ -125,100 +116,12 @@ struct GuidesListView: View {
         }
         .overlayHeader(.navigation(title: "Guides", onBack: { dismiss() }))
         .navigationBarBackButtonHidden(true)
-        .sheet(item: $selectedGuide) { guide in
-            GuideDetailView(guide: guide)
-        }
-    }
-}
-
-// MARK: - Guide Detail View
-struct GuideDetailView: View {
-    let guide: Guide
-    @Environment(\.dismiss) var dismiss
-    @Environment(\.colorScheme) var colorScheme
-    @State private var isAnimating = false
-    
-    var body: some View {
-        ZStack {
-            Color(UIColor.systemBackground)
-                .ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                // Header (Video Area Placeholder)
-                ZStack {
-                    Rectangle()
-                        .fill(guide.color.opacity(0.1))
-                    
-                    // Simulated Animation/Video
-                    Image(systemName: guide.videoPlaceholder)
-                        .font(.system(size: 80))
-                        .foregroundColor(guide.color)
-                        .scaleEffect(isAnimating ? 1.1 : 1.0)
-                        .rotationEffect(Angle(degrees: isAnimating ? 5 : -5))
-                        .animation(Animation.easeInOut(duration: 2).repeatForever(autoreverses: true), value: isAnimating)
-                }
-                .frame(height: UIScreen.main.bounds.height * 0.25)
-                .overlay(
-                    Button(action: { HapticManager.shared.light();  dismiss() }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title)
-                            .foregroundColor(.secondary)
-                            .padding()
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                )
-                
-                // Content
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        Text(guide.title)
-                            .font(.system(size: 28, weight: .bold, design: .rounded))
-                            .padding(.top)
-                        
-                        VStack(alignment: .leading, spacing: 20) {
-                            ForEach(guide.steps) { step in
-                                HStack(alignment: .top, spacing: 16) {
-                                    Text("\(step.number)")
-                                        .font(.headline)
-                                        .foregroundColor(.white)
-                                        .frame(width: 30, height: 30)
-                                        .background(Circle().fill(guide.color))
-                                    
-                                    Text(step.text)
-                                        .font(step.isBold ? .headline : .body)
-                                        .foregroundColor(step.isBold ? .primary : .secondary)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-                            }
-                        }
-                    }
-                    .padding(24)
-                }
-                
-                // Footer
-                VStack {
-                    Button(action: { HapticManager.shared.light(); 
-                        dismiss()
-                    }) {
-                        Text("Got it!")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(guide.color)
-                            .clipShape(Capsule()) // Standard button shape
-                    }
-                    .padding()
-                }
-                .background(
-                    Color(UIColor.systemBackground)
-                        .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: -5)
-                )
-            }
-        }
-        .onAppear {
-            isAnimating = true
+        .fullScreenCover(item: $selectedGuide) { guide in
+            TutorialView(
+                title: guide.title,
+                steps: guide.tutorialSteps,
+                accentColor: guide.color
+            )
         }
     }
 }

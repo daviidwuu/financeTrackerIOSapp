@@ -700,6 +700,12 @@ enum FirestoreModels {
         var partnerName: String
         var description: String
         var colorHex: String
+        var region: String?          // "SG", "US", "GLOBAL"
+        var category: String?        // "food", "shopping", "cash", "transport"
+        var expiryDays: Int?         // Days until code expires after redemption
+        var isActive: Bool?          // Admin can enable/disable
+        var partnerLogo: String?     // URL to partner logo image
+        var rewardType: String?      // "voucher", "paypal", "giftcard"
     }
     
     struct Redemption: Identifiable, Codable {
@@ -709,6 +715,9 @@ enum FirestoreModels {
         var rewardIcon: String
         var cost: Int
         var date: Date
-        var code: String // Unique redemption code
+        var code: String             // Unique redemption code
+        var expiresAt: Date?         // When the code expires
+        var status: String?          // "active", "used", "expired"
+        var partnerName: String?     // For display
     }
 }

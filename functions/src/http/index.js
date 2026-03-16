@@ -2,8 +2,10 @@ const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { getIconForCategory, getColorForCategory } = require('../helpers');
 const { revenueCatWebhook } = require('./revenueCatWebhook');
+const { redeemReward } = require('./redeemReward');
 
 exports.revenueCatWebhook = revenueCatWebhook;
+exports.redeemReward = redeemReward;
 
 exports.addTransaction = functions.https.onRequest(async (req, res) => {
   if (req.method !== 'POST') {

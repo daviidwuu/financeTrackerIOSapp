@@ -118,6 +118,15 @@ struct ProfileView: View {
                             }
 
                             MenuDivider()
+
+                            NavigationLink(destination: LocationSettingsView()) {
+                                MenuRowView(
+                                    icon: "location.fill",
+                                    title: "Location"
+                                )
+                            }
+
+                            MenuDivider()
                             
                             MenuControlRow(
                                 icon: "waveform",
