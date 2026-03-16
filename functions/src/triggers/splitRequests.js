@@ -7,6 +7,7 @@ exports.v2_onSplitRequestCreated = onDocumentCreated('split_requests/{requestId}
     if (await checkIdempotency(event.id)) return;
     const data = event.data.data();
     if (!data || data.status === 'blocked_by_group') return; // Don't notify if blocked
+    if (data.isGuest) return; // Guests don't have accounts — skip notifications
     const sender = await getUserInfo(data.fromUid);
 
     if (data.status === 'paid') {
@@ -142,32 +143,35 @@ exports.v2_onSplitRequestUpdated = onDocumentUpdated('split_requests/{requestId}
             });
 
             // --- Send Notifications Based on Status Change ---
-            if (after.status === 'paid' && before.status !== 'paid') {
-                console.log(`[Split] PAID notification: processing payment status change.`);
-                if (after.lastUpdatedBy === after.fromUid) {
-                    // Creditor marked it → Notify Debtor
-                    const creditor = await getUserInfo(after.fromUid);
-                    await sendNotification(after.toUid, 'Payment Confirmed', `${creditor.name} marked your split as paid.`, { type: 'split_paid', id: event.params.requestId });
-                } else {
-                    // Debtor marked it → Notify Creditor
-                    const debtor = await getUserInfo(after.toUid);
-                    await sendNotification(after.fromUid, 'Payment Received', `${debtor.name} marked the split as paid.`, { type: 'split_paid', id: event.params.requestId });
-                }
-            } else if (after.status === 'declined' && before.status !== 'declined') {
-                const receiver = await getUserInfo(after.toUid);
-                await sendNotification(after.fromUid, 'Request Declined', `${receiver.name} declined to pay.`, { type: 'split_declined' });
-            } else if (after.status === 'accepted' && before.status !== 'accepted') {
-                const receiver = await getUserInfo(after.toUid);
-                await sendNotification(after.fromUid, 'Split Accepted', `${receiver.name} accepted your request.`, { type: 'split_accepted' });
-            } else if (before.status === 'paid' && after.status !== 'paid') {
-                // S3: Notify about payment revert
-                console.log(`[Split] UNPAID: processing payment revert.`);
-                if (after.lastUpdatedBy === after.fromUid) {
-                    const creditor = await getUserInfo(after.fromUid);
-                    await sendNotification(after.toUid, 'Payment Reverted', `${creditor.name} unmarked the payment for ${note}.`, { type: 'split_unpaid', id: event.params.requestId });
-                } else {
-                    const debtor = await getUserInfo(after.toUid);
-                    await sendNotification(after.fromUid, 'Payment Reverted', `${debtor.name} unmarked the payment for ${note}.`, { type: 'split_unpaid', id: event.params.requestId });
+            // Skip notifications for guest splits — guests don't have user accounts
+            if (!after.isGuest) {
+                if (after.status === 'paid' && before.status !== 'paid') {
+                    console.log(`[Split] PAID notification: processing payment status change.`);
+                    if (after.lastUpdatedBy === after.fromUid) {
+                        // Creditor marked it → Notify Debtor
+                        const creditor = await getUserInfo(after.fromUid);
+                        await sendNotification(after.toUid, 'Payment Confirmed', `${creditor.name} marked your split as paid.`, { type: 'split_paid', id: event.params.requestId });
+                    } else {
+                        // Debtor marked it → Notify Creditor
+                        const debtor = await getUserInfo(after.toUid);
+                        await sendNotification(after.fromUid, 'Payment Received', `${debtor.name} marked the split as paid.`, { type: 'split_paid', id: event.params.requestId });
+                    }
+                } else if (after.status === 'declined' && before.status !== 'declined') {
+                    const receiver = await getUserInfo(after.toUid);
+                    await sendNotification(after.fromUid, 'Request Declined', `${receiver.name} declined to pay.`, { type: 'split_declined' });
+                } else if (after.status === 'accepted' && before.status !== 'accepted') {
+                    const receiver = await getUserInfo(after.toUid);
+                    await sendNotification(after.fromUid, 'Split Accepted', `${receiver.name} accepted your request.`, { type: 'split_accepted' });
+                } else if (before.status === 'paid' && after.status !== 'paid') {
+                    // S3: Notify about payment revert
+                    console.log(`[Split] UNPAID: processing payment revert.`);
+                    if (after.lastUpdatedBy === after.fromUid) {
+                        const creditor = await getUserInfo(after.fromUid);
+                        await sendNotification(after.toUid, 'Payment Reverted', `${creditor.name} unmarked the payment for ${note}.`, { type: 'split_unpaid', id: event.params.requestId });
+                    } else {
+                        const debtor = await getUserInfo(after.toUid);
+                        await sendNotification(after.fromUid, 'Payment Reverted', `${debtor.name} unmarked the payment for ${note}.`, { type: 'split_unpaid', id: event.params.requestId });
+                    }
                 }
             }
 
@@ -183,8 +187,10 @@ exports.v2_onSplitRequestDeleted = onDocumentDeleted('split_requests/{requestId}
     const data = event.data.data();
     if (!data) return;
     console.log(`[Split] Request deleted. Notifying receiver.`);
-    const sender = await getUserInfo(data.fromUid);
-    await sendNotification(data.toUid, 'Split Cancelled', `${sender.name} cancelled the $${data.amount.toFixed(2)} request for ${data.note || 'Expense'}.`, { type: 'split_cancelled' });
+    if (!data.isGuest) {
+        const sender = await getUserInfo(data.fromUid);
+        await sendNotification(data.toUid, 'Split Cancelled', `${sender.name} cancelled the $${data.amount.toFixed(2)} request for ${data.note || 'Expense'}.`, { type: 'split_cancelled' });
+    }
 
     // --- Gap #8 Fix: Clean up linked income/expense transactions if split was paid ---
     if (data.status === 'paid') {

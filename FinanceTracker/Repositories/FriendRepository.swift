@@ -19,6 +19,7 @@ class FriendRepository: ObservableObject {
         var username: String
         var email: String?
         var isPremium: Bool?
+        var badgeType: String?
     }
     
     func startListening(userId: String) {

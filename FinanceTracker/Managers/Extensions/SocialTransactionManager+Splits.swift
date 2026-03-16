@@ -80,7 +80,7 @@ func markSplitAsPaid(request: FirestoreModels.SplitRequest, currentUserId: Strin
                 if txSnapshot.exists {
                     let txData = try txSnapshot.data(as: FirestoreModels.TransactionModel.self)
                     if var splits = txData.splits {
-                        if let index = splits.firstIndex(where: { $0.requestId == requestId || ($0.friendId == request.toUid && !$0.isPaid) }) {
+                        if let index = splits.firstIndex(where: { $0.requestId == requestId || (($0.friendId == request.toUid || $0.guestId == request.toUid) && !$0.isPaid) }) {
                              splits[index].isPaid = true
                              splits[index].paidDate = Date()
                              

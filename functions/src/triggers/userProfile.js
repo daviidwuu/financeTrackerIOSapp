@@ -11,8 +11,9 @@ exports.v2_onUserUpdated = onDocumentUpdated('users/{userId}', async (event) => 
     const nameChanged = after.name !== before.name;
     const usernameChanged = after.username !== before.username;
     const avatarChanged = after.avatarColor !== before.avatarColor;
+    const badgeTypeChanged = after.badgeType !== before.badgeType;
 
-    if (!nameChanged && !usernameChanged && !avatarChanged) return;
+    if (!nameChanged && !usernameChanged && !avatarChanged && !badgeTypeChanged) return;
 
     console.log(`User ${userId} updated profile. Fanning out changes...`);
     const db = admin.firestore();
@@ -22,11 +23,14 @@ exports.v2_onUserUpdated = onDocumentUpdated('users/{userId}', async (event) => 
     const friendUpdatePromises = friendsSnapshot.docs.map(async (doc) => {
         const friendId = doc.id;
         const friendRef = db.collection('users').doc(friendId).collection('friends').doc(userId);
-        return friendRef.update({
+        const friendUpdate = {
             name: after.name,
             username: after.username,
-            avatarColor: after.avatarColor
-        }).catch(e => console.warn(`Failed to update friend link for ${friendId}`, e));
+            avatarColor: after.avatarColor,
+        };
+        if (after.badgeType !== undefined) friendUpdate.badgeType = after.badgeType;
+        if (after.isPremium !== undefined) friendUpdate.isPremium = after.isPremium;
+        return friendRef.update(friendUpdate).catch(e => console.warn(`Failed to update friend link for ${friendId}`, e));
     });
 
     // B. Update Groups (Member Names)

@@ -320,7 +320,8 @@ enum FirestoreModels {
         var userId: String
         var createdAt: Date
         var lastProcessedDate: Date? // For tracking auto-execution
-        
+        var source: String? // Identifies auto-created entries (e.g. "subscription")
+
         enum CodingKeys: String, CodingKey {
             case id
             case name
@@ -335,6 +336,7 @@ enum FirestoreModels {
             case userId
             case createdAt
             case lastProcessedDate
+            case source
         }
     }
 
@@ -373,7 +375,11 @@ enum FirestoreModels {
         }
     }
 
-    struct TransactionModel: Codable, Identifiable {
+    struct TransactionModel: Codable, Identifiable, Equatable {
+        static func == (lhs: TransactionModel, rhs: TransactionModel) -> Bool {
+            lhs.id == rhs.id
+        }
+
         @DocumentID var id: String?
         var userId: String
         var title: String
@@ -660,6 +666,7 @@ enum FirestoreModels {
         var username: String
         var isPremium: Bool? = false
         var avatarColor: String? // ✅ NEW: User's profile color (hex string)
+        var badgeType: String? // Premium badge style (king/pro/saver)
         var createdAt: Date
 
         // Gamification
@@ -675,6 +682,7 @@ enum FirestoreModels {
             case username
             case isPremium
             case avatarColor
+            case badgeType
             case createdAt
             case points
             case completedMissionIds
@@ -692,6 +700,12 @@ enum FirestoreModels {
         var partnerName: String
         var description: String
         var colorHex: String
+        var region: String?          // "SG", "US", "GLOBAL"
+        var category: String?        // "food", "shopping", "cash", "transport"
+        var expiryDays: Int?         // Days until code expires after redemption
+        var isActive: Bool?          // Admin can enable/disable
+        var partnerLogo: String?     // URL to partner logo image
+        var rewardType: String?      // "voucher", "paypal", "giftcard"
     }
     
     struct Redemption: Identifiable, Codable {
@@ -701,6 +715,9 @@ enum FirestoreModels {
         var rewardIcon: String
         var cost: Int
         var date: Date
-        var code: String // Unique redemption code
+        var code: String             // Unique redemption code
+        var expiresAt: Date?         // When the code expires
+        var status: String?          // "active", "used", "expired"
+        var partnerName: String?     // For display
     }
 }

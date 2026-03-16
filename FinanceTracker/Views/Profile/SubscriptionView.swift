@@ -4,6 +4,7 @@ import RevenueCat
 struct SubscriptionView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
+    @EnvironmentObject var appState: AppState
     @StateObject private var purchaseManager = PurchaseManager.shared
     @State private var selectedPlan: PlanType = .annual
     @State private var isLoading = false
@@ -45,46 +46,40 @@ struct SubscriptionView: View {
                 .ignoresSafeArea()
 
             ScrollView {
-                VStack(spacing: AppSpacing.section) {
-                    ScrollOffsetTracker()
-                    Spacer().frame(height: 80)
+                VStack(spacing: 24) {
+                    Spacer().frame(height: 60)
                         
                         // Hero Section
-                        VStack(spacing: 16) {
+                        VStack(spacing: 12) {
                             Text("king")
                                 .font(.system(size: 28, weight: .bold, design: .rounded))
                                 .foregroundColor(Color(hex: "#F5A623")) // Gold
                                 .padding(.horizontal, 24)
-                                .padding(.vertical, 12)
+                                .padding(.vertical, 10)
                                 .background(Color(hex: "#F5A623").opacity(0.15))
-                                .cornerRadius(12)
-                                .padding(.top, 20)
+                                .cornerRadius(AppRadius.medium)
+                                .shadow(color: Color(hex: "#F5A623").opacity(0.3), radius: 8, x: 0, y: 4)
                             
-                            Text("King")
-                                .font(.system(size: 32, weight: .bold, design: .rounded))
-                                .foregroundColor(colorScheme == .dark ? .white : .black)
-                                .multilineTextAlignment(.center)
-                            
-                            Text("Take control with zero interruptions. Unlock the full potential of your finances.")
-                                .font(.body)
+                            Text("Unlock the full potential of your finances.")
+                                .font(.subheadline)
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal, AppSpacing.margin)
                         }
-                        .padding(.top, 20)
                         
                         // Features List
-                        VStack(alignment: .leading, spacing: 20) {
-                            FeatureRow(icon: "nosign", title: "Ad-Free Experience", description: "Remove all native and banner ads.")
-                            FeatureRow(icon: "sparkles", title: "Premium Features", description: "Early access to upcoming tools.")
-                            FeatureRow(icon: "headphones", title: "Priority Support", description: "Get answers to your questions faster.")
+                        VStack(alignment: .leading, spacing: 16) {
+                            FeatureRow(icon: "nosign", title: "Ad-Free", description: "Zero interruptions. Remove all ads.")
+                            FeatureRow(icon: "paintbrush.fill", title: "Custom Themes", description: "Personalize your app with premium themes.")
+                            FeatureRow(icon: "star.fill", title: "Pro Badges", description: "Exclusive badges visible to your friends.")
+                            FeatureRow(icon: "sparkles", title: "More Pro Features", description: "Coming soon. Get early access to new tools.")
                         }
                         .padding(.horizontal, AppSpacing.margin)
-                        .padding(.top, 10)
+                        .padding(.top, 8)
                         
                         // Pricing Cards
                         if offering != nil {
-                            VStack(spacing: 12) {
+                            VStack(spacing: 16) {
                                 if let annual = annualPackage {
                                     PlanCard(
                                         title: "Annual Plan",
@@ -111,11 +106,9 @@ struct SubscriptionView: View {
                                         .font(.subheadline)
                                         .foregroundColor(.secondary)
                                         .multilineTextAlignment(.center)
-                                        .padding(.top, 12)
                                 }
                             }
                             .padding(.horizontal, AppSpacing.margin)
-                            .padding(.top, 10)
                         } else {
                             VStack(spacing: 12) {
                                 if purchaseManager.offerings == nil {
@@ -147,17 +140,18 @@ struct SubscriptionView: View {
                                 .background(Color.primary.opacity(0.05))
                                 .clipShape(Capsule())
                             }
-                            .padding(.top, 40)
+                            .padding(.top, 20)
                         }
                         
-                        // Bottom Padding for fixed button
+                        // Bottom Padding for fixed button area
                         Spacer().frame(height: 140)
                     }
                 }
                 .scrollIndicators(.hidden)
+                .scrollBounceBehavior(.basedOnSize) // Prevents bouncing if content fits
 
             // Fixed Bottom Area (CTA + Footer)
-            VStack(spacing: 16) {
+            VStack(spacing: 12) {
                 if let error = errorMessage {
                     Text(error)
                         .font(.caption)
@@ -190,16 +184,16 @@ struct SubscriptionView: View {
                 .padding(.horizontal, AppSpacing.margin)
                 
                 Text("A 'King' subscription is available as an Annual Plan or Monthly Plan. It automatically renews unless canceled at least 24 hours before the end of the current period. You can manage and cancel your subscriptions in your App Store account settings.")
-                    .font(.caption2)
+                    .font(.system(size: 10))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, AppSpacing.margin)
                 
                 HStack(spacing: 12) {
                     if let url = AppConfig.termsURL {
-                        Link("Terms of Use (EULA)", destination: url)
+                        Link("Terms of Use", destination: url)
                     } else {
-                        Button("Terms of Use (EULA)") { HapticManager.shared.light();  showTerms = true }
+                        Button("Terms of Use") { HapticManager.shared.light();  showTerms = true }
                     }
                     Text("•")
                     if let url = AppConfig.privacyURL {
@@ -210,13 +204,14 @@ struct SubscriptionView: View {
                 }
                 .font(.caption2)
                 .foregroundColor(.secondary)
-                .padding(.bottom, 20)
+                .padding(.bottom, 16)
             }
             .background(
                 LinearGradient(
                     colors: [
-                        (colorScheme == .dark ? Color.black : Color.white).opacity(0),
-                        (colorScheme == .dark ? Color.black : Color.white)
+                        Color.backgroundPrimary.opacity(0),
+                        Color.backgroundPrimary,
+                        Color.backgroundPrimary
                     ],
                     startPoint: .top,
                     endPoint: .bottom
@@ -304,14 +299,16 @@ struct SubscriptionView: View {
     
     private func makePurchase() {
         guard let package = (selectedPlan == .annual ? annualPackage : monthlyPackage) else { return }
-        
+
         isLoading = true
         errorMessage = nil
         HapticManager.shared.medium()
-        
+
         Task {
             do {
                 _ = try await purchaseManager.purchase(package: package)
+                // Auto-create recurring transaction for the subscription
+                await createSubscriptionRecurring(for: package)
                 await MainActor.run {
                     isLoading = false
                     dismiss()
@@ -341,6 +338,55 @@ struct SubscriptionView: View {
         }
     }
     
+    private func createSubscriptionRecurring(for package: Package) async {
+        let userId = appState.currentUserId
+        guard !userId.isEmpty else { return }
+
+        let isAnnual = package.storeProduct.subscriptionPeriod?.unit == .year
+        let name = isAnnual ? "wym annually" : "wym monthly"
+        let frequency = isAnnual ? "Yearly" : "Monthly"
+        let amount = NSDecimalNumber(decimal: package.storeProduct.price).doubleValue
+
+        // Find or create Bills category
+        var categoryId: String? = nil
+        if let bills = appState.budgetRepo.getCategoryByName(for: "Bills") {
+            categoryId = bills.id
+        } else {
+            // Create Bills category
+            let newBills = FirestoreModels.CategoryBudget(
+                category: "Bills",
+                totalAmount: 0,
+                icon: "doc.text.fill",
+                colorHex: "#FF3B30",
+                frequency: "Monthly",
+                type: "expense",
+                userId: userId,
+                monthStartDate: Calendar.current.startOfDay(for: Date()),
+                createdAt: Date()
+            )
+            try? await appState.budgetRepo.addBudget(newBills)
+            // Wait briefly for listener to pick up the new category
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            categoryId = appState.budgetRepo.getCategoryByName(for: "Bills")?.id
+        }
+
+        let recurring = FirestoreModels.RecurringTransaction(
+            name: name,
+            amount: -abs(amount),
+            frequency: frequency,
+            startDate: Date(),
+            categoryId: categoryId,
+            icon: "doc.text.fill",
+            colorHex: "#FF3B30",
+            note: "Auto-created from subscription",
+            type: "expense",
+            userId: userId,
+            createdAt: Date(),
+            source: "subscription"
+        )
+        try? await appState.recurringRepo.addRecurringTransaction(recurring)
+    }
+
     private func restorePurchases() {
         isLoading = true
         errorMessage = nil
@@ -403,13 +449,13 @@ private struct PlanCard: View {
         let titleColor = isSelected ? (colorScheme == .dark ? Color.black : Color.white) : Color.primary
         let subtitleColor = isSelected ? (colorScheme == .dark ? Color.black : Color.white).opacity(0.8) : Color.secondary
         let backgroundColor = isSelected ? (colorScheme == .dark ? Color.white : Color.black) : Color.clear
-        let borderColor = isSelected ? Color.clear : (colorScheme == .dark ? Color.white : Color.black).opacity(0.2)
+        let borderColor = isSelected ? Color(hex: "#F5A623") : (colorScheme == .dark ? Color.white : Color.black).opacity(0.15)
         
         Button(action: { HapticManager.shared.light(); 
             action()
         }, label: {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.headline)
                         .foregroundColor(titleColor)
@@ -423,7 +469,7 @@ private struct PlanCard: View {
                 
                 Spacer()
                 
-                VStack(alignment: .trailing, spacing: 4) {
+                VStack(alignment: .trailing, spacing: 2) {
                     Text(price)
                         .font(.headline)
                         .foregroundColor(titleColor)
@@ -436,14 +482,16 @@ private struct PlanCard: View {
                 }
             }
             .contentShape(Rectangle())
-            .padding(16)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
             .background(
                 RoundedRectangle(cornerRadius: AppRadius.medium)
                     .fill(backgroundColor)
             )
+            .shadow(color: isSelected ? Color(hex: "#F5A623").opacity(0.2) : Color.clear, radius: 8, x: 0, y: 4)
             .overlay(
                 RoundedRectangle(cornerRadius: AppRadius.medium)
-                    .stroke(borderColor, lineWidth: 1)
+                    .stroke(borderColor, lineWidth: isSelected ? 2 : 1)
             )
         })
         .buttonStyle(.plain)

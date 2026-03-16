@@ -271,22 +271,23 @@ struct LockScreenWidgetEntryView : View {
         case .systemMedium:
             HStack(spacing: 12) {
                 // LEFT: Daily Card (Compact - Fixed Width)
-                // Dynamic Color Logic
+                let theme = WidgetDataManager.shared.getAppTheme()
+                let baseColor = theme == .system ? Color(UIColor.secondarySystemFill) : (colorScheme == .dark ? Color(theme.secondaryCardColorDark) : Color(theme.secondaryCardColorLight))
                 let dailyBackground = {
-                    if entry.configuration.backgroundStyle == .pure {
+                    if entry.configuration.backgroundStyle == .pure && theme == .system {
                         return Color.clear
                     }
                     if mode == .spent {
                        return abs(entry.dailySpend) > entry.dailyBudgetLimit
                             ? Color.red.opacity(0.15)
-                            : Color(UIColor.secondarySystemFill)
+                            : baseColor
                     } else {
                        if entry.dailySpend < 0 {
                            return Color.green.opacity(0.15)
                        }
                        return entry.dailyRemaining < 0 
                             ? Color.red.opacity(0.15) 
-                            : Color(UIColor.secondarySystemFill)
+                            : baseColor
                     }
                 }()
                 
@@ -463,13 +464,7 @@ struct LockScreenWidgetEntryView : View {
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .containerBackground(for: .widget) {
-                if entry.configuration.backgroundStyle == .pure {
-                    colorScheme == .dark ? Color.black : Color.white
-                } else {
-                    Color(UIColor.systemBackground)
-                }
-            }
+            .applyWidgetBackground(style: entry.configuration.backgroundStyle)
 
         default:
             Text("Full View")

@@ -63,7 +63,7 @@ struct BalanceCard: View {
                         .lineLimit(1)
                     
                     if let userId, userPremiumRepo.isPremium(userId: userId) == true {
-                        PremiumBadge(size: .small)
+                        PremiumBadge(size: .small, overrideBadgeType: userPremiumRepo.badgeType(userId: userId))
                     }
                 }
                 

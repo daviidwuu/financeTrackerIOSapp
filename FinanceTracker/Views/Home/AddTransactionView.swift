@@ -38,6 +38,30 @@ struct AddTransactionView: View {
             }
             selectedDate = transaction.date
             transactionNotes = transaction.note ?? ""
+
+            // Recover note from title for shortcut-created transactions
+            // (shortcuts store user note in title with note: nil)
+            if transactionNotes.isEmpty, let categoryId = transaction.categoryId {
+                let categoryName = budgetRepo.getCategory(for: categoryId)?.category
+                if let categoryName = categoryName, transaction.title != categoryName {
+                    transactionNotes = transaction.title
+                } else if categoryName == nil && !transaction.title.isEmpty {
+                    transactionNotes = transaction.title
+                }
+            }
+
+            // Restore travel currency state when editing a travel-currency transaction
+            if let origAmount = transaction.originalAmount,
+               let origCurrency = transaction.currencyCode {
+                amount = String(format: "%.2f", abs(origAmount))
+                isUsingTravelCurrency = true
+                if currencyManager.travelCurrency != origCurrency {
+                    currencyManager.travelCurrency = origCurrency
+                }
+                if let rate = transaction.exchangeRate {
+                    currencyManager.exchangeRate = rate
+                }
+            }
         } else if let request = requestToAccept {
             amount = String(format: "%.2f", abs(request.amount))
             transactionNotes = request.note ?? ""

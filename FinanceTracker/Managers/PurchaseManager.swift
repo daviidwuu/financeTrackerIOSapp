@@ -128,8 +128,14 @@ class PurchaseManager: NSObject, ObservableObject {
         
         let userId = AppState.shared.currentUserId
         if !userId.isEmpty {
+            // Sync badge type to Firestore so other users see the correct badge
+            let localBadgeType = UserDefaults.standard.string(forKey: "premiumBadgeType") ?? PremiumBadgeType.king.rawValue
+            var profileData: [String: Any] = ["isPremium": isPremium]
+            if isPremium {
+                profileData["badgeType"] = localBadgeType
+            }
             Task {
-                try? await FirebaseManager.shared.updateUserProfile(userId: userId, data: ["isPremium": isPremium])
+                try? await FirebaseManager.shared.updateUserProfile(userId: userId, data: profileData)
             }
         }
         

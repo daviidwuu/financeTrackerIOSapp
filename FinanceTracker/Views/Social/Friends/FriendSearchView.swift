@@ -52,7 +52,7 @@ struct FriendSearchView: View {
                                             .foregroundColor(.primary)
                                         
                                         if user.isPremium == true {
-                                            PremiumBadge(size: .small)
+                                            PremiumBadge(size: .small, overrideBadgeType: user.badgeType.flatMap { PremiumBadgeType(rawValue: $0) })
                                         }
                                     }
                                     Text("@\(user.username)")

@@ -49,7 +49,7 @@ struct PendingSplitCard: View {
                         .foregroundColor(.primary)
                     
                     if split.isGuest != true, userPremiumRepo.isPremium(userId: otherUserId) == true {
-                        PremiumBadge(size: .small)
+                        PremiumBadge(size: .small, overrideBadgeType: userPremiumRepo.badgeType(userId: otherUserId))
                     }
                     
                     // FIX 3.5: Guest indicator badge

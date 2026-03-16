@@ -87,7 +87,7 @@ struct AddGroupMemberView: View {
                                                     .foregroundColor(.primary)
                                                 
                                                 if let id = friend.id, userPremiumRepo.isPremium(userId: id) == true {
-                                                    PremiumBadge(size: .small)
+                                                    PremiumBadge(size: .small, overrideBadgeType: userPremiumRepo.badgeType(userId: id))
                                                 }
                                             }
                                             
@@ -144,7 +144,7 @@ struct AddGroupMemberView: View {
                                                                 .foregroundColor(.primary)
                                                             
                                                             if user.isPremium == true {
-                                                                PremiumBadge(size: .small)
+                                                                PremiumBadge(size: .small, overrideBadgeType: user.badgeType.flatMap { PremiumBadgeType(rawValue: $0) })
                                                             }
                                                         }
                                                         Text("@" + user.username)

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PremiumBadgeSettingsView: View {
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var appState: AppState
     @AppStorage("premiumBadgeType") private var badgeType: PremiumBadgeType = .king
     
     var body: some View {
@@ -18,6 +19,13 @@ struct PremiumBadgeSettingsView: View {
                             Button(action: {
                                 HapticManager.shared.light()
                                 badgeType = type
+                                // Sync to Firestore so other users see this badge
+                                let userId = appState.currentUserId
+                                if !userId.isEmpty {
+                                    Task {
+                                        try? await FirebaseManager.shared.updateUserProfile(userId: userId, data: ["badgeType": type.rawValue])
+                                    }
+                                }
                             }) {
                                 MenuControlRow(title: type.title.capitalized) {
                                     Text(type.title)

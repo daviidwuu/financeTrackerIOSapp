@@ -162,6 +162,7 @@ class AppState: ObservableObject {
                 self.userName = profile["name"] as? String ?? ""
                 self.currentUserUsername = profile["username"] as? String ?? ""
                 self.userAvatarColor = profile["avatarColor"] as? String
+                self.isPremiumUser = profile["isPremium"] as? Bool ?? false
 
                 // Parse signup date
                 if let timestamp = profile["createdAt"] as? Timestamp {

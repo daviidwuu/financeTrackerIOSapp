@@ -41,9 +41,9 @@ struct RequestCardView: View {
                             .foregroundColor(.secondary)
                         
                         if userPremiumRepo.isPremium(userId: request.fromUid) == true {
-                            PremiumBadge(size: .small)
+                            PremiumBadge(size: .small, overrideBadgeType: userPremiumRepo.badgeType(userId: request.fromUid))
                         }
-                        
+
                         Text("paid you $\(String(format: "%.2f", abs(request.amount)))")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -57,10 +57,10 @@ struct RequestCardView: View {
                             .foregroundColor(.primary)
                         
                         if userPremiumRepo.isPremium(userId: request.fromUid) == true {
-                            PremiumBadge(size: .small)
+                            PremiumBadge(size: .small, overrideBadgeType: userPremiumRepo.badgeType(userId: request.fromUid))
                         }
                     }
-                    
+
                     // Secondary Info: Request Details
                     let note = request.note?.isEmpty == false ? request.note! : "Expense"
                     Text("requests $\(String(format: "%.2f", abs(request.amount))) for \(note)")

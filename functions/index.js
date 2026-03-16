@@ -15,6 +15,8 @@ const triggers = require('./src/triggers');
 
 // HTTP Functions
 exports.addTransaction = http.addTransaction;
+exports.revenueCatWebhook = http.revenueCatWebhook;
+exports.redeemReward = http.redeemReward;
 
 // Scheduled Functions
 exports.processRecurringTransactions = scheduled.processRecurringTransactions;

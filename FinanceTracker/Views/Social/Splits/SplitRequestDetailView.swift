@@ -141,10 +141,10 @@ struct SplitRequestDetailView: View {
                                                         .foregroundColor(.primary)
                                                     
                                                     if userPremiumRepo.isPremium(userId: split.toUid) == true {
-                                                        PremiumBadge(size: .small)
+                                                        PremiumBadge(size: .small, overrideBadgeType: userPremiumRepo.badgeType(userId: split.toUid))
                                                     }
                                                 }
-                                                
+
                                                 Text(split.status.rawValue.capitalized)
                                                     .font(.caption)
                                                     .foregroundColor(splitStatusColor(split.status))
@@ -212,11 +212,11 @@ struct SplitRequestDetailView: View {
                                             .foregroundColor(.primary)
                                         
                                         if userPremiumRepo.isPremium(userId: request.fromUid) == true {
-                                            PremiumBadge(size: .small)
+                                            PremiumBadge(size: .small, overrideBadgeType: userPremiumRepo.badgeType(userId: request.fromUid))
                                         }
                                     }
                                 }
-                                
+
                                 Divider().padding(.leading, 52)
                                 
                                 TransactionDetailRow(
@@ -231,7 +231,7 @@ struct SplitRequestDetailView: View {
                                             .foregroundColor(.primary)
                                         
                                         if userPremiumRepo.isPremium(userId: request.toUid) == true {
-                                            PremiumBadge(size: .small)
+                                            PremiumBadge(size: .small, overrideBadgeType: userPremiumRepo.badgeType(userId: request.toUid))
                                         }
                                     }
                                 }
