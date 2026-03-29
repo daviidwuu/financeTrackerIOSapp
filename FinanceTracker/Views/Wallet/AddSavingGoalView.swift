@@ -33,42 +33,20 @@ struct AddSavingGoalView: View {
     }
     
     var body: some View {
-        ZStack {
-            // Background
-            Color.backgroundPrimary
-                .ignoresSafeArea()
-            
-            VStack(spacing: 20) {
-                // Header
-                ModalHeader(
-                    title: headerTitle,
-                    currentStep: currentStep,
-                    totalSteps: 5,
-                    onBack: currentStep > 1 ? {
-                        direction = .leading
-                        withAnimation { currentStep -= 1 }
-                    } : nil,
-                    onClose: { dismiss() }
-                )
-                .padding(.horizontal, AppSpacing.margin)
-                .padding(.top, 16)
-                
-                // Content
-                ZStack(alignment: .top) {
-                    currentStepView
-                }
-                .id(currentStep)
-                .transition(.asymmetric(
-                    insertion: .move(edge: direction),
-                    removal: .move(edge: direction == .leading ? .trailing : .leading)
-                ))
-                .frame(maxHeight: .infinity, alignment: .top)
-                
-                Spacer()
-            }
-            .safeAreaInset(edge: .bottom) {
-                stickyActionBar
-            }
+        WizardLayout(
+            title: headerTitle,
+            currentStep: currentStep,
+            totalSteps: 5,
+            onBack: currentStep > 1 ? {
+                direction = .leading
+                withAnimation { currentStep -= 1 }
+            } : nil,
+            onClose: { dismiss() },
+            direction: direction
+        ) {
+            currentStepView
+        } actionBar: {
+            stickyActionBar
         }
         .presentationDetents([.medium, .large], selection: $presentationDetent)
         .presentationDragIndicator(.visible)
@@ -98,10 +76,6 @@ struct AddSavingGoalView: View {
             .disabled(!isStepValid)
             .animation(.easeInOut, value: isStepValid) // Smooth color transition
         }
-        .padding(.horizontal, AppSpacing.margin)
-        .padding(.top, AppSpacing.compact)
-        .padding(.bottom, 8) // Reduced bottom padding
-        .background(Color.backgroundPrimary)
         .animation(.easeInOut, value: currentStep) // Smooth transitions
     }
     

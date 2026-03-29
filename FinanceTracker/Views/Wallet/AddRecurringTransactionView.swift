@@ -36,54 +36,32 @@ struct AddRecurringTransactionView: View {
     }
     
     var body: some View {
-        ZStack {
-            // Background
-            Color.backgroundPrimary
-                .ignoresSafeArea()
-            
-            VStack(spacing: 20) {
-                // Header
-                ModalHeader(
-                    title: currentStep < 4 ? "Add Recurring" : "Confirm",
-                    currentStep: currentStep,
-                    totalSteps: 4,
-                    onBack: currentStep > 1 ? {
-                        direction = .leading
-                        withAnimation { currentStep -= 1 }
-                    } : nil,
-                    onClose: { dismiss() }
-                )
-                .padding(.horizontal, AppSpacing.margin)
-                .padding(.top, 16)
-                
-                // Content
-                ZStack(alignment: .top) {
-                    currentStepView
-                }
-                .id(currentStep)
-                .transition(.asymmetric(
-                    insertion: .move(edge: direction),
-                    removal: .move(edge: direction == .leading ? .trailing : .leading)
-                ))
-                .frame(maxHeight: .infinity, alignment: .top)
-                
-                Spacer()
-            }
-            .safeAreaInset(edge: .bottom) {
-                stickyActionBar
-            }
+        WizardLayout(
+            title: currentStep < 4 ? "Add Recurring" : "Confirm",
+            currentStep: currentStep,
+            totalSteps: 4,
+            onBack: currentStep > 1 ? {
+                direction = .leading
+                withAnimation { currentStep -= 1 }
+            } : nil,
+            onClose: { dismiss() },
+            direction: direction
+        ) {
+            currentStepView
+        } actionBar: {
+            stickyActionBar
         }
         .presentationDetents([.medium, .large], selection: $presentationDetent)
         .presentationDragIndicator(.visible)
         .onAppear {
             populateData()
-            
+
             // Repos are handled in AppState
             // if !appState.currentUserId.isEmpty {
             //    budgetRepo.startListening(userId: appState.currentUserId)
             //    transactionRepo.startListening(userId: appState.currentUserId)
             // }
-            
+
             // Delay setting initial category to allow repo to load
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 if let recurring = recurringToEdit, selectedCategory == nil {
@@ -126,10 +104,6 @@ struct AddRecurringTransactionView: View {
             .disabled(!isStepValid)
             .animation(.easeInOut, value: isStepValid) // Smooth color transition
         }
-        .padding(.horizontal, AppSpacing.margin)
-        .padding(.top, AppSpacing.compact)
-        .padding(.bottom, 8) // Reduced bottom padding
-        .background(Color.backgroundPrimary)
         .animation(.easeInOut, value: currentStep) // Smooth transitions
     }
     

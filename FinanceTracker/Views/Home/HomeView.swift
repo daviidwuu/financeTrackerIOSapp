@@ -49,144 +49,61 @@ struct HomeView: View {
                 Color.backgroundPrimary.ignoresSafeArea()
 
                 List {
-                    // Section 1: Header & Balance
+                    // Scroll offset tracker for overlay header
+                    ScrollOffsetTracker()
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets())
+
+                    Color.clear.frame(height: 80)
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+
+                    // Section 1: Balance Card
                     Section {
-                        VStack(spacing: AppSpacing.large) {
-                            // Custom Header
-                            HStack(alignment: .center) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Welcome")
+                        VStack(alignment: .leading, spacing: 20) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Balance")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.secondary)
+
+                                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                    Text("$\(String(format: "%.2f", showRemainingBudget ? (totalBudget - totalSpent) : totalSpent))")
+                                        .font(AppTypography.prominentBalance)
+                                        .foregroundColor(.primary)
+                                        .contentTransition(.numericText())
+
+                                    Text(showRemainingBudget ? "left" : "spent")
                                         .font(.subheadline)
-                                        .fontWeight(.medium)
                                         .foregroundColor(.secondary)
-                                    HStack(spacing: 8) {
-                                        Text(appState.userName.isEmpty ? "User" : appState.userName)
-                                            .font(AppTypography.titleDisplay)
-                                            .foregroundColor(.primary)
-                                        
-                                        // Streak Counter
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "flame.fill")
-                                                .font(.system(size: 14))
-                                                .foregroundColor(.orange)
-                                                .scaleEffect(isAnimating ? 1.2 : 1.0)
-                                                .animation(
-                                                    Animation.easeInOut(duration: 1.0)
-                                                        .repeatForever(autoreverses: true),
-                                                    value: isAnimating
-                                                )
-                                            
-                                            Text("\(appState.streakCount)")
-                                                .font(.system(size: 14, weight: .bold, design: .rounded))
-                                                .foregroundColor(.orange)
-                                        }
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(
-                                            Capsule()
-                                                .fill(Color.orange.opacity(0.15))
-                                        )
-                                        .onAppear {
-                                            isAnimating = true
-                                        }
-                                    }
-                                    if appState.isPremiumUser {
-                                        PremiumBadge(size: .small)
-                                            .padding(.top, 2)
+                                        .transition(.opacity)
+                                }
+                                .onTapGesture { HapticManager.shared.light();
+                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                                        showRemainingBudget.toggle()
                                     }
                                 }
-                                
-                                Spacer()
-                                
-                                // [NEW] Mission Button
-                                Button(action: { 
-                                    HapticManager.shared.light()
-                                    showMissions = true 
-                                }) {
-                                    ZStack {
-                                        Circle()
-                                            .fill(Color.primary.opacity(0.05))
-                                            .frame(width: 44, height: 44)
-                                        
-                                        Image(systemName: "trophy.fill")
-                                            .font(.system(size: 18))
-                                            .foregroundColor(.primary)
-                                        
-                                        CircularProgressView(
-                                            progress: GamificationManager.shared.progressForPhase(GamificationManager.shared.currentPhase),
-                                            color: .primary
-                                        )
-                                            .frame(width: 44, height: 44)
-                                    }
-                                }
-                                .buttonStyle(.plain)
-                                
-                                
-                                Button(action: { 
-                                    HapticManager.shared.light()
-                                    appState.showProfile = true 
-                                }) {
-                                    Circle()
-                                        .fill(Color.secondary.opacity(0.15))
-                                        .frame(width: 44, height: 44)
-                                        .overlay(
-                                            Image(systemName: "person.fill")
-                                                .font(.system(size: 20))
-                                                .foregroundColor(.primary)
-                                        )
-                                }
-                                .buttonStyle(.plain)
-                                
                             }
-                            .padding(.top, 10)
-                            
-                            // Balance Card
-                            VStack(alignment: .leading, spacing: 20) {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Balance")
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.secondary)
 
-
-                                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                        Text("$\(String(format: "%.2f", showRemainingBudget ? (totalBudget - totalSpent) : totalSpent))")
-                                            .font(AppTypography.prominentBalance)
-                                            .foregroundColor(.primary)
-                                            .contentTransition(.numericText())
-
-                                        Text(showRemainingBudget ? "left" : "spent")
-                                            .font(.subheadline)
-                                            .foregroundColor(.secondary)
-                                            .transition(.opacity)
-                                    }
-                                    .onTapGesture { HapticManager.shared.light();
-                                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                                            showRemainingBudget.toggle()
-                                        }
-                                    }
-                                }
-
-                                // Custom Pill-Shaped Progress Bar
-                                GeometryReader { geometry in
-                                    Capsule()
-                                        .fill(Color.secondaryCardBackground)
-                                        .frame(height: 24)
-                                        .overlay(
-                                            Capsule()
-                                                .fill(Color.primary)
-                                                .frame(width: min(geometry.size.width * (totalSpent / max(totalBudget, 0.01)), geometry.size.width))
-                                        , alignment: .leading)
-                                        .clipShape(Capsule())
-                                }
-                                .frame(height: 24)
-                                .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+                            // Custom Pill-Shaped Progress Bar
+                            GeometryReader { geometry in
+                                Capsule()
+                                    .fill(Color.secondaryCardBackground)
+                                    .frame(height: 24)
+                                    .overlay(
+                                        Capsule()
+                                            .fill(Color.primary)
+                                            .frame(width: min(geometry.size.width * (totalSpent / max(totalBudget, 0.01)), geometry.size.width))
+                                    , alignment: .leading)
+                                    .clipShape(Capsule())
                             }
-                            .padding(AppSpacing.large)
-                            .background(Color.cardBackground)
-                            .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
+                            .frame(height: 24)
+                            .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
                         }
-
+                        .padding(AppSpacing.large)
+                        .background(Color.cardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
                         .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
@@ -467,8 +384,69 @@ struct HomeView: View {
                     }
                 }
             }
+            .overlayHeader(.root(
+                title: appState.userName.isEmpty ? "User" : appState.userName,
+                subtitle: "Welcome",
+                trailing: AnyView(
+                    HStack(spacing: 8) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "flame.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.orange)
+                                .scaleEffect(isAnimating ? 1.2 : 1.0)
+                                .animation(
+                                    Animation.easeInOut(duration: 1.0)
+                                        .repeatForever(autoreverses: true),
+                                    value: isAnimating
+                                )
+                            Text("\(appState.streakCount)")
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                .foregroundColor(.orange)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(Color.orange.opacity(0.15)))
+
+                        Button(action: {
+                            HapticManager.shared.light()
+                            showMissions = true
+                        }) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.primary.opacity(0.05))
+                                    .frame(width: 44, height: 44)
+                                Image(systemName: "trophy.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundColor(.primary)
+                                CircularProgressView(
+                                    progress: GamificationManager.shared.progressForPhase(GamificationManager.shared.currentPhase),
+                                    color: .primary
+                                )
+                                .frame(width: 44, height: 44)
+                            }
+                        }
+                        .buttonStyle(.plain)
+
+                        Button(action: {
+                            HapticManager.shared.light()
+                            appState.showProfile = true
+                        }) {
+                            Circle()
+                                .fill(Color.secondary.opacity(0.15))
+                                .frame(width: 44, height: 44)
+                                .overlay(
+                                    Image(systemName: "person.fill")
+                                        .font(.system(size: 20))
+                                        .foregroundColor(.primary)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                )
+            ))
             .navigationBarHidden(true)
             .onAppear {
+                isAnimating = true
                 // Load Gamification Data - Repos are handled in AppState
                 if !appState.currentUserId.isEmpty {
                     gamificationManager.loadUserData(userId: appState.currentUserId)
