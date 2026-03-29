@@ -139,7 +139,7 @@ struct TransactionDetailView: View {
 
                     // Section C: Split Status Card
                     if transaction.type != "income", let splits = transaction.splits, !splits.isEmpty {
-                            VStack(alignment: .leading, spacing: 16) {
+                            VStack(alignment: .leading, spacing: AppSpacing.element) {
                                 Text("SPLIT STATUS")
                                     .font(.caption)
                                     .fontWeight(.bold)
@@ -149,7 +149,7 @@ struct TransactionDetailView: View {
                                 VStack(spacing: 0) {
                                     ForEach(splits) { split in
                                         Button(action: { HapticManager.shared.light();  showSplitSheet = true }) {
-                                            HStack(spacing: 12) {
+                                            HStack(spacing: AppSpacing.compact) {
                                                 // Mini Avatar
                                                 ZStack {
                                                     Circle()
@@ -160,8 +160,8 @@ struct TransactionDetailView: View {
                                                         .foregroundColor(.primary)
                                                 }
                                                 
-                                                VStack(alignment: .leading, spacing: 2) {
-                                                    HStack(spacing: 8) {
+                                                VStack(alignment: .leading, spacing: AppSpacing.micro) {
+                                                    HStack(spacing: AppSpacing.compact) {
                                                         Text(split.name)
                                                             .font(.body)
                                                             .fontWeight(.medium)
@@ -175,7 +175,7 @@ struct TransactionDetailView: View {
                                                 
                                                 Spacer()
                                                 
-                                                VStack(alignment: .trailing, spacing: 2) {
+                                                VStack(alignment: .trailing, spacing: AppSpacing.micro) {
                                                     Text(String(format: "$%.2f", split.amount))
                                                         .font(.body.monospacedDigit())
                                                         .fontWeight(.semibold)
@@ -184,29 +184,29 @@ struct TransactionDetailView: View {
                                                         Text(status.capitalized)
                                                             .font(.caption2)
                                                             .fontWeight(.bold)
-                                                            .foregroundColor(status == "paid" ? .green : (status == "declined" ? .red : (status == "accepted" ? .blue : .orange)))
+                                                            .foregroundColor(status == "paid" ? Color.functionalSuccess : (status == "declined" ? Color.functionalError : (status == "accepted" ? .blue : .orange)))
                                                     } else {
                                                         Text(split.isPaid ? "Paid" : "Pending")
                                                             .font(.caption2)
-                                                            .foregroundColor(split.isPaid ? .green : .orange)
+                                                            .foregroundColor(split.isPaid ? Color.functionalSuccess : .orange)
                                                     }
                                                 }
-                                                
+
                                                 // Inline Paid Toggle
                                                 Button(action: { HapticManager.shared.light();  toggleSplitPayment(split) }) {
                                                     Image(systemName: split.isPaid ? "checkmark.circle.fill" : "circle")
                                                         .font(.title3)
-                                                        .foregroundColor(split.isPaid ? .green : .secondary.opacity(0.3))
+                                                        .foregroundColor(split.isPaid ? Color.functionalSuccess : .secondary.opacity(0.3))
                                                 }
                                                 
                                             }
-                                            .padding(.vertical, 14)
-                                            .padding(.horizontal, 16)
+                                            .padding(.vertical, AppRadius.rowVertical)
+                                            .padding(.horizontal, AppSpacing.element)
                                         }
                                         
                                         
                                         if split.id != splits.last?.id {
-                                            Divider().padding(.horizontal, 16)
+                                            Divider().padding(.horizontal, AppSpacing.element)
                                         }
                                     }
                                     
@@ -235,7 +235,7 @@ struct TransactionDetailView: View {
                         }
                         
                         // Section D: Details & Map Card
-                        VStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: .leading, spacing: AppSpacing.element) {
                             Text("DETAILS")
                                 .font(.caption)
                                 .fontWeight(.bold)

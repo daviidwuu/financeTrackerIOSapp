@@ -27,7 +27,7 @@ struct PendingSplitCard: View {
         }
     }
     
-    private var accentColor: Color { isSender ? .green : .orange }
+    private var accentColor: Color { isSender ? Color.functionalSuccess : .orange }
     
     var body: some View {
         HStack(spacing: AppSpacing.element) {
@@ -58,8 +58,8 @@ struct PendingSplitCard: View {
                             .font(.caption2)
                             .fontWeight(.bold)
                             .foregroundColor(.white)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
+                            .padding(.horizontal, AppSpacing.compact)
+                            .padding(.vertical, 2) // TODO: add DS token for 2pt micro padding
                             .background(Color.secondary)
                             .clipShape(Capsule())
                     }
@@ -101,7 +101,7 @@ struct PendingSplitCard: View {
                 if split.isGuest == true {
                     Text("Manual tracking — no account")
                         .font(.caption2)
-                        .foregroundColor(.orange)
+                        .foregroundColor(AppColors.functionalExpense) // warning orange for guest manual tracking
                 }
             }
             
@@ -132,7 +132,7 @@ struct PendingSplitCard: View {
                             .font(.system(size: 14, weight: .bold))
                             .foregroundColor(.white)
                             .frame(width: 32, height: 32)
-                            .background(Color.blue)
+                            .background(AppColors.brandPrimary)
                             .clipShape(Circle())
                     }
                     .buttonStyle(PlainButtonStyle())

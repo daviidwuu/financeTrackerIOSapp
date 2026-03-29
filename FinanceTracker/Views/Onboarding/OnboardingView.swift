@@ -70,17 +70,17 @@ struct OnboardingView: View {
             
             VStack(spacing: 0) {
                 // Progress Bar
-                HStack(spacing: 4) {
+                HStack(spacing: AppSpacing.micro) {
                     ForEach(1...6, id: \.self) { step in
                         Capsule()
-                            .fill(step <= currentStep ? Color.primary : Color.gray.opacity(0.2))
+                            .fill(step <= currentStep ? Color.primary : Color.secondary.opacity(0.2))
                             .frame(height: 4)
                             .frame(maxWidth: .infinity)
                     }
                 }
-                .padding(.horizontal, 24)
-                .padding(.top, 20)
-                .padding(.bottom, 40)
+                .padding(.horizontal, AppSpacing.large)
+                .padding(.top, AppSpacing.margin)
+                .padding(.bottom, AppSpacing.section + AppSpacing.compact)
                 
                 // Content
                 ZStack(alignment: .top) {
@@ -101,7 +101,7 @@ struct OnboardingView: View {
                 Spacer()
                 
                 // Navigation Buttons (Sticky at bottom)
-                HStack(spacing: 16) {
+                HStack(spacing: AppSpacing.element) {
                     if currentStep > 1 {
                         Button(action: {
                             HapticManager.shared.light()
@@ -129,8 +129,8 @@ struct OnboardingView: View {
                     .buttonStyle(PrimaryButtonStyle())
                     .disabled(!isStepValid || isLoading)
                 }
-                .padding(.horizontal, 24)
-                .padding(.top, 16)
+                .padding(.horizontal, AppSpacing.large)
+                .padding(.top, AppSpacing.element)
                 .padding(.bottom, 34)
             }
         }

@@ -16,17 +16,17 @@ struct PostOnboardingGuideView: View {
             
             VStack(spacing: 0) {
                 // Progress Bar
-                HStack(spacing: 4) {
+                HStack(spacing: AppSpacing.micro) {
                     ForEach(1...4, id: \.self) { step in
                         Capsule()
-                            .fill(step <= currentStep ? Color.white : Color.gray.opacity(0.2))
+                            .fill(step <= currentStep ? Color.white : Color.secondary.opacity(0.2))
                             .frame(height: 4)
                             .frame(maxWidth: .infinity)
                     }
                 }
-                .padding(.horizontal, 24)
-                .padding(.top, 20)
-                .padding(.bottom, 40)
+                .padding(.horizontal, AppSpacing.large)
+                .padding(.top, AppSpacing.margin)
+                .padding(.bottom, AppSpacing.section + AppSpacing.compact)
                 
                 // Content
                 ZStack(alignment: .top) {
@@ -49,7 +49,7 @@ struct PostOnboardingGuideView: View {
                 Spacer()
                 
                 // Navigation Buttons
-                HStack(spacing: 16) {
+                HStack(spacing: AppSpacing.element) {
                     if currentStep > 1 && currentStep < 4 {
                         Button(action: {
                             HapticManager.shared.light()
@@ -78,7 +78,7 @@ struct PostOnboardingGuideView: View {
                     .clipShape(Capsule())
                     .shadow(color: .white.opacity(0.3), radius: 10, x: 0, y: 5)
                 }
-                .padding(24)
+                .padding(AppSpacing.large)
                 .background((colorScheme == .dark ? Color.black : Color.white).opacity(0.9))
             }
             
@@ -98,7 +98,7 @@ struct PostOnboardingGuideView: View {
                                 .padding(.vertical, 8)
                         }
                     }
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, AppSpacing.large)
                     .padding(.top, 60)
                     Spacer()
                 }
@@ -157,7 +157,7 @@ struct WelcomeGuideStep: View {
                 }
             }
             
-            VStack(spacing: 16) {
+            VStack(spacing: AppSpacing.element) {
                 Text("🎉 All Set!")
                     .font(AppTypography.heroRounded(size: 32))
                 
@@ -165,9 +165,9 @@ struct WelcomeGuideStep: View {
                     .font(AppTypography.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
+                    .padding(.horizontal, AppSpacing.section)
             }
-            
+
             Spacer()
         }
     }
@@ -175,34 +175,34 @@ struct WelcomeGuideStep: View {
 
 struct BackTapGuideStep: View {
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: AppSpacing.large) {
             Spacer()
             
             Image(systemName: "hand.tap.fill")
                 .font(.system(size: 70))
                 .foregroundColor(.blue)
-                .padding(.bottom, 12)
-            
+                .padding(.bottom, AppSpacing.compact)
+
             Text("Quick Logging with Back Tap")
                 .font(AppTypography.heroRounded(size: 28))
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
-            
+                .padding(.horizontal, AppSpacing.large)
+
             Text("Log expenses in seconds without even opening the app")
                 .font(AppTypography.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-            
-            VStack(alignment: .leading, spacing: 16) {
+                .padding(.horizontal, AppSpacing.section)
+
+            VStack(alignment: .leading, spacing: AppSpacing.element) {
                 InstructionRow(number: 1, text: "Open Settings → Accessibility → Touch")
                 InstructionRow(number: 2, text: "Select \"Back Tap\"")
                 InstructionRow(number: 3, text: "Choose \"Double Tap\" or \"Triple Tap\"")
                 InstructionRow(number: 4, text: "Select \"Log Transaction\" from Shortcuts")
             }
-            .padding(.horizontal, 32)
-            .padding(.top, 8)
-            
+            .padding(.horizontal, AppSpacing.section)
+            .padding(.top, AppSpacing.compact)
+
             Spacer()
         }
     }
@@ -212,7 +212,7 @@ struct WidgetsGuideStep: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 28) {
-                VStack(spacing: 16) {
+                VStack(spacing: AppSpacing.element) {
                     Image(systemName: "square.grid.2x2.fill")
                         .font(.system(size: 70))
                         .foregroundColor(.purple)
@@ -225,11 +225,11 @@ struct WidgetsGuideStep: View {
                         .font(AppTypography.subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
+                        .padding(.horizontal, AppSpacing.section)
                 }
-                .padding(.top, 40)
-                
-                VStack(spacing: 20) {
+                .padding(.top, AppSpacing.section + AppSpacing.compact)
+
+                VStack(spacing: AppSpacing.margin) {
                     WidgetCard(
                         icon: "square.grid.2x2",
                         title: "Home Screen Widgets",
@@ -251,22 +251,22 @@ struct WidgetsGuideStep: View {
                         color: .orange
                     )
                 }
-                .padding(.horizontal, 24)
-                
-                VStack(spacing: 12) {
+                .padding(.horizontal, AppSpacing.large)
+
+                VStack(spacing: AppSpacing.compact) {
                     Text("How to Add")
                         .font(AppTypography.headline)
                         .foregroundColor(.primary)
                     
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: AppSpacing.compact) {
                         InstructionRow(number: 1, text: "Long press on home screen")
                         InstructionRow(number: 2, text: "Tap the \"+\" button")
                         InstructionRow(number: 3, text: "Search \"wym\"")
                         InstructionRow(number: 4, text: "Choose your widget size")
                     }
                 }
-                .padding(.horizontal, 32)
-                .padding(.vertical, 16)
+                .padding(.horizontal, AppSpacing.section)
+                .padding(.vertical, AppSpacing.element)
                 
                 Spacer(minLength: 100)
             }
@@ -292,7 +292,7 @@ struct CompletionGuideStep: View {
                     }
                 }
             
-            VStack(spacing: 16) {
+            VStack(spacing: AppSpacing.element) {
                 Text("You're All Set!")
                     .font(AppTypography.heroRounded(size: 32))
                 
@@ -300,9 +300,9 @@ struct CompletionGuideStep: View {
                     .font(AppTypography.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
+                    .padding(.horizontal, AppSpacing.section)
             }
-            
+
             Spacer()
         }
     }
@@ -315,7 +315,7 @@ struct InstructionRow: View {
     let text: String
     
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: AppSpacing.compact) {
             Text("\(number)")
                 .font(AppTypography.heroRounded(size: 16))
                 .foregroundColor(.white)
@@ -346,7 +346,7 @@ struct WidgetCard: View {
                 .foregroundColor(color)
                 .frame(width: 60, height: 60)
                 .background(color.opacity(0.15))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .clipShape(RoundedRectangle(cornerRadius: AppRadius.small))
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
@@ -363,7 +363,7 @@ struct WidgetCard: View {
         }
         .padding(AppSpacing.element)
         .background(Color.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
     }
 }
 

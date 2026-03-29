@@ -13,7 +13,7 @@ struct GuestInputView: View {
             Color.backgroundPrimary
                 .ignoresSafeArea()
             
-            VStack(spacing: 24) {
+            VStack(spacing: AppSpacing.large) {
                 // Header
                 ModalHeader(
                     title: "Guest Name",
@@ -23,7 +23,7 @@ struct GuestInputView: View {
                     onClose: { dismiss() }
                 )
                 .padding(.horizontal, AppSpacing.margin)
-                .padding(.top, 16)
+                .padding(.top, AppSpacing.element)
                 
                 Spacer()
                 

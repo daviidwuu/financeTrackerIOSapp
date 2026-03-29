@@ -111,7 +111,7 @@ struct WalletView: View {
                     // Section 1: Financial Overview (Net Worth Card)
                     Section {
                         // Net Worth Header
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: AppSpacing.micro) {
                             HStack {
                                 Text("Net Worth")
                                     .font(.subheadline)
@@ -122,7 +122,7 @@ struct WalletView: View {
                             
                             Text("$\(String(format: "%.2f", totalBalance))")
                                 .font(AppTypography.sectionHeader)
-                                .foregroundColor(totalBalance >= 0 ? .primary : .red)
+                                .foregroundColor(totalBalance >= 0 ? .primary : .functionalError)
                         }
 
                         .padding(AppSpacing.margin) // Changed from 24 to 20 (standard margin)
@@ -179,26 +179,26 @@ struct WalletView: View {
                                     ZStack {
                                         Circle()
                                             .fill(Color(hex: goal.colorHex).opacity(0.15))
-                                            .frame(width: 48, height: 48)
+                                            .frame(width: AppSize.avatarList, height: AppSize.avatarList)
                                         Image(systemName: goal.icon)
                                             .font(.system(size: 20))
                                             .foregroundColor(Color(hex: goal.colorHex))
                                     }
                                     
-                                    VStack(alignment: .leading, spacing: 4) {
+                                    VStack(alignment: .leading, spacing: AppSpacing.micro) {
                                         Text(goal.name)
                                             .font(.headline)
                                         Text("$\(Int(currentAmount)) / $\(Int(goal.targetAmount))")
                                             .font(.system(.subheadline, design: .rounded))
                                             .foregroundColor(.secondary)
                                         
-                                        HStack(spacing: 4) {
+                                        HStack(spacing: AppSpacing.micro) {
                                             Image(systemName: "calendar")
                                                 .font(.caption2)
                                             Text("Target: \(goal.targetDate.formatted(date: .abbreviated, time: .omitted))")
                                                 .font(.caption2)
                                         }
-                                        .foregroundColor(Color(UIColor.tertiaryLabel))
+                                        .foregroundColor(Color.tertiaryLabel)
                                     }
                                     
                                     Spacer()
@@ -221,7 +221,7 @@ struct WalletView: View {
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
-                                    .tint(.red)
+                                    .tint(Color.functionalError)
                                 }
                                 .swipeActions(edge: .leading, allowsFullSwipe: true) {
                                     Button {
@@ -333,7 +333,7 @@ struct WalletView: View {
                                     ZStack {
                                         Circle()
                                             .fill(Color(hex: budget.colorHex).opacity(0.15))
-                                            .frame(width: 48, height: 48)
+                                            .frame(width: AppSize.avatarList, height: AppSize.avatarList)
                                         Image(systemName: budget.icon)
                                             .font(.system(size: 20))
                                             .foregroundColor(Color(hex: budget.colorHex))
@@ -367,7 +367,7 @@ struct WalletView: View {
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
-                                    .tint(.red)
+                                    .tint(Color.functionalError)
                                 }
                                 .swipeActions(edge: .leading, allowsFullSwipe: true) {
                                     Button {

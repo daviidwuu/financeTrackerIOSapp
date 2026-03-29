@@ -2,13 +2,23 @@ import SwiftUI
 
 struct AppRadius {
     static let large: CGFloat = 28
+    static let card: CGFloat = 20
     static let medium: CGFloat = 16
     static let small: CGFloat = 12
+    static let badge: CGFloat = 4
+    static let xSmall: CGFloat = 6
     static let button: CGFloat = 25
+
+    /// Row vertical padding for settings menu rows
+    static let rowVertical: CGFloat = 14
+
+    /// Thumb inset for toggle controls
+    static let toggleThumb: CGFloat = 2
 }
 
 struct AppSize {
     static let avatarList: CGFloat = 48
+    static let avatarMedium: CGFloat = 40
     static let avatarHero: CGFloat = 86
     static let avatarSmall: CGFloat = 32
     static let iconButton: CGFloat = 44
@@ -49,15 +59,21 @@ struct AppTypography {
 struct AppSpacing {
     /// Standard horizontal margin for the whole app
     static let margin: CGFloat = 20
-    
+
     /// Spacing between major sections
     static let section: CGFloat = 32
-    
+
+    /// Large spacing for onboarding / wizard containers
+    static let large: CGFloat = 24
+
     /// Spacing between elements within a section
     static let element: CGFloat = 16
-    
+
     /// Spacing for tight groupings
     static let compact: CGFloat = 8
+
+    /// Micro spacing for badges and small insets
+    static let micro: CGFloat = 4
 }
 
 extension View {
@@ -143,7 +159,7 @@ struct AcceptDeclineButtons: View {
     let onDecline: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: AppSpacing.compact) {
             Button(action: {
                 HapticManager.shared.light()
                 onDecline()

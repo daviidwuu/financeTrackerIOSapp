@@ -31,17 +31,17 @@ struct WalletDetailsView: View {
                     VStack(spacing: AppSpacing.section) {
                         
                         // Hero Section
-                        VStack(spacing: 12) {
+                        VStack(spacing: AppSpacing.compact) {
                             Text(String(format: "$%.2f", totalBalance))
                                 .font(.system(size: 40, weight: .bold, design: .rounded))
-                                .foregroundColor(totalBalance >= 0 ? .primary : .red)
+                                .foregroundColor(totalBalance >= 0 ? .primary : Color.functionalError)
                             
                             Text("Total Balance")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 24)
+                        .padding(.vertical, AppSpacing.large)
                         
                         // All-Time Statistics Grid
                         VStack(alignment: .leading, spacing: 8) {
@@ -53,13 +53,13 @@ struct WalletDetailsView: View {
                             
                             VStack(spacing: 0) {
                                 // Income
-                                DetailRow(title: "Total Income", amount: aggregatedIncome, color: .green)
+                                DetailRow(title: "Total Income", amount: aggregatedIncome, color: Color.functionalSuccess)
                                 
                                 Divider()
                                     .padding(.leading, 16)
                                 
                                 // Expense
-                                DetailRow(title: "Total Spent", amount: aggregatedExpense, color: .red)
+                                DetailRow(title: "Total Spent", amount: aggregatedExpense, color: Color.functionalError)
                             }
                             .background(Color.cardBackground)
                             .cornerRadius(AppRadius.medium)

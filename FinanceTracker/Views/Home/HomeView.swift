@@ -51,7 +51,7 @@ struct HomeView: View {
                 List {
                     // Section 1: Header & Balance
                     Section {
-                        VStack(spacing: 24) {
+                        VStack(spacing: AppSpacing.large) {
                             // Custom Header
                             HStack(alignment: .center) {
                                 VStack(alignment: .leading, spacing: 4) {
@@ -182,7 +182,7 @@ struct HomeView: View {
                                 .frame(height: 24)
                                 .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
                             }
-                            .padding(24)
+                            .padding(AppSpacing.large)
                             .background(Color.cardBackground)
                             .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
                         }
@@ -214,25 +214,25 @@ struct HomeView: View {
                         !pendingDeletedGroupIds.contains($0.id ?? "")
                     }
                     if !pendingDeletionGroups.isEmpty {
-                        Section(header: Text("Action Required").font(.headline).foregroundColor(.red)) {
+                        Section(header: Text("Action Required").font(.headline).foregroundColor(Color.functionalError)) {
                             ForEach(pendingDeletionGroups) { group in
-                                HStack(spacing: 12) {
+                                HStack(spacing: AppSpacing.compact) {
                                     ZStack {
                                         Circle()
                                             .fill(AppColors.functionalExpense.opacity(0.1))
-                                            .frame(width: 48, height: 48)
+                                            .frame(width: AppSize.avatarList, height: AppSize.avatarList)
                                         Image(systemName: "exclamationmark.triangle.fill")
-                                            .foregroundColor(.red)
+                                            .foregroundColor(Color.functionalError)
                                     }
                                     
-                                    VStack(alignment: .leading, spacing: 2) {
+                                    VStack(alignment: .leading, spacing: 2) { // sub-micro text stack
                                         Text(group.name)
                                             .font(.body)
                                             .fontWeight(.medium)
                                             .foregroundColor(.primary)
                                         Text("Group deletion requested")
                                             .font(.caption)
-                                            .foregroundColor(.red)
+                                            .foregroundColor(Color.functionalError)
                                     }
                                     
                                     Spacer()
@@ -245,7 +245,7 @@ struct HomeView: View {
                                 .background(Color.secondaryCardBackground)
                                 .cornerRadius(AppRadius.small)
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
+                                    RoundedRectangle(cornerRadius: AppRadius.small)
                                         .stroke(AppColors.functionalExpense.opacity(0.5), lineWidth: 1)
                                 )
                                 .contentShape(Rectangle())
@@ -360,7 +360,7 @@ struct HomeView: View {
                                         } label: {
                                             Label("Delete", systemImage: "trash")
                                         }
-                                        .tint(.red)
+                                        .tint(Color.functionalError)
                                     }
                                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
                                         if !transaction.isReimbursementIncome(categories: budgetRepo.budgets) {

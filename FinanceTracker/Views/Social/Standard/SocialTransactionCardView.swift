@@ -108,10 +108,10 @@ struct SocialTransactionCardView: View {
             return .orange
         case "accepted", "all accepted":
             return .blue
-        case "paid", "settled", "fully settled", "fully paid": 
-            return .green
-        case "declined": 
-            return .red
+        case "paid", "settled", "fully settled", "fully paid":
+            return Color.functionalSuccess
+        case "declined":
+            return Color.functionalError
         default: 
             return .secondary
         }

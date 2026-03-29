@@ -24,9 +24,16 @@ class TransactionRepository: ObservableObject {
     
     private var calendarMonth: Date = Date() // Track selected month specifically for the Calendar
     
-    // Optimistic Deletion Cache
+    // Optimistic Deletion Cache — in-memory ONLY, never persisted to UserDefaults
     private var optimisticDeletedTransactions: [String: FirestoreModels.TransactionModel] = [:]
-    
+
+    deinit {
+        listener?.remove()
+        currentMonthListener?.remove()
+        calendarListener?.remove()
+        allTransactionsListener?.remove()
+    }
+
     /// Start listening to transactions for a specific user
     /// - Parameters:
     ///   - userId: User ID
@@ -41,7 +48,6 @@ class TransactionRepository: ObservableObject {
             self.isLoading = true
         }
         self.errorMessage = nil
-        self.currentLimit = 50 // Reset limit
         self.currentLimit = 50 // Reset limit
         
         setupListener()
@@ -98,21 +104,22 @@ class TransactionRepository: ObservableObject {
             
         listener = query.addSnapshotListener { [weak self] snapshot, error in
                 guard let self = self else { return }
-                self.isLoading = false
-                
+                if self.isLoading { self.isLoading = false }
+
                 if let error = error {
-                    self.errorMessage = "Error fetching transactions: \(error.localizedDescription)"
-                    DebugLogger.log("Error fetching transactions: \(error.localizedDescription)")
+                    let msg = "Error fetching transactions: \(error.localizedDescription)"
+                    if self.errorMessage != msg { self.errorMessage = msg }
+                    DebugLogger.log(msg)
                     return
                 }
-                
+
                 guard let documents = snapshot?.documents else {
-                    self.errorMessage = "No transactions found."
-                    self.transactions = []
+                    if self.errorMessage != "No transactions found." { self.errorMessage = "No transactions found." }
+                    if !self.transactions.isEmpty { self.transactions = [] }
                     return
                 }
-                
-                self.errorMessage = nil
+
+                if self.errorMessage != nil { self.errorMessage = nil }
                 // Update canLoadMore: if we got as many docs as our limit, there are likely more
                 self.canLoadMore = self.currentMonth == nil && documents.count >= self.currentLimit
                 // Only keep transactions that are not optimistically deleted
@@ -357,9 +364,9 @@ class TransactionRepository: ObservableObject {
     @MainActor
     func optimisticAddTransaction(_ transaction: FirestoreModels.TransactionModel) {
         if transaction.type == "income" || transaction.type == "settlement" {
-            AppState.shared.aggregatedIncome += abs(transaction.amount)
+            AppState.shared.aggregatedIncome = DecimalPrecision.sum([AppState.shared.aggregatedIncome, abs(transaction.amount)])
         } else {
-            AppState.shared.aggregatedExpense += abs(transaction.amount)
+            AppState.shared.aggregatedExpense = DecimalPrecision.sum([AppState.shared.aggregatedExpense, abs(transaction.amount)])
         }
         
         self.transactions.insert(transaction, at: 0)
@@ -390,15 +397,15 @@ class TransactionRepository: ObservableObject {
             if let index = self.transactions.firstIndex(where: { $0.id == id }) {
                 let oldTx = self.transactions[index]
                 if oldTx.type == "income" || oldTx.type == "settlement" {
-                    AppState.shared.aggregatedIncome -= abs(oldTx.amount)
+                    AppState.shared.aggregatedIncome = DecimalPrecision.subtract(AppState.shared.aggregatedIncome, abs(oldTx.amount))
                 } else {
-                    AppState.shared.aggregatedExpense -= abs(oldTx.amount)
+                    AppState.shared.aggregatedExpense = DecimalPrecision.subtract(AppState.shared.aggregatedExpense, abs(oldTx.amount))
                 }
-                
+
                 if transaction.type == "income" || transaction.type == "settlement" {
-                    AppState.shared.aggregatedIncome += abs(transaction.amount)
+                    AppState.shared.aggregatedIncome = DecimalPrecision.sum([AppState.shared.aggregatedIncome, abs(transaction.amount)])
                 } else {
-                    AppState.shared.aggregatedExpense += abs(transaction.amount)
+                    AppState.shared.aggregatedExpense = DecimalPrecision.sum([AppState.shared.aggregatedExpense, abs(transaction.amount)])
                 }
                 
                 self.transactions[index] = transaction
@@ -497,46 +504,51 @@ class TransactionRepository: ObservableObject {
         guard let id = transaction.id else { return }
         
         if transaction.type == "income" || transaction.type == "settlement" {
-            AppState.shared.aggregatedIncome -= abs(transaction.amount)
+            AppState.shared.aggregatedIncome = DecimalPrecision.subtract(AppState.shared.aggregatedIncome, abs(transaction.amount))
         } else {
-            AppState.shared.aggregatedExpense -= abs(transaction.amount)
+            AppState.shared.aggregatedExpense = DecimalPrecision.subtract(AppState.shared.aggregatedExpense, abs(transaction.amount))
         }
-        
-        var idsToRemove = [id]
+
+        var idsToRemove: Set<String> = [id]
         optimisticDeletedTransactions[id] = transaction
+
+        // Build a lookup dictionary to avoid O(n) searches per split
+        let transactionById: [String: FirestoreModels.TransactionModel] = Dictionary(
+            uniqueKeysWithValues: transactions.compactMap { tx in tx.id.map { ($0, tx) } }
+        )
 
         if let splits = transaction.splits {
             for split in splits {
                 if let incomeId = split.incomeTransactionId,
-                   let incomeTx = transactions.first(where: { $0.id == incomeId }) {
-                    idsToRemove.append(incomeId)
+                   let incomeTx = transactionById[incomeId] {
+                    idsToRemove.insert(incomeId)
                     optimisticDeletedTransactions[incomeId] = incomeTx
-                    
+
                     if incomeTx.type == "income" || incomeTx.type == "settlement" {
-                        AppState.shared.aggregatedIncome -= abs(incomeTx.amount)
+                        AppState.shared.aggregatedIncome = DecimalPrecision.subtract(AppState.shared.aggregatedIncome, abs(incomeTx.amount))
                     } else {
-                        AppState.shared.aggregatedExpense -= abs(incomeTx.amount)
+                        AppState.shared.aggregatedExpense = DecimalPrecision.subtract(AppState.shared.aggregatedExpense, abs(incomeTx.amount))
                     }
                 }
             }
         }
 
-        // Remove from the published array
+        // Remove from the published arrays using O(1) Set lookups
         self.transactions.removeAll { tx in
             guard let txId = tx.id else { return false }
             return idsToRemove.contains(txId)
         }
-        
+
         self.currentMonthTransactions.removeAll { tx in
             guard let txId = tx.id else { return false }
             return idsToRemove.contains(txId)
         }
-        
+
         self.calendarTransactions.removeAll { tx in
             guard let txId = tx.id else { return false }
             return idsToRemove.contains(txId)
         }
-        
+
         self.allTransactions.removeAll { tx in
             guard let txId = tx.id else { return false }
             return idsToRemove.contains(txId)
@@ -552,9 +564,9 @@ class TransactionRepository: ObservableObject {
         // Restore main transaction
         if let restoredTx = optimisticDeletedTransactions.removeValue(forKey: id) {
             if restoredTx.type == "income" || restoredTx.type == "settlement" {
-                AppState.shared.aggregatedIncome += abs(restoredTx.amount)
+                AppState.shared.aggregatedIncome = DecimalPrecision.sum([AppState.shared.aggregatedIncome, abs(restoredTx.amount)])
             } else {
-                AppState.shared.aggregatedExpense += abs(restoredTx.amount)
+                AppState.shared.aggregatedExpense = DecimalPrecision.sum([AppState.shared.aggregatedExpense, abs(restoredTx.amount)])
             }
             
             self.transactions.append(restoredTx)
@@ -577,9 +589,9 @@ class TransactionRepository: ObservableObject {
                     if let incomeId = split.incomeTransactionId,
                        let linkedIncomeTx = optimisticDeletedTransactions.removeValue(forKey: incomeId) {
                         if linkedIncomeTx.type == "income" || linkedIncomeTx.type == "settlement" {
-                            AppState.shared.aggregatedIncome += abs(linkedIncomeTx.amount)
+                            AppState.shared.aggregatedIncome = DecimalPrecision.sum([AppState.shared.aggregatedIncome, abs(linkedIncomeTx.amount)])
                         } else {
-                            AppState.shared.aggregatedExpense += abs(linkedIncomeTx.amount)
+                            AppState.shared.aggregatedExpense = DecimalPrecision.sum([AppState.shared.aggregatedExpense, abs(linkedIncomeTx.amount)])
                         }
                         
                         self.transactions.append(linkedIncomeTx)
@@ -639,20 +651,22 @@ class TransactionRepository: ObservableObject {
         // Calculate Daily Spend (Net)
         // Calculate Daily Breakdown
         let dailyTransactions = transactions.filter { $0.type != "income" && calendar.isDateInToday($0.date) }
-        
+
         // Expense: Sum of negative amounts (e.g. -10, -20 = -30). We store as positive (30).
-        let dailyExpense = abs(dailyTransactions.filter { $0.amount < 0 }.reduce(0) { $0 + $1.amount })
-        
+        let dailyExpense = abs(DecimalPrecision.sum(dailyTransactions.filter { $0.amount < 0 }.map { $0.amount }))
+
         // Vault: Sum of positive amounts (Reimbursements/Income).
-        let dailyVault = dailyTransactions.filter { $0.amount > 0 }.reduce(0) { $0 + $1.amount }
-        
+        let dailyVault = DecimalPrecision.sum(dailyTransactions.filter { $0.amount > 0 }.map { $0.amount })
+
         // Save separately
         WidgetDataManager.shared.saveDailyData(expense: dailyExpense, vault: dailyVault)
-        
+
         // Calculate Monthly Spend (Net)
-        let monthlySpend = transactions
-             .filter { $0.type != "income" && calendar.isDate($0.date, equalTo: today, toGranularity: .month) }
-             .reduce(0) { $0 + $1.amount }
+        let monthlySpend = DecimalPrecision.sum(
+            transactions
+                .filter { $0.type != "income" && calendar.isDate($0.date, equalTo: today, toGranularity: .month) }
+                .map { $0.amount }
+        )
         
         // Monthly: Keep original logic for now (Absolute expense only? Or should we fix this too?)
         // The plan specifically prioritized Daily. Let's stick to Daily for this user request.

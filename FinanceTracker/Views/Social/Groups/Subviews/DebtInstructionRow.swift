@@ -8,20 +8,20 @@ struct DebtInstructionRow: View {
     var currency: String = ""
     
     var body: some View {
-        HStack(spacing: 12) {
-            HStack(spacing: 8) {
-                ProfileAvatar(text: String(debtorName.prefix(1)), color: .secondary, size: 32)
+        HStack(spacing: AppSpacing.compact) {
+            HStack(spacing: AppSpacing.compact) {
+                ProfileAvatar(text: String(debtorName.prefix(1)), color: .secondary, size: AppSize.avatarSmall)
                 Text(debtorName).font(.subheadline).fontWeight(.medium).lineLimit(1)
             }
             Image(systemName: "arrow.right").font(.caption).foregroundColor(.secondary)
-            HStack(spacing: 8) {
-                ProfileAvatar(text: String(creditorName.prefix(1)), color: .secondary, size: 32)
+            HStack(spacing: AppSpacing.compact) {
+                ProfileAvatar(text: String(creditorName.prefix(1)), color: .secondary, size: AppSize.avatarSmall)
                 Text(creditorName).font(.subheadline).fontWeight(.medium).lineLimit(1)
             }
             Spacer()
             Text("\(currency.isEmpty ? "$" : currency) \(String(format: "%.2f", amount))").font(.subheadline).fontWeight(.bold)
         }
-        .padding(12)
+        .padding(AppSpacing.compact)
         .background(Color.cardBackground)
         .cornerRadius(AppRadius.small)
     }

@@ -79,8 +79,11 @@ exports.v2_onSplitRequestUpdated = onDocumentUpdated('split_requests/{requestId}
                             needsUpdate = true;
                         }
 
-                        // Idempotency check — only create transactions if not already present
-                        if (!splits[splitIndex].incomeTransactionId) {
+                        // Idempotency check — only create income if not already present AND this is
+                        // not a settlement-cascade transition. When `settledByRequestId` is set it
+                        // means acceptSettlement() already created a single income transaction covering
+                        // the full settlement amount; creating additional income here would be a duplicate.
+                        if (!splits[splitIndex].incomeTransactionId && !after.settledByRequestId) {
                             // Create "Payment Received" income transaction for the Creditor (fromUid)
                             const incomeRef = admin.firestore().collection('users').doc(after.fromUid).collection('transactions').doc();
                             const incomeData = {

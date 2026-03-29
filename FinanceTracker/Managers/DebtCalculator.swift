@@ -40,6 +40,8 @@ class DebtCalculator {
         multiCurrencyMemoizer.clear()
     }
     
+    // MARK: - DebtInstruction
+
     struct DebtInstruction: Identifiable, Equatable {
         var id = UUID()
         let debtorId: String
@@ -47,7 +49,9 @@ class DebtCalculator {
         let amount: Double // Keep as Double for UI compatibility
         var currency: String = "" // FIX 1.3: Currency for this instruction (empty = default/main)
     }
-    
+
+    // MARK: - Single-Currency Resolution
+
     /// FIX #4: Uses Decimal internally to avoid floating-point precision errors.
     /// Results are rounded to 2 decimal places before returning.
     func calculateDebtResolution(balances: [String: Double]) -> [DebtInstruction] {
@@ -79,21 +83,13 @@ class DebtCalculator {
             let settleAmount = min(debtAmount, creditAmount)
             
             if settleAmount > threshold {
-                // Round to 2 decimal places
-                let rounded = NSDecimalNumber(decimal: settleAmount)
-                    .rounding(accordingToBehavior: NSDecimalNumberHandler(
-                        roundingMode: .plain,
-                        scale: 2,
-                        raiseOnExactness: false,
-                        raiseOnOverflow: false,
-                        raiseOnUnderflow: false,
-                        raiseOnDivideByZero: false
-                    ))
-                
+                // Round to 2 decimal places via DecimalPrecision for consistency
+                let rounded = DecimalPrecision.round(NSDecimalNumber(decimal: settleAmount).doubleValue)
+
                 instructions.append(DebtInstruction(
                     debtorId: debtors[debtorIndex].0,
                     creditorId: creditors[creditorIndex].0,
-                    amount: rounded.doubleValue
+                    amount: rounded
                 ))
             }
             
@@ -108,6 +104,8 @@ class DebtCalculator {
         return instructions
     }
     
+    // MARK: - Multi-Currency Resolution
+
     /// FIX 1.3: Multi-currency debt resolution — runs the algorithm per currency and tags each instruction.
     func calculateMultiCurrencyResolution(balancesByCurrency: [String: [String: Double]]) -> [DebtInstruction] {
         let key = MultiCurrencyCacheKey(balancesByCurrency)

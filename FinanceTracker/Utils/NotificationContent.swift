@@ -1,6 +1,31 @@
 import Foundation
 
 struct NotificationContent {
+
+    // MARK: - Category Identifiers
+
+    enum Category {
+        static let transaction = "TRANSACTION"
+        static let split = "SPLIT"
+        static let budget = "BUDGET"
+        static let bill = "BILL"
+        static let streak = "STREAK"
+        static let inactivity = "INACTIVITY"
+        static let dailySummary = "DAILY_SUMMARY"
+    }
+
+    // MARK: - Action Identifiers
+
+    enum Action {
+        static let view = "VIEW_ACTION"
+        static let remind = "REMIND_ACTION"
+        static let analytics = "ANALYTICS_ACTION"
+        static let pay = "PAY_ACTION"
+        static let log = "LOG_ACTION"
+    }
+
+    // MARK: - Message Types
+
     enum MessageType {
         case inactivity
         case endOfDay
@@ -9,203 +34,269 @@ struct NotificationContent {
         case streakWarning(daysConfig: Int)
         case largeExpense(amount: Double)
         case budgetHit(category: String, percent: Int)
+        case transaction(amount: Double, category: String, type: String, originalAmount: Double?, currencyCode: String?)
+        case dailySummary(totalSpent: Double, count: Int)
+        case splitReminder(count: Int, total: Double)
+        case weeklyReport
+        case travelCountryChange(countryName: String)
     }
-    
+
+    // MARK: - Shared Helpers
+
+    static func formatCurrency(_ amount: Double) -> String {
+        String(format: "$%.2f", abs(amount))
+    }
+
+    static func formatCurrencyInt(_ amount: Double) -> String {
+        "$\(Int(abs(amount)))"
+    }
+
+    // MARK: - Factory
+
     static func getMessage(for type: MessageType, userName: String) -> (title: String, body: String) {
         let name = userName.isEmpty ? "there" : userName
         let hour = Calendar.current.component(.hour, from: Date())
-        
+
         switch type {
+
         case .inactivity:
             return getInactivityMessage(name: name, hour: hour)
+
         case .endOfDay:
             return getEODMessage(name: name)
+
         case .motivational:
             return getMotivationalMessage(name: name, hour: hour)
+
         case .billDue(let billName, let amount):
-            return ("Bill Due Tomorrow!", "Don't forget: \(billName) ($\(String(format: "%.2f", amount))) is due tomorrow. Make sure you have funds ready, \(name).")
+            return (
+                "Bill due tomorrow",
+                "\(billName) (\(formatCurrency(amount))) is due tomorrow — make sure you have funds ready."
+            )
+
         case .streakWarning(let days):
-            return ("Streak Risk! 🔥", "You haven't logged a transaction in \(days) hours. Open the app to keep your streak alive, \(name)!")
+            return (
+                "Keep your streak alive",
+                "You haven't logged a transaction in \(days) hour\(days == 1 ? "" : "s") — open the app to stay on track."
+            )
+
         case .largeExpense(let amount):
-            return ("Large Expense Detected", "Whoa, huge spend of $\(String(format: "%.2f", amount))! Make sure this was planned, \(name).")
+            return (
+                "Large expense logged",
+                "You just logged \(formatCurrency(amount)) — make sure this was planned."
+            )
+
         case .budgetHit(let category, let percent):
-            return ("Budget Alert ⚠️", "You've hit \(percent)% of your \(category) budget. Tread carefully for the rest of the month, \(name).")
+            return (
+                "Budget update",
+                "You've used \(percent)% of your \(category) budget for this month."
+            )
+
+        case .transaction(let amount, let category, let type, let originalAmount, let currencyCode):
+            return getTransactionMessage(
+                amount: amount,
+                category: category,
+                type: type,
+                originalAmount: originalAmount,
+                currencyCode: currencyCode
+            )
+
+        case .dailySummary(let totalSpent, let count):
+            return (
+                "Daily summary",
+                "You spent \(formatCurrencyInt(totalSpent)) across \(count) transaction\(count == 1 ? "" : "s") today."
+            )
+
+        case .splitReminder(let count, let total):
+            let plural = count == 1 ? "split" : "splits"
+            return (
+                "Unpaid splits",
+                "You have \(count) unpaid \(plural) totaling \(formatCurrencyInt(total)) — check if friends have paid you back."
+            )
+
+        case .weeklyReport:
+            return (
+                "Weekly report ready",
+                "Your weekly spending summary is ready to review."
+            )
+
+        case .travelCountryChange(let countryName):
+            return (
+                "Welcome to \(countryName)",
+                "Tap to set up your travel currency for \(countryName)."
+            )
         }
     }
-    
+
     // MARK: - Inactivity Messages
+
     private static func getInactivityMessage(name: String, hour: Int) -> (String, String) {
-        let title = "Quick Check-in"
+        let title = "Quick check-in"
         let morning = [
-            "Busy morning, \(name)? Just checking if you missed any expenses.",
-            "Hey \(name), the morning is flying by! Did your money fly too?",
-            "Don't let the coffee buzz make you forget to log that latte, \(name).",
-            "Morning transactions check! Anything to add, \(name)?",
-            "Start the day right by tracking every penny, \(name).",
-            "Did you buy breakfast? Log it now!",
+            "Busy morning? Just checking if you missed any expenses.",
+            "Did your money fly this morning, \(name)? Log it if so.",
+            "Don't forget to log that morning coffee or commute.",
+            "Anything to add before the day gets going, \(name)?",
+            "Start the day right by tracking every purchase.",
+            "Did you buy breakfast? Log it now.",
             "Morning commute cost? Don't forget to track it.",
-            "Fresh start today. Keep your ledger fresh too.",
-            "Early bird gets the worm, and logs their expenses!",
-            "Hey \(name), quick finance check before the day gets crazy."
+            "Fresh start today — keep your ledger fresh too.",
+            "Quick finance check before the day gets busy, \(name)."
         ]
-        
+
         let afternoon = [
-            "Lunch break over? Don't forget to log what you spent, \(name).",
-            "Afternoon slump? Wake up your wallet and track recent spends, \(name).",
-            "Hey \(name), keeping up with the day's expenses?",
-            "Mid-day check: Has your wallet been opened recently, \(name)?",
-            "Tracking is a habit, \(name). Have you logged everything so far?",
-            "Did you grab a snack? Log it!",
+            "Lunch break over? Don't forget to log what you spent.",
+            "Afternoon check — have you logged today's spending, \(name)?",
+            "Mid-day check: has your wallet been opened recently?",
+            "Tracking is a habit — have you logged everything so far, \(name)?",
             "Don't let small afternoon purchases slip through the cracks.",
             "How's the budget looking this afternoon, \(name)?",
-            "Refuel your car or yourself? Track the cost.",
-            "Half the day is gone. Is your tracking halfway done?"
+            "Half the day is gone — is your tracking halfway done?"
         ]
-        
+
         let evening = [
-            "Winding down, \(name)? Make sure your expense log is up to date.",
-            "Evening check-in! Did you buy anything on the way home, \(name)?",
-            "Don't let today's receipts become tomorrow's mystery, \(name).",
-            "Dinner time! If you bought it, track it, \(name).",
-            "Keep the streak alive, \(name). Log any missing transactions.",
-            "Relaxing evening? Take 5 seconds to update your spending.",
-            "Did you order takeout? Log that delicious expense.",
-            "Before you unplug, plug in your numbers for the day.",
-            "Reviewing your day starts with reviewing your spending.",
-            "Ending the day on a high note (and accurate balance)!"
+            "Winding down? Make sure your expense log is up to date, \(name).",
+            "Did you buy anything on the way home today?",
+            "Don't let today's receipts become tomorrow's mystery.",
+            "Dinner logged? If you bought it, track it.",
+            "Keep the streak alive, \(name) — log any missing transactions.",
+            "Take a moment to update your spending before you unplug.",
+            "Did you order takeout tonight? Log that expense."
         ]
-        
+
         var pool = [
-            "Wallet feeling lighter? Make sure to track it, \(name)!",
-            "\(name), tracking ensures freedom. Did you spend anything?",
-            "Just a friendly nudge to keep your ledger accurate, \(name).",
-            "Every transaction counts. Have you logged yours, \(name)?",
-            "Stay on top of your finances, \(name). Log it now.",
-            "Money clarity comes from tracking. How are you doing today?",
+            "Wallet feeling lighter? Make sure to track it.",
+            "Just a friendly nudge to keep your ledger accurate.",
+            "Every transaction counts — have you logged yours, \(name)?",
+            "Stay on top of your finances — log it now.",
             "Your future self will thank you for tracking this today.",
-            "Building wealth starts with tracking pennies.",
-            "Have you checked your budget today?",
-            "Don't ignore your financial health. Log a check-in."
+            "Have you checked your budget today?"
         ]
-        
+
         if hour < 12 { pool += morning }
         else if hour < 17 { pool += afternoon }
         else { pool += evening }
-        
+
         return (title, pool.randomElement() ?? pool[0])
     }
-    
+
     // MARK: - EOD Messages
+
     private static func getEODMessage(name: String) -> (String, String) {
-        let title = "Daily Wrap-up"
+        let title = "Daily wrap-up"
         let messages = [
-            "Time to wrap up, \(name). Did you catch every transaction today?",
-            "10 PM Check: Review your day's spending to stay on track.",
-            "Goodnight \(name)! One last look at your finances for the day?",
-            "Closing the ledger for the day, \(name). Everything recorded?",
-            "Sleep soundly knowing your finances are tracked. Check today's activity.",
-            "Zero transactions today? Or just forgot to log them, \(name)?",
-            "Make tomorrow easier by finalizing today's accounts, \(name).",
-            "Did you hit your daily budget goals today, \(name)?",
-            "A clear mind needs clear finances. Review your day, \(name).",
-            "Before you drift off, is your balance up to date, \(name)?",
-            "End the day strong. Verify your transactions.",
-            "Did you stick to the plan today, \(name)?",
-            "Reflect on today's spending choices.",
+            "Did you catch every transaction today, \(name)?",
+            "One last look at your finances before you call it a day.",
+            "Goodnight, \(name) — everything recorded for today?",
+            "Everything in the ledger? Check today's activity.",
+            "Sleep soundly knowing your finances are tracked.",
+            "Zero transactions today, or just forgot to log them?",
+            "Make tomorrow easier by finalising today's accounts.",
+            "Did you hit your daily budget goals, \(name)?",
+            "A clear mind needs clear finances — review your day.",
+            "Is your balance up to date before you drift off, \(name)?",
+            "End the day strong — verify your transactions.",
             "Any forgotten subscriptions or auto-pays today?",
             "Ready to close the books on today?",
-            "Financial peace is a great bedtime routine.",
-            "Check your streaks before you sleep!",
             "Did you overspend or underspend today? Check now.",
-            "Tomorrow is a new financial day. Close today properly.",
-            "Sweet dreams are made of... balanced budgets."
+            "Tomorrow is a new financial day — close today properly."
         ]
         return (title, messages.randomElement() ?? messages[0])
     }
-    
+
     // MARK: - Motivational Messages
+
     private static func getMotivationalMessage(name: String, hour: Int) -> (String, String) {
-        // Morning (6am - 10am)
+        // Morning (6am–10am)
         if hour >= 6 && hour < 10 {
-            let titles = ["Rise & Shine", "Morning Motivation", "Start Strong", "Daily Focus", "Wake Up Wealthy"]
+            let titles = ["Rise and shine", "Morning motivation", "Start strong", "Daily focus", "Wake up wealthy"]
             let messages = [
-                "Rise and shine, \(name). A new day to make smart financial choices!",
-                "Good morning \(name)! Start the day with a clear financial mind.",
-                "New day, new opportunities to save, \(name).",
-                "Wake up and build wealth, \(name). Consistency is key.",
-                "Today is a perfect day to stick to your budget, \(name).",
-                "Your financial future is built one morning at a time, \(name).",
-                "Coffee: $5. Financial Freedom: Priceless. Good morning, \(name)!",
-                "Attack the day, not your savings.",
-                "Morning goal: Spend less than you earn today.",
-                "Set your financial intention for the day right now.",
-                "Success is a habit. Start this morning.",
-                "The early bird catches the... compound interest?",
-                "Make today count, financially and personally.",
-                "Visualise your savings goal. Now go get it.",
-                "Be mindful of your morning spending loops."
+                "A new day to make smart financial choices, \(name).",
+                "Good morning — start the day with a clear financial mind.",
+                "New day, new opportunities to save.",
+                "Wake up and build wealth — consistency is key.",
+                "Today is a great day to stick to your budget.",
+                "Your financial future is built one morning at a time.",
+                "Coffee: $5. Financial freedom: priceless.",
+                "Morning goal: spend less than you earn today.",
+                "Set your financial intention for the day.",
+                "The early bird catches the compound interest."
             ]
             return (titles.randomElement()!, messages.randomElement()!)
         }
-        
+
         // Evening (6pm+)
         if hour >= 18 {
-            let titles = ["Evening Wisdom", "Financial Peace", "Reflect", "Unwind & Review", "Smart Choices"]
+            let titles = ["Evening wisdom", "Financial peace", "Reflect", "Unwind and review", "Smart choices"]
             let messages = [
                 "Peace of mind comes from knowing where you stand financially.",
-                "Reflect on your spending today, \(name). Did it align with your goals?",
-                "A penny saved is a penny earned. Good evening, \(name).",
-                "Relax, \(name). You're in control of your money.",
+                "Did today's spending align with your goals, \(name)?",
+                "A penny saved is a penny earned — good evening.",
+                "Relax — you're in control of your money.",
                 "The best pillow is a clear conscience and a balanced budget.",
-                "Did you make your money work for you today, \(name)?",
-                "Evening is for relaxing, not stressing about money. Check your tracker.",
-                "Wind down and review. You're doing great, \(name).",
-                "Did you impulsively buy anything? It's okay, just track it.",
-                "Gratitude for what you have saves you from buying what you don't need.",
+                "Did you make your money work for you today?",
+                "Wind down and review — you're doing great, \(name).",
+                "If you bought something impulsively, it's okay — just track it.",
                 "Reviewing your day is the best way to improve tomorrow.",
-                "Financial discipline allows for evening relaxation.",
-                "You are building a better future, one day at a time.",
-                "Sleep well knowing you are taking control.",
-                "Close the day with zero financial stress."
+                "You are building a better future, one day at a time."
             ]
             return (titles.randomElement()!, messages.randomElement()!)
         }
-        
-        // General Day (Tips, Quotes, Humor)
-        let titles = ["Money Tip", "Did You Know?", "Stay Focused", "Financial Fact", "Smart Move", "Wealth Wisdom", "Pro Tip", "Reality Check"]
+
+        // General day
+        let titles = ["Money tip", "Did you know?", "Stay focused", "Financial fact", "Smart move", "Wealth wisdom", "Pro tip", "Reality check"]
         let messages = [
-            "A budget is telling your money where to go instead of wondering where it went.",
-            "Small leaks sink great ships. Watch those small expenses, \(name)!",
-            "Do not save what is left after spending, but spend what is left after saving.",
-            "Financial freedom is available to those who learn about it and work for it.",
-            "It's not your salary that makes you rich, it's your spending habits.",
-            "Beware of little expenses; a small leak will sink a great ship.",
+            "A budget tells your money where to go instead of wondering where it went.",
+            "Small leaks sink great ships — watch those small expenses.",
+            "Don't save what's left after spending; spend what's left after saving.",
+            "It's not your salary that makes you rich — it's your spending habits.",
             "The art is not in making money, but in keeping it.",
             "Every transaction counts towards your future, \(name).",
             "Invest in yourself by tracking your money.",
-            "Buying things you don't need with money you don't have to impress people you don't like? Skip it.",
-            "Compound interest is the eighth wonder of the world. He who understands it, earns it.",
-            "Price is what you pay. Value is what you get. Look for value, \(name).",
-            "Don't go broke trying to look rich, \(name).",
-            "Savings today = Security tomorrow.",
-            "Rule No. 1: Never lose money. Rule No. 2: Never forget Rule No. 1.",
-            "You can have anything you want, but not everything you want. Choose wisely, \(name).",
-            "Rich people stay rich by living like they're poor. Poor people stay poor by living like they're rich.",
-            "Automation is the key to consistent saving.",
-            "Pay yourself first. The rest can wait.",
-            "Track your net worth, not just your income.",
-            "Time in the market beats timing the market.",
+            "Don't go broke trying to look rich.",
+            "Savings today means security tomorrow.",
+            "Price is what you pay; value is what you get.",
+            "Compound interest is the eighth wonder of the world.",
             "Live below your means to expand your means.",
             "Financial literacy is the best investment.",
             "Avoid lifestyle creep as your income grows.",
-            "Have an emergency fund. It changes everything.",
-            "Debt is a tool or a trap. Use it wisely.",
-            "Your network is your net worth.",
+            "An emergency fund changes everything.",
+            "Debt is a tool or a trap — use it wisely.",
             "Consistency beats intensity.",
-            "Don't save what is left after spending; spend what is left after saving.",
             "Money is a terrible master but an excellent servant."
         ]
-        
         return (titles.randomElement()!, messages.randomElement()!)
+    }
+
+    // MARK: - Transaction Message
+
+    private static func getTransactionMessage(
+        amount: Double,
+        category: String,
+        type: String,
+        originalAmount: Double?,
+        currencyCode: String?
+    ) -> (String, String) {
+        let formatted = formatCurrency(amount)
+        var body: String
+
+        if type == "income" {
+            body = "You received \(formatted)"
+        } else {
+            body = "You spent \(formatted)"
+        }
+
+        if let original = originalAmount, let code = currencyCode {
+            body += " (\(code) \(formatCurrency(original)))"
+        }
+
+        if type == "income" {
+            body += " from \(category)"
+        } else {
+            body += " on \(category)"
+        }
+
+        let title = type == "income" ? "Income received" : "Expense added"
+        return (title, body)
     }
 }

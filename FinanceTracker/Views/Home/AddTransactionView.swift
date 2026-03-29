@@ -156,7 +156,7 @@ struct AddTransactionView: View {
     }
     
     private var readOnlyView: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: AppSpacing.large) {
             // Header
             HStack {
                 Spacer()
@@ -186,7 +186,7 @@ struct AddTransactionView: View {
             if let t = transactionToEdit {
                 Text("+\(String(format: "%.2f", t.amount))")
                     .font(.system(size: 40, weight: .bold, design: .rounded))
-                    .foregroundColor(.green)
+                    .foregroundColor(Color.functionalSuccess)
             }
             
             // Title
@@ -326,7 +326,7 @@ struct AddTransactionView: View {
     }
     
     private var amountStep: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: AppSpacing.element) {
             Spacer()
             
             Text("Amount")
@@ -455,7 +455,7 @@ struct AddTransactionView: View {
                                             if selectedCategory?.category == budget.category {
                                                 Image(systemName: "checkmark.circle.fill")
                                                 .font(.caption)
-                                                .foregroundColor(.green)
+                                                .foregroundColor(Color.functionalSuccess)
                                             }
                                         }
                                     }
@@ -492,7 +492,7 @@ struct AddTransactionView: View {
 
     
     private var transactionNotesStep: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: AppSpacing.element) {
             Text("Notes (Optional)")
                 .font(.title2)
                 .fontWeight(.semibold)

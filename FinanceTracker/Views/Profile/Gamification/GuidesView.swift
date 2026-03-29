@@ -68,7 +68,7 @@ struct GuidesListView: View {
                 .ignoresSafeArea()
 
             ScrollView {
-                VStack(spacing: 24) {
+                VStack(spacing: AppSpacing.large) {
                     ScrollOffsetTracker()
                     Spacer().frame(height: 60)
                     
@@ -78,26 +78,26 @@ struct GuidesListView: View {
                             Button(action: { HapticManager.shared.light(); 
                                 selectedGuide = guide
                             }) {
-                                HStack(spacing: 16) {
+                                HStack(spacing: AppSpacing.element) {
                                     Image(systemName: guide.icon)
                                         .font(.title2)
                                         .foregroundColor(.white)
-                                        .frame(width: 40, height: 40)
+                                        .frame(width: AppSize.avatarMedium, height: AppSize.avatarMedium)
                                         .background(guide.color)
-                                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                                    
+                                        .clipShape(RoundedRectangle(cornerRadius: AppSpacing.compact + 2))
+
                                     Text(guide.title)
                                         .font(.body)
                                         .foregroundColor(.primary)
-                                    
+
                                     Spacer()
-                                    
+
                                     Image(systemName: "chevron.right")
                                         .font(.system(size: 14, weight: .semibold))
                                         .foregroundColor(Color(UIColor.tertiaryLabel))
                                 }
-                                .padding(.vertical, 12)
-                                .padding(.horizontal, 16)
+                                .padding(.vertical, AppSpacing.compact)
+                                .padding(.horizontal, AppSpacing.element)
                                 .contentShape(Rectangle())
                             }
                             
@@ -111,7 +111,7 @@ struct GuidesListView: View {
                     
                     Spacer()
                 }
-                .padding(.top, 20)
+                .padding(.top, AppSpacing.margin)
             }
         }
         .overlayHeader(.navigation(title: "Guides", onBack: { dismiss() }))

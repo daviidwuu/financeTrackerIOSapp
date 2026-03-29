@@ -145,7 +145,7 @@ struct CalendarView: View {
                     Text("$\(Int(displayValue))")
                         .font(.system(.title3, design: .rounded))
                         .fontWeight(.bold)
-                        .foregroundColor(displayValue >= 0 ? .green : .red)
+                        .foregroundColor(displayValue >= 0 ? Color.functionalSuccess : Color.functionalError)
                 }
                 Spacer()
                 
@@ -166,7 +166,7 @@ struct CalendarView: View {
         }
         .padding()
         .background(Color.cardBackground)
-        .cornerRadius(20)
+        .cornerRadius(AppRadius.card)
         .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
         .onAppear {
             // Gamification
@@ -251,7 +251,7 @@ struct CalendarView: View {
         } else {
             value = calculateDailyBudgetSurplus(for: date, dailyTransactions: dailyTransactions)
         }
-        return (value, value >= 0 ? .green : .red)
+        return (value, value >= 0 ? Color.functionalSuccess : Color.functionalError)
     }
 
     // Budget Mode: Daily Allowance - Expenses + Reimbursements (from splits)

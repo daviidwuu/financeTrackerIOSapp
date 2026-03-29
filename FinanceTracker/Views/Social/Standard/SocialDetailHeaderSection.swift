@@ -29,8 +29,8 @@ struct SocialHeaderPill<Content: View>: View {
         .font(.subheadline)
         .fontWeight(.medium)
         .foregroundColor(.primary)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.horizontal, AppSpacing.compact)
+        .padding(.vertical, AppRadius.xSmall)
         .background(Color.primary.opacity(0.05))
         .clipShape(Capsule())
     }
@@ -106,7 +106,7 @@ struct SocialDetailHeaderSection<Avatar: View, Subtitle: View, ExtraActions: Vie
     }
     
     private var headerActions: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppSpacing.compact) {
             Button(action: {
                 HapticManager.shared.light()
                 onSettle()

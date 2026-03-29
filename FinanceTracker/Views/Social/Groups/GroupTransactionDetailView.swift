@@ -68,9 +68,9 @@ struct GroupTransactionDetailView: View {
                 )
                 
                 ScrollView {
-                    VStack(spacing: 24) {
+                    VStack(spacing: AppSpacing.large) {
                         // Hero Section: Icon, Amount, Date, Paid by
-                        VStack(spacing: 8) {
+                        VStack(spacing: AppSpacing.compact) {
                             ZStack {
                                 Circle()
                                     .fill(Color(hex: categoryColor).opacity(0.15))
@@ -121,7 +121,7 @@ struct GroupTransactionDetailView: View {
                                     } label: {
                                         Text("(Edited)")
                                             .font(.caption)
-                                            .foregroundColor(.blue)
+                                            .foregroundColor(AppColors.brandPrimary)
                                             .underline()
                                     }
                                 }
@@ -134,12 +134,12 @@ struct GroupTransactionDetailView: View {
                         
                         if transaction.type != "settlement" {
                             // 2. Split Breakdown
-                            VStack(alignment: .leading, spacing: 16) {
+                            VStack(alignment: .leading, spacing: AppSpacing.element) {
                                 Text("SPLIT STATUS")
                                 .font(.caption)
                                 .fontWeight(.bold)
                                 .foregroundColor(.secondary)
-                                .padding(.leading, 8)
+                                .padding(.leading, AppSpacing.compact)
                             
                             if isLoading {
                                 HStack {
@@ -169,7 +169,7 @@ struct GroupTransactionDetailView: View {
                                                 selectedSplit = split
                                             }
                                         }) {
-                                            HStack(spacing: 12) {
+                                            HStack(spacing: AppSpacing.compact) {
                                                 // Mini Avatar
                                                 ZStack {
                                                     Circle()
@@ -180,8 +180,8 @@ struct GroupTransactionDetailView: View {
                                                         .foregroundColor(.primary)
                                                 }
                                                 
-                                                VStack(alignment: .leading, spacing: 2) {
-                                                    HStack(spacing: 8) {
+                                                VStack(alignment: .leading, spacing: AppSpacing.micro) {
+                                                    HStack(spacing: AppSpacing.compact) {
                                                         Text(appState.userResolver.resolveName(for: split.toUid, fallbackName: split.toName))
                                                             .font(.body)
                                                             .fontWeight(.medium)
@@ -195,7 +195,7 @@ struct GroupTransactionDetailView: View {
                                                 
                                                 Spacer()
                                                 
-                                                VStack(alignment: .trailing, spacing: 2) {
+                                                VStack(alignment: .trailing, spacing: AppSpacing.micro) {
                                                     Text(String(format: "$%.2f", split.amount))
                                                         .font(.body.monospacedDigit())
                                                         .fontWeight(.semibold)
@@ -214,7 +214,7 @@ struct GroupTransactionDetailView: View {
                                                     Button(action: { HapticManager.shared.light();  toggleSplitPayment(split) }) {
                                                         Image(systemName: split.status == .paid ? "checkmark.circle.fill" : "circle")
                                                             .font(.title3)
-                                                            .foregroundColor(split.status == .paid ? .green : .secondary.opacity(0.3))
+                                                            .foregroundColor(split.status == .paid ? Color.functionalSuccess : .secondary.opacity(0.3))
                                                     }
                                                     
                                                 } else if split.toUid == appState.currentUserId {
@@ -226,21 +226,21 @@ struct GroupTransactionDetailView: View {
                                                     }
                                                 }
                                             }
-                                            .padding(.vertical, 14)
-                                            .padding(.horizontal, 16)
+                                            .padding(.vertical, AppRadius.rowVertical)
+                                            .padding(.horizontal, AppSpacing.element)
                                         }
-                                        
-                                        
+
+
                                         if split.id != splits.last?.id {
-                                            Divider().padding(.horizontal, 16)
+                                            Divider().padding(.horizontal, AppSpacing.element)
                                         }
                                     }
-                                    
+
                                     // Net Cost Row (Only visible to Payer)
                                     if transaction.payerId == appState.currentUserId {
                                         // Divider handled by last element check above? No, we need one before Net Cost
                                         if !splits.isEmpty {
-                                            Divider().padding(.horizontal, 16)
+                                            Divider().padding(.horizontal, AppSpacing.element)
                                         }
                                         
                                         HStack {
@@ -269,12 +269,12 @@ struct GroupTransactionDetailView: View {
                         }
                         
                         // 3. Details & Map Card (matches TransactionDetailView)
-                        VStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: .leading, spacing: AppSpacing.element) {
                             Text("DETAILS")
                                 .font(.caption)
                                 .fontWeight(.bold)
                                 .foregroundColor(.secondary)
-                                .padding(.leading, 8)
+                                .padding(.leading, AppSpacing.compact)
                             
                             VStack(spacing: 0) {
                                 // Map Header (Integrated into card)
@@ -300,7 +300,7 @@ struct GroupTransactionDetailView: View {
                                 let myShare = splits.first(where: { $0.toUid == appState.currentUserId })?.amount
                                     ?? (transaction.payerId == appState.currentUserId ? abs(transaction.amount) - splits.reduce(0) { $0 + $1.amount } : nil)
                                 if transaction.type != "settlement", let share = myShare {
-                                    Divider().padding(.leading, 52)
+                                    Divider().padding(.leading, 52) // TODO: add DS token for 52pt divider indent (icon + spacing)
                                     TransactionDetailRow(icon: "person.crop.circle", title: "Your Share", value: String(format: "$%.2f", share), color: .blue)
                                 }
                                 
@@ -308,29 +308,29 @@ struct GroupTransactionDetailView: View {
                                    let originalAmount = originalTx.originalAmount,
                                    let currencyCode = originalTx.currencyCode {
                                     
-                                    Divider().padding(.leading, 52)
+                                    Divider().padding(.leading, 52) // TODO: add DS token for 52pt divider indent (icon + spacing)
                                     TransactionDetailRow(icon: "banknote", title: "Original Amount", value: String(format: "%.2f %@", originalAmount, currencyCode), color: .blue)
                                     
                                     if let rate = originalTx.exchangeRate {
-                                        Divider().padding(.leading, 52)
+                                        Divider().padding(.leading, 52) // TODO: add DS token for 52pt divider indent (icon + spacing)
                                         TransactionDetailRow(icon: "arrow.triangle.2.circlepath", title: "Exchange Rate", value: String(format: "1 %@ = %.2f %@", transaction.currencyCode ?? CurrencyManager.shared.mainCurrency, rate, currencyCode), color: .orange)
                                     }
                                 } else if let originalAmount = transaction.originalAmount, let rate = transaction.exchangeRate {
                                     // Fallback using data from GroupTransaction
-                                    Divider().padding(.leading, 52)
+                                    Divider().padding(.leading, 52) // TODO: add DS token for 52pt divider indent (icon + spacing)
                                     let foreignCurrency = transaction.currencyCode ?? "(Foreign)"
                                     TransactionDetailRow(icon: "banknote", title: "Original Amount", value: String(format: "%.2f %@", originalAmount, foreignCurrency), color: .blue)
                                      
-                                    Divider().padding(.leading, 52)
+                                    Divider().padding(.leading, 52) // TODO: add DS token for 52pt divider indent (icon + spacing)
                                     TransactionDetailRow(icon: "arrow.triangle.2.circlepath", title: "Exchange Rate", value: String(format: "Rate: %.2f", rate), color: .orange)
                                 }
                                 
                                 if let note = transaction.note, !note.isEmpty {
-                                    Divider().padding(.leading, 52)
+                                    Divider().padding(.leading, 52) // TODO: add DS token for 52pt divider indent (icon + spacing)
                                     TransactionDetailRow(icon: "text.alignleft", title: "Notes", value: note, color: .secondary)
                                 }
                                 
-                                Divider().padding(.leading, 52)
+                                Divider().padding(.leading, 52) // TODO: add DS token for 52pt divider indent (icon + spacing)
                                 TransactionDetailRow(icon: "clock", title: "Created on", value: transaction.date.formatted(date: .omitted, time: .shortened), color: .secondary)
                             }
                             .background(Color.cardBackground)
@@ -351,7 +351,7 @@ struct GroupTransactionDetailView: View {
                             .padding(.top, -AppSpacing.element)
                         }
                     }
-                    .padding(.bottom, 40)
+                    .padding(.bottom, 40) // TODO: add DS token for 40pt bottom safe area padding
                 }
             }
         }
@@ -375,12 +375,12 @@ struct GroupTransactionDetailView: View {
                         HStack {
                             Text(record.oldValue)
                                 .strikethrough()
-                                .foregroundColor(.red)
+                                .foregroundColor(.functionalError)
                             Image(systemName: "arrow.right")
                                 .font(.caption)
                             Text(record.newValue)
                                 .fontWeight(.bold)
-                                .foregroundColor(.green)
+                                .foregroundColor(.functionalSuccess)
                         }
                         .font(.subheadline)
                         
@@ -388,7 +388,7 @@ struct GroupTransactionDetailView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
-                    .padding(.vertical, 4)
+                    .padding(.vertical, 4) // TODO: add DS token for 4pt micro padding
                 }
                 .navigationTitle("Edit History")
                 .toolbar {
@@ -452,10 +452,10 @@ struct GroupTransactionDetailView: View {
         switch status {
         case .pending: return .orange
         case .accepted: return .blue
-        case .declined: return .red
-        case .paid: return .green
+        case .declined: return Color.functionalError
+        case .paid: return Color.functionalSuccess
         case .blocked_by_group: return .secondary
-        default: return .gray
+        default: return .secondary
         }
     }
     

@@ -131,7 +131,7 @@ struct AllTransactionsView: View {
                      .listRowBackground(Color.clear)
                  
                  // Search & Filters Header
-                 VStack(spacing: 16) {
+                 VStack(spacing: AppSpacing.element) {
                      // Search Bar
                     HStack(alignment: .center) {
                         Image(systemName: "magnifyingglass")
@@ -146,7 +146,7 @@ struct AllTransactionsView: View {
                             }
                         }
                     }
-                    .padding(12)
+                    .padding(AppSpacing.compact)
                     .background(Color.cardBackground)
                     .clipShape(Capsule())
                     .padding(.horizontal, AppSpacing.margin)
@@ -410,7 +410,7 @@ struct AllTransactionsView: View {
                                 } label: {
                                     Label("Delete", systemImage: "trash")
                                 }
-                                .tint(.red)
+                                .tint(Color.functionalError)
                             }
                             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                                 if !transaction.isReimbursementIncome(categories: budgetRepo.budgets) {

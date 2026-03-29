@@ -114,7 +114,14 @@ struct SettleUpView: View {
     
     func settleUp() {
         guard let amountDouble = Double(amount), !selectedReceiverId.isEmpty else { return }
-        
+
+        // SECURITY: Can only record a settlement where the current user is the payer.
+        // Client-side writes to another user's transaction subcollection are blocked by Firestore rules.
+        guard selectedPayerId == appState.currentUserId else {
+            DebugLogger.log("⚠️ SettleUpView: Cannot record settlement on behalf of another user.")
+            return
+        }
+
         Task {
             do {
                 try await SocialTransactionManager.shared.settleUp(

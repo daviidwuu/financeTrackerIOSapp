@@ -21,10 +21,10 @@ struct SplitRequestDetailView: View {
         switch request.status {
         case .pending: return .orange
         case .accepted: return .blue
-        case .declined: return .red
-        case .paid: return .green
+        case .declined: return Color.functionalError
+        case .paid: return Color.functionalSuccess
         case .blocked_by_group: return .secondary
-        default: return .gray
+        default: return .secondary
         }
     }
     
@@ -48,9 +48,9 @@ struct SplitRequestDetailView: View {
                 )
                 
                 ScrollView {
-                    VStack(spacing: 24) {
+                    VStack(spacing: AppSpacing.large) {
                         // Hero Section: Icon, Amount, Status, Date
-                        VStack(spacing: 8) {
+                        VStack(spacing: AppSpacing.compact) {
                             ZStack {
                                 Circle()
                                     .fill(statusColor.opacity(0.15))
@@ -90,8 +90,8 @@ struct SplitRequestDetailView: View {
                                 .font(.caption)
                                 .fontWeight(.bold)
                                 .foregroundColor(statusColor)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
+                                .padding(.horizontal, AppSpacing.compact)
+                                .padding(.vertical, AppRadius.xSmall)
                                 .background(statusColor.opacity(0.1))
                                 .clipShape(Capsule())
                             
@@ -103,7 +103,7 @@ struct SplitRequestDetailView: View {
                         .padding(.top, AppSpacing.element)
                         
                         // 2. Split Status Section
-                        VStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: .leading, spacing: AppSpacing.element) {
                             Text("SPLIT STATUS")
                                 .font(.caption)
                                 .fontWeight(.bold)
@@ -112,18 +112,18 @@ struct SplitRequestDetailView: View {
                             
                             VStack(spacing: 0) {
                                 if allSplits.isEmpty {
-                                    HStack(spacing: 12) {
+                                    HStack(spacing: AppSpacing.compact) {
                                         ProgressView()
                                         Text("Loading split status")
                                             .font(.subheadline)
                                             .foregroundColor(.secondary)
                                         Spacer()
                                     }
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 16)
+                                    .padding(.horizontal, AppSpacing.element)
+                                    .padding(.vertical, AppSpacing.element)
                                 } else {
                                     ForEach(Array(allSplits.enumerated()), id: \.element.id) { index, split in
-                                        HStack(spacing: 12) {
+                                        HStack(spacing: AppSpacing.compact) {
                                             Circle()
                                                 .fill(splitStatusColor(split.status).opacity(0.15))
                                                 .frame(width: 36, height: 36)
@@ -133,8 +133,8 @@ struct SplitRequestDetailView: View {
                                                         .foregroundColor(splitStatusColor(split.status))
                                                 )
                                             
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                HStack(spacing: 8) {
+                                            VStack(alignment: .leading, spacing: AppSpacing.micro) {
+                                                HStack(spacing: AppSpacing.compact) {
                                                     Text(resolveName(uid: split.toUid, name: split.toName))
                                                         .font(.body)
                                                         .fontWeight(.medium)
@@ -157,8 +157,8 @@ struct SplitRequestDetailView: View {
                                                 .fontWeight(.semibold)
                                                 .foregroundColor(.primary)
                                         }
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 12)
+                                        .padding(.horizontal, AppSpacing.element)
+                                        .padding(.vertical, AppSpacing.compact)
                                         
                                         if index < allSplits.count - 1 {
                                             Divider().padding(.leading, 64)
@@ -176,7 +176,7 @@ struct SplitRequestDetailView: View {
                         .padding(.horizontal, AppSpacing.margin)
                         
                         // 3. Details & Map Card (matches TransactionDetailView)
-                        VStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: .leading, spacing: AppSpacing.element) {
                             Text("DETAILS")
                                 .font(.caption)
                                 .fontWeight(.bold)
@@ -205,12 +205,12 @@ struct SplitRequestDetailView: View {
                                     title: "Payer",
                                     color: .secondary
                                 ) {
-                                    HStack(spacing: 8) {
+                                    HStack(spacing: AppSpacing.compact) {
                                         Text(resolveName(uid: request.fromUid, name: request.fromName))
                                             .font(.body)
                                             .fontWeight(.medium)
                                             .foregroundColor(.primary)
-                                        
+
                                         if userPremiumRepo.isPremium(userId: request.fromUid) == true {
                                             PremiumBadge(size: .small, overrideBadgeType: userPremiumRepo.badgeType(userId: request.fromUid))
                                         }
@@ -218,18 +218,18 @@ struct SplitRequestDetailView: View {
                                 }
 
                                 Divider().padding(.leading, 52)
-                                
+
                                 TransactionDetailRow(
                                     icon: "person.2.fill",
                                     title: "Recipient",
                                     color: .secondary
                                 ) {
-                                    HStack(spacing: 8) {
+                                    HStack(spacing: AppSpacing.compact) {
                                         Text(resolveName(uid: request.toUid, name: request.toName))
                                             .font(.body)
                                             .fontWeight(.medium)
                                             .foregroundColor(.primary)
-                                        
+
                                         if userPremiumRepo.isPremium(userId: request.toUid) == true {
                                             PremiumBadge(size: .small, overrideBadgeType: userPremiumRepo.badgeType(userId: request.toUid))
                                         }
@@ -302,7 +302,7 @@ struct SplitRequestDetailView: View {
                         }
                     
                     // 4. Actions
-                    VStack(spacing: 16) {
+                    VStack(spacing: AppSpacing.element) {
                         if isIncoming {
                             // --- Receiver (User B) Actions ---
                             
@@ -320,18 +320,18 @@ struct SplitRequestDetailView: View {
                                     .fontWeight(.bold)
                                     .foregroundColor(.white)
                                     .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 16)
-                                    .background(Color.blue)
+                                    .padding(.vertical, AppSpacing.element)
+                                    .background(AppColors.brandPrimary)
                                     .cornerRadius(AppRadius.medium)
-                                    .shadow(color: Color.blue.opacity(0.3), radius: 8, y: 4)
+                                    .shadow(color: AppColors.brandPrimary.opacity(0.3), radius: 8, y: 4)
                                 }
-                                
+
                                 // Decline Button
                                 Button(action: declineRequest) {
                                     Text("Decline Request")
                                         .font(.subheadline)
                                         .fontWeight(.medium)
-                                        .foregroundColor(.red)
+                                        .foregroundColor(.functionalError)
                                 }
                             } else if request.status == .accepted {
                                 Text("Accepted - Waiting for settlement")
@@ -363,7 +363,7 @@ struct SplitRequestDetailView: View {
                                     .fontWeight(.bold)
                                     .foregroundColor(isEnabled ? .white : .secondary)
                                     .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 16)
+                                    .padding(.vertical, AppSpacing.element)
                                     .background(isEnabled ? AppColors.functionalIncome : Color.cardBackground)
                                     .cornerRadius(AppRadius.medium)
                                     .shadow(color: isEnabled ? AppColors.functionalIncome.opacity(0.3) : Color.clear, radius: 8, y: 4)
@@ -382,13 +382,13 @@ struct SplitRequestDetailView: View {
                                     .fontWeight(.bold)
                                     .foregroundColor(.white)
                                     .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 16)
-                                    .background(Color.blue)
+                                    .padding(.vertical, AppSpacing.element)
+                                    .background(AppColors.brandPrimary)
                                     .cornerRadius(AppRadius.medium)
-                                    .shadow(color: Color.blue.opacity(0.3), radius: 8, y: 4)
+                                    .shadow(color: AppColors.brandPrimary.opacity(0.3), radius: 8, y: 4)
                                 }
                             }
-                            
+
                             // Allow canceling
                             if request.status == .pending || request.status == .declined || request.status == .accepted {
                                 Button(action: cancelRequest) {
@@ -398,9 +398,9 @@ struct SplitRequestDetailView: View {
                                     }
                                     .font(.headline)
                                     .fontWeight(.bold)
-                                    .foregroundColor(.red)
+                                    .foregroundColor(.functionalError)
                                     .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 16)
+                                    .padding(.vertical, AppSpacing.element)
                                     .background(AppColors.functionalExpense.opacity(0.1))
                                     .clipShape(Capsule())
                                 }
@@ -408,7 +408,7 @@ struct SplitRequestDetailView: View {
                         }
                     }
                     .padding(.horizontal, AppSpacing.margin)
-                    .padding(.top, 16)
+                    .padding(.top, AppSpacing.element)
                 }
                 .padding(.bottom, 40)
             }
@@ -561,11 +561,11 @@ struct SplitRequestDetailView: View {
     
     private func splitStatusColor(_ status: FirestoreModels.SplitRequest.RequestStatus) -> Color {
         switch status {
-        case .paid: return .green
+        case .paid: return Color.functionalSuccess
         case .accepted: return .blue
         case .pending: return .orange
-        case .declined: return .red
-        default: return .gray
+        case .declined: return Color.functionalError
+        default: return .secondary
         }
     }
     

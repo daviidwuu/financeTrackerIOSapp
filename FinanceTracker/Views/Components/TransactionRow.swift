@@ -49,12 +49,12 @@ struct TransactionRow: View {
             if budgetRepo.isLoading && budgetRepo.budgets.isEmpty {
                 // Show a blank placeholder while loading to prevent "questionmark" flash
                 Circle()
-                    .fill(Color.gray.opacity(0.1))
-                    .frame(width: 48, height: 48)
+                    .fill(Color.secondary.opacity(0.1))
+                    .frame(width: AppSize.avatarList, height: AppSize.avatarList)
             } else {
                 Circle()
                     .fill(Color(hex: categoryColor).opacity(0.1))
-                    .frame(width: 48, height: 48)
+                    .frame(width: AppSize.avatarList, height: AppSize.avatarList)
                     .overlay(
                         Image(systemName: categoryIcon)
                             .font(.system(size: 20))
@@ -62,12 +62,12 @@ struct TransactionRow: View {
                     )
             }
             
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: AppSpacing.micro) {
                 // NEW: Show Category as Title
                 Text(categoryName)
                     .font(.body)
                     .fontWeight(.semibold)
-                    .foregroundColor(transaction.amount > 0 ? Color(hex: "#34C759") : .primary)
+                    .foregroundColor(transaction.amount > 0 ? Color.functionalSuccess : .primary)
                 
                 // NEW: Show Note or Merchant (Title) as Subtitle
                 if let note = transaction.note, !note.isEmpty {
@@ -96,11 +96,11 @@ struct TransactionRow: View {
                     .foregroundColor(.secondary)
             }
             
-            VStack(alignment: .trailing, spacing: 4) {
+            VStack(alignment: .trailing, spacing: AppSpacing.micro) {
                 Text(String(format: "%@$%.2f", transaction.amount > 0 ? "+" : "", abs(transaction.amount)))
                     .font(.headline)
                     .fontWeight(.bold)
-                    .foregroundColor(transaction.amount > 0 ? Color(hex: "#34C759") : .primary)
+                    .foregroundColor(transaction.amount > 0 ? Color.functionalSuccess : .primary)
                 
                 if let originalAmount = transaction.originalAmount, let currencyCode = transaction.currencyCode {
                     Text(String(format: "%@%@ %.2f", transaction.amount > 0 ? "+" : "", currencyCode, abs(originalAmount)))

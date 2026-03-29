@@ -10,11 +10,11 @@ struct CategoriesStep: View {
     @State private var hasShownGuide = false
     
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: AppSpacing.large) {
             Text("Customize Categories")
                 .font(AppTypography.heroRounded(size: 28))
                 .multilineTextAlignment(.center)
-                .padding(.top, 20)
+                .padding(.top, AppSpacing.margin)
             
             Text("Swipe to edit or delete. Tap to customize.")
                 .font(AppTypography.body)
@@ -27,10 +27,10 @@ struct CategoriesStep: View {
                     Spacer()
                     Image(systemName: "tray.fill")
                         .font(.system(size: 60))
-                        .foregroundColor(.gray.opacity(0.3))
+                        .foregroundColor(.secondary.opacity(0.3))
                     Text("No categories yet")
                         .font(AppTypography.subheadline)
-                        .foregroundColor(.gray)
+                        .foregroundColor(.secondary)
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
@@ -73,10 +73,10 @@ struct CategoriesStep: View {
                         .padding()
                         .background(Color.cardBackground)
                         .cornerRadius(AppRadius.medium)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.element, bottom: 0, trailing: AppSpacing.element))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
-                        .padding(.bottom, 8)
+                        .padding(.bottom, AppSpacing.compact)
                         .contentShape(Rectangle())
                         .onTapGesture { HapticManager.shared.light(); 
                             editSheetInitialStep = 1

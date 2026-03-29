@@ -14,8 +14,7 @@ class AppState: ObservableObject {
     @Published var userAvatarColor: String? // ✅ NEW: User's profile color
     @Published var isLoadingAuth = true // Track initial auth check
     @Published var isPremiumUser = false // ✅ NEW: Tracks premium status
-    
-    // Repositories
+
     // Repositories
     @Published var transactionRepo = TransactionRepository()
     @Published var budgetRepo = BudgetRepository()
@@ -29,97 +28,99 @@ class AppState: ObservableObject {
     @Published var guestRepo = GuestRepository() // ✅ NEW: For guests
     let userPremiumRepo = UserPremiumRepository()
     let userResolver = UserResolver() // ✅ Phase 2: Centralized name resolution
-    
+
     private var authStateListener: AuthStateDidChangeListenerHandle?
     private let firebaseManager = FirebaseManager.shared
     private var cancellables = Set<AnyCancellable>()
-    
+
     @Published var streakCount = 1
     @Published var hasSeenPostOnboardingGuide = false
-    @Published var showWeeklyReport = false
-    
+
     // Deep Link State
-    @Published var showDailySummary = false
-    @Published var dailySummaryDate: Date?
     @Published var userSignupDate: Date?
-    
+
     // Server-aggregated balance (written by Cloud Function)
     @Published var aggregatedIncome: Double = 0
     @Published var aggregatedExpense: Double = 0
-    
-    // Navigation State
-    @Published var showProfile = false
-    @Published var shouldOpenCurrencySettings = false
-    @Published var selectedTab = 0 // 0: Home, 1: Wallet, 2: Friends, etc.
-    
+
+    // MARK: - Profile Sheet
+    // showProfile lives here (not in AppNavigationState) because HomeView uses
+    // `$appState.showProfile` as a SwiftUI Binding, which requires @Published.
+    @Published var showProfile: Bool = false
+
+    // MARK: - Forwarding accessors to AppNavigationState
+    // Call sites that set navigation state via AppState continue to work.
+    // Views that need bindings should read AppNavigationState.shared directly.
+    var selectedTab: Int {
+        get { AppNavigationState.shared.selectedTab }
+        set { AppNavigationState.shared.selectedTab = newValue }
+    }
+    var shouldOpenCurrencySettings: Bool {
+        get { AppNavigationState.shared.shouldOpenCurrencySettings }
+        set { AppNavigationState.shared.shouldOpenCurrencySettings = newValue }
+    }
+    var showDailySummary: Bool {
+        get { AppNavigationState.shared.showDailySummary }
+        set { AppNavigationState.shared.showDailySummary = newValue }
+    }
+    var dailySummaryDate: Date? {
+        get { AppNavigationState.shared.dailySummaryDate }
+        set { AppNavigationState.shared.dailySummaryDate = newValue }
+    }
+    var showWeeklyReport: Bool {
+        get { AppNavigationState.shared.showWeeklyReport }
+        set { AppNavigationState.shared.showWeeklyReport = newValue }
+    }
+
     static let shared = AppState()
-    
+
     private init() {
         // Configure UserResolver
         userResolver.configure(appState: self)
-        
+
         // Streak will be initialized when user logs in
-        
+
         // Listen to Firebase auth state changes
         authStateListener = Auth.auth().addStateDidChangeListener { [weak self] _,  user in
+            guard let self = self else { return }
             DispatchQueue.main.async {
                 let isAnonymous = user?.isAnonymous ?? false
                 let hasUser = user != nil
-                
+
                 // Only consider the user "logged in" for UI purposes if they are not anonymous
-                self?.isUserLoggedIn = hasUser && !isAnonymous
-                self?.currentUserId = user?.uid ?? ""
-                self?.userEmail = user?.email ?? ""
-                self?.isLoadingAuth = false // Auth check complete
-                
+                self.isUserLoggedIn = hasUser && !isAnonymous
+                self.currentUserId = user?.uid ?? ""
+                self.userEmail = user?.email ?? ""
+                self.isLoadingAuth = false // Auth check complete
+
                 // Load user profile if authenticated and NOT anonymous
                 if let userId = user?.uid, !isAnonymous {
                     Task {
-                        await self?.loadUserProfile(userId: userId)
+                        await self.loadUserProfile(userId: userId)
                     }
-                    // Start listening to groups for this user
-                    self?.transactionRepo.startListening(userId: userId)
-                    self?.budgetRepo.startListening(userId: userId)
-                    self?.recurringRepo.startListening(userId: userId)
-                    self?.savingGoalRepo.startListening(userId: userId)
-                    self?.requestRepo.startListening(userId: userId)
-                    self?.groupRepo.startListening(userId: userId)
-                    self?.friendRepo.startListening(userId: userId) // ✅ NEW
-                    self?.friendRequestRepo.startListening(userId: userId) // ✅ NEW
-                    self?.groupInvitationRepo.startListening(userId: userId) // ✅ NEW
-                    self?.guestRepo.startListening(userId: userId) // ✅ NEW
+                    RepositoryCoordinator.startAll(for: userId, in: self)
                 } else {
-                    // User logged out or is anonymous - stop group listener
-                    self?.transactionRepo.stopListening()
-                    self?.budgetRepo.stopListening()
-                    self?.recurringRepo.stopListening()
-                    self?.savingGoalRepo.stopListening()
-                    self?.requestRepo.stopListening()
-                    self?.groupRepo.stopListening()
-                    self?.friendRepo.stopListening()
-                    self?.friendRequestRepo.stopListening()
-                    self?.groupInvitationRepo.stopListening()
-                    self?.guestRepo.stopListening()
-                    self?.userPremiumRepo.clear()
+                    // User logged out or is anonymous — stop all listeners
+                    RepositoryCoordinator.stopAll(in: self)
                 }
             }
         }
     }
-    
+
     deinit {
         if let listener = authStateListener {
             Auth.auth().removeStateDidChangeListener(listener)
         }
     }
-    
+
     private func updateStreak(userId: String) async {
         let calendar = Calendar.current
-        
+
         do {
             // Fetch current streak data from Firebase
             let (currentStreak, lastVisit) = try await firebaseManager.getStreakData(userId: userId)
             let lastVisitDate = lastVisit ?? Date.distantPast
-            
+
             if calendar.isDateInToday(lastVisitDate) {
                 // Already visited today, streak remains same
                 DispatchQueue.main.async {
@@ -130,7 +131,7 @@ class AppState: ObservableObject {
                 let newStreak = currentStreak + 1
                 DispatchQueue.main.async {
                     self.streakCount = newStreak
-                    
+
                     // Gamification
                     if newStreak >= 3 {
                         GamificationManager.shared.completeMission(id: "streak_starter")
@@ -148,13 +149,13 @@ class AppState: ObservableObject {
             DebugLogger.log("Failed to update streak: \(error)")
         }
     }
-    
+
     private func resetStreak() {
         DispatchQueue.main.async {
             self.streakCount = 1
         }
     }
-    
+
     private func loadUserProfile(userId: String) async {
         do {
             let profile = try await firebaseManager.getUserProfile(userId: userId)
@@ -191,7 +192,7 @@ class AppState: ObservableObject {
             DebugLogger.log("Failed to load user profile: \(error)")
         }
     }
-    
+
     func login(userId: String, name: String, email: String) {
         // Firebase auth state listener will handle the update
         self.userName = name
@@ -201,7 +202,7 @@ class AppState: ObservableObject {
             await updateStreak(userId: userId)
         }
     }
-    
+
     func logout() {
         do {
             try firebaseManager.signOut()
@@ -212,7 +213,7 @@ class AppState: ObservableObject {
             DebugLogger.log("Logout error: \(error)")
         }
     }
-    
+
     func completeOnboarding(userId: String, name: String, email: String, username: String) {
         self.hasCompletedOnboarding = true
         self.userName = name
@@ -221,24 +222,14 @@ class AppState: ObservableObject {
         self.userEmail = email
         self.currentUserId = userId
         self.isUserLoggedIn = true
-        
+
         Task {
             await updateStreak(userId: userId)
         }
-        
-        // Ensure all repositories start listening for the new user
-        self.transactionRepo.startListening(userId: userId)
-        self.budgetRepo.startListening(userId: userId)
-        self.recurringRepo.startListening(userId: userId)
-        self.savingGoalRepo.startListening(userId: userId)
-        self.requestRepo.startListening(userId: userId)
-        self.groupRepo.startListening(userId: userId)
-        self.friendRepo.startListening(userId: userId)
-        self.friendRequestRepo.startListening(userId: userId)
-        self.groupInvitationRepo.startListening(userId: userId)
-        self.guestRepo.startListening(userId: userId)
+
+        RepositoryCoordinator.startAll(for: userId, in: self)
     }
-    
+
     func markPostOnboardingGuideAsSeen(userId: String) {
         let guideKey = "hasSeenPostOnboardingGuide_\(userId)"
         UserDefaults.standard.set(true, forKey: guideKey)

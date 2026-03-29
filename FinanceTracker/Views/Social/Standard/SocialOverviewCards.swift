@@ -26,7 +26,7 @@ struct SocialTwoCardRow: View {
     let right: SocialStatCard
     
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppSpacing.compact) {
             left
             right
         }

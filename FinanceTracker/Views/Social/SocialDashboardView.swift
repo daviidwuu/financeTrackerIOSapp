@@ -299,7 +299,7 @@ struct SocialDashboardView: View {
         Group {
             // Priority 1: Deletion Requests (Action Required)
             if !pendingDeletionGroups.isEmpty {
-                Section(header: Text("Action Required").font(.headline).foregroundColor(.red)) {
+                Section(header: Text("Action Required").font(.headline).foregroundColor(.functionalError)) {
                     ForEach(pendingDeletionGroups) { group in
                         HStack(spacing: AppSpacing.element) {
                             IconAvatar(systemName: "exclamationmark.triangle.fill", color: AppColors.functionalExpense)
@@ -310,7 +310,7 @@ struct SocialDashboardView: View {
                                     .foregroundColor(.primary)
                                 Text("Group deletion requested")
                                     .font(.subheadline)
-                                    .foregroundColor(.red)
+                                    .foregroundColor(.functionalError)
                             }
 
                             Spacer()
@@ -362,7 +362,7 @@ struct SocialDashboardView: View {
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }
-                            .tint(.red)
+                            .tint(Color.functionalError)
                         } else {
                             // Leave Logic? Or just hide for now as per previous behavior
                         }
@@ -735,15 +735,15 @@ struct CustomSegmentedControl: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.75)
                             .foregroundColor(selection == index ? Color.backgroundPrimary : .secondary)
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, 8)
+                            .padding(.vertical, 10) // TODO: add DS token for 10pt segment padding
+                            .padding(.horizontal, AppSpacing.compact)
                     }
                 }
                 .buttonStyle(PlainButtonStyle())
                 .frame(maxWidth: .infinity)
             }
         }
-        .padding(5)
+        .padding(5) // TODO: add DS token for 5pt capsule inset
         .background(Color.secondaryCardBackground)
         .clipShape(Capsule())
     }
@@ -840,7 +840,7 @@ struct FriendRequestCard: View {
         .appCardStyle()
         .overlay(
             RoundedRectangle(cornerRadius: AppRadius.medium)
-                .stroke(Color.blue, lineWidth: 1)
+                .stroke(AppColors.brandPrimary, lineWidth: 1)
         )
         .onAppear {
             userPremiumRepo.prefetch(userIds: [request.fromUid])

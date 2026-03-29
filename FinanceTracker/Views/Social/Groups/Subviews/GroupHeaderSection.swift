@@ -38,8 +38,8 @@ struct GroupHeaderSection: View {
                     Image(systemName: "rectangle.portrait.and.arrow.right")
                         .font(.headline)
                         .foregroundColor(.white)
-                        .frame(width: 44, height: 44)
-                        .background(Color.red)
+                        .frame(width: AppSize.iconButton, height: AppSize.iconButton)
+                        .background(Color.functionalError)
                         .clipShape(Circle())
                 }
                 .buttonStyle(.borderless)

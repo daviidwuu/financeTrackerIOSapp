@@ -17,26 +17,53 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
     
     private func setupNotificationCategories() {
         // Transaction Actions
-        let viewAction = UNNotificationAction(identifier: "VIEW_ACTION", title: "View Details", options: .foreground)
-        let transactionCategory = UNNotificationCategory(identifier: "TRANSACTION", actions: [viewAction], intentIdentifiers: [], options: .customDismissAction)
-        
+        let viewAction = UNNotificationAction(identifier: NotificationContent.Action.view, title: "View Details", options: .foreground)
+        let transactionCategory = UNNotificationCategory(identifier: NotificationContent.Category.transaction, actions: [viewAction], intentIdentifiers: [], options: .customDismissAction)
+
         // Split Actions
-        let remindAction = UNNotificationAction(identifier: "REMIND_ACTION", title: "Remind Friend", options: .foreground)
-        let splitCategory = UNNotificationCategory(identifier: "SPLIT", actions: [remindAction], intentIdentifiers: [], options: .customDismissAction)
-        
+        let remindAction = UNNotificationAction(identifier: NotificationContent.Action.remind, title: "Remind Friend", options: .foreground)
+        let splitCategory = UNNotificationCategory(identifier: NotificationContent.Category.split, actions: [remindAction], intentIdentifiers: [], options: .customDismissAction)
+
         // Daily Summary Actions
-        let analyticsAction = UNNotificationAction(identifier: "ANALYTICS_ACTION", title: "View Analytics", options: .foreground)
-        let summaryCategory = UNNotificationCategory(identifier: "DAILY_SUMMARY", actions: [analyticsAction], intentIdentifiers: [], options: .customDismissAction)
-        
+        let analyticsAction = UNNotificationAction(identifier: NotificationContent.Action.analytics, title: "View Analytics", options: .foreground)
+        let summaryCategory = UNNotificationCategory(identifier: NotificationContent.Category.dailySummary, actions: [analyticsAction], intentIdentifiers: [], options: .customDismissAction)
+
         // Bill Reminder Actions
-        let payAction = UNNotificationAction(identifier: "PAY_ACTION", title: "Mark Paid", options: .foreground)
-        let billCategory = UNNotificationCategory(identifier: "BILL", actions: [payAction], intentIdentifiers: [], options: .customDismissAction)
-        
+        let payAction = UNNotificationAction(identifier: NotificationContent.Action.pay, title: "Mark Paid", options: .foreground)
+        let billCategory = UNNotificationCategory(identifier: NotificationContent.Category.bill, actions: [payAction], intentIdentifiers: [], options: .customDismissAction)
+
         // Streak Actions
-        let logAction = UNNotificationAction(identifier: "LOG_ACTION", title: "Log Now", options: .foreground)
-        let streakCategory = UNNotificationCategory(identifier: "STREAK", actions: [logAction], intentIdentifiers: [], options: .customDismissAction)
-        
-        UNUserNotificationCenter.current().setNotificationCategories([transactionCategory, splitCategory, summaryCategory, billCategory, streakCategory])
+        let logAction = UNNotificationAction(identifier: NotificationContent.Action.log, title: "Log Now", options: .foreground)
+        let streakCategory = UNNotificationCategory(identifier: NotificationContent.Category.streak, actions: [logAction], intentIdentifiers: [], options: .customDismissAction)
+
+        // Budget category (no custom actions)
+        let budgetCategory = UNNotificationCategory(identifier: NotificationContent.Category.budget, actions: [], intentIdentifiers: [], options: .customDismissAction)
+
+        UNUserNotificationCenter.current().setNotificationCategories([
+            transactionCategory,
+            splitCategory,
+            summaryCategory,
+            billCategory,
+            streakCategory,
+            budgetCategory
+        ])
+    }
+
+    // MARK: - Content Builder
+
+    /// Creates a `UNMutableNotificationContent` from a factory message tuple.
+    func makeContent(message: (title: String, body: String), category: String, badge: Int? = nil) -> UNMutableNotificationContent {
+        let content = UNMutableNotificationContent()
+        content.title = message.title
+        content.body = message.body
+        content.sound = .default
+        if !category.isEmpty {
+            content.categoryIdentifier = category
+        }
+        if let badge = badge {
+            content.badge = badge as NSNumber
+        }
+        return content
     }
     
     func registerBackgroundTasks() {
@@ -136,55 +163,32 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
     }
     
     private func sendNotification(amount: Double, category: String, type: String, originalAmount: Double? = nil, currencyCode: String? = nil) {
-        // Check if transaction notifications are enabled
         guard UserDefaults.standard.bool(forKey: "notificationsEnabled_transactions") else { return }
-        
+
         // Large Expense Check
         let threshold = UserDefaults.standard.double(forKey: "largeExpenseThreshold")
         if threshold > 0 && abs(amount) >= threshold && type != "income" {
             sendLargeExpenseAlert(amount: abs(amount))
         }
-        
-        let content = UNMutableNotificationContent()
-        
-        // Format: "You have spent $6.00 (HKD$12.50) on (Category)"
-        var bodyString = ""
-        if type == "income" {
-            content.title = "Income Received"
-            bodyString = "You received $\(String(format: "%.2f", abs(amount)))"
-        } else {
-            content.title = "Expense Added"
-            bodyString = "You have spent $\(String(format: "%.2f", abs(amount)))"
-        }
-        
-        // Add Travel Currency info if available
-        if let original = originalAmount, let code = currencyCode {
-             bodyString += " (\(code)$\(String(format: "%.2f", abs(original))))"
-        }
-        
-        if type == "income" {
-            bodyString += " from \(category)"
-        } else {
-            bodyString += " on \(category)"
-        }
-        
-        content.body = bodyString
-        
-        content.sound = .default
-        content.badge = 1
-        content.categoryIdentifier = "TRANSACTION"
-        
-        DebugLogger.log("🔔 Scheduling notification: \(content.title) - \(content.body)")
-        
-        // Trigger immediately
+
+        let userName = AppState.shared.userName
+        let message = NotificationContent.getMessage(
+            for: .transaction(amount: amount, category: category, type: type, originalAmount: originalAmount, currencyCode: currencyCode),
+            userName: userName
+        )
+
+        let content = makeContent(message: message, category: NotificationContent.Category.transaction, badge: 1)
+
+        DebugLogger.log("🔔 Scheduling notification: \(message.title) - \(message.body)")
+
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
-        
+
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
                 DebugLogger.log("❌ Failed to send transaction notification: \(error)")
             } else {
-                DebugLogger.log("✅ Notification scheduled successfully!")
+                DebugLogger.log("✅ Notification scheduled successfully")
             }
         }
     }
@@ -192,14 +196,9 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
     private func sendLargeExpenseAlert(amount: Double) {
         let userName = AppState.shared.userName
         let message = NotificationContent.getMessage(for: .largeExpense(amount: amount), userName: userName)
-        
-        let content = UNMutableNotificationContent()
-        content.title = message.title
-        content.body = message.body
-        content.sound = .default
-        content.categoryIdentifier = "TRANSACTION" // Reuse category to view details? Or maybe specific alert
-        
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 2, repeats: false) // Slightly delayed
+        let content = makeContent(message: message, category: NotificationContent.Category.transaction)
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 2, repeats: false)
         let request = UNNotificationRequest(identifier: "large-expense-\(UUID().uuidString)", content: content, trigger: trigger)
         UNUserNotificationCenter.current().add(request)
     }
@@ -208,19 +207,14 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
     
     func sendBudgetWarning(category: String, percentUsed: Int, remaining: Double) {
         guard UserDefaults.standard.bool(forKey: "notificationsEnabled_budgets") else { return }
-        
+
         let userName = AppState.shared.userName
         let message = NotificationContent.getMessage(for: .budgetHit(category: category, percent: percentUsed), userName: userName)
-        
-        let content = UNMutableNotificationContent()
-        content.title = message.title
-        content.body = message.body
-        content.sound = .default
-        content.categoryIdentifier = "BUDGET"
-        
+        let content = makeContent(message: message, category: NotificationContent.Category.budget)
+
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
-        
+
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
                 DebugLogger.log("Failed to send budget warning: \(error)")
@@ -311,14 +305,12 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
                 let count = expenses.count
                 
                 if count > 0 {
-                    let content = UNMutableNotificationContent()
-                    content.title = "Daily Summary"
-                    content.body = "You spent $\(Int(totalSpent)) across \(count) transactions today."
-                    content.sound = .default
+                    let userName = AppState.shared.userName
+                    let message = NotificationContent.getMessage(for: .dailySummary(totalSpent: totalSpent, count: count), userName: userName)
+                    let content = self.makeContent(message: message, category: NotificationContent.Category.dailySummary)
                     content.userInfo = ["date": Date().timeIntervalSince1970]
-                    content.categoryIdentifier = "DAILY_SUMMARY"
-                    
-                    let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil) // Deliver immediately
+
+                    let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
                     UNUserNotificationCenter.current().add(request)
                 }
                 
@@ -409,12 +401,10 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
     }
     
     private func sendSplitReminder(count: Int, total: Double) {
-        let content = UNMutableNotificationContent()
-        content.title = "Unpaid Splits Reminder"
-        content.body = "You have \(count) unpaid split\(count > 1 ? "s" : "") totaling $\(Int(total)). Check if friends have paid you back!"
-        content.sound = .default
-        content.categoryIdentifier = "SPLIT"
-        
+        let userName = AppState.shared.userName
+        let message = NotificationContent.getMessage(for: .splitReminder(count: count, total: total), userName: userName)
+        let content = makeContent(message: message, category: NotificationContent.Category.split)
+
         let request = UNNotificationRequest(identifier: "split-reminder-\(Date().timeIntervalSince1970)", content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request)
     }
@@ -466,14 +456,9 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
     private func sendBillReminder(recurring: FirestoreModels.RecurringTransaction) {
         let userName = AppState.shared.userName
         let message = NotificationContent.getMessage(for: .billDue(name: recurring.name, amount: recurring.amount), userName: userName)
-        
-        let content = UNMutableNotificationContent()
-        content.title = message.title
-        content.body = message.body
-        content.sound = .default
-        content.categoryIdentifier = "BILL"
+        let content = makeContent(message: message, category: NotificationContent.Category.bill)
         content.userInfo = ["recurringId": recurring.id ?? ""]
-        
+
         let request = UNNotificationRequest(identifier: "bill-reminder-\(recurring.id ?? UUID().uuidString)", content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request)
     }
@@ -482,21 +467,20 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
     
     func scheduleWeeklyReport() {
         guard UserDefaults.standard.bool(forKey: "notificationsEnabled_weeklyReport") else { return }
-        
-        let content = UNMutableNotificationContent()
-        content.title = "Weekly Report"
-        content.body = "Your weekly financial report is ready!"
-        content.sound = .default
-        
+
+        let userName = AppState.shared.userName
+        let message = NotificationContent.getMessage(for: .weeklyReport, userName: userName)
+        let content = makeContent(message: message, category: "")
+
         // Schedule for Sunday at 8 PM
         var dateComponents = DateComponents()
         dateComponents.weekday = 1 // Sunday
         dateComponents.hour = 20
         dateComponents.minute = 0
-        
+
         let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
         let request = UNNotificationRequest(identifier: "weekly-report", content: content, trigger: trigger)
-        
+
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
                 DebugLogger.log("Failed to schedule weekly report: \(error)")
@@ -581,31 +565,20 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
     private func sendInactivityNotification() {
         let userName = AppState.shared.userName
         let message = NotificationContent.getMessage(for: .inactivity, userName: userName)
-        
-        let content = UNMutableNotificationContent()
-        content.title = message.title
-        content.body = message.body
-        content.sound = .default
-        content.categoryIdentifier = "INACTIVITY"
-        
+        let content = makeContent(message: message, category: NotificationContent.Category.inactivity)
+
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request)
     }
     
     private func checkStreakWarning(userId: String) {
-        // This would typically check the UserProfile 'lastVisitDate'
-        // Simplification: Just send the streak warning if inactivity is detected late in the day (after 6 PM)
+        // Simplification: Send streak warning if inactivity is detected late in the day (after 6 PM)
         let hour = Calendar.current.component(.hour, from: Date())
         if hour >= 18 {
              let userName = AppState.shared.userName
              let message = NotificationContent.getMessage(for: .streakWarning(daysConfig: 1), userName: userName)
-             
-             let content = UNMutableNotificationContent()
-             content.title = message.title
-             content.body = message.body
-             content.sound = .default
-             content.categoryIdentifier = "STREAK"
-             
+             let content = makeContent(message: message, category: NotificationContent.Category.streak)
+
              let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
              UNUserNotificationCenter.current().add(request)
         } else {
@@ -634,12 +607,8 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
         
         let userName = AppState.shared.userName
         let message = NotificationContent.getMessage(for: .endOfDay, userName: userName)
-        
-        let content = UNMutableNotificationContent()
-        content.title = message.title
-        content.body = message.body
-        content.sound = .default
-        
+        let content = makeContent(message: message, category: "")
+
         let request = UNNotificationRequest(identifier: "eod-check", content: content, trigger: trigger)
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
@@ -675,12 +644,8 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
             
             let message = NotificationContent.getMessage(for: .motivational, userName: userName)
-            
-            let content = UNMutableNotificationContent()
-            content.title = message.title
-            content.body = message.body
-            content.sound = .default
-            
+            let content = makeContent(message: message, category: "")
+
             let request = UNNotificationRequest(identifier: "tip-\(hour)", content: content, trigger: trigger)
             UNUserNotificationCenter.current().add(request)
         }
@@ -710,82 +675,82 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         let userInfo = response.notification.request.content.userInfo
         let categoryId = response.notification.request.content.categoryIdentifier
-        
+        let actionId = response.actionIdentifier
+
+        // Route notification taps through focused state objects rather than the
+        // full AppState graph.  Tab/sheet routing goes to AppNavigationState;
+        // showProfile (which HomeView binds to) stays on AppState.
+        let nav = AppNavigationState.shared
+
         // Handle Travel Notification
         if let type = userInfo["type"] as? String, type == "travel_update" {
              DispatchQueue.main.async {
                  AppState.shared.showProfile = true
-                 
+
                  // Delay slightly to ensure Profile View is mounted before triggering navigation
                  DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                     AppState.shared.shouldOpenCurrencySettings = true
+                     nav.shouldOpenCurrencySettings = true
                  }
              }
-        
+
         // --- 1. Daily Summary (Deep Link) ---
-        } else if categoryId == "DAILY_SUMMARY" || response.actionIdentifier == "ANALYTICS_ACTION" {
+        } else if categoryId == NotificationContent.Category.dailySummary || actionId == NotificationContent.Action.analytics {
             if let timestamp = userInfo["date"] as? TimeInterval {
                 let date = Date(timeIntervalSince1970: timestamp)
                 DispatchQueue.main.async {
-                    AppState.shared.dailySummaryDate = date
-                    AppState.shared.showDailySummary = true
+                    nav.dailySummaryDate = date
+                    nav.showDailySummary = true
                 }
             } else {
                  DispatchQueue.main.async {
-                     // Default to today if no date provided
-                     AppState.shared.dailySummaryDate = Date()
-                     AppState.shared.showDailySummary = true
+                     nav.dailySummaryDate = Date()
+                     nav.showDailySummary = true
                  }
             }
-        
+
         // --- 2. Transactions (View Details) ---
-        } else if categoryId == "TRANSACTION" || response.actionIdentifier == "VIEW_ACTION" {
+        } else if categoryId == NotificationContent.Category.transaction || actionId == NotificationContent.Action.view {
             DispatchQueue.main.async {
-                // Ensure we are on the Home Dashboard
-                AppState.shared.selectedTab = 0
+                nav.selectedTab = 0
             }
-            
+
         // --- 3. Split Reminders (Friends/Profile) ---
-        } else if categoryId == "SPLIT" || response.actionIdentifier == "REMIND_ACTION" {
+        } else if categoryId == NotificationContent.Category.split || actionId == NotificationContent.Action.remind {
             DispatchQueue.main.async {
-                // Navigate to the Profile where Friends are usually located
                 AppState.shared.showProfile = true
             }
-        
+
         // --- 4. Budget Alerts (Wallet Tab) ---
-        } else if response.notification.request.content.title == "Budget Alert" || response.notification.request.content.categoryIdentifier == "BUDGET" {
+        } else if categoryId == NotificationContent.Category.budget {
              DispatchQueue.main.async {
-                 // Switch to Wallet Tab (Index 1)
-                 AppState.shared.selectedTab = 1
+                 nav.selectedTab = 1
              }
-             
+
         // --- 5. Inactivity/Streak Check (Prompt to Add Transaction) ---
-        } else if categoryId == "INACTIVITY" || categoryId == "STREAK" || response.actionIdentifier == "LOG_ACTION" {
+        } else if categoryId == NotificationContent.Category.inactivity || categoryId == NotificationContent.Category.streak || actionId == NotificationContent.Action.log {
              DispatchQueue.main.async {
-                 AppState.shared.selectedTab = 0
+                 nav.selectedTab = 0
                  if let url = URL(string: "financetracker://add-transaction") {
                      UIApplication.shared.open(url)
                  }
              }
-             
-        // --- 6. Weekly Report (Wallet or Summary) ---
-        } else if response.notification.request.content.title == "Weekly Report" {
+
+        // --- 6. Weekly Report (Summary) ---
+        } else if response.notification.request.identifier == "weekly-report" {
              DispatchQueue.main.async {
-                 AppState.shared.showWeeklyReport = true
+                 nav.showWeeklyReport = true
              }
-             
+
         // --- 7. Bill Reminders ---
-        } else if categoryId == "BILL" {
+        } else if categoryId == NotificationContent.Category.bill {
              DispatchQueue.main.async {
-                 // Open Recurring Transactions list in Wallet?
-                 AppState.shared.selectedTab = 1
-                 // Could ideally scroll to Recurring section or open modal
+                 nav.selectedTab = 1
              }
-             
+
         // --- 8. Goal Milestones (Wallet Tab) ---
-        } else if response.notification.request.content.title.contains("Goal") {
+        } else if categoryId == "GOAL" {
              DispatchQueue.main.async {
-                 AppState.shared.selectedTab = 1
+                 nav.selectedTab = 1
              }
         }
 

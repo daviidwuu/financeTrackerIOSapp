@@ -50,8 +50,8 @@ struct MissionDetailView: View {
                                 .fontWeight(.bold)
                                 .foregroundColor(.primary)
                         }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
+                        .padding(.horizontal, AppSpacing.compact)
+                        .padding(.vertical, AppRadius.xSmall)
                         .background(Color.primary.opacity(0.05))
                         .clipShape(Capsule())
                         .padding(.top, 8)
@@ -67,7 +67,7 @@ struct MissionDetailView: View {
                             .foregroundColor(.primary)
                         
                         ForEach(Array(mission.tutorialSteps.prefix(3).enumerated()), id: \.offset) { index, step in
-                            HStack(alignment: .top, spacing: 16) {
+                            HStack(alignment: .top, spacing: AppSpacing.element) {
                                 ZStack {
                                     Circle()
                                         .fill(step.iconColor.opacity(0.1))

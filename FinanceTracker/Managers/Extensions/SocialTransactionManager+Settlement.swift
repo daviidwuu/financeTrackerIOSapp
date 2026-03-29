@@ -6,38 +6,51 @@ import Combine
 extension SocialTransactionManager {
 
     func settleUp(payerId: String, receiverId: String, groupId: String?, amount: Double, currency: String? = nil, payerName: String = "Member", receiverName: String? = nil, method: String = "Cash", note: String? = nil) async throws {
+        guard let currentUserId = Auth.auth().currentUser?.uid else {
+            throw NSError(domain: "SocialTransactionManager", code: 401, userInfo: [NSLocalizedDescriptionKey: "Not authenticated"])
+        }
+
+        // SECURITY: We can only write to our own transaction subcollection. If the recorded payer
+        // is not the currently authenticated user, we cannot create the payer-side expense transaction
+        // client-side — that write would be blocked by Firestore security rules.
+        // TODO: move to Cloud Function — add a callable `recordSettlementForMember` that can write
+        //       the expense transaction on behalf of any group member using Admin SDK.
+        guard payerId == currentUserId else {
+            throw NSError(domain: "SocialTransactionManager", code: 403, userInfo: [
+                NSLocalizedDescriptionKey: "Cannot record a settlement on behalf of another user. The payer must be the currently signed-in user."
+            ])
+        }
+
         // Payer Side (Expense)
         let payerRef = db.collection("users").document(payerId).collection("transactions").document()
-        
+
         let displayTitle = note?.isEmpty == false ? note! : "Settled up via \(method)"
         let displayNote = note?.isEmpty == false ? note! : "Settled up via \(method)"
-        
-        // 1. Create a "Payment" transaction
+
+        // 1. Create a "Payment" expense transaction for the payer (current user only)
         let paymentTransaction = FirestoreModels.TransactionModel(
             id: payerRef.documentID,
             userId: payerId,
             title: displayTitle,
-            categoryId: nil, // Note: Setting up a specific system category via ID might be better long term
+            categoryId: nil,
             amount: -amount, // Expense for payer
             date: Date(),
             type: "expense",
             createdAt: Date(),
             note: displayNote
         )
-        
+
         let batch = db.batch()
-        
+
         try batch.setData(from: paymentTransaction, forDocument: payerRef)
-        
+
         // Receiver Side (Income)
-        // CRITICAL FIX: Do NOT write to receiver's transaction collection directly (Security Rules Violation).
-        // Instead, we rely on the Cloud Function `v2_onSplitRequestUpdated` to detect the 'paid' status
-        // and create the "Payment Received" transaction for the receiver securely.
-        
-        // 3. Counter-Request (Settlement)
-        // Settlement Request acts as a Credit to offset the Debt.
-        // It is FROM Payer TO Reciever, status .paid immediately.
-        
+        // SECURITY: Do NOT write to receiver's transaction collection directly (Security Rules Violation).
+        // The Cloud Function `v2_onSplitRequestUpdated` watches for status transitions to 'paid'
+        // and creates the "Payment Received" income transaction for the receiver server-side.
+
+        // 2. Settlement split request — FROM payer TO receiver, starts as .pending so the
+        //    receiver can verify and accept via acceptSettlement() before balances are cleared.
         let requestRef = db.collection("split_requests").document()
         let settlementRequest = FirestoreModels.SplitRequest(
              id: nil,
@@ -45,25 +58,26 @@ extension SocialTransactionManager {
              groupId: groupId,
              fromUid: payerId,
              toUid: receiverId,
-             fromName: payerName, // FIX 3.2: Use actual payer name instead of "Settlement"
-             toName: receiverName, // ✅ Updated from nil
+             fromName: payerName,
+             toName: receiverName,
              amount: amount,
-             currency: currency ?? CurrencyManager.shared.mainCurrency, // FIX 1.2: Store settlement currency
+             currency: currency ?? CurrencyManager.shared.mainCurrency,
              note: displayNote,
              category: "Settlement",
              icon: "arrow.turn.down.left",
              colorHex: "#34C759",
-             status: .pending, // ✅ CHANGED: Pending until receiver accepts
+             status: .pending, // Pending until receiver accepts via acceptSettlement()
              dependencyId: nil,
              lastNudgedAt: nil,
-             originalTotalAmount: amount, // Settlement = full amount
-             isSettlement: true, // ✅ NEW: Flag for settlement-specific UI
+             originalTotalAmount: amount,
+             isSettlement: true,
              createdAt: Date()
         )
-        
+
         try batch.setData(from: settlementRequest, forDocument: requestRef)
-        
-        // Group Feed
+
+        // 3. Group Feed entry — linked to the payer's expense transaction so deleteSocialTransaction
+        //    can find and clean it up correctly.
         if let groupId = groupId {
             let groupRef = db.collection("groups").document(groupId).collection("transactions").document()
             let groupTx = FirestoreModels.GroupTransaction(
@@ -71,24 +85,23 @@ extension SocialTransactionManager {
                 title: displayTitle,
                 amount: amount,
                 payerId: payerId,
-                payerName: payerName, 
-                receiverId: receiverId, // ✅ Store Receiver ID
-                receiverName: receiverName, // ✅ Added parameter
+                payerName: payerName,
+                receiverId: receiverId,
+                receiverName: receiverName,
                 date: Date(),
-                type: "settlement", // Special type
-                currencyCode: nil,
+                type: "settlement",
+                currencyCode: currency ?? CurrencyManager.shared.mainCurrency,
                 note: displayNote,
-                originalTransactionId: payerRef.documentID, // Linked to payer transaction
-                involvedUserStatuses: [receiverId: "pending"], // ✅ NEW: Track receiver's status
+                originalTransactionId: payerRef.documentID, // Linked to the payer's expense transaction
+                involvedUserStatuses: [receiverId: "pending"], // Receiver's status starts as pending
                 editHistory: nil
             )
             try batch.setData(from: groupTx, forDocument: groupRef)
         }
-        
-        // ✅ REMOVED: Immediate cascade of pending splits.
-        // The cascade now happens only when User B accepts the settlement
-        // via acceptSettlement(), ensuring User B has a chance to verify.
-        
+
+        // Cascade of pending splits is deferred until acceptSettlement() is called by the receiver,
+        // ensuring the receiver can verify before their balances are cleared.
+
         // FIX #18: Use retry with exponential backoff for the critical settlement commit
         try await withRetry {
             try await batch.commit()
@@ -158,7 +171,7 @@ extension SocialTransactionManager {
         
         for doc in sortedDocs {
             guard remainingAmount > 0.01 else { break }
-            
+
             // FIX 1.2: Only settle splits matching the settlement currency
             // FIX #9: Treat nil currency as user's main currency so old splits aren't permanently skipped
             if let settleCurrency = request.currency {
@@ -167,17 +180,22 @@ extension SocialTransactionManager {
                     continue
                 }
             }
-            
+
             let splitAmount = doc.data()["amount"] as? Double ?? 0
-            
+
             if splitAmount <= remainingAmount {
-                // Full settle: mark as paid
+                // Mark the underlying split as paid.
+                // IMPORTANT: Set `settledByRequestId` so the Cloud Function `v2_onSplitRequestUpdated`
+                // can detect this is a settlement-cascade transition and skip creating a separate income
+                // transaction — the income for the full settlement amount was already created above in
+                // step 2. Without this guard the CF would create duplicate income for each cascaded split.
                 batch.updateData([
                     "status": FirestoreModels.SplitRequest.RequestStatus.paid.rawValue,
-                    "lastUpdatedBy": currentUserId
+                    "lastUpdatedBy": currentUserId,
+                    "settledByRequestId": requestId   // signals CF to skip income creation
                 ], forDocument: doc.reference)
                 remainingAmount -= splitAmount
-                
+
                 // Update parent group transaction badge
                 if let groupId = doc.data()["groupId"] as? String,
                    let originalTxId = doc.data()["transactionId"] as? String {
@@ -191,7 +209,7 @@ extension SocialTransactionManager {
                     }
                 }
             }
-            // If splitAmount > remainingAmount, skip (partial not supported at split level)
+            // If splitAmount > remainingAmount, skip (partial settle not supported at individual-split level)
         }
         
         try await withRetry {

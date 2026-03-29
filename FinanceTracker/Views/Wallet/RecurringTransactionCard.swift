@@ -34,14 +34,14 @@ struct RecurringTransactionCard: View {
             ZStack {
                 Circle()
                     .fill(Color(hex: resolvedColorHex).opacity(0.15))
-                    .frame(width: 48, height: 48)
+                    .frame(width: AppSize.avatarList, height: AppSize.avatarList)
                 Image(systemName: resolvedIcon)
                     .font(.system(size: 20))
                     .foregroundColor(Color(hex: resolvedColorHex))
             }
             
             // Content
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: AppSpacing.micro) {
                 Text(transaction.name)
                     .font(.headline)
                     .foregroundColor(.primary)
@@ -54,7 +54,7 @@ struct RecurringTransactionCard: View {
                 
                 Text("Started: \(transaction.startDate.formatted(date: .abbreviated, time: .omitted))")
                     .font(.caption2)
-                    .foregroundColor(Color(UIColor.tertiaryLabel))
+                    .foregroundColor(Color.tertiaryLabel)
             }
             
             Spacer()
@@ -67,8 +67,8 @@ struct RecurringTransactionCard: View {
                 Text(transaction.frequency)
                     .font(.caption)
                     .foregroundColor(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, AppSpacing.compact)
+                    .padding(.vertical, AppSpacing.micro)
                     .background(Color(hex: resolvedColorHex).opacity(0.1))
                     .cornerRadius(AppRadius.small)
             }

@@ -2,6 +2,7 @@ import Foundation
 import CoreLocation
 import Combine
 import SwiftUI
+import UserNotifications
 
 class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     static let shared = LocationManager()
@@ -87,13 +88,11 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     private func sendCountryChangeNotification(countryName: String) {
-        let content = UNMutableNotificationContent()
-        content.title = "Welcome to \(countryName)!"
-        content.body = "Tap to set up your Travel Currency settings."
-        content.sound = .default
+        let message = NotificationContent.getMessage(for: .travelCountryChange(countryName: countryName), userName: "")
+        let content = NotificationManager.shared.makeContent(message: message, category: "")
         content.userInfo = ["type": "travel_update", "country": countryName]
-        
-        let request = UNNotificationRequest(identifier: "country_change", content: content, trigger: nil) // Immediate
+
+        let request = UNNotificationRequest(identifier: "country_change", content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request)
     }
     

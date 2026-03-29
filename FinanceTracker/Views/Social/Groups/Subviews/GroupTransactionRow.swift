@@ -86,11 +86,11 @@ struct GroupTransactionRow: View {
                 if transaction.payerId == currentUserId {
                     return .primary // Expense color for payer
                 } else if transaction.receiverId == currentUserId {
-                    return .green // Income color for receiver
+                    return Color.functionalSuccess // Income color for receiver
                 }
                 return .primary
             }
-            return (transaction.type == "income") ? .green : .primary
+            return (transaction.type == "income") ? Color.functionalSuccess : .primary
         }()
         
         // ✅ FIX: Resolve category dynamically from categoryId

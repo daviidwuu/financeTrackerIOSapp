@@ -165,12 +165,12 @@ struct SettleUpWizardView: View {
                             .foregroundColor(.secondary)
                     }
                 }
-                .padding(.top, 20)
-                
+                .padding(.top, AppSpacing.margin)
+
                 Divider()
-                
+
                 // Payer Selector
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: AppSpacing.element) {
                     Text("FROM (PAYER)")
                         .font(.caption)
                         .fontWeight(.bold)
@@ -178,7 +178,7 @@ struct SettleUpWizardView: View {
                         .padding(.horizontal, AppSpacing.margin)
                     
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
+                        HStack(spacing: AppSpacing.compact) {
                             if let group = group {
                                 ForEach(group.members, id: \.self) { memberId in
                                     participantCard(id: memberId, isSelected: payerId == memberId, isPayer: true)
@@ -205,7 +205,7 @@ struct SettleUpWizardView: View {
                 }
                 
                 // Receiver Selector
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: AppSpacing.element) {
                     Text("TO (RECEIVER)")
                         .font(.caption)
                         .fontWeight(.bold)
@@ -243,7 +243,7 @@ struct SettleUpWizardView: View {
     }
     
     private func participantCard(id: String, isSelected: Bool, isPayer: Bool) -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: AppSpacing.compact) {
             ZStack {
                 Circle()
                     .fill(isSelected ? (isPayer ? AppColors.functionalIncome : Color.blue) : Color.cardBackground)
@@ -283,10 +283,10 @@ struct SettleUpWizardView: View {
         let travelCode = CurrencyManager.shared.travelCurrency
         let symbol = isTravelMode ? getSymbol(for: travelCode) : getSymbol(for: mainCode)
         
-        return VStack(spacing: 24) {
+        return VStack(spacing: AppSpacing.large) {
             Spacer()
-            
-            VStack(spacing: 8) {
+
+            VStack(spacing: AppSpacing.compact) {
                 Text("Enter Amount")
                     .font(.headline)
                     .foregroundColor(.secondary)
@@ -436,7 +436,7 @@ struct SettleUpWizardView: View {
     }
     
     private var stepFourView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: AppSpacing.element) {
             Spacer()
             
             Text("Notes (Optional)")
@@ -459,7 +459,10 @@ struct SettleUpWizardView: View {
     
     private var isValid: Bool {
         if currentStep == 1 {
+            // SECURITY: The payer must always be the current user. Client-side writes to another
+            // user's private transaction subcollection are blocked by Firestore security rules.
             return !payerId.isEmpty && !receiverId.isEmpty && payerId != receiverId
+                && payerId == appState.currentUserId
         } else if currentStep == 2 {
             return (Double(amount) ?? 0) > 0
         } else if currentStep == 3 {
@@ -488,9 +491,16 @@ struct SettleUpWizardView: View {
     
     private func submit() {
         guard let amountVal = Double(amount) else { return }
-        
+
+        // SECURITY: Only the currently authenticated user can be the payer — Firestore rules
+        // block client writes to any other user's private transaction subcollection.
+        guard payerId == appState.currentUserId else {
+            DebugLogger.log("⚠️ SettleUpWizardView: Cannot record settlement on behalf of another user.")
+            return
+        }
+
         isSubmitting = true
-        
+
         Task {
             do {
                 try await SocialTransactionManager.shared.settleUp(

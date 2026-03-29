@@ -66,7 +66,7 @@ struct SplitConfigurationView: View {
     var body: some View {
         ZStack {
             // Background
-            (colorScheme == .dark ? Color.black : Color(UIColor.systemBackground))
+            (colorScheme == .dark ? Color.black : Color.systemBackground)
                 .ignoresSafeArea()
                 .ignoresSafeArea(.keyboard, edges: .bottom)
             
@@ -82,8 +82,8 @@ struct SplitConfigurationView: View {
                     onClose: { dismiss() }
                 )
                 .padding(.horizontal, AppSpacing.margin)
-                .padding(.top, 16)
-                
+                .padding(.top, AppSpacing.element)
+
                 // Content
                 if currentStep == 1 {
                     StepOneView
@@ -125,8 +125,8 @@ struct SplitConfigurationView: View {
     
     private var StepOneView: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                
+            VStack(alignment: .leading, spacing: AppSpacing.large) {
+
                 // 0. Search Bar (Pill Shape)
                 HStack {
                     Image(systemName: "magnifyingglass")
@@ -140,14 +140,14 @@ struct SplitConfigurationView: View {
                              }
                         }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.horizontal, AppSpacing.element)
+                .padding(.vertical, AppSpacing.compact)
                 .background(Color.cardBackground)
                 .clipShape(Capsule())
                 .padding(.horizontal)
                 
                 // 1. Groups (Horizontal)
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: AppSpacing.compact) {
                     Text("GROUPS")
                         .font(.caption)
                         .fontWeight(.bold)
@@ -156,7 +156,7 @@ struct SplitConfigurationView: View {
                     
                     ScrollView(.horizontal, showsIndicators: false) {
                         ScrollViewReader { proxy in
-                            HStack(spacing: 16) {
+                            HStack(spacing: AppSpacing.element) {
                                 // "Create Group" Button
                                 Button(action: { showGroupWizard = true }) {
                                     VStack(spacing: 8) {
@@ -230,7 +230,7 @@ struct SplitConfigurationView: View {
                 }
                 
                 // 2. Friends List
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: AppSpacing.compact) {
                     Text("FRIENDS")
                         .font(.caption)
                         .fontWeight(.bold)
@@ -244,12 +244,12 @@ struct SplitConfigurationView: View {
                         
                         ForEach(filteredFriends) { friend in
                             Button(action: { toggleFriendSelection(friend) }) {
-                                HStack(spacing: 16) {
+                                HStack(spacing: AppSpacing.element) {
                                     // Avatar - Usage of consistent random color seeding
                                     ZStack {
                                         Circle()
                                             .fill(Color.random(seed: friend.name))
-                                            .frame(width: 48, height: 48)
+                                            .frame(width: AppSize.avatarList, height: AppSize.avatarList)
                                             // Add shadow for depth consistency with FriendCardView
                                             .shadow(color: Color.random(seed: friend.name).opacity(0.3), radius: 4, x: 0, y: 2)
                                         
@@ -258,12 +258,12 @@ struct SplitConfigurationView: View {
                                             .foregroundColor(.white) // Always white on colorful background
                                     }
                                     
-                                    HStack(spacing: 8) {
+                                    HStack(spacing: AppSpacing.compact) {
                                         Text(friend.name)
                                             .font(.body)
                                             .fontWeight(.medium)
                                             .foregroundColor(.primary)
-                                        
+
                                         if let id = friend.id, userPremiumRepo.isPremium(userId: id) == true {
                                             PremiumBadge(size: .small, overrideBadgeType: userPremiumRepo.badgeType(userId: id))
                                         }
@@ -276,7 +276,7 @@ struct SplitConfigurationView: View {
                                         .font(.title2)
                                         .foregroundColor(selectedFriendIds.contains(friend.id ?? "") ? .primary : (colorScheme == .dark ? .white.opacity(0.3) : .secondary.opacity(0.3)))
                                 }
-                                .padding(.vertical, 12)
+                                .padding(.vertical, AppSpacing.compact)
                                 .padding(.horizontal)
                                 .contentShape(Rectangle())
                             }
@@ -286,7 +286,7 @@ struct SplitConfigurationView: View {
                                 }
                             }
                         }
-                        
+
                         // Global Search Results (Non-Friends)
                         if !searchText.isEmpty {
                             let nonFriends = friendRepo.searchResults.filter { user in
@@ -300,27 +300,27 @@ struct SplitConfigurationView: View {
                                     .fontWeight(.bold)
                                     .foregroundColor(.secondary)
                                     .padding(.horizontal)
-                                    .padding(.top, 16)
-                                
+                                    .padding(.top, AppSpacing.element)
+
                                 ForEach(nonFriends) { user in
                                     Button(action: { addPendingFriend(user) }) {
-                                        HStack(spacing: 16) {
+                                        HStack(spacing: AppSpacing.element) {
                                             ZStack {
                                                 Circle()
-                                                    .fill(Color.blue.opacity(0.1))
-                                                    .frame(width: 48, height: 48)
+                                                    .fill(AppColors.brandPrimary.opacity(0.1))
+                                                    .frame(width: AppSize.avatarList, height: AppSize.avatarList)
                                                 Image(systemName: "person.badge.plus")
                                                     .font(.headline)
-                                                    .foregroundColor(.blue)
+                                                    .foregroundColor(AppColors.brandPrimary)
                                             }
-                                            
+
                                             VStack(alignment: .leading) {
-                                                HStack(spacing: 8) {
+                                                HStack(spacing: AppSpacing.compact) {
                                                     Text(user.name)
                                                         .font(.body)
                                                         .fontWeight(.medium)
                                                         .foregroundColor(.primary)
-                                                    
+
                                                     if user.isPremium == true {
                                                         PremiumBadge(size: .small, overrideBadgeType: user.badgeType.flatMap { PremiumBadgeType(rawValue: $0) })
                                                     }
@@ -329,14 +329,14 @@ struct SplitConfigurationView: View {
                                                     .font(.caption)
                                                     .foregroundColor(.secondary)
                                             }
-                                            
+
                                             Spacer()
-                                            
+
                                             Image(systemName: "plus.circle.fill")
                                                 .font(.title2)
-                                                .foregroundColor(.blue)
+                                                .foregroundColor(AppColors.brandPrimary)
                                         }
-                                        .padding(.vertical, 12)
+                                        .padding(.vertical, AppSpacing.compact) // TODO: add DS token for 12pt inset padding
                                         .padding(.horizontal)
                                     }
                                 }
@@ -345,11 +345,11 @@ struct SplitConfigurationView: View {
                         
                         // Guest Button
                         Button(action: { showGuestInput = true }) {
-                            HStack(spacing: 16) {
+                            HStack(spacing: AppSpacing.element) {
                                 Circle()
                                     .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
                                     .foregroundColor(.secondary)
-                                    .frame(width: 48, height: 48)
+                                    .frame(width: AppSize.avatarList, height: AppSize.avatarList)
                                     .overlay(
                                         Image(systemName: "plus")
                                             .font(.headline)
@@ -363,15 +363,15 @@ struct SplitConfigurationView: View {
                                 
                                 Spacer()
                             }
-                            .padding(.vertical, 12)
+                            .padding(.vertical, AppSpacing.compact)
                             .padding(.horizontal)
                         }
                     }
                 }
-                
+
                 // 3. Guests Section
                 if !guestRepo.guests.isEmpty || !splits.filter({ $0.isGuest }).isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: AppSpacing.compact) {
                         Text("GUESTS")
                             .font(.caption)
                             .fontWeight(.bold)
@@ -382,17 +382,17 @@ struct SplitConfigurationView: View {
                             // Show all guests from repo with toggle
                             ForEach(guestRepo.guests) { guest in
                                 Button(action: { toggleGuestSelection(guest) }) {
-                                    HStack(spacing: 16) {
+                                    HStack(spacing: AppSpacing.element) {
                                         ZStack {
                                             Circle()
-                                                .fill(Color.orange.opacity(0.15))
-                                                .frame(width: 48, height: 48)
+                                                .fill(AppColors.functionalExpense.opacity(0.15))
+                                                .frame(width: AppSize.avatarList, height: AppSize.avatarList)
                                             Image(systemName: "person.fill")
                                                 .font(.headline)
-                                                .foregroundColor(.orange)
+                                                .foregroundColor(AppColors.functionalExpense)
                                         }
 
-                                        HStack(spacing: 8) {
+                                        HStack(spacing: AppSpacing.compact) {
                                             Text(guest.name)
                                                 .font(.body)
                                                 .fontWeight(.medium)
@@ -412,12 +412,12 @@ struct SplitConfigurationView: View {
 
                                             Text("Guest")
                                                 .font(.caption2)
-                                                .foregroundColor(.orange)
+                                                .foregroundColor(AppColors.functionalExpense)
                                                 .fontWeight(.medium)
-                                                .padding(.horizontal, 6)
+                                                .padding(.horizontal, AppSpacing.compact)
                                                 .padding(.vertical, 2)
-                                                .background(Color.orange.opacity(0.1))
-                                                .cornerRadius(4)
+                                                .background(AppColors.functionalExpense.opacity(0.1))
+                                                .cornerRadius(AppRadius.badge)
                                         }
 
                                         Spacer()
@@ -427,7 +427,7 @@ struct SplitConfigurationView: View {
                                             .font(.title2)
                                             .foregroundColor(selectedGuestIds.contains(guest.id ?? "") ? .primary : (colorScheme == .dark ? .white.opacity(0.3) : .secondary.opacity(0.3)))
                                     }
-                                    .padding(.vertical, 12)
+                                    .padding(.vertical, AppSpacing.compact) // TODO: add DS token for 12pt inset padding
                                     .padding(.horizontal)
                                     .contentShape(Rectangle())
                                 }
@@ -448,9 +448,9 @@ struct SplitConfigurationView: View {
         let symbol = getSymbol(for: CurrencyManager.shared.mainCurrency)
         
         return ScrollView {
-            VStack(spacing: 24) {
+            VStack(spacing: AppSpacing.large) {
                 // Total Owed Card
-                VStack(spacing: 8) {
+                VStack(spacing: AppSpacing.compact) {
                     Text("Total Amount")
                         .font(.caption)
                         .fontWeight(.bold)
@@ -471,7 +471,7 @@ struct SplitConfigurationView: View {
                             Text(symbol + String(format: "%.2f", max(0, remaining)))
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
-                                .foregroundColor(abs(remaining) < 0.01 ? .green : .orange)
+                                .foregroundColor(abs(remaining) < 0.01 ? Color.functionalSuccess : .orange)
                         }
                     } else if splitMode == .percentage {
                         let totalPct = percentages.values.reduce(0, +)
@@ -482,7 +482,7 @@ struct SplitConfigurationView: View {
                             Text("\(Int(totalPct))%")
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
-                                .foregroundColor(abs(totalPct - 100) < 1 ? .green : .orange)
+                                .foregroundColor(abs(totalPct - 100) < 1 ? Color.functionalSuccess : .orange)
                         }
                     } else if splitMode == .shares {
                         let totalShares = shares.values.reduce(0, +)
@@ -506,7 +506,7 @@ struct SplitConfigurationView: View {
                 }
                 
                 // Splits List
-                VStack(spacing: 16) {
+                VStack(spacing: AppSpacing.element) {
                     ForEach(splits) { split in
                         switch splitMode {
                         case .equal, .exact:
@@ -835,23 +835,23 @@ struct CustomSplitRow: View {
     @State private var textInput: String = ""
     
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: AppSpacing.element) {
             SplitAvatar(name: split.name, isGuest: split.isGuest)
-            
-            VStack(alignment: .leading, spacing: 2) {
+
+            VStack(alignment: .leading, spacing: AppSpacing.micro) {
                 Text(split.name)
                     .font(.body)
                     .fontWeight(.medium)
-                
+
                 if split.isGuest {
                     Text("Guest")
                         .font(.caption2)
-                        .foregroundColor(.orange) // Match logic color
+                        .foregroundColor(AppColors.functionalExpense)
                         .fontWeight(.medium)
-                        .padding(.horizontal, 6)
+                        .padding(.horizontal, AppSpacing.compact)
                         .padding(.vertical, 2)
-                        .background(Color.orange.opacity(0.1))
-                        .cornerRadius(4)
+                        .background(AppColors.functionalExpense.opacity(0.1))
+                        .cornerRadius(AppRadius.badge)
                 }
             }
             
@@ -905,12 +905,12 @@ struct PercentageSplitRow: View {
     @Binding var percentage: Double
     var currencySymbol: String = "$" // Default
     var onRemove: () -> Void
-    
+
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: AppSpacing.element) {
             SplitAvatar(name: split.name, isGuest: split.isGuest)
-            
-            VStack(alignment: .leading, spacing: 2) {
+
+            VStack(alignment: .leading, spacing: AppSpacing.micro) {
                 Text(split.name)
                     .font(.body)
                     .fontWeight(.medium)
@@ -921,7 +921,7 @@ struct PercentageSplitRow: View {
             
             Spacer()
             
-            VStack(alignment: .trailing, spacing: 4) {
+            VStack(alignment: .trailing, spacing: AppSpacing.micro) {
                 Text("\(Int(percentage))%")
                     .font(.headline)
                     .fontWeight(.bold)
@@ -948,12 +948,12 @@ struct ShareSplitRow: View {
     @Binding var shareCount: Int
     var currencySymbol: String = "$" // Default
     var onRemove: () -> Void
-    
+
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: AppSpacing.element) {
             SplitAvatar(name: split.name, isGuest: split.isGuest)
-            
-            VStack(alignment: .leading, spacing: 2) {
+
+            VStack(alignment: .leading, spacing: AppSpacing.micro) {
                 Text(split.name)
                     .font(.body)
                     .fontWeight(.medium)
@@ -964,7 +964,7 @@ struct ShareSplitRow: View {
             
             Spacer()
             
-            HStack(spacing: 12) {
+            HStack(spacing: AppSpacing.compact) {
                 Button(action: { if shareCount > 0 { shareCount -= 1 } }) {
                     Image(systemName: "minus.circle.fill")
                         .font(.title2)
@@ -1003,15 +1003,15 @@ struct SplitAvatar: View {
         ZStack {
             if isGuest {
                 Circle()
-                    .fill(Color.orange.opacity(0.15))
-                    .frame(width: 48, height: 48)
+                    .fill(Color.themeAccent.opacity(0.15))
+                    .frame(width: AppSize.avatarList, height: AppSize.avatarList)
                 Image(systemName: "person.fill")
                     .font(.headline)
-                    .foregroundColor(.orange)
+                    .foregroundColor(.themeAccent)
             } else {
                 Circle()
                     .fill(Color.random(seed: name))
-                    .frame(width: 48, height: 48)
+                    .frame(width: AppSize.avatarList, height: AppSize.avatarList)
                     .shadow(color: Color.random(seed: name).opacity(0.3), radius: 4, x: 0, y: 2)
                 
                 Text(String(name.prefix(1)).uppercased())
