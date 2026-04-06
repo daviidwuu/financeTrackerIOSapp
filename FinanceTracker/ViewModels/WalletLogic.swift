@@ -190,9 +190,15 @@ struct WalletLogic {
 
     // MARK: - Recurring Transactions
 
+    /// Calculate dates where a recurring transaction was expected but not logged.
+    /// - Parameters:
+    ///   - fromDate: Optional lower-bound for the check window. When provided, occurrences
+    ///     before this date are skipped. Use this to limit the lookback window (e.g. 90 days)
+    ///     so the list stays manageable for long-running recurring transactions.
     static func calculateMissedOccurrences(
         recurring: FirestoreModels.RecurringTransaction,
-        loggedTransactions: [FirestoreModels.TransactionModel]
+        loggedTransactions: [FirestoreModels.TransactionModel],
+        fromDate: Date? = nil
     ) -> [Date] {
         let calendar = Calendar.current
 
@@ -205,8 +211,18 @@ struct WalletLogic {
         let localComponents = calendar.dateComponents([.year, .month, .day], from: recurring.startDate)
         let localStartDate = calendar.date(from: localComponents) ?? recurring.startDate
 
-        // 3. Start checking from the local start date
+        // 3. Start checking from the local start date (or fromDate, whichever is later).
         var currentCheckDate = calendar.startOfDay(for: localStartDate)
+
+        // Fast-forward to the first occurrence on or after fromDate so we don't iterate
+        // through years of history for long-running recurring transactions.
+        if let from = fromDate {
+            let fromDay = calendar.startOfDay(for: from)
+            while currentCheckDate < fromDay {
+                currentCheckDate = WalletLogic.advanceDate(date: currentCheckDate, frequency: recurring.frequency)
+            }
+        }
+
         var missedDates: [Date] = []
 
         // 4. Loop strictly before today. Today hasn't ended yet, so we shouldn't flag it as missed.

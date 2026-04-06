@@ -23,7 +23,8 @@ class TransactionRepository: ObservableObject {
     private var currentMonth: Date? = nil // Track selected month
     
     private var calendarMonth: Date = Date() // Track selected month specifically for the Calendar
-    
+    private var currentMonthListenerMonth: Date? = nil // Track which calendar month the listener covers
+
     // Optimistic Deletion Cache — in-memory ONLY, never persisted to UserDefaults
     private var optimisticDeletedTransactions: [String: FirestoreModels.TransactionModel] = [:]
 
@@ -52,8 +53,13 @@ class TransactionRepository: ObservableObject {
         
         setupListener()
         
-        // Always maintain a full current-month cache for budget/calendar aggregations
-        if currentMonthListener == nil {
+        // Always maintain a full current-month cache for budget/calendar aggregations.
+        // Re-create the listener when the calendar month rolls over so HomeView never
+        // shows stale prior-month totals.
+        let calendar = Calendar.current
+        let needsMonthRefresh = currentMonthListener == nil ||
+            currentMonthListenerMonth.map { !calendar.isDate($0, equalTo: Date(), toGranularity: .month) } ?? true
+        if needsMonthRefresh {
             startListeningToCurrentMonth()
         }
         
@@ -146,9 +152,10 @@ class TransactionRepository: ObservableObject {
     
     private func startListeningToCurrentMonth() {
         guard let userId = userId else { return }
-        
+
         currentMonthListener?.remove()
-        
+        currentMonthListenerMonth = Date() // Record the month this listener covers
+
         let calendar = Calendar.current
         let targetMonth = Date() // True current month for homeview and budgets
         let components = calendar.dateComponents([.year, .month], from: targetMonth)
@@ -287,6 +294,7 @@ class TransactionRepository: ObservableObject {
         listener = nil
         currentMonthListener?.remove()
         currentMonthListener = nil
+        currentMonthListenerMonth = nil
         calendarListener?.remove()
         calendarListener = nil
         allTransactionsListener?.remove()
@@ -661,15 +669,13 @@ class TransactionRepository: ObservableObject {
         // Save separately
         WidgetDataManager.shared.saveDailyData(expense: dailyExpense, vault: dailyVault)
 
-        // Calculate Monthly Spend (Net)
+        // Calculate Monthly Spend using the dedicated currentMonthTransactions listener,
+        // which always covers the full current month regardless of the paginated feed size.
         let monthlySpend = DecimalPrecision.sum(
-            transactions
-                .filter { $0.type != "income" && calendar.isDate($0.date, equalTo: today, toGranularity: .month) }
+            self.currentMonthTransactions
+                .filter { $0.type != "income" }
                 .map { $0.amount }
         )
-        
-        // Monthly: Keep original logic for now (Absolute expense only? Or should we fix this too?)
-        // The plan specifically prioritized Daily. Let's stick to Daily for this user request.
         WidgetDataManager.shared.saveMonthlySpend(monthlySpend < 0 ? abs(monthlySpend) : 0)
         
         // --- NEW: Optimistic Recent Transactions ---
