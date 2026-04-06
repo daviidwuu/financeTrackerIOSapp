@@ -301,6 +301,7 @@ struct RecurringTransactionDetailView: View {
 
         let type = transaction.type ?? "expense"
         Task {
+            var failedCount = 0
             for date in datesToLog {
                 let finalAmount = (type == "income") ? abs(transaction.amount) : -abs(transaction.amount)
                 let newLog = FirestoreModels.TransactionModel(
@@ -318,6 +319,7 @@ struct RecurringTransactionDetailView: View {
                 do {
                     try await transactionRepo.addTransaction(newLog)
                 } catch {
+                    failedCount += 1
                     await MainActor.run {
                         self.errorMessage = "Failed to log some occurrences: \(error.localizedDescription)"
                         self.showErrorAlert = true
@@ -325,7 +327,11 @@ struct RecurringTransactionDetailView: View {
                 }
             }
             await MainActor.run {
-                HapticManager.shared.success()
+                // Only signal success when every write succeeded; failed dates remain
+                // visible in the list so the user can retry them individually.
+                if failedCount == 0 {
+                    HapticManager.shared.success()
+                }
                 isProcessingDates.subtract(datesToLog)
             }
         }

@@ -2,6 +2,7 @@ import Foundation
 import FirebaseFirestore
 import Combine
 import WidgetKit
+import UIKit
 
 /// Repository for managing transactions in Firestore
 class TransactionRepository: ObservableObject {
@@ -24,6 +25,7 @@ class TransactionRepository: ObservableObject {
     
     private var calendarMonth: Date = Date() // Track selected month specifically for the Calendar
     private var currentMonthListenerMonth: Date? = nil // Track which calendar month the listener covers
+    private var significantTimeChangeCancellable: AnyCancellable? // Refresh month listener at midnight
 
     // Optimistic Deletion Cache — in-memory ONLY, never persisted to UserDefaults
     private var optimisticDeletedTransactions: [String: FirestoreModels.TransactionModel] = [:]
@@ -33,6 +35,7 @@ class TransactionRepository: ObservableObject {
         currentMonthListener?.remove()
         calendarListener?.remove()
         allTransactionsListener?.remove()
+        significantTimeChangeCancellable?.cancel()
     }
 
     /// Start listening to transactions for a specific user
@@ -70,6 +73,25 @@ class TransactionRepository: ObservableObject {
         // Maintain full transaction history for savings pool calculation
         if allTransactionsListener == nil {
             startListeningToAllTransactions()
+        }
+
+        // Re-subscribe once so we only hold a single cancellable even if startListening is
+        // called multiple times (e.g., month filter changes).
+        if significantTimeChangeCancellable == nil {
+            significantTimeChangeCancellable = NotificationCenter.default
+                .publisher(for: UIApplication.significantTimeChangeNotification)
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] _ in
+                    guard let self = self else { return }
+                    // Only recreate the listener when the calendar month has actually changed,
+                    // so spurious midnight notifications on non-boundary days are a no-op.
+                    let cal = Calendar.current
+                    let monthChanged = self.currentMonthListenerMonth
+                        .map { !cal.isDate($0, equalTo: Date(), toGranularity: .month) } ?? false
+                    if monthChanged {
+                        self.startListeningToCurrentMonth()
+                    }
+                }
         }
     }
     
@@ -295,6 +317,8 @@ class TransactionRepository: ObservableObject {
         currentMonthListener?.remove()
         currentMonthListener = nil
         currentMonthListenerMonth = nil
+        significantTimeChangeCancellable?.cancel()
+        significantTimeChangeCancellable = nil
         calendarListener?.remove()
         calendarListener = nil
         allTransactionsListener?.remove()
