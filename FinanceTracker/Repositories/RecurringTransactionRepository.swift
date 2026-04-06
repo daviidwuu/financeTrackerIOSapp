@@ -132,12 +132,12 @@ class RecurringTransactionRepository: ObservableObject {
                 try? await transactionRepo.addTransaction(newTx)
             }
 
-            // Stamp lastProcessedDate so we don't reprocess until the next gap
-            if !missed.isEmpty || recurring.lastProcessedDate == nil {
-                var updated = recurring
-                updated.lastProcessedDate = today
-                try? await updateRecurringTransaction(updated)
-            }
+            // Always stamp lastProcessedDate after a successful check so the 2-day gate
+            // prevents redundant re-runs on the next app launch, even when there were no
+            // missed occurrences to log.
+            var updated = recurring
+            updated.lastProcessedDate = today
+            try? await updateRecurringTransaction(updated)
         }
 
         DebugLogger.log("processDueTransactions: finished client-side gap-fill for \(recurringTransactions.count) recurring entries.")

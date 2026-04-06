@@ -226,20 +226,34 @@ struct WalletLogic {
         var missedDates: [Date] = []
 
         // 4. Loop strictly before today. Today hasn't ended yet, so we shouldn't flag it as missed.
+        //
+        // Performance: build a lookup set keyed by "YYYY-MM-DD|title_lowercased|type" so each
+        // date check is O(1) instead of scanning every logged transaction every iteration.
+        let lookupSet: Set<String> = Set(loggedTransactions.compactMap { tx in
+            let cal = Calendar.current
+            let comps = cal.dateComponents([.year, .month, .day], from: tx.date)
+            guard let y = comps.year, let m = comps.month, let d = comps.day else { return nil }
+            return "\(y)-\(m)-\(d)|\(tx.title.lowercased())|\(tx.type)"
+        })
+
+        let recurringType = recurring.type ?? "expense"
+        let recurringTitleLower = recurring.name.lowercased()
+
         while currentCheckDate < today {
-            let alreadyLogged = loggedTransactions.contains { tx in
-                let txLocalComponents = calendar.dateComponents([.year, .month, .day], from: tx.date)
-                let txLocalDate = calendar.date(from: txLocalComponents) ?? tx.date
-                let matchesDate = calendar.isDate(txLocalDate, inSameDayAs: currentCheckDate)
-                guard matchesDate else { return false }
+            let comps = calendar.dateComponents([.year, .month, .day], from: currentCheckDate)
+            let key = "\(comps.year ?? 0)-\(comps.month ?? 0)-\(comps.day ?? 0)|\(recurringTitleLower)|\(recurringType)"
+            let alreadyLogged: Bool
 
-                let matchesTitle = tx.title.lowercased() == recurring.name.lowercased()
-                guard matchesTitle else { return false }
-
-                let amountDiff = abs(abs(tx.amount) - abs(recurring.amount))
-                let matchesAmount = amountDiff < 0.01
-
-                return matchesAmount
+            if lookupSet.contains(key) {
+                // Fast path: a transaction with matching date+title+type exists; verify amount.
+                alreadyLogged = loggedTransactions.contains { tx in
+                    let txComps = calendar.dateComponents([.year, .month, .day], from: tx.date)
+                    let txKey = "\(txComps.year ?? 0)-\(txComps.month ?? 0)-\(txComps.day ?? 0)|\(tx.title.lowercased())|\(tx.type)"
+                    guard txKey == key else { return false }
+                    return abs(abs(tx.amount) - abs(recurring.amount)) < 0.01
+                }
+            } else {
+                alreadyLogged = false
             }
 
             if !alreadyLogged {

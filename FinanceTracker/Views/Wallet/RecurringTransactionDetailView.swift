@@ -312,7 +312,8 @@ struct RecurringTransactionDetailView: View {
                     type: type,
                     createdAt: Date(),
                     note: "Recurring: \(transaction.frequency)" +
-                        (transaction.note?.isEmpty == false ? " - \(transaction.note!)" : "")
+                        (transaction.note?.isEmpty == false ? " - \(transaction.note!)" : ""),
+                    source: "subscription"
                 )
                 do {
                     try await transactionRepo.addTransaction(newLog)
