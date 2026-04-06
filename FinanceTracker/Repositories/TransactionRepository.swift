@@ -273,7 +273,8 @@ class TransactionRepository: ObservableObject {
         
         let query = db.collection("users").document(userId).collection("transactions")
             .order(by: "date", descending: true)
-        
+            .limit(to: 500)
+
         allTransactionsListener = query.addSnapshotListener { [weak self] snapshot, error in
             guard let self = self else { return }
             
