@@ -104,75 +104,108 @@ struct RecurringTransactionDetailView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.top, AppSpacing.element)
                         
-                        // Action Banner
+                        // Unlogged Payments Banner
                         if !missedDates.isEmpty {
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack {
-                                    Image(systemName: "exclamationmark.triangle.fill")
+                            VStack(alignment: .leading, spacing: 0) {
+                                // Header row
+                                HStack(spacing: AppSpacing.compact) {
+                                    Image(systemName: "clock.badge.exclamationmark.fill")
+                                        .font(.system(size: 20, weight: .semibold))
                                         .foregroundColor(.orange)
-                                    Text("Missed Occurrences")
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
+
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Unlogged Payments")
+                                            .font(.subheadline)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.primary)
+                                        Text("\(missedDates.count) \(missedDates.count == 1 ? "occurrence" : "occurrences") not recorded")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+
                                     Spacer()
-                                    Text("\(missedDates.count)")
-                                        .font(.caption.bold())
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(Color.orange.opacity(0.2))
-                                        .foregroundColor(.orange)
-                                        .clipShape(Capsule())
+
+                                    if missedDates.count > 1 {
+                                        Button(action: { logAllMissedOccurrences() }) {
+                                            Text("Log All")
+                                                .font(.caption)
+                                                .fontWeight(.semibold)
+                                                .foregroundColor(.white)
+                                                .padding(.horizontal, 10)
+                                                .padding(.vertical, 5)
+                                                .background(Color.orange)
+                                                .clipShape(Capsule())
+                                        }
+                                        .disabled(!isProcessingDates.isEmpty)
+                                    }
                                 }
-                                
-                                Text("It looks like some expected logs are missing. Check the boxes below to manually log them.")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                
+                                .padding(.horizontal, AppSpacing.element)
+                                .padding(.top, AppSpacing.element)
+                                .padding(.bottom, AppSpacing.compact)
+
+                                Divider().padding(.horizontal, AppSpacing.element)
+
+                                let displayedDates = Array(missedDates.prefix(10))
                                 VStack(spacing: 0) {
-                                    ForEach(missedDates, id: \.self) { date in
-                                        HStack {
-                                            Text(date.formatted(date: .abbreviated, time: .omitted))
-                                                .font(.body)
-                                            
+                                    ForEach(displayedDates, id: \.self) { date in
+                                        HStack(spacing: AppSpacing.compact) {
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(date.formatted(date: .abbreviated, time: .omitted))
+                                                    .font(.subheadline)
+                                                    .foregroundColor(.primary)
+                                                Text(relativeDate(date))
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
+
                                             Spacer()
-                                            
+
+                                            Text(String(format: "$%.2f", transaction.amount))
+                                                .font(.subheadline)
+                                                .fontWeight(.medium)
+                                                .foregroundColor(.primary)
+
                                             let isProcessing = isProcessingDates.contains(date)
-                                            Button(action: { HapticManager.shared.light(); 
-                                                if !isProcessing {
-                                                    logMissedOccurrence(for: date)
-                                                }
+                                            Button(action: {
+                                                HapticManager.shared.light()
+                                                if !isProcessing { logMissedOccurrence(for: date) }
                                             }) {
                                                 if isProcessing {
                                                     ProgressView()
-                                                        .frame(width: 24, height: 24)
+                                                        .frame(width: 28, height: 28)
                                                 } else {
-                                                    Image(systemName: "square")
-                                                        .font(.title3)
-                                                        .foregroundColor(.blue)
+                                                    Image(systemName: "plus.circle.fill")
+                                                        .font(.title2)
+                                                        .foregroundColor(.orange)
                                                 }
                                             }
                                             .disabled(isProcessing)
                                         }
-                                        .padding(.vertical, 12)
-                                        
-                                        if date != missedDates.last {
-                                            Divider()
+                                        .padding(.horizontal, AppSpacing.element)
+                                        .padding(.vertical, AppSpacing.compact)
+
+                                        if date != displayedDates.last {
+                                            Divider().padding(.horizontal, AppSpacing.element)
                                         }
                                     }
                                 }
-                                .padding(.horizontal)
-                                .background(Color.backgroundPrimary)
-                                .cornerRadius(AppRadius.small)
-                                .padding(.top, 8)
+
+                                if missedDates.count > 10 {
+                                    Divider().padding(.horizontal, AppSpacing.element)
+                                    Text("and \(missedDates.count - 10) more…")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .padding(.horizontal, AppSpacing.element)
+                                        .padding(.vertical, AppSpacing.compact)
+                                }
                             }
-                            .padding()
-                            .background(Color.orange.opacity(0.05))
+                            .background(Color.cardBackground)
                             .cornerRadius(AppRadius.medium)
-                            .padding(.horizontal, AppSpacing.margin)
                             .overlay(
                                 RoundedRectangle(cornerRadius: AppRadius.medium)
-                                    .stroke(Color.orange.opacity(0.2), lineWidth: 1)
-                                    .padding(.horizontal, AppSpacing.margin)
+                                    .stroke(Color.orange.opacity(0.35), lineWidth: 1)
                             )
+                            .padding(.horizontal, AppSpacing.margin)
                         }
                         
                         // Details Section
@@ -248,14 +281,67 @@ struct RecurringTransactionDetailView: View {
     }
     
     private func calculateMissedDates() {
-        // Find missed dates using the helper function
+        // Limit the lookback to 90 days so the list stays manageable for long-running
+        // recurring transactions that have been active for months or years.
+        let lookback = Calendar.current.date(byAdding: .day, value: -90, to: Date()) ?? Date()
         let dates = WalletLogic.calculateMissedOccurrences(
             recurring: transaction,
-            loggedTransactions: transactionRepo.allTransactions
+            loggedTransactions: transactionRepo.allTransactions,
+            fromDate: lookback
         )
-        
         withAnimation {
             self.missedDates = dates
+        }
+    }
+
+    private func logAllMissedOccurrences() {
+        HapticManager.shared.medium()
+        let datesToLog = missedDates.filter { !isProcessingDates.contains($0) }
+        isProcessingDates.formUnion(datesToLog)
+
+        let type = transaction.type ?? "expense"
+        Task {
+            for date in datesToLog {
+                let finalAmount = (type == "income") ? abs(transaction.amount) : -abs(transaction.amount)
+                let newLog = FirestoreModels.TransactionModel(
+                    userId: appState.currentUserId,
+                    title: transaction.name,
+                    categoryId: transaction.categoryId,
+                    amount: finalAmount,
+                    date: date,
+                    type: type,
+                    createdAt: Date(),
+                    note: "Recurring: \(transaction.frequency)" +
+                        (transaction.note?.isEmpty == false ? " - \(transaction.note!)" : "")
+                )
+                do {
+                    try await transactionRepo.addTransaction(newLog)
+                } catch {
+                    await MainActor.run {
+                        self.errorMessage = "Failed to log some occurrences: \(error.localizedDescription)"
+                        self.showErrorAlert = true
+                    }
+                }
+            }
+            await MainActor.run {
+                HapticManager.shared.success()
+                isProcessingDates.subtract(datesToLog)
+            }
+        }
+    }
+
+    private func relativeDate(_ date: Date) -> String {
+        let calendar = Calendar.current
+        let days = calendar.dateComponents([.day],
+            from: calendar.startOfDay(for: date),
+            to: calendar.startOfDay(for: Date())).day ?? 0
+        switch days {
+        case 0:       return "Today"
+        case 1:       return "Yesterday"
+        case 2...6:   return "\(days) days ago"
+        case 7...13:  return "1 week ago"
+        case 14...29: return "\(days / 7) weeks ago"
+        default:      return "\(days / 30) month\(days / 30 > 1 ? "s" : "") ago"
         }
     }
     

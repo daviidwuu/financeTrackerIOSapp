@@ -78,11 +78,68 @@ class RecurringTransactionRepository: ObservableObject {
         try await db.collection("users").document(userId).collection("recurringTransactions").document(id).delete()
     }
     
-    // Check and process any due recurring transactions
-    // DEPRECATED: Logic moved to Backend Cloud Function (scheduled)
-    // Only keeping empty function signature to avoid breaking call sites immediately
-    func processDueTransactions(userId: String) async {
-        DebugLogger.log("Recurring transactions are now handled by the backend.")
-        return
+    /// Client-side fallback: auto-log any recurring transactions that are due but not yet
+    /// recorded. This guards against the backend Cloud Function being delayed or missed.
+    ///
+    /// Logic:
+    /// - Skip any recurring entry whose `lastProcessedDate` is within the last 2 days
+    ///   (the backend likely already ran and created those transactions).
+    /// - Look back up to 30 days for each remaining entry and auto-log any unrecorded
+    ///   occurrences (duplicate detection matches by date + title + amount, same as the
+    ///   missed-occurrence UI so there is no double-counting).
+    /// - After processing, stamp `lastProcessedDate = today` so this won't re-run
+    ///   until the next gap appears.
+    func processDueTransactions(userId: String, transactionRepo: TransactionRepository) async {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        // Only auto-log up to 30 days back to avoid mass-creating historical transactions
+        let maxLookback = calendar.date(byAdding: .day, value: -30, to: today) ?? today
+        // Consider the backend "recent" if it ran within the last 2 days
+        let recentThreshold = calendar.date(byAdding: .day, value: -2, to: today) ?? today
+
+        for recurring in recurringTransactions {
+            // Skip if the backend processed this recently
+            if let lastProcessed = recurring.lastProcessedDate,
+               calendar.startOfDay(for: lastProcessed) >= recentThreshold {
+                continue
+            }
+
+            // Find missed occurrences within the lookback window (handles duplicate detection)
+            let missed = WalletLogic.calculateMissedOccurrences(
+                recurring: recurring,
+                loggedTransactions: transactionRepo.allTransactions,
+                fromDate: maxLookback
+            )
+
+            let type = recurring.type ?? "expense"
+            for date in missed {
+                let amount = (type == "income") ? abs(recurring.amount) : -abs(recurring.amount)
+                let note = "Auto: \(recurring.frequency)" +
+                    ((recurring.note?.isEmpty == false) ? " - \(recurring.note!)" : "")
+
+                let newTx = FirestoreModels.TransactionModel(
+                    userId: userId,
+                    title: recurring.name,
+                    categoryId: recurring.categoryId,
+                    amount: amount,
+                    date: date,
+                    type: type,
+                    createdAt: Date(),
+                    note: note,
+                    source: "subscription"
+                )
+
+                try? await transactionRepo.addTransaction(newTx)
+            }
+
+            // Stamp lastProcessedDate so we don't reprocess until the next gap
+            if !missed.isEmpty || recurring.lastProcessedDate == nil {
+                var updated = recurring
+                updated.lastProcessedDate = today
+                try? await updateRecurringTransaction(updated)
+            }
+        }
+
+        DebugLogger.log("processDueTransactions: finished client-side gap-fill for \(recurringTransactions.count) recurring entries.")
     }
 }

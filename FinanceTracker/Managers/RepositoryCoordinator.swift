@@ -19,6 +19,16 @@ struct RepositoryCoordinator {
         appState.friendRequestRepo.startListening(userId: userId)
         appState.groupInvitationRepo.startListening(userId: userId)
         appState.guestRepo.startListening(userId: userId)
+
+        // After a short delay to allow the Firestore snapshots to arrive, run the
+        // client-side gap-fill for any recurring transactions the backend may have missed.
+        Task {
+            try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 s
+            await appState.recurringRepo.processDueTransactions(
+                userId: userId,
+                transactionRepo: appState.transactionRepo
+            )
+        }
     }
 
     /// Stop all real-time listeners and clear premium state (called on logout or
