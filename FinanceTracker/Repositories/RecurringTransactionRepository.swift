@@ -90,6 +90,14 @@ class RecurringTransactionRepository: ObservableObject {
     /// - After processing, stamp `lastProcessedDate = today` so this won't re-run
     ///   until the next gap appears.
     func processDueTransactions(userId: String, transactionRepo: TransactionRepository) async {
+        // Guard: ensure this repository is still listening for the same user.
+        // The gap-fill task sleeps 3 s before running; the user may have logged out
+        // or switched accounts in that window.
+        guard self.userId == userId else {
+            DebugLogger.log("processDueTransactions: skipped — userId mismatch (expected \(userId), have \(self.userId ?? "nil"))")
+            return
+        }
+
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
         // Only auto-log up to 30 days back to avoid mass-creating historical transactions
@@ -112,6 +120,8 @@ class RecurringTransactionRepository: ObservableObject {
             )
 
             let type = recurring.type ?? "expense"
+            var allWritesSucceeded = true
+
             for date in missed {
                 let amount = (type == "income") ? abs(recurring.amount) : -abs(recurring.amount)
                 let note = "Auto: \(recurring.frequency)" +
@@ -129,14 +139,24 @@ class RecurringTransactionRepository: ObservableObject {
                     source: "subscription"
                 )
 
-                try? await transactionRepo.addTransaction(newTx)
+                do {
+                    try await transactionRepo.addTransaction(newTx)
+                } catch {
+                    allWritesSucceeded = false
+                    DebugLogger.log("processDueTransactions: failed to log '\(recurring.name)' on \(date): \(error.localizedDescription)")
+                }
             }
 
-            // Stamp lastProcessedDate so we don't reprocess until the next gap
-            if !missed.isEmpty || recurring.lastProcessedDate == nil {
+            // Only stamp lastProcessedDate when all writes succeeded.
+            // If any write failed the entry will be retried on the next app launch.
+            if allWritesSucceeded {
                 var updated = recurring
                 updated.lastProcessedDate = today
-                try? await updateRecurringTransaction(updated)
+                do {
+                    try await updateRecurringTransaction(updated)
+                } catch {
+                    DebugLogger.log("processDueTransactions: failed to update lastProcessedDate for '\(recurring.name)': \(error.localizedDescription)")
+                }
             }
         }
 
