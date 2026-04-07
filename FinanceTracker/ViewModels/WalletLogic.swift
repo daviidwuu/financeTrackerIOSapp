@@ -28,8 +28,10 @@ struct WalletLogic {
         let amounts: [Double] = recurringTransactions
             .filter { $0.type == "income" }
             .map { transaction in
-                // FIX #3: Use calendar-accurate multiplier instead of yearly averages
-                DecimalPrecision.multiply(transaction.amount, monthlyMultiplier(for: transaction.frequency))
+                DecimalPrecision.multiply(
+                    transaction.amount,
+                    monthlyOccurrences(for: transaction.frequency, anchor: transaction.startDate)
+                )
             }
         return DecimalPrecision.sum(amounts)
     }
@@ -40,8 +42,10 @@ struct WalletLogic {
 
     static func calculateTotalBudget(budgets: [FirestoreModels.CategoryBudget]) -> Double {
         let amounts: [Double] = budgets.filter { $0.type != "income" }.map { budget in
-            // FIX #3: Use calendar-accurate multiplier instead of yearly averages
-            DecimalPrecision.multiply(budget.totalAmount, monthlyMultiplier(for: budget.frequency))
+            DecimalPrecision.multiply(
+                budget.totalAmount,
+                monthlyOccurrences(for: budget.frequency, anchor: budget.monthStartDate)
+            )
         }
         return DecimalPrecision.sum(amounts)
     }
@@ -175,17 +179,20 @@ struct WalletLogic {
         var remainingPool = Decimal(max(0, pool))
         for i in 0..<goals.count {
             let goal = goals[i]
-            let allocation = min(remainingPool, Decimal(goal.targetAmount))
-
+            let current = Decimal(goal.currentAmount)
+            let target = Decimal(goal.targetAmount)
+            let shortfall = max(0, target - current)
+            
+            let allocationFromPool = min(remainingPool, shortfall)
+            
             if i == index {
-                return NSDecimalNumber(decimal: allocation).doubleValue
+                return NSDecimalNumber(decimal: current + allocationFromPool).doubleValue
             }
-
-            remainingPool -= allocation
-            if remainingPool <= 0 { break }
+            
+            remainingPool -= allocationFromPool
         }
 
-        return 0
+        return index < goals.count ? goals[index].currentAmount : 0
     }
 
     // MARK: - Recurring Transactions
@@ -280,5 +287,102 @@ struct WalletLogic {
         }
 
         return calendar.date(byAdding: components, to: date) ?? date
+    }
+
+    static func monthlyOccurrences(for frequency: String, anchor: Date, in referenceDate: Date = Date()) -> Double {
+        switch frequency {
+        case "Daily", "Weekly", "Bi-Weekly":
+            return Double(countOccurrencesInMonth(frequency: frequency, anchor: anchor, referenceDate: referenceDate))
+        case "Yearly":
+            return 1.0 / 12.0
+        default:
+            return occurrenceExistsInMonth(frequency: frequency, anchor: anchor, referenceDate: referenceDate) ? 1.0 : 0.0
+        }
+    }
+
+    static func isRecurringDue(_ recurring: FirestoreModels.RecurringTransaction, on date: Date) -> Bool {
+        occurrenceExistsInMonth(
+            frequency: recurring.frequency,
+            anchor: recurring.startDate,
+            referenceDate: date,
+            targetDay: Calendar.current.startOfDay(for: date)
+        )
+    }
+
+    private static func countOccurrencesInMonth(frequency: String, anchor: Date, referenceDate: Date) -> Int {
+        let calendar = Calendar.current
+        let (startOfMonth, startOfNextMonth) = monthBounds(for: referenceDate, calendar: calendar)
+        var current = localStartOfDay(for: anchor, calendar: calendar)
+
+        if current >= startOfNextMonth {
+            return 0
+        }
+
+        while current < startOfMonth {
+            let next = advanceDate(date: current, frequency: frequency)
+            if next == current { break }
+            current = next
+        }
+
+        var count = 0
+        while current >= startOfMonth && current < startOfNextMonth {
+            count += 1
+            let next = advanceDate(date: current, frequency: frequency)
+            if next == current { break }
+            current = next
+        }
+
+        return count
+    }
+
+    private static func occurrenceExistsInMonth(
+        frequency: String,
+        anchor: Date,
+        referenceDate: Date,
+        targetDay: Date? = nil
+    ) -> Bool {
+        let calendar = Calendar.current
+        let localAnchor = localStartOfDay(for: anchor, calendar: calendar)
+        let (startOfMonth, startOfNextMonth) = monthBounds(for: referenceDate, calendar: calendar)
+        let expectedDay = targetDay.map { calendar.startOfDay(for: $0) }
+
+        if localAnchor >= startOfNextMonth {
+            return false
+        }
+
+        var current = localAnchor
+        while current < startOfMonth {
+            let next = advanceDate(date: current, frequency: frequency)
+            if next == current { break }
+            current = next
+        }
+
+        while current < startOfNextMonth {
+            let currentDay = calendar.startOfDay(for: current)
+            if let expectedDay, currentDay == expectedDay {
+                return true
+            }
+            if expectedDay == nil {
+                return currentDay >= startOfMonth && currentDay < startOfNextMonth
+            }
+            let next = advanceDate(date: current, frequency: frequency)
+            if next == current { break }
+            current = next
+        }
+
+        return false
+    }
+
+    private static func localStartOfDay(for date: Date, calendar: Calendar) -> Date {
+        let localComponents = calendar.dateComponents([.year, .month, .day], from: date)
+        return calendar.date(from: localComponents).map { calendar.startOfDay(for: $0) }
+            ?? calendar.startOfDay(for: date)
+    }
+
+    private static func monthBounds(for referenceDate: Date, calendar: Calendar) -> (Date, Date) {
+        let components = calendar.dateComponents([.year, .month], from: referenceDate)
+        let startOfMonth = calendar.date(from: components) ?? referenceDate
+        let startOfNextMonth = calendar.date(byAdding: .month, value: 1, to: startOfMonth) ?? startOfMonth
+        return (startOfMonth, startOfNextMonth)
     }
 }

@@ -138,6 +138,7 @@ class TransactionRepository: ObservableObject {
                     let msg = "Error fetching transactions: \(error.localizedDescription)"
                     if self.errorMessage != msg { self.errorMessage = msg }
                     DebugLogger.log(msg)
+                    if self.isLoading { self.isLoading = false } // Don't leave spinner stuck on error
                     return
                 }
 
@@ -217,9 +218,11 @@ class TransactionRepository: ObservableObject {
                 }
             }
             DebugLogger.log("Fetched current month transactions: \(self.currentMonthTransactions.count) items.")
+            // Update widget monthly spend now that currentMonthTransactions is fresh
+            self.updateWidgetData(transactions: self.transactions)
         }
     }
-    
+
     private func startListeningToCalendarMonth() {
         guard let userId = userId else { return }
         
@@ -273,7 +276,6 @@ class TransactionRepository: ObservableObject {
         
         let query = db.collection("users").document(userId).collection("transactions")
             .order(by: "date", descending: true)
-            .limit(to: 500)
 
         allTransactionsListener = query.addSnapshotListener { [weak self] snapshot, error in
             guard let self = self else { return }
@@ -679,7 +681,6 @@ class TransactionRepository: ObservableObject {
     
     private func updateWidgetData(transactions: [FirestoreModels.TransactionModel]) {
         let calendar = Calendar.current
-        let today = Date()
         
         // Calculate Daily Spend (Net)
         // Calculate Daily Breakdown

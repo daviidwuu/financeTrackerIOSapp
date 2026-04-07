@@ -199,6 +199,8 @@ class SocialTransactionManager: ObservableObject {
                 originalTotalAmount: abs(finalTransaction.amount), // ✅ Full pre-split expense total
                 isGuest: split.isGuest, // FIX 3.5: Propagate guest flag
                 isSettlement: nil,
+                latitude: finalTransaction.latitude,
+                longitude: finalTransaction.longitude,
                 createdAt: Date()
             )
             
@@ -396,8 +398,10 @@ class SocialTransactionManager: ObservableObject {
         
         // 6. Delete helper (if transaction is being "deleted" logic? No, this is create/update)
         
-        // 7. Commit Batch
-        try await batch.commit()
+        // 7. Commit Batch (with retry for transient network errors)
+        try await withRetry {
+            try await batch.commit()
+        }
         return finalTransaction
     }
     

@@ -17,6 +17,41 @@ struct SplitRequestDetailView: View {
     
     // Derived Properties
     private var isIncoming: Bool { request.toUid == appState.currentUserId }
+    private var counterpartyName: String {
+        if isIncoming {
+            return resolveName(uid: request.fromUid, name: request.fromName)
+        }
+        return resolveName(uid: request.toUid, name: request.toName)
+    }
+    private var presentation: RequestPresentation {
+        request.presentation(for: appState.currentUserId, counterpartyName: counterpartyName)
+    }
+    private var displayCurrency: String { request.resolvedCurrency }
+    private var displayCategoryName: String {
+        if let category = request.category, !category.isEmpty {
+            return category
+        }
+        if let id = originalTransaction?.categoryId,
+           let category = appState.budgetRepo.getCategory(for: id) {
+            return category.category
+        }
+        return "Split Expense"
+    }
+    private var formattedShareAmount: String {
+        CurrencyFormatter.format(request.amount, currencyCode: displayCurrency)
+    }
+    private var formattedOriginalAmount: String {
+        if let originalAmount = originalTransaction?.originalAmount,
+           let currencyCode = originalTransaction?.currencyCode,
+           !currencyCode.isEmpty {
+            return CurrencyFormatter.format(originalAmount, currencyCode: currencyCode)
+        }
+        return CurrencyFormatter.format(
+            request.originalTotalAmount ?? abs(originalTransaction?.amount ?? request.amount),
+            currencyCode: displayCurrency
+        )
+    }
+
     private var statusColor: Color {
         switch request.status {
         case .pending: return .orange
@@ -68,25 +103,18 @@ struct SplitRequestDetailView: View {
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal)
                             
-                            let categoryName: String = {
-                                if let id = originalTransaction?.categoryId, let cat = appState.budgetRepo.getCategory(for: id) {
-                                    return cat.category
-                                }
-                                return "Split Expense"
-                            }()
-                            
-                            Text(categoryName)
+                            Text(displayCategoryName)
                                 .font(AppTypography.body)
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal)
                             
-                            Text(String(format: "$%.2f", request.amount))
+                            Text(formattedShareAmount)
                                 .font(AppTypography.prominentBalance)
                                 .foregroundColor(.primary)
                             
                             // Status Pill
-                            Text(request.status.rawValue.capitalized)
+                            Text(presentation.badge)
                                 .font(.caption)
                                 .fontWeight(.bold)
                                 .foregroundColor(statusColor)
@@ -145,14 +173,14 @@ struct SplitRequestDetailView: View {
                                                     }
                                                 }
 
-                                                Text(split.status.rawValue.capitalized)
+                                                Text(splitBadge(split))
                                                     .font(.caption)
                                                     .foregroundColor(splitStatusColor(split.status))
                                             }
                                             
                                             Spacer()
                                             
-                                            Text(String(format: "$%.2f", split.amount))
+                                            Text(CurrencyFormatter.format(split.amount, currencyCode: split.resolvedCurrency))
                                                 .font(.subheadline)
                                                 .fontWeight(.semibold)
                                                 .foregroundColor(.primary)
@@ -243,13 +271,13 @@ struct SplitRequestDetailView: View {
                                 }
                                 
                                 Divider().padding(.leading, 52)
-                                TransactionDetailRow(icon: "tag", title: "Category", value: originalTransaction?.categoryId ?? "General", color: .primary)
+                                TransactionDetailRow(icon: "tag", title: "Category", value: displayCategoryName, color: .primary)
                                 
                                 Divider().padding(.leading, 52)
                                 TransactionDetailRow(
                                     icon: "banknote",
                                     title: "Original Amount",
-                                    value: String(format: "$%.2f", request.originalTotalAmount ?? originalTransaction?.originalAmount ?? abs(originalTransaction?.amount ?? request.amount)),
+                                    value: formattedOriginalAmount,
                                     color: .blue
                                 )
                                 
@@ -257,7 +285,7 @@ struct SplitRequestDetailView: View {
                                 TransactionDetailRow(
                                     icon: "person.crop.circle",
                                     title: "Your Share",
-                                    value: String(format: "$%.2f", request.amount),
+                                    value: formattedShareAmount,
                                     color: .secondary
                                 )
                                 
@@ -303,108 +331,22 @@ struct SplitRequestDetailView: View {
                     
                     // 4. Actions
                     VStack(spacing: AppSpacing.element) {
-                        if isIncoming {
-                            // --- Receiver (User B) Actions ---
-                            
-                            if request.status == .pending {
-                                // Accept Button — opens full transaction wizard
-                                Button(action: {
-                                    HapticManager.shared.medium()
-                                    showAcceptWizard = true
-                                }) {
-                                    HStack {
-                                        Image(systemName: "checkmark.circle.fill")
-                                        Text("Accept Request")
-                                    }
-                                    .font(.headline)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, AppSpacing.element)
-                                    .background(AppColors.brandPrimary)
-                                    .cornerRadius(AppRadius.medium)
-                                    .shadow(color: AppColors.brandPrimary.opacity(0.3), radius: 8, y: 4)
-                                }
+                        if let primaryAction = presentation.primaryAction {
+                            detailActionButton(primaryAction)
+                        }
 
-                                // Decline Button
-                                Button(action: declineRequest) {
-                                    Text("Decline Request")
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.functionalError)
-                                }
-                            } else if request.status == .accepted {
-                                Text("Accepted - Waiting for settlement")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                    .padding()
-                            }
-                            
-                        } else if request.fromUid == appState.currentUserId {
-                            // --- Sender (User A) Actions ---
-                            
-                            // Mark as Paid (Only Sender can do this now)
-                            if request.status == .pending || request.status == .accepted {
-                                let isEnabled = request.status == .accepted || request.isGuest == true
-                                
-                                Button(action: { HapticManager.shared.light(); 
-                                    if isEnabled {
-                                        markAsPaid()
-                                    } else {
-                                        HapticManager.shared.error()
-                                        // Optional: Show alert or tooltip explaining why
-                                    }
-                                }) {
-                                    HStack {
-                                        Image(systemName: isEnabled ? "banknote.fill" : "lock.fill")
-                                        Text(isEnabled ? "Mark as Paid" : "Waiting for Acceptance")
-                                    }
-                                    .font(.headline)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(isEnabled ? .white : .secondary)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, AppSpacing.element)
-                                    .background(isEnabled ? AppColors.functionalIncome : Color.cardBackground)
-                                    .cornerRadius(AppRadius.medium)
-                                    .shadow(color: isEnabled ? AppColors.functionalIncome.opacity(0.3) : Color.clear, radius: 8, y: 4)
-                                }
-                                .disabled(!isEnabled)
-                            }
-                            
-                            // Resend feature for Declined requests
-                            if request.status == .declined {
-                                Button(action: resendRequest) {
-                                    HStack {
-                                        Image(systemName: "arrow.clockwise")
-                                        Text("Resend Request")
-                                    }
-                                    .font(.headline)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, AppSpacing.element)
-                                    .background(AppColors.brandPrimary)
-                                    .cornerRadius(AppRadius.medium)
-                                    .shadow(color: AppColors.brandPrimary.opacity(0.3), radius: 8, y: 4)
-                                }
-                            }
+                        if let secondaryAction = presentation.secondaryAction {
+                            detailActionButton(secondaryAction)
+                        }
 
-                            // Allow canceling
-                            if request.status == .pending || request.status == .declined || request.status == .accepted {
-                                Button(action: cancelRequest) {
-                                    HStack {
-                                        Image(systemName: "trash")
-                                        Text("Cancel Request")
-                                    }
-                                    .font(.headline)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.functionalError)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, AppSpacing.element)
-                                    .background(AppColors.functionalExpense.opacity(0.1))
-                                    .clipShape(Capsule())
-                                }
-                            }
+                        if presentation.primaryAction == nil,
+                           presentation.secondaryAction == nil,
+                           let detailMessage = presentation.detailMessage {
+                            Text(detailMessage)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding()
                         }
                     }
                     .padding(.horizontal, AppSpacing.margin)
@@ -423,31 +365,21 @@ struct SplitRequestDetailView: View {
         }
         .sheet(isPresented: $showAcceptWizard) {
             AddTransactionView(requestToAccept: request, onSave: { transaction in
-                // 1. Save the transaction
                 Task {
                     do {
-                        let amount = CurrencyInput.parseOrZero(transaction.amount)
-                        let firestoreTransaction = FirestoreModels.TransactionModel(
-                            userId: appState.currentUserId,
-                            title: transaction.title,
-                            categoryId: transaction.categoryId,
-                            amount: amount,
-                            date: transaction.date,
-                            type: amount < 0 ? "expense" : "income",
-                            createdAt: Date(),
-                            note: transaction.notes,
-                            latitude: transaction.latitude,
-                            longitude: transaction.longitude,
-                            locationName: transaction.locationName
+                        let acceptedTransaction = transaction.firestoreModel(userId: appState.currentUserId)
+                        _ = try await SocialTransactionManager.shared.acceptSplitRequest(
+                            request: request,
+                            acceptedTransaction: acceptedTransaction,
+                            currentUserId: appState.currentUserId
                         )
-                        try await appState.transactionRepo.addTransaction(firestoreTransaction)
-                        
-                        // 2. Update request status
-                        try await appState.requestRepo.updateRequestStatus(
-                            userId: appState.currentUserId,
-                            requestId: request.id!,
-                            status: .accepted,
-                            lastUpdatedBy: appState.currentUserId
+
+                        NotificationManager.shared.sendTransactionNotification(
+                            amount: acceptedTransaction.amount,
+                            category: transaction.title,
+                            type: transaction.type,
+                            originalAmount: transaction.originalAmount,
+                            currencyCode: transaction.currencyCode
                         )
                         
                         await MainActor.run { dismiss() }
@@ -526,6 +458,91 @@ struct SplitRequestDetailView: View {
             }
         }
     }
+
+    @ViewBuilder
+    private func detailActionButton(_ action: RequestAction) -> some View {
+        Button(action: {
+            handleAction(action)
+        }) {
+            HStack {
+                Image(systemName: action.iconName)
+                Text(action.title)
+            }
+            .font(.headline)
+            .fontWeight(.bold)
+            .foregroundColor(foregroundColor(for: action))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, AppSpacing.element)
+            .background(backgroundColor(for: action))
+            .cornerRadius(AppRadius.medium)
+            .shadow(color: shadowColor(for: action), radius: 8, y: 4)
+        }
+    }
+
+    private func handleAction(_ action: RequestAction) {
+        switch action {
+        case .acceptSplit:
+            HapticManager.shared.medium()
+            showAcceptWizard = true
+        case .declineSplit:
+            declineRequest()
+        case .acceptSettlement:
+            acceptSettlement()
+        case .declineSettlement:
+            declineSettlement()
+        case .confirmPaymentReceived:
+            markAsPaid()
+        case .cancelRequest:
+            cancelRequest()
+        case .resendRequest:
+            resendRequest()
+        case .nudge:
+            HapticManager.shared.medium()
+            Task {
+                do {
+                    try await SocialTransactionManager.shared.nudgeSplitRequest(request: request)
+                    HapticManager.shared.success()
+                } catch {
+                    await MainActor.run { HapticManager.shared.error() }
+                }
+            }
+        }
+    }
+
+    private func foregroundColor(for action: RequestAction) -> Color {
+        switch action.emphasis {
+        case .primary:
+            return .white
+        case .secondary:
+            return Color.functionalError
+        case .destructive:
+            return Color.functionalError
+        }
+    }
+
+    private func backgroundColor(for action: RequestAction) -> Color {
+        switch action {
+        case .confirmPaymentReceived:
+            return AppColors.functionalIncome
+        case .cancelRequest:
+            return AppColors.functionalExpense.opacity(0.1)
+        case .declineSplit, .declineSettlement:
+            return AppColors.functionalExpense.opacity(0.1)
+        default:
+            return AppColors.brandPrimary
+        }
+    }
+
+    private func shadowColor(for action: RequestAction) -> Color {
+        switch action {
+        case .confirmPaymentReceived:
+            return AppColors.functionalIncome.opacity(0.3)
+        case .acceptSplit, .acceptSettlement, .resendRequest, .nudge:
+            return AppColors.brandPrimary.opacity(0.3)
+        default:
+            return .clear
+        }
+    }
     
     private func declineRequest() {
         HapticManager.shared.medium()
@@ -537,6 +554,34 @@ struct SplitRequestDetailView: View {
                 dismiss()
             } catch {
                 errorState.show("Failed to decline request")
+            }
+        }
+    }
+
+    private func acceptSettlement() {
+        HapticManager.shared.success()
+        Task {
+            do {
+                try await SocialTransactionManager.shared.acceptSettlement(
+                    request: request,
+                    currentUserId: appState.currentUserId,
+                    currentUserName: appState.userName
+                )
+                dismiss()
+            } catch {
+                errorState.show("Failed to accept settlement")
+            }
+        }
+    }
+
+    private func declineSettlement() {
+        HapticManager.shared.heavy()
+        Task {
+            do {
+                try await SocialTransactionManager.shared.declineSettlement(request: request)
+                dismiss()
+            } catch {
+                errorState.show("Failed to decline settlement")
             }
         }
     }
@@ -577,6 +622,11 @@ struct SplitRequestDetailView: View {
         case .declined: return "xmark.circle.fill"
         default: return "questionmark.circle"
         }
+    }
+
+    private func splitBadge(_ split: FirestoreModels.SplitRequest) -> String {
+        let name = resolveName(uid: split.fromUid == appState.currentUserId ? split.toUid : split.fromUid, name: split.fromUid == appState.currentUserId ? split.toName : split.fromName)
+        return split.presentation(for: appState.currentUserId, counterpartyName: name).badge
     }
     
     // toggleSplitPayment removed – Split Status card is now only shown on TransactionDetailView and GroupTransactionDetailView

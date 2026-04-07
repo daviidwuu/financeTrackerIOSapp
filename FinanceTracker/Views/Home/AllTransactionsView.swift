@@ -10,6 +10,7 @@ struct AllTransactionsView: View {
     @ObservedObject var budgetRepo: BudgetRepository
     
     @State private var searchText: String = ""
+    @State private var debouncedSearchText: String = ""
     @State private var selectedCategory: String? = nil
     @State private var selectedMonth: Date? = Date()
     @State private var selectedDate: Date? = nil // Specific day filter
@@ -26,10 +27,11 @@ struct AllTransactionsView: View {
     @State private var showDeleteConfirmation = false
     @State private var transactionToDelete: FirestoreModels.TransactionModel?
     
-    init(transactionRepo: TransactionRepository, budgetRepo: BudgetRepository, initialDate: Date? = nil) {
+    init(transactionRepo: TransactionRepository, budgetRepo: BudgetRepository, initialDate: Date? = nil, initialCategory: String? = nil) {
         self.transactionRepo = transactionRepo
         self.budgetRepo = budgetRepo
         _selectedDate = State(initialValue: initialDate)
+        _selectedCategory = State(initialValue: initialCategory)
         // If initialDate is provided, set selectedMonth to that date so repo fetches correctly
         if let initial = initialDate {
             _selectedMonth = State(initialValue: initial)
@@ -43,13 +45,21 @@ struct AllTransactionsView: View {
         let sourceTransactions: [FirestoreModels.TransactionModel]
         if selectedMonth != nil {
             sourceTransactions = transactionRepo.calendarTransactions
-        } else if !searchText.isEmpty {
+        } else if !debouncedSearchText.isEmpty {
             // When searching in "All Time", use the full unpaginated history
             sourceTransactions = transactionRepo.allTransactions
         } else {
             sourceTransactions = transactionRepo.transactions
         }
-        
+
+        // Pre-build category name map to avoid O(n × budgets) repeated lookups
+        let categoryNames: [String: String] = Dictionary(
+            uniqueKeysWithValues: appState.budgetRepo.budgets.compactMap { b in
+                guard let id = b.id else { return nil }
+                return (id, b.category)
+            }
+        )
+
         return sourceTransactions.filter { transaction in
             // Day filter (within the selected month)
             let matchesDay: Bool
@@ -58,35 +68,41 @@ struct AllTransactionsView: View {
             } else {
                 matchesDay = true
             }
-            
+
+            let cName = categoryNames[transaction.categoryId ?? ""] ?? "Uncategorized"
+
             // Category filter
-            let cName = appState.budgetRepo.getCategory(for: transaction.categoryId ?? "")?.category ?? "Uncategorized"
-            let matchesCategory = selectedCategory == nil || 
-                                 cName == selectedCategory
-            
+            let matchesCategory = selectedCategory == nil || cName == selectedCategory
+
             // Type filter
             let matchesType = selectedType == "All" ||
                             (selectedType == "Income" && transaction.type == "income") ||
                             (selectedType == "Expense" && transaction.type == "expense")
-            
-            // Search filter (title, note, or category name)
-            let matchesSearch = searchText.isEmpty || 
-                               transaction.title.localizedCaseInsensitiveContains(searchText) ||
-                               (transaction.note?.localizedCaseInsensitiveContains(searchText) ?? false) ||
-                               cName.localizedCaseInsensitiveContains(searchText)
-            
+
+            // Search filter (title, note, or category name) — uses debounced text
+            let matchesSearch = debouncedSearchText.isEmpty ||
+                               transaction.title.localizedCaseInsensitiveContains(debouncedSearchText) ||
+                               (transaction.note?.localizedCaseInsensitiveContains(debouncedSearchText) ?? false) ||
+                               cName.localizedCaseInsensitiveContains(debouncedSearchText)
+
             return matchesDay && matchesCategory && matchesType && matchesSearch
         }
     }
     
     var sortedTransactions: [FirestoreModels.TransactionModel] {
-        filteredTransactions.sorted { t1, t2 in
+        let categoryNames: [String: String] = Dictionary(
+            uniqueKeysWithValues: appState.budgetRepo.budgets.compactMap { b in
+                guard let id = b.id else { return nil }
+                return (id, b.category)
+            }
+        )
+        return filteredTransactions.sorted { t1, t2 in
             switch sortBy {
             case "Amount":
                 return sortAscending ? abs(t1.amount) < abs(t2.amount) : abs(t1.amount) > abs(t2.amount)
             case "Category":
-                let c1 = appState.budgetRepo.getCategory(for: t1.categoryId ?? "")?.category ?? "Uncategorized"
-                let c2 = appState.budgetRepo.getCategory(for: t2.categoryId ?? "")?.category ?? "Uncategorized"
+                let c1 = categoryNames[t1.categoryId ?? ""] ?? "Uncategorized"
+                let c2 = categoryNames[t2.categoryId ?? ""] ?? "Uncategorized"
                 return sortAscending ? c1 < c2 : c1 > c2
             default: // Date
                 return sortAscending ? t1.date < t2.date : t1.date > t2.date
@@ -95,7 +111,7 @@ struct AllTransactionsView: View {
     }
     
     var hasActiveFilters: Bool {
-        selectedCategory != nil || selectedType != "All" || !searchText.isEmpty || selectedDate != nil
+        selectedCategory != nil || selectedType != "All" || !debouncedSearchText.isEmpty || selectedDate != nil
     }
     
     /// FIX #7: Separate income and expense stats to avoid meaningless mixed totals.
@@ -452,11 +468,21 @@ struct AllTransactionsView: View {
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
+            .animation(nil, value: sortedTransactions.map(\.id))
             .padding(.top, -20)
             // Use calendarTransactions for month filtering (does NOT touch main transactions)
             .onChange(of: selectedMonth) { _, newMonth in
                 if let month = newMonth {
                     transactionRepo.setCalendarMonth(month)
+                }
+            }
+            // Debounce search: wait 300ms after the user stops typing before filtering
+            .onChange(of: searchText) { _, newValue in
+                Task {
+                    try? await Task.sleep(nanoseconds: 300_000_000)
+                    if searchText == newValue {
+                        debouncedSearchText = newValue
+                    }
                 }
             }
             .onAppear {
@@ -548,7 +574,7 @@ struct AllTransactionsView: View {
     
     private func checkAndDelete(_ transaction: FirestoreModels.TransactionModel) {
         // 1. Check if it's a "Payment Received" transaction linked to a split
-        if transaction.type == "income", let requestId = transaction.source, !requestId.isEmpty, requestId != "recurring", !requestId.hasPrefix("recurring_") {
+        if transaction.type == "income", let requestId = transaction.source, !requestId.isEmpty, requestId != "recurring", requestId != "subscription", requestId != "social_v2", !requestId.hasPrefix("recurring_") {
             // It's linked. Check status.
             Task {
                 do {

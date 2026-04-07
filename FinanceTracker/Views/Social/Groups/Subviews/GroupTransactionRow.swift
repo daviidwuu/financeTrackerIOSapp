@@ -22,9 +22,9 @@ struct GroupTransactionRow: View {
             if let statuses = transaction.involvedUserStatuses,
                let receiverId = transaction.receiverId {
                 let receiverStatus = statuses[receiverId] ?? "pending"
-                statusBadge = receiverStatus == "paid" ? "Paid" : receiverStatus == "declined" ? "Declined" : "Pending"
+                statusBadge = receiverStatus == "paid" ? "Paid" : receiverStatus == "declined" ? "Declined" : "Settlement Request"
             } else {
-                statusBadge = "Pending"
+                statusBadge = "Settlement Request"
             }
             
             // Build subtitle: "You paid X" / "X paid you" / "X paid Y"
@@ -52,17 +52,16 @@ struct GroupTransactionRow: View {
             if let statuses = transaction.involvedUserStatuses, !statuses.isEmpty {
                 if transaction.payerId == appState.currentUserId {
                     // Current User is the Payer
-                    let hasBlocking = statuses.values.contains("pending") || statuses.values.contains("declined")
-                    if hasBlocking {
+                    let hasResponsePending = statuses.values.contains("pending") || statuses.values.contains("declined")
+                    let hasOutstandingPayments = statuses.values.contains("accepted")
+                    let allPaid = statuses.values.allSatisfy { $0 == "paid" }
+
+                    if allPaid {
+                        dynamicBadge = "Paid"
+                    } else if hasResponsePending {
+                        dynamicBadge = "Awaiting Response"
+                    } else if hasOutstandingPayments {
                         dynamicBadge = "Awaiting Payments"
-                    } else {
-                        let allPaid = statuses.values.allSatisfy { $0 == "paid" }
-                        if allPaid {
-                            dynamicBadge = "Fully Paid"
-                        } else {
-                            let allAcceptedOrPaid = statuses.values.allSatisfy { $0 == "accepted" || $0 == "paid" }
-                            dynamicBadge = allAcceptedOrPaid ? "All Accepted" : nil
-                        }
                     }
                 } else if let myStatus = statuses[appState.currentUserId] {
                     // Current User is a Debtor
@@ -72,6 +71,8 @@ struct GroupTransactionRow: View {
                         dynamicBadge = "Accepted"
                     } else if myStatus == "paid" {
                         dynamicBadge = "Paid"
+                    } else if myStatus == "declined" {
+                        dynamicBadge = "Declined"
                     }
                 }
             }

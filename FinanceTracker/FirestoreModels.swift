@@ -183,7 +183,7 @@ enum FirestoreModels {
 
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            id = try container.decodeIfPresent(String.self, forKey: .id)
+            _id = try container.decode(DocumentID<String>.self, forKey: .id)
             name = try container.decodeIfPresent(String.self, forKey: .name) ?? "Unknown"
             avatarColor = try container.decodeIfPresent(String.self, forKey: .avatarColor) ?? "#FF9500"
             totalOwed = try container.decodeIfPresent(Double.self, forKey: .totalOwed) ?? 0.0
@@ -232,7 +232,7 @@ enum FirestoreModels {
 
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            id = try container.decodeIfPresent(String.self, forKey: .id)
+            _id = try container.decode(DocumentID<String>.self, forKey: .id)
             fromUid = try container.decodeIfPresent(String.self, forKey: .fromUid) ?? ""
             toUid = try container.decodeIfPresent(String.self, forKey: .toUid) ?? ""
             status = try container.decodeIfPresent(String.self, forKey: .status) ?? "pending"
@@ -266,7 +266,7 @@ enum FirestoreModels {
 
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            id = try container.decodeIfPresent(String.self, forKey: .id)
+            _id = try container.decode(DocumentID<String>.self, forKey: .id)
             groupId = try container.decodeIfPresent(String.self, forKey: .groupId) ?? ""
             groupName = try container.decodeIfPresent(String.self, forKey: .groupName) ?? "Unknown Group"
             fromUid = try container.decodeIfPresent(String.self, forKey: .fromUid) ?? ""
@@ -339,7 +339,7 @@ enum FirestoreModels {
 
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            id = try container.decodeIfPresent(String.self, forKey: .id)
+            _id = try container.decode(DocumentID<String>.self, forKey: .id)
             category = try container.decodeIfPresent(String.self, forKey: .category) ?? "Unknown"
             totalAmount = try container.decodeIfPresent(Double.self, forKey: .totalAmount) ?? 0.0
             icon = try container.decodeIfPresent(String.self, forKey: .icon) ?? "tag"
@@ -452,7 +452,7 @@ enum FirestoreModels {
 
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            id = try container.decodeIfPresent(String.self, forKey: .id)
+            _id = try container.decode(DocumentID<String>.self, forKey: .id)
             name = try container.decodeIfPresent(String.self, forKey: .name) ?? "Unnamed Goal"
             targetAmount = try container.decodeIfPresent(Double.self, forKey: .targetAmount) ?? 0.0
             currentAmount = try container.decodeIfPresent(Double.self, forKey: .currentAmount) ?? 0.0
@@ -533,7 +533,7 @@ enum FirestoreModels {
 
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            id = try container.decodeIfPresent(String.self, forKey: .id)
+            _id = try container.decode(DocumentID<String>.self, forKey: .id)
             name = try container.decodeIfPresent(String.self, forKey: .name) ?? "Unknown"
             amount = try container.decodeIfPresent(Double.self, forKey: .amount) ?? 0.0
             frequency = try container.decodeIfPresent(String.self, forKey: .frequency) ?? "Monthly"
@@ -653,7 +653,7 @@ enum FirestoreModels {
 
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            id = try container.decodeIfPresent(String.self, forKey: .id)
+            _id = try container.decode(DocumentID<String>.self, forKey: .id)
             userId = try container.decodeIfPresent(String.self, forKey: .userId) ?? ""
             title = try container.decodeIfPresent(String.self, forKey: .title) ?? "Untitled"
             subtitle = try container.decodeIfPresent(String.self, forKey: .subtitle)
@@ -815,7 +815,7 @@ enum FirestoreModels {
 
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            id = try container.decodeIfPresent(String.self, forKey: .id)
+            _id = try container.decode(DocumentID<String>.self, forKey: .id)
             name = try container.decodeIfPresent(String.self, forKey: .name) ?? "Unnamed Group"
             normalizedName = try container.decodeIfPresent(String.self, forKey: .normalizedName)
             // Prefer new field name `members`; fall back to legacy `memberIds`
@@ -972,7 +972,7 @@ enum FirestoreModels {
 
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            id = try container.decodeIfPresent(String.self, forKey: .id)
+            _id = try container.decode(DocumentID<String>.self, forKey: .id)
             title = try container.decodeIfPresent(String.self, forKey: .title) ?? "Untitled"
             amount = try container.decodeIfPresent(Double.self, forKey: .amount) ?? 0.0
             payerId = try container.decodeIfPresent(String.self, forKey: .payerId) ?? ""
@@ -1091,7 +1091,7 @@ enum FirestoreModels {
 
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            id = try container.decodeIfPresent(String.self, forKey: .id)
+            _id = try container.decode(DocumentID<String>.self, forKey: .id)
             transactionId = try container.decodeIfPresent(String.self, forKey: .transactionId) ?? ""
             groupId = try container.decodeIfPresent(String.self, forKey: .groupId)
             // Prefer new field name `fromUid`; fall back to legacy `requesterId`
@@ -1243,7 +1243,7 @@ enum FirestoreModels {
 
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            id = try container.decodeIfPresent(String.self, forKey: .id)
+            _id = try container.decode(DocumentID<String>.self, forKey: .id)
             username = try container.decodeIfPresent(String.self, forKey: .username)
             name = try container.decodeIfPresent(String.self, forKey: .name) ?? "Unknown"
             email = try container.decodeIfPresent(String.self, forKey: .email)
@@ -1303,7 +1303,7 @@ enum FirestoreModels {
 
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            id = try container.decodeIfPresent(String.self, forKey: .id)
+            _id = try container.decode(DocumentID<String>.self, forKey: .id)
             name = try container.decodeIfPresent(String.self, forKey: .name) ?? "Unknown"
             email = try container.decodeIfPresent(String.self, forKey: .email) ?? ""
             username = try container.decodeIfPresent(String.self, forKey: .username) ?? ""

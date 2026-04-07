@@ -173,7 +173,7 @@ struct DailyTransactionSheet: View {
     }
     
     private func checkAndDelete(_ transaction: FirestoreModels.TransactionModel) {
-        if transaction.type == "income", let requestId = transaction.source, !requestId.isEmpty, requestId != "recurring", !requestId.hasPrefix("recurring_") {
+        if transaction.type == "income", let requestId = transaction.source, !requestId.isEmpty, requestId != "recurring", requestId != "subscription", requestId != "social_v2", !requestId.hasPrefix("recurring_") {
             Task {
                 do {
                     let doc = try await Firestore.firestore().collection("split_requests").document(requestId).getDocument()

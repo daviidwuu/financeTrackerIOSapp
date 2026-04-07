@@ -96,14 +96,13 @@ struct SettleUpWizardView: View {
                 let balances = await repo.calculateFriendBalance(currentUserId: appState.currentUserId, friendId: fid)
                 if let (_, balanceVal) = balances.max(by: { abs($0.value) < abs($1.value) }) {
                     await MainActor.run {
-                        if balanceVal > 0.01 { // They owe me
-                            payerId = fid
-                            receiverId = appState.currentUserId
-                            amount = String(format: "%.2f", abs(balanceVal))
-                        } else if balanceVal < -0.01 { // I owe them
+                        if balanceVal < -0.01 { // I owe them
                             payerId = appState.currentUserId
                             receiverId = fid
                             amount = String(format: "%.2f", abs(balanceVal))
+                        } else {
+                            payerId = appState.currentUserId
+                            receiverId = fid
                         }
                     }
                 }
@@ -123,14 +122,10 @@ struct SettleUpWizardView: View {
                 let balancesByCurrency = await repo.calculateGroupBalances(groupId: gid, currentUserId: appState.currentUserId)
                 let instructions = repo.calculateDebtResolution(balances: balancesByCurrency)
                 await MainActor.run {
-                   if let debtToPay = instructions.first(where: { $0.debtorId == appState.currentUserId }) {
+                    if let debtToPay = instructions.first(where: { $0.debtorId == appState.currentUserId }) {
                         payerId = debtToPay.debtorId
                         receiverId = debtToPay.creditorId
                         amount = String(format: "%.2f", debtToPay.amount)
-                    } else if let debtToReceive = instructions.first(where: { $0.creditorId == appState.currentUserId }) {
-                        payerId = debtToReceive.debtorId
-                        receiverId = debtToReceive.creditorId
-                        amount = String(format: "%.2f", debtToReceive.amount)
                     }
                     
                     if let settlementCat = budgetRepo.budgets.first(where: { $0.category.lowercased() == "settlement" }) {
@@ -179,29 +174,16 @@ struct SettleUpWizardView: View {
                     
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: AppSpacing.compact) {
-                            if let group = group {
-                                ForEach(group.members, id: \.self) { memberId in
-                                    participantCard(id: memberId, isSelected: payerId == memberId, isPayer: true)
-                                        .onTapGesture { HapticManager.shared.light(); 
-                                            payerId = memberId
-                                            if receiverId == memberId { receiverId = "" }
-                                            HapticManager.shared.light()
-                                        }
-                                }
-                            } else {
-                                // Friend Context: Just Me or Friend
-                                participantCard(id: appState.currentUserId, isSelected: payerId == appState.currentUserId, isPayer: true)
-                                    .onTapGesture { HapticManager.shared.light();  payerId = appState.currentUserId; if receiverId == payerId { receiverId = "" } }
-                                
-                                if let friend = preSelectedFriend, let fid = friend.id {
-                                    participantCard(id: fid, isSelected: payerId == fid, isPayer: true)
-                                        .onTapGesture { HapticManager.shared.light();  payerId = fid; if receiverId == payerId { receiverId = "" } }
-                                }
-                            }
+                            participantCard(id: appState.currentUserId, isSelected: true, isPayer: true)
                         }
                         .padding(.horizontal, AppSpacing.margin)
                         .padding(.vertical, 20)
                     }
+
+                    Text("You can only record a settlement that you paid.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, AppSpacing.margin)
                 }
                 
                 // Receiver Selector
@@ -512,7 +494,8 @@ struct SettleUpWizardView: View {
                     payerName: getRealName(for: payerId),
                     receiverName: getRealName(for: receiverId),
                     method: "Payment",
-                    note: transactionNotes.isEmpty ? nil : transactionNotes
+                    note: transactionNotes.isEmpty ? nil : transactionNotes,
+                    categoryId: selectedCategory?.id
                 )
                 HapticManager.shared.success()
                 isSubmitting = false

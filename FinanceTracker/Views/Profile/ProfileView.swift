@@ -36,6 +36,7 @@ struct ProfileView: View {
                                         .foregroundColor(.white)
                                 )
                                 .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+                                .accessibilityLabel("Profile avatar for \(appState.userName.isEmpty ? "User" : appState.userName)")
                             
                             // Text Info
                             VStack(spacing: 4) {

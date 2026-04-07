@@ -10,24 +10,30 @@ class RequestRepository: ObservableObject {
     
     private var db = Firestore.firestore()
     private var listenerRegistration: ListenerRegistration?
+    private var currentUserId: String?
+
+    var incomingActionableRequests: [FirestoreModels.SplitRequest] {
+        guard let currentUserId else { return requests }
+        return requests.filter { $0.presentation(for: currentUserId).isVisibleOnHome }
+    }
+    
+    var requestsForDetailContext: [FirestoreModels.SplitRequest] {
+        requests
+    }
     
     func startListening(userId: String) {
         stopListening()
+        currentUserId = userId
         // Only show loading if we don't have any data yet (Stale-While-Revalidate)
         if requests.isEmpty {
             self.isLoading = true
         }
         self.errorMessage = nil
         
-        // v2.1: Listen to root `split_requests` where `toUid` == currentUserId
-        // FIX #16: Include both pending and accepted statuses (not just pending)
-        // so users can see requests they need to pay
+        // Home is an actionable inbox only: incoming requests that still need a response.
         listenerRegistration = db.collection("split_requests")
             .whereField("toUid", isEqualTo: userId)
-            .whereField("status", in: [
-                FirestoreModels.SplitRequest.RequestStatus.pending.rawValue,
-                FirestoreModels.SplitRequest.RequestStatus.accepted.rawValue
-            ])
+            .whereField("status", isEqualTo: FirestoreModels.SplitRequest.RequestStatus.pending.rawValue)
             .order(by: "createdAt", descending: true)
             .addSnapshotListener { [weak self] querySnapshot, error in
                 guard let self = self else { return }
@@ -53,6 +59,7 @@ class RequestRepository: ObservableObject {
     func stopListening() {
         listenerRegistration?.remove()
         listenerRegistration = nil
+        currentUserId = nil
         requests = []
     }
     

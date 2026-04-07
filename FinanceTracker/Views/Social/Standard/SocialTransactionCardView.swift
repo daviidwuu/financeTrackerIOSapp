@@ -104,9 +104,9 @@ struct SocialTransactionCardView: View {
     
     func statusColor(_ status: String) -> Color {
         switch status.lowercased() {
-        case "pending", "awaiting payments", "you owe": 
+        case "pending", "needs response", "awaiting response", "you owe", "settlement request":
             return .orange
-        case "accepted", "all accepted":
+        case "accepted", "awaiting payment", "awaiting payments":
             return .blue
         case "paid", "settled", "fully settled", "fully paid":
             return Color.functionalSuccess

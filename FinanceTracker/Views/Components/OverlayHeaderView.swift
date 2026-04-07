@@ -38,7 +38,9 @@ enum OverlayHeaderMode {
     case root(
         title: String,
         subtitle: String? = nil,
-        trailing: AnyView? = nil
+        trailing: AnyView? = nil,
+        titleAccessory: AnyView? = nil,
+        isWelcomeStyle: Bool = false
     )
 }
 
@@ -120,17 +122,42 @@ struct OverlayHeaderView: View {
     // MARK: - Root Mode Header
 
     @ViewBuilder
-    private func rootHeader(title: String, subtitle: String?, trailing: AnyView?) -> some View {
+    private func rootHeader(title: String, subtitle: String?, trailing: AnyView?, titleAccessory: AnyView?, isWelcomeStyle: Bool = false) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(AppTypography.titleDisplay)
-                    .foregroundColor(.primary)
-
-                if let subtitle = subtitle {
-                    Text(subtitle)
-                        .font(.subheadline)
+                if isWelcomeStyle {
+                    // Small top text
+                    Text(title)
+                        .font(AppTypography.subheadline)
                         .foregroundColor(.secondary)
+                    
+                    // Big bottom text
+                    HStack(spacing: 8) {
+                        Text(subtitle ?? "")
+                            .font(AppTypography.titleDisplay)
+                            .foregroundColor(.primary)
+
+                        if let titleAccessory = titleAccessory {
+                            titleAccessory
+                        }
+                    }
+                } else {
+                    // Standard: Big top text
+                    HStack(spacing: 8) {
+                        Text(title)
+                            .font(AppTypography.titleDisplay)
+                            .foregroundColor(.primary)
+
+                        if let titleAccessory = titleAccessory {
+                            titleAccessory
+                        }
+                    }
+
+                    if let subtitle = subtitle {
+                        Text(subtitle)
+                            .font(AppTypography.subheadline)
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
 
@@ -152,8 +179,8 @@ struct OverlayHeaderView: View {
             switch mode {
             case .navigation(let title, let onBack, let backIcon, let trailing):
                 navigationHeader(title: title, onBack: onBack, backIcon: backIcon, trailing: trailing)
-            case .root(let title, let subtitle, let trailing):
-                rootHeader(title: title, subtitle: subtitle, trailing: trailing)
+            case .root(let title, let subtitle, let trailing, let titleAccessory, let isWelcomeStyle):
+                rootHeader(title: title, subtitle: subtitle, trailing: trailing, titleAccessory: titleAccessory, isWelcomeStyle: isWelcomeStyle)
             }
         }
         .background(backgroundView)

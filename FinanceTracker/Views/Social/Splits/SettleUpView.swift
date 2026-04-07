@@ -133,7 +133,8 @@ struct SettleUpView: View {
                     payerName: getMemberName(id: selectedPayerId),
                     receiverName: getMemberName(id: selectedReceiverId),
                     method: paymentMethod,
-                    note: transactionNotes.isEmpty ? nil : transactionNotes
+                    note: transactionNotes.isEmpty ? nil : transactionNotes,
+                    categoryId: selectedCategoryId
                 )
                 dismiss()
             } catch {

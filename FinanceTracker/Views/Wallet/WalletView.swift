@@ -1,4 +1,10 @@
 import SwiftUI
+import Combine
+
+struct SelectedCalendarDate: Identifiable {
+    let id = UUID()
+    let date: Date
+}
 
 struct WalletView: View {
     @EnvironmentObject var appState: AppState
@@ -25,8 +31,17 @@ struct WalletView: View {
     @State private var budgetToEdit: FirestoreModels.CategoryBudget?
     @State private var showEditBalance = false
     @State private var balanceInput = ""
+    @State private var spendingCategoryFilter: String? = nil
+    @State private var showSpendingTransactions = false
+    @State private var calendarSelectedDate: SelectedCalendarDate? = nil
+    
+    // Monthly breakdown selection
+    @State private var breakdownMonth = Date()
     
     @AppStorage("initialBalance") private var initialBalance = 0.0
+
+    // Cached savings pool — recomputed only when allTransactions changes, not on every render
+    @State private var savingsPool: Double = 0
     
     var monthlyIncome: Double {
         WalletLogic.calculateMonthlyIncome(recurringTransactions: recurringRepo.recurringTransactions)
@@ -58,16 +73,77 @@ struct WalletView: View {
         WalletLogic.calculateNetCashFlow(transactions: transactionRepo.currentMonthTransactions)
     }
     
+    private var netWorthTrendPoints: [Double] {
+        guard !transactionRepo.allTransactions.isEmpty else { return [0, 1] }
+        
+        let sortedTxs = transactionRepo.allTransactions.sorted { $0.date > $1.date }
+        var points: [Double] = []
+        
+        let calendar = Calendar.current
+        let today = Date()
+        
+        for i in (0..<6).reversed() { // Plot last 6 months
+            if let monthDate = calendar.date(byAdding: .month, value: -i, to: today) {
+                // Find balance up to the end of this monthDate
+                let startOfNextMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: calendar.date(byAdding: .month, value: 1, to: monthDate)!))!
+                
+                var balance = initialBalance
+                for tx in transactionRepo.allTransactions {
+                    if tx.date < startOfNextMonth {
+                        if tx.type == "income" || tx.type == "settlement" {
+                            balance += abs(tx.amount)
+                        } else {
+                            balance -= abs(tx.amount)
+                        }
+                    }
+                }
+                points.append(balance)
+            }
+        }
+        
+        if let first = points.first, points.allSatisfy({ $0 == first }) {
+            return [first, first + 1]
+        }
+        return points
+    }
+    
+    private func canGoToNextMonth(from date: Date) -> Bool {
+        let calendar = Calendar.current
+        let currentMonth = calendar.dateComponents([.year, .month], from: Date())
+        let dateMonth = calendar.dateComponents([.year, .month], from: date)
+        
+        if let currentYear = currentMonth.year, let currentMonthNum = currentMonth.month,
+           let dateYear = dateMonth.year, let dateMonthNum = dateMonth.month {
+            if dateYear < currentYear { return true }
+            if dateYear == currentYear && dateMonthNum < currentMonthNum { return true }
+        }
+        return false
+    }
+
+    var breakdownTransactions: [FirestoreModels.TransactionModel] {
+        let calendar = Calendar.current
+        return transactionRepo.allTransactions.filter { 
+            calendar.isDate($0.date, equalTo: breakdownMonth, toGranularity: .month) 
+        }
+    }
+    
     // Extracted Calendar Section to help compiler check types
     private var calendarSection: some View {
-        Section {
+        Section(header:
+            Text("Calendar").font(.title2).fontWeight(.bold).foregroundColor(.primary)
+                .textCase(nil)
+                .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
+        ) {
             VStack(spacing: 8) {
                 CalendarView(
                     currentDate: $calendarMonth,
                     transactions: transactionRepo.calendarTransactions,
                     categories: budgetRepo.budgets,
                     totalBudget: totalBudget,
-                    signupDate: appState.userSignupDate
+                    signupDate: appState.userSignupDate,
+                    onDateTapped: { date in
+                        calendarSelectedDate = SelectedCalendarDate(date: date)
+                    }
                 )
             }
             .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
@@ -109,29 +185,36 @@ struct WalletView: View {
                         .listRowBackground(Color.clear)
 
                     // Section 1: Financial Overview (Net Worth Card)
-                    Section {
-                        // Net Worth Header
-                        VStack(alignment: .leading, spacing: AppSpacing.micro) {
-                            HStack {
+                    Section(header:
+                        Text("All Time")
+                            .font(.title2).fontWeight(.bold).foregroundColor(.primary)
+                            .textCase(nil)
+                            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
+                    ) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
                                 Text("Net Worth")
                                     .font(.subheadline)
-                                    .fontWeight(.medium)
                                     .foregroundColor(.secondary)
-                                Spacer()
+                                
+                                Text("$\(String(format: "%.2f", totalBalance))")
+                                    .font(AppTypography.sectionHeader)
+                                    .foregroundColor(totalBalance >= 0 ? .primary : .functionalError)
                             }
                             
-                            Text("$\(String(format: "%.2f", totalBalance))")
-                                .font(AppTypography.sectionHeader)
-                                .foregroundColor(totalBalance >= 0 ? .primary : .functionalError)
+                            Spacer()
+                            
+                            TrendGraph(points: netWorthTrendPoints, color: totalBalance >= 0 ? .primary : .functionalError)
+                                .frame(width: 60, height: 30)
+                                .padding(.trailing, 8)
                         }
-
-                        .padding(AppSpacing.margin) // Changed from 24 to 20 (standard margin)
+                        .padding(AppSpacing.margin)
                         .background(Color.cardBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.large)) // Consistent radius
+                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium))
                         .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
-                        .contentShape(Rectangle()) // Make entire area tappable
+                        .contentShape(Rectangle())
                         .onTapGesture {
                             HapticManager.shared.light()
                             showEditBalance.toggle()
@@ -168,14 +251,19 @@ struct WalletView: View {
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
                         } else {
-                            let pool = calculateAllTimeSavingsPool()
-                            let sortedGoals = savingGoalRepo.savingGoals
-                            
-                            ForEach(sortedGoals) { goal in
-                                let index = sortedGoals.firstIndex(where: { $0.id == goal.id }) ?? 0
-                                let currentAmount = calculateGoalAllocation(for: index, in: sortedGoals, pool: pool)
+                            let sortedGoals = savingGoalRepo.savingGoals.filter { goal in
+                                guard let id = goal.id else { return true }
+                                return !hiddenItemIds.contains(id)
+                            }
+                            let goalAllocations = sortedGoals.enumerated().map { index, goal in
+                                (goal: goal, amount: calculateGoalAllocation(for: index, in: sortedGoals, pool: savingsPool))
+                            }
+
+                            ForEach(goalAllocations, id: \.goal.id) { item in
+                                let goal = item.goal
+                                let currentAmount = item.amount
                                 
-                                HStack {
+                                HStack(spacing: AppSpacing.element) {
                                     ZStack {
                                         Circle()
                                             .fill(Color(hex: goal.colorHex).opacity(0.15))
@@ -203,7 +291,8 @@ struct WalletView: View {
                                     
                                     Spacer()
                                     
-                                    Text("\(Int((currentAmount / goal.targetAmount) * 100))%")
+                                    let percentage = goal.targetAmount > 0 ? Int((currentAmount / goal.targetAmount) * 100) : (currentAmount > 0 ? 100 : 0)
+                                    Text("\(percentage)%")
                                         .font(.system(.headline, design: .rounded))
                                         .foregroundColor(.primary)
                                 }
@@ -279,7 +368,10 @@ struct WalletView: View {
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
                         } else {
-                            ForEach(recurringRepo.recurringTransactions) { recurring in
+                            ForEach(recurringRepo.recurringTransactions.filter { recurring in
+                                guard let id = recurring.id else { return true }
+                                return !hiddenItemIds.contains(id)
+                            }) { recurring in
                                 Button(action: {
                                     HapticManager.shared.light()
                                     recurringToView = recurring
@@ -299,7 +391,61 @@ struct WalletView: View {
                     }
                     .listRowBackground(Color.clear)
 
-                    // Section 5: Budgets
+                    // Section 5: Spending Pie Chart
+                    Section(header:
+                        HStack {
+                            Text("Breakdown").font(.title2).fontWeight(.bold).foregroundColor(.primary)
+                            Spacer()
+                            HStack(spacing: AppSpacing.element) {
+                                Button(action: {
+                                    HapticManager.shared.light()
+                                    if let newMonth = Calendar.current.date(byAdding: .month, value: -1, to: breakdownMonth) {
+                                        breakdownMonth = newMonth
+                                    }
+                                }) {
+                                    Image(systemName: "chevron.left")
+                                        .font(.caption.bold())
+                                        .foregroundColor(.secondary)
+                                }
+                                .buttonStyle(.plain)
+
+                                Text(breakdownMonth, format: .dateTime.month(.wide))
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+
+                                Button(action: {
+                                    HapticManager.shared.light()
+                                    if let newMonth = Calendar.current.date(byAdding: .month, value: 1, to: breakdownMonth) {
+                                        breakdownMonth = newMonth
+                                    }
+                                }) {
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption.bold())
+                                        .foregroundColor(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(!canGoToNextMonth(from: breakdownMonth))
+                                .opacity(canGoToNextMonth(from: breakdownMonth) ? 1.0 : 0.3)
+                            }
+                        }
+                        .textCase(nil)
+                        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
+                    ) {
+                        SpendingPieChartView(
+                            transactions: breakdownTransactions,
+                            categories: budgetRepo.budgets,
+                            onCategoryTapped: { categoryName in
+                                spendingCategoryFilter = categoryName
+                                showSpendingTransactions = true
+                            }
+                        )
+                        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                    }
+                    .listRowBackground(Color.clear)
+
+                    // Section 6: Budgets
                     Section(header:
                         HStack {
                             Text("Budgets").font(.title2).fontWeight(.bold).foregroundColor(.primary)
@@ -328,7 +474,9 @@ struct WalletView: View {
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
                         } else {
-                            ForEach(budgetRepo.budgets.filter { $0.category != "Income" }) { budget in
+                            ForEach(budgetRepo.budgets.filter { budget in
+                                budget.category != "Income" && !hiddenItemIds.contains(budget.id ?? "")
+                            }) { budget in
                                 HStack(spacing: AppSpacing.element) {
                                     ZStack {
                                         Circle()
@@ -445,11 +593,32 @@ struct WalletView: View {
                     initialBalance: $initialBalance,
                     totalBalance: totalBalance,
                     aggregatedIncome: appState.aggregatedIncome,
-                    aggregatedExpense: appState.aggregatedExpense
+                    aggregatedExpense: appState.aggregatedExpense,
+                    currentMonthIncome: currentMonthIncome,
+                    currentMonthExpense: totalExpense,
+                    totalBudget: totalBudget
                 )
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(Color.backgroundPrimary)
+                .presentationBackground(Color.backgroundPrimary)
+            }
+            .sheet(isPresented: $showSpendingTransactions) {
+                AllTransactionsView(
+                    transactionRepo: transactionRepo,
+                    budgetRepo: budgetRepo,
+                    initialCategory: spendingCategoryFilter
+                )
+                .environmentObject(appState)
+                .presentationBackground(Color.backgroundPrimary)
+            }
+            .sheet(item: $calendarSelectedDate) { item in
+                AllTransactionsView(
+                    transactionRepo: transactionRepo,
+                    budgetRepo: budgetRepo,
+                    initialDate: item.date
+                )
+                .environmentObject(appState)
                 .presentationBackground(Color.backgroundPrimary)
             }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SwitchTab"))) { notification in
@@ -460,6 +629,15 @@ struct WalletView: View {
         }
         .errorBanner(errorState)
         .undoableBanner(undoState)
+        .onReceive(
+            Publishers.CombineLatest3(
+                transactionRepo.$allTransactions,
+                budgetRepo.$budgets,
+                appState.$userSignupDate
+            )
+        ) { _ in
+            savingsPool = calculateAllTimeSavingsPool()
+        }
     }
     
     private func handleWalletAction(_ action: String) {
@@ -568,8 +746,17 @@ struct WalletView: View {
     }
     
     private func moveSavingGoals(from source: IndexSet, to destination: Int) {
-        var updatedGoals = savingGoalRepo.savingGoals
-        updatedGoals.move(fromOffsets: source, toOffset: destination)
+        var visibleGoals = savingGoalRepo.savingGoals.filter { goal in
+            guard let id = goal.id else { return true }
+            return !hiddenItemIds.contains(id)
+        }
+        let hiddenGoals = savingGoalRepo.savingGoals.filter { goal in
+            guard let id = goal.id else { return false }
+            return hiddenItemIds.contains(id)
+        }
+        
+        visibleGoals.move(fromOffsets: source, toOffset: destination)
+        let updatedGoals = visibleGoals + hiddenGoals
         
         // Wrap in withAnimation for a smooth native slide effect
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {

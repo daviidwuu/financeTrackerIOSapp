@@ -21,15 +21,13 @@ struct HomeView: View {
     @State private var showAllTransactions = false
     @State private var selectedTransaction: FirestoreModels.TransactionModel?
     @State private var transactionToEdit: FirestoreModels.TransactionModel?
-    @State private var requestToAccept: FirestoreModels.SplitRequest?
     @State private var showRemainingBudget = false
     @State private var isAnimating = false
     @State private var showMissions = false
+    @State private var showNotificationCenter = false
     @ObservedObject private var gamificationManager = GamificationManager.shared
     @State private var errorState = ErrorState()
     @State private var undoState = UndoState()
-    @State private var groupForDeletionAction: FirestoreModels.Group? // ✅ NEW
-    @State private var pendingDeletedGroupIds: Set<String> = []
     
     var totalBudget: Double {
         let budget = WalletLogic.calculateTotalBudget(budgets: budgetRepo.budgets)
@@ -49,18 +47,17 @@ struct HomeView: View {
                 Color.backgroundPrimary.ignoresSafeArea()
 
                 List {
-                    // Scroll offset tracker for overlay header
-                    ScrollOffsetTracker()
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets())
-
-                    Color.clear.frame(height: 80)
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-
-                    // Section 1: Balance Card
+                    // Section 1: Balance Card (tracker + spacer live here to avoid implicit section gap)
                     Section {
+                        // Scroll offset tracker for overlay header
+                        ScrollOffsetTracker()
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets())
+
+                        Color.clear.frame(height: 40) // Adjustable top padding to clear the header
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
                         VStack(alignment: .leading, spacing: 20) {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Balance")
@@ -108,105 +105,6 @@ struct HomeView: View {
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                         .padding(.bottom, AppSpacing.compact)
-                    }
-                    
-                    // Section 1.4: Friend Requests
-                    if !friendRequestRepo.incomingRequests.isEmpty {
-                        Section(header: Text("Friend Requests").font(.headline)) {
-                            ForEach(friendRequestRepo.incomingRequests) { request in
-                                FriendRequestCard(request: request)
-                                    .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
-                                    .listRowSeparator(.hidden)
-                                    .listRowBackground(Color.clear)
-                                    .padding(.bottom, AppSpacing.compact)
-                            }
-                        }
-                        .animation(.spring(), value: friendRequestRepo.incomingRequests.count)
-                    }
-                    
-                    // Section 1.5: Pending Group Deletions (High Priority)
-                    let pendingDeletionGroups = appState.groupRepo.groups.filter { 
-                        $0.deletionStatus == "requested" && 
-                        $0.memberActions?[appState.currentUserId] == "pending" &&
-                        !pendingDeletedGroupIds.contains($0.id ?? "")
-                    }
-                    if !pendingDeletionGroups.isEmpty {
-                        Section(header: Text("Action Required").font(.headline).foregroundColor(Color.functionalError)) {
-                            ForEach(pendingDeletionGroups) { group in
-                                HStack(spacing: AppSpacing.compact) {
-                                    ZStack {
-                                        Circle()
-                                            .fill(AppColors.functionalExpense.opacity(0.1))
-                                            .frame(width: AppSize.avatarList, height: AppSize.avatarList)
-                                        Image(systemName: "exclamationmark.triangle.fill")
-                                            .foregroundColor(Color.functionalError)
-                                    }
-                                    
-                                    VStack(alignment: .leading, spacing: 2) { // sub-micro text stack
-                                        Text(group.name)
-                                            .font(.body)
-                                            .fontWeight(.medium)
-                                            .foregroundColor(.primary)
-                                        Text("Group deletion requested")
-                                            .font(.caption)
-                                            .foregroundColor(Color.functionalError)
-                                    }
-                                    
-                                    Spacer()
-                                    
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                .padding(AppSpacing.element)
-                                .background(Color.secondaryCardBackground)
-                                .cornerRadius(AppRadius.small)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: AppRadius.small)
-                                        .stroke(AppColors.functionalExpense.opacity(0.5), lineWidth: 1)
-                                )
-                                .contentShape(Rectangle())
-                                .onTapGesture { HapticManager.shared.light(); 
-                                    groupForDeletionAction = group
-                                }
-                                .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
-                                .listRowSeparator(.hidden)
-                                .listRowBackground(Color.clear)
-                                .padding(.bottom, AppSpacing.compact)
-                            }
-                        }
-                        .animation(.spring(), value: pendingDeletionGroups.count)
-                    }
-
-                    // Section 1.6: Pending Requests
-                    let pendingRequests = requestRepo.requests.filter { $0.status == .pending }
-                    if !pendingRequests.isEmpty {
-                        Section(header: Text("Pending Requests").font(.headline)) {
-                            ForEach(pendingRequests) { request in
-                                RequestCardView(
-                                    request: request,
-                                    onAccept: {
-                                        if request.isSettlement == true {
-                                            acceptSettlement(request)
-                                        } else {
-                                            requestToAccept = request
-                                        }
-                                    },
-                                    onDecline: {
-                                        if request.isSettlement == true {
-                                            declineSettlement(request)
-                                        } else {
-                                            declineRequest(request)
-                                        }
-                                    }
-                                )
-                                .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
-                                .listRowSeparator(.hidden)
-                                .listRowBackground(Color.clear)
-                                .padding(.bottom, AppSpacing.compact)
-                            }
-                        }
-                        .animation(.spring(), value: pendingRequests.count)
                     }
                     
                     // Section 2: Recent Transactions
@@ -335,89 +233,34 @@ struct HomeView: View {
                         addTransaction(transaction)
                     })
                 }
-                .sheet(item: $requestToAccept) { request in
-                    AddTransactionView(requestToAccept: request, onSave: { transaction in
-                         acceptRequest(request, transaction: transaction)
-                    })
-                }
                 .sheet(isPresented: $showMissions) {
                     MissionHubView()
                         .environmentObject(appState)
                 }
-                .alert("Group Deleted: Action Required", isPresented: Binding(
-                    get: { groupForDeletionAction != nil },
-                    set: { _ in groupForDeletionAction = nil }
-                )) {
-                    Button("Keep Transaction History") { HapticManager.shared.light(); 
-                        if let group = groupForDeletionAction {
-                            if let id = group.id {
-                                pendingDeletedGroupIds.insert(id)
-                            }
-                            // Using the group repo from app state
-                            Task {
-                                do {
-                                    try await appState.groupRepo.submitDeletionAction(group: group, action: "keep")
-                                } catch {
-                                    // Handle errors silently for optimistic UI
-                                }
-                            }
-                        }
-                    }
-                    Button("Delete All History", role: .destructive) { HapticManager.shared.light(); 
-                        if let group = groupForDeletionAction {
-                            if let id = group.id {
-                                pendingDeletedGroupIds.insert(id)
-                            }
-                            Task {
-                                do {
-                                    try await appState.groupRepo.submitDeletionAction(group: group, action: "delete")
-                                } catch {
-                                    // Handle errors
-                                }
-                            }
-                        }
-                    }
-                    Button("Cancel", role: .cancel) { HapticManager.shared.light();  }
-                } message: {
-                    if let group = groupForDeletionAction {
-                        Text("\(group.name) has been deleted by the creator. What would you like to do with your transaction history?")
-                    }
+                .sheet(isPresented: $showNotificationCenter) {
+                    NotificationCenterView()
+                        .environmentObject(appState)
+                        .environmentObject(requestRepo)
+                        .environmentObject(friendRequestRepo)
                 }
             }
             .overlayHeader(.root(
-                title: appState.userName.isEmpty ? "User" : appState.userName,
-                subtitle: "Welcome",
+                title: "Welcome",
+                subtitle: appState.userName.isEmpty ? "User" : appState.userName,
                 trailing: AnyView(
                     HStack(spacing: 8) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "flame.fill")
-                                .font(.system(size: 14))
-                                .foregroundColor(.orange)
-                                .scaleEffect(isAnimating ? 1.2 : 1.0)
-                                .animation(
-                                    Animation.easeInOut(duration: 1.0)
-                                        .repeatForever(autoreverses: true),
-                                    value: isAnimating
-                                )
-                            Text("\(appState.streakCount)")
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
-                                .foregroundColor(.orange)
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Capsule().fill(Color.orange.opacity(0.15)))
-
                         Button(action: {
                             HapticManager.shared.light()
                             showMissions = true
                         }) {
                             ZStack {
-                                Circle()
-                                    .fill(Color.primary.opacity(0.05))
-                                    .frame(width: 44, height: 44)
                                 Image(systemName: "trophy.fill")
-                                    .font(.system(size: 18))
+                                    .font(.system(size: 18, weight: .semibold))
                                     .foregroundColor(.primary)
+                                    .frame(width: 44, height: 44)
+                                    .background(Color.secondary.opacity(0.15))
+                                    .clipShape(Circle())
+                                
                                 CircularProgressView(
                                     progress: GamificationManager.shared.progressForPhase(GamificationManager.shared.currentPhase),
                                     color: .primary
@@ -426,27 +269,64 @@ struct HomeView: View {
                             }
                         }
                         .buttonStyle(.plain)
+                        
+                        Button(action: {
+                            HapticManager.shared.light()
+                            showNotificationCenter = true
+                        }) {
+                            ZStack(alignment: .topTrailing) {
+                                Image(systemName: "bell.fill")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(.primary)
+                                    .frame(width: 44, height: 44)
+                                    .background(Color.secondary.opacity(0.15))
+                                    .clipShape(Circle())
+                                
+                                if !friendRequestRepo.incomingRequests.isEmpty || !requestRepo.incomingActionableRequests.isEmpty {
+                                    Circle()
+                                        .fill(Color.red)
+                                        .frame(width: 10, height: 10)
+                                        .offset(x: -2, y: 2)
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain)
 
                         Button(action: {
                             HapticManager.shared.light()
                             appState.showProfile = true
                         }) {
-                            Circle()
-                                .fill(Color.secondary.opacity(0.15))
+                            Image(systemName: "person.fill")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.primary)
                                 .frame(width: 44, height: 44)
-                                .overlay(
-                                    Image(systemName: "person.fill")
-                                        .font(.system(size: 20))
-                                        .foregroundColor(.primary)
-                                )
+                                .background(Color.secondary.opacity(0.15))
+                                .clipShape(Circle())
                         }
                         .buttonStyle(.plain)
                     }
-                )
+                ),
+                titleAccessory: AnyView(
+                    HStack(spacing: 4) {
+                        Image(systemName: "flame.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(.orange)
+                            .scaleEffect(isAnimating ? 1.2 : 1.0)
+                        Text("\(appState.streakCount)")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundColor(.orange)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(Color.orange.opacity(0.15)))
+                ),
+                isWelcomeStyle: true
             ))
             .navigationBarHidden(true)
             .onAppear {
-                isAnimating = true
+                withAnimation(Animation.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
+                    isAnimating = true
+                }
                 // Load Gamification Data - Repos are handled in AppState
                 if !appState.currentUserId.isEmpty {
                     gamificationManager.loadUserData(userId: appState.currentUserId)
@@ -465,24 +345,8 @@ struct HomeView: View {
     private func addTransaction(_ transaction: TransactionFormData) {
         Task {
             do {
-                // Convert UI Transaction to Firestore Transaction
                 let amount = CurrencyInput.parseOrZero(transaction.amount)
-                let firestoreTransaction = FirestoreModels.TransactionModel(
-                    userId: appState.currentUserId, // Use global user ID
-                    title: transaction.title,
-                    categoryId: transaction.categoryId,
-                    amount: amount,
-                    date: transaction.date,
-                    type: amount < 0 ? "expense" : "income",
-                    createdAt: Date(),
-                    note: transaction.notes,
-                    latitude: transaction.latitude,
-                    longitude: transaction.longitude,
-                    locationName: transaction.locationName,
-                    originalAmount: transaction.originalAmount,
-                    currencyCode: transaction.currencyCode,
-                    exchangeRate: transaction.exchangeRate
-                )
+                let firestoreTransaction = transaction.firestoreModel(userId: appState.currentUserId)
                 try await transactionRepo.addTransaction(firestoreTransaction)
                 
                 // Send notification after successful save
@@ -577,58 +441,7 @@ struct HomeView: View {
         )
     }
 
-    // MARK: - Request Logic
-    
-    private func acceptSettlement(_ request: FirestoreModels.SplitRequest) {
-        HapticManager.shared.success()
-        Task {
-            do {
-                try await SocialTransactionManager.shared.acceptSettlement(request: request, currentUserId: appState.currentUserId, currentUserName: appState.userName)
-            } catch {
-                await MainActor.run { HapticManager.shared.error() }
-            }
-        }
-    }
-    
-    private func declineSettlement(_ request: FirestoreModels.SplitRequest) {
-        HapticManager.shared.heavy()
-        Task {
-            do {
-                try await SocialTransactionManager.shared.declineSettlement(request: request)
-            } catch {
-                await MainActor.run { HapticManager.shared.error() }
-            }
-        }
-    }
-    
-    private func acceptRequest(_ request: FirestoreModels.SplitRequest, transaction: TransactionFormData) {
-        // 1. Add the transaction
-        addTransaction(transaction)
-        
-        // 2. Update Request Status
-        Task {
-            do {
-                guard let id = request.id else { return }
-                try await requestRepo.updateRequestStatus(userId: appState.currentUserId, requestId: id, status: .accepted, lastUpdatedBy: appState.currentUserId)
-            } catch {
-                DebugLogger.log("Failed to accept request: \(error)")
-                errorState.show("Failed to accept request")
-            }
-        }
-    }
-    
-    private func declineRequest(_ request: FirestoreModels.SplitRequest) {
-        Task {
-            do {
-                guard let id = request.id else { return }
-                try await requestRepo.updateRequestStatus(userId: appState.currentUserId, requestId: id, status: .declined, lastUpdatedBy: appState.currentUserId)
-                // Optionally remove from list after delay or just let status update hide it
-            } catch {
-                DebugLogger.log("Failed to decline request: \(error)")
-                errorState.show("Failed to decline request")
-            }
-        }
-    }
+
 }
 
 

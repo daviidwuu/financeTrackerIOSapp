@@ -37,12 +37,8 @@ struct ContentView: View {
         TabView(selection: Binding(
             get: { nav.selectedTab },
             set: { newValue in
-                if newValue == 3 {
-                    HapticManager.shared.light()
-                    showAddTransaction = true
-                } else {
-                    nav.selectedTab = newValue
-                }
+                // Never allow selectedTab to become 3; the interceptor handles that tap.
+                if newValue != 3 { nav.selectedTab = newValue }
             }
         )) {
             TabSection {
@@ -59,18 +55,24 @@ struct ContentView: View {
                 }
             }
 
-            // Repurposed Search Tab as Action Button
+            // Repurposed Search Tab as Action Button.
+            // Taps are intercepted by TabBarActionInterceptor (attached to the TabView
+            // overlay) which returns false from shouldSelect, so iOS never starts the
+            // transition. This tab's content is never actually shown.
             Tab("Add", systemImage: "plus", value: 3, role: .search) {
-                // This view appears when the tab is selected, but thanks to the binding interceptor
-                // above, we never actually switch to this tab. It just serves as a button.
-                Color.clear
+                Color(UIColor.systemBackground).ignoresSafeArea()
             }
         }
-        .onChange(of: nav.selectedTab) { _, newValue in
-            // Trigger haptic feedback on tab change
-            if newValue != 3 {
-                HapticManager.shared.selection()
+        .overlay {
+            // Placed on the TabView so it's always in the hierarchy from the first frame.
+            TabBarActionInterceptor(actionTabIndex: 3) {
+                HapticManager.shared.light()
+                showAddTransaction = true
             }
+            .frame(width: 0, height: 0)
+        }
+        .onChange(of: nav.selectedTab) { _, _ in
+            HapticManager.shared.selection()
         }
         .tabViewStyle(.sidebarAdaptable)
         .tint(.primary)

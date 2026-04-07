@@ -424,7 +424,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
         }
         
         let db = Firestore.firestore()
-        db.collection("users").document(userId).collection("recurring_transactions")
+        db.collection("users").document(userId).collection("recurringTransactions")
             .getDocuments { [weak self] snapshot, error in
                 guard let self = self, let documents = snapshot?.documents, error == nil else {
                     completion()
@@ -432,16 +432,14 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Messaging
                 }
                 
                 let calendar = Calendar.current
-                let tomorrow = calendar.date(byAdding: .day, value: 1, to: Date())!
+                let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: Date())) ?? Date()
                 
                 Task { @MainActor in
                     for doc in documents {
                         do {
                             let recurring = try doc.data(as: FirestoreModels.RecurringTransaction.self)
-                            let dayOfStart = calendar.component(.day, from: recurring.startDate)
-                            let dayOfTomorrow = calendar.component(.day, from: tomorrow)
-                            
-                            if dayOfStart == dayOfTomorrow {
+
+                            if WalletLogic.isRecurringDue(recurring, on: tomorrow) {
                                 self.sendBillReminder(recurring: recurring)
                             }
                         } catch {

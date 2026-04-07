@@ -5,7 +5,7 @@ import Combine
 
 extension SocialTransactionManager {
 
-    func settleUp(payerId: String, receiverId: String, groupId: String?, amount: Double, currency: String? = nil, payerName: String = "Member", receiverName: String? = nil, method: String = "Cash", note: String? = nil) async throws {
+    func settleUp(payerId: String, receiverId: String, groupId: String?, amount: Double, currency: String? = nil, payerName: String = "Member", receiverName: String? = nil, method: String = "Cash", note: String? = nil, categoryId: String? = nil) async throws {
         guard let currentUserId = Auth.auth().currentUser?.uid else {
             throw NSError(domain: "SocialTransactionManager", code: 401, userInfo: [NSLocalizedDescriptionKey: "Not authenticated"])
         }
@@ -32,7 +32,7 @@ extension SocialTransactionManager {
             id: payerRef.documentID,
             userId: payerId,
             title: displayTitle,
-            categoryId: nil,
+            categoryId: categoryId,
             amount: -amount, // Expense for payer
             date: Date(),
             type: "expense",
@@ -176,7 +176,7 @@ extension SocialTransactionManager {
             // FIX #9: Treat nil currency as user's main currency so old splits aren't permanently skipped
             if let settleCurrency = request.currency {
                 let splitCurrency = doc.data()["currency"] as? String ?? CurrencyManager.shared.mainCurrency
-                if splitCurrency != settleCurrency {
+                if splitCurrency.uppercased() != settleCurrency.uppercased() {
                     continue
                 }
             }

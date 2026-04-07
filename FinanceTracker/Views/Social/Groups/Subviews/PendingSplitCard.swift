@@ -4,12 +4,10 @@ import FirebaseFirestore
 struct PendingSplitCard: View {
     let split: FirestoreModels.SplitRequest
     let userId: String
-    let onToggle: () -> Void
-    let onDelete: () -> Void
-    var onNudge: (() -> Void)? = nil
+    let presentation: RequestPresentation
+    let onAction: (RequestAction) -> Void
     
     @EnvironmentObject var userPremiumRepo: UserPremiumRepository
-    @EnvironmentObject var appState: AppState
     
     /// Whether the current user is the sender (creditor) of this split request
     private var isSender: Bool { split.fromUid == userId }
@@ -18,19 +16,18 @@ struct PendingSplitCard: View {
         isSender ? split.toUid : split.fromUid
     }
     
-    // Helper to determine display name
-    private var displayName: String {
-        if isSender {
-            return appState.userResolver.resolveName(for: split.toUid, fallbackName: split.toName)
-        } else {
-            return appState.userResolver.resolveName(for: split.fromUid, fallbackName: split.fromName)
+    private var accentColor: Color {
+        if split.isSettlement == true {
+            return Color(hex: split.colorHex ?? "#34C759")
         }
+        if presentation.badge == "Awaiting Payment" || presentation.badge == "Accepted" {
+            return .blue
+        }
+        return isSender ? Color.functionalSuccess : .orange
     }
     
-    private var accentColor: Color { isSender ? Color.functionalSuccess : .orange }
-    
     var body: some View {
-        HStack(spacing: AppSpacing.element) {
+        HStack(alignment: .center, spacing: AppSpacing.element) {
             // Icon
             Circle()
                 .fill(accentColor.opacity(0.1))
@@ -41,59 +38,48 @@ struct PendingSplitCard: View {
                         .foregroundColor(accentColor)
                 )
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text(displayName)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Text(presentation.title)
                         .font(.body)
                         .fontWeight(.semibold)
                         .foregroundColor(.primary)
+                        .lineLimit(2)
+                        .layoutPriority(1)
                     
                     if split.isGuest != true, userPremiumRepo.isPremium(userId: otherUserId) == true {
                         PremiumBadge(size: .small, overrideBadgeType: userPremiumRepo.badgeType(userId: otherUserId))
                     }
-                    
-                    // FIX 3.5: Guest indicator badge
-                    if split.isGuest == true {
-                        Text("Guest")
-                            .font(.caption2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, AppSpacing.compact)
-                            .padding(.vertical, 2) // TODO: add DS token for 2pt micro padding
-                            .background(Color.secondary)
-                            .clipShape(Capsule())
+                }
+
+                if split.isGuest == true || presentation.cardBadge != nil {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 6) {
+                            if split.isGuest == true {
+                                guestBadge
+                            }
+                            if let cardBadge = presentation.cardBadge {
+                                statusBadge(text: cardBadge)
+                            }
+                        }
+                        VStack(alignment: .leading, spacing: 4) {
+                            if split.isGuest == true {
+                                guestBadge
+                            }
+                            if let cardBadge = presentation.cardBadge {
+                                statusBadge(text: cardBadge)
+                            }
+                        }
                     }
                 }
                 
-                if split.isSettlement == true {
-                    if isSender {
-                        Text("You paid $\(String(format: "%.2f", split.amount))")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    } else {
-                        Text("paid you $\(String(format: "%.2f", split.amount))")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
-                } else {
-                    let note = split.note?.isEmpty == false ? split.note! : "Expense"
-                    if isSender {
-                        Text("You requested $\(String(format: "%.2f", split.amount)) for \(note)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    } else {
-                        Text("requests $\(String(format: "%.2f", split.amount)) for \(note)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
-                }
+                Text(presentation.subtitle)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
                 
                 // Time
-                Text(isSender ? "Sent \(timeAgo(from: split.createdAt))" : "Requested \(timeAgo(from: split.createdAt))")
+                Text("\(presentation.timestampPrefix) \(timeAgo(from: split.createdAt))")
                     .font(.caption2)
                     .foregroundColor(.secondary)
                 
@@ -104,65 +90,17 @@ struct PendingSplitCard: View {
                         .foregroundColor(AppColors.functionalExpense) // warning orange for guest manual tracking
                 }
             }
+            .layoutPriority(1)
             
             Spacer()
             
             // Actions
             HStack(spacing: 8) {
-                if isSender {
-                    // Sender: Cancel + Nudge
-                    Button(action: {
-                        HapticManager.shared.light()
-                        onDelete()
-                    }) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.secondary)
-                            .frame(width: 32, height: 32)
-                            .background(Color.secondaryCardBackground)
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    
-                    Button(action: {
-                        HapticManager.shared.light()
-                        onNudge?()
-                    }) {
-                        Image(systemName: "bell.badge.fill")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.white)
-                            .frame(width: 32, height: 32)
-                            .background(AppColors.brandPrimary)
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                } else {
-                    // Receiver: Decline + Accept
-                    Button(action: {
-                        HapticManager.shared.light()
-                        onDelete()
-                    }) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.secondary)
-                            .frame(width: 32, height: 32)
-                            .background(Color.secondaryCardBackground)
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    
-                    // Accept / Pay
-                    Button(action: { HapticManager.shared.light(); 
-                        onToggle()
-                    }) {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(Color.backgroundPrimary)
-                            .frame(width: 32, height: 32)
-                            .background(AppColors.functionalIncome)
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(PlainButtonStyle())
+                if let secondaryAction = presentation.secondaryAction {
+                    actionButton(secondaryAction)
+                }
+                if let primaryAction = presentation.primaryAction {
+                    actionButton(primaryAction)
                 }
             }
         }
@@ -175,6 +113,63 @@ struct PendingSplitCard: View {
             if split.isGuest != true {
                 userPremiumRepo.prefetch(userIds: [otherUserId])
             }
+        }
+    }
+
+    @ViewBuilder
+    private func actionButton(_ action: RequestAction) -> some View {
+        Button(action: {
+            switch action.emphasis {
+            case .primary:
+                HapticManager.shared.success()
+            case .secondary:
+                HapticManager.shared.light()
+            case .destructive:
+                HapticManager.shared.warning()
+            }
+            onAction(action)
+        }) {
+            Image(systemName: action.compactIconName)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(action.emphasis == .primary ? .white : .secondary)
+                .frame(width: 44, height: 44)
+                .background(buttonBackgroundColor(for: action))
+                .clipShape(Circle())
+        }
+        .buttonStyle(PlainButtonStyle())
+        .accessibilityLabel(action.title)
+    }
+
+    private var guestBadge: some View {
+        Text("Guest")
+            .font(.caption2)
+            .fontWeight(.bold)
+            .foregroundColor(.white)
+            .padding(.horizontal, AppSpacing.compact)
+            .padding(.vertical, 4)
+            .background(Color.secondary)
+            .clipShape(Capsule())
+    }
+
+    private func statusBadge(text: String) -> some View {
+        Text(text)
+            .font(.caption2)
+            .fontWeight(.bold)
+            .foregroundColor(accentColor)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(accentColor.opacity(0.12))
+            .clipShape(Capsule())
+            .lineLimit(1)
+            .minimumScaleFactor(0.9)
+    }
+
+    private func buttonBackgroundColor(for action: RequestAction) -> Color {
+        switch action.emphasis {
+        case .primary:
+            return action == .confirmPaymentReceived ? AppColors.functionalIncome : accentColor
+        case .secondary, .destructive:
+            return Color.secondaryCardBackground
         }
     }
     

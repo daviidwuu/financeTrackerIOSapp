@@ -97,13 +97,13 @@ struct TransactionRow: View {
             }
             
             VStack(alignment: .trailing, spacing: AppSpacing.micro) {
-                Text(String(format: "%@$%.2f", transaction.amount > 0 ? "+" : "", abs(transaction.amount)))
+                Text(CurrencyFormatter.formatSigned(transaction.amount))
                     .font(.headline)
                     .fontWeight(.bold)
                     .foregroundColor(transaction.amount > 0 ? Color.functionalSuccess : .primary)
                 
                 if let originalAmount = transaction.originalAmount, let currencyCode = transaction.currencyCode {
-                    Text(String(format: "%@%@ %.2f", transaction.amount > 0 ? "+" : "", currencyCode, abs(originalAmount)))
+                    Text(CurrencyFormatter.formatForeign(originalAmount, currencyCode: currencyCode, signed: transaction.amount > 0))
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }

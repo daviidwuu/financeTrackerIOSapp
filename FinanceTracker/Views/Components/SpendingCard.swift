@@ -26,7 +26,7 @@ struct SpendingCard: View {
                     .foregroundColor(.secondary)
                     .fontWeight(.medium)
                 
-                Text(String(format: "$%.2f", amount))
+                Text(CurrencyFormatter.format(amount))
                     .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
             }

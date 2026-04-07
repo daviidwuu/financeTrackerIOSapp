@@ -58,3 +58,25 @@ struct BudgetFormData: Identifiable {
     var frequency: String
     var type: String = "expense"
 }
+
+extension TransactionFormData {
+    func firestoreModel(userId: String, source: String? = nil, createdAt: Date = Date()) -> FirestoreModels.TransactionModel {
+        FirestoreModels.TransactionModel(
+            userId: userId,
+            title: title,
+            categoryId: categoryId,
+            amount: CurrencyInput.parseOrZero(amount),
+            date: date,
+            type: type,
+            createdAt: createdAt,
+            note: notes,
+            source: source,
+            latitude: latitude,
+            longitude: longitude,
+            locationName: locationName,
+            originalAmount: originalAmount,
+            currencyCode: currencyCode,
+            exchangeRate: exchangeRate
+        )
+    }
+}

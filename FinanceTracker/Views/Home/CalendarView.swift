@@ -1,16 +1,10 @@
 import SwiftUI
 
-struct DailyDateItem: Identifiable {
-    let id = UUID()
-    let date: Date
-}
-
 struct CalendarView: View {
     @Binding var currentDate: Date
     @State private var selectedYear: Int
     @State private var selectedMonth: Int
     @AppStorage("calendarSavingsMode") private var showCashFlow: Bool = true
-    @State private var selectedDateForSheet: DailyDateItem?
 
     let daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     let columns = Array(repeating: GridItem(.flexible()), count: 7)
@@ -19,8 +13,9 @@ struct CalendarView: View {
     var categories: [FirestoreModels.CategoryBudget]
     var totalBudget: Double
     var signupDate: Date?
+    var onDateTapped: ((Date) -> Void)?
 
-    init(currentDate: Binding<Date>, transactions: [FirestoreModels.TransactionModel] = [], categories: [FirestoreModels.CategoryBudget] = [], totalBudget: Double = 0.0, signupDate: Date? = nil) {
+    init(currentDate: Binding<Date>, transactions: [FirestoreModels.TransactionModel] = [], categories: [FirestoreModels.CategoryBudget] = [], totalBudget: Double = 0.0, signupDate: Date? = nil, onDateTapped: ((Date) -> Void)? = nil) {
         self._currentDate = currentDate
         self._selectedYear = State(initialValue: Calendar.current.component(.year, from: currentDate.wrappedValue))
         self._selectedMonth = State(initialValue: Calendar.current.component(.month, from: currentDate.wrappedValue))
@@ -28,6 +23,7 @@ struct CalendarView: View {
         self.categories = categories
         self.totalBudget = totalBudget
         self.signupDate = signupDate
+        self.onDateTapped = onDateTapped
     }
     
     var body: some View {
@@ -118,7 +114,7 @@ struct CalendarView: View {
                                 .onTapGesture {
                                     if !isBeforeSignup {
                                         HapticManager.shared.light()
-                                        selectedDateForSheet = DailyDateItem(date: date)
+                                        onDateTapped?(date)
                                     }
                                 }
                             } else {
@@ -176,9 +172,7 @@ struct CalendarView: View {
         .onChange(of: currentDate) { _, newDate in
             updateSelectedDate(from: newDate)
         }
-        .sheet(item: $selectedDateForSheet) { item in
-            DailyTransactionSheet(date: item.date)
-        }
+
     }
     
     private func updateSelectedDate(from date: Date? = nil) {

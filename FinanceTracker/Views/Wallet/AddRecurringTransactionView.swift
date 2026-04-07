@@ -62,11 +62,12 @@ struct AddRecurringTransactionView: View {
             //    transactionRepo.startListening(userId: appState.currentUserId)
             // }
 
-            // Delay setting initial category to allow repo to load
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 if let recurring = recurringToEdit, selectedCategory == nil {
-                    // Try to find the category by name
-                    if let budget = budgetRepo.budgets.first(where: { $0.category == recurring.name }) {
+                    // Match by categoryId first, fallback to name
+                    if let catId = recurring.categoryId, let budget = budgetRepo.budgets.first(where: { $0.id == catId }) {
+                        selectedCategory = budget
+                    } else if let budget = budgetRepo.budgets.first(where: { $0.category == recurring.name }) {
                         selectedCategory = budget
                     }
                 }
@@ -110,8 +111,11 @@ struct AddRecurringTransactionView: View {
     private func saveRecurring() {
         guard let amountValue = CurrencyInput.parse(amount), let category = selectedCategory else { return }
         
+        // Use existing name when editing, else use category name
+        let targetName = recurringToEdit?.name ?? category.category
+        
         let newRecurring = RecurringTransactionFormData(
-            name: category.category,
+            name: targetName,
             amount: amountValue,
             categoryId: category.id,
             icon: category.icon,

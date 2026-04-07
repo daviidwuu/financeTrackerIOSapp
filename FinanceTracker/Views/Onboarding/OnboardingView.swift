@@ -6,6 +6,25 @@ import CoreLocation
 struct OnboardingView: View {
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var appState: AppState
+    private let previewMode: Bool
+
+    init(
+        initialStep: Int = 1,
+        previewMode: Bool = false,
+        name: String = "",
+        username: String = "",
+        income: String = "",
+        email: String = "",
+        password: String = ""
+    ) {
+        self.previewMode = previewMode
+        _currentStep = State(initialValue: initialStep)
+        _nameInput = State(initialValue: name)
+        _usernameInput = State(initialValue: username)
+        _incomeInput = State(initialValue: income)
+        _emailInput = State(initialValue: email)
+        _passwordInput = State(initialValue: password)
+    }
     
 
     
@@ -65,7 +84,7 @@ struct OnboardingView: View {
     var body: some View {
         ZStack {
             // Background
-            (colorScheme == .dark ? Color.black : Color.white)
+            Color.backgroundPrimary
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
@@ -86,7 +105,7 @@ struct OnboardingView: View {
                 ZStack(alignment: .top) {
                     Group {
                         switch currentStep {
-                        case 1: IntroStep()
+                        case 1: IntroStep(requestPermissions: !previewMode)
                         case 2: ProfileStep(name: $nameInput, focusedField: $focusedField, onNext: nextStep)
                         case 3: UsernameStep(username: $usernameInput, focusedField: $focusedField, onNext: nextStep)
                         case 4: IncomeStep(income: $incomeInput, focusedField: $focusedField)
@@ -341,4 +360,107 @@ struct OnboardingView: View {
 
 #Preview {
     OnboardingView()
+}
+
+enum OnboardingFigmaScreen: String, CaseIterable {
+    case welcome
+    case login
+    case pricing
+    case onboardingIntro = "onboarding-intro"
+    case onboardingProfile = "onboarding-profile"
+    case onboardingUsername = "onboarding-username"
+    case onboardingIncome = "onboarding-income"
+    case onboardingCategories = "onboarding-categories"
+    case onboardingAccount = "onboarding-account"
+    case editCategoryName = "edit-category-name"
+    case editCategoryBudget = "edit-category-budget"
+    case editCategoryIcon = "edit-category-icon"
+    case editCategoryColor = "edit-category-color"
+    case guideWelcome = "guide-welcome"
+    case guideBackTap = "guide-backtap"
+    case guideWidgets = "guide-widgets"
+    case guideComplete = "guide-complete"
+
+    static var current: OnboardingFigmaScreen? {
+        let args = ProcessInfo.processInfo.arguments
+        guard let flagIndex = args.firstIndex(of: "--figma-screen"),
+              args.indices.contains(flagIndex + 1) else {
+            return nil
+        }
+        return OnboardingFigmaScreen(rawValue: args[flagIndex + 1])
+    }
+}
+
+struct OnboardingFigmaPreviewHost: View {
+    let screen: OnboardingFigmaScreen
+
+    var body: some View {
+        switch screen {
+        case .welcome:
+            WelcomeView()
+        case .login:
+            NavigationStack {
+                LoginView()
+            }
+        case .pricing:
+            SubscriptionWizardView()
+        case .onboardingIntro:
+            OnboardingView(initialStep: 1, previewMode: true)
+        case .onboardingProfile:
+            OnboardingView(initialStep: 2, previewMode: true)
+        case .onboardingUsername:
+            OnboardingView(initialStep: 3, previewMode: true, name: "David")
+        case .onboardingIncome:
+            OnboardingView(initialStep: 4, previewMode: true, name: "David", username: "davidwu")
+        case .onboardingCategories:
+            OnboardingView(initialStep: 5, previewMode: true, name: "David", username: "davidwu", income: "4200")
+        case .onboardingAccount:
+            OnboardingView(initialStep: 6, previewMode: true, name: "David", username: "davidwu", income: "4200")
+        case .editCategoryName:
+            EditCategorySheet(
+                category: sampleCategory,
+                initialStep: 1,
+                onSave: { _ in },
+                onDelete: {}
+            )
+        case .editCategoryBudget:
+            EditCategorySheet(
+                category: sampleCategory,
+                initialStep: 2,
+                onSave: { _ in },
+                onDelete: {}
+            )
+        case .editCategoryIcon:
+            EditCategorySheet(
+                category: sampleCategory,
+                initialStep: 3,
+                onSave: { _ in },
+                onDelete: {}
+            )
+        case .editCategoryColor:
+            EditCategorySheet(
+                category: sampleCategory,
+                initialStep: 4,
+                onSave: { _ in },
+                onDelete: {}
+            )
+        case .guideWelcome:
+            PostOnboardingGuideView(initialStep: 1)
+        case .guideBackTap:
+            PostOnboardingGuideView(initialStep: 2)
+        case .guideWidgets:
+            PostOnboardingGuideView(initialStep: 3)
+        case .guideComplete:
+            PostOnboardingGuideView(initialStep: 4)
+        }
+    }
+
+    private var sampleCategory: OnboardingCategory {
+        OnboardingCategory(
+            name: "Food & Drink",
+            icon: "fork.knife",
+            colorHex: "#FF9500",
+            budgetAmount: 450
+        )
+    }
 }

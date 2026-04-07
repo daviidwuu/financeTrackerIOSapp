@@ -53,7 +53,12 @@ struct FinanceTrackerApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                if appState.isLoadingAuth {
+                if let figmaPreviewScreen = OnboardingFigmaScreen.current {
+                    OnboardingFigmaPreviewHost(screen: figmaPreviewScreen)
+                        .environmentObject(appState)
+                        .preferredColorScheme(userTheme == "system" ? nil : (userTheme == "dark" ? .dark : .light))
+                        .id("\(premiumAppTheme)-\(figmaPreviewScreen.rawValue)")
+                } else if appState.isLoadingAuth {
                     // Launch Screen / Loading View
                     Color.backgroundPrimary
                         .ignoresSafeArea()

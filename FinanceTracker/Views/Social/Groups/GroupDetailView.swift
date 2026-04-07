@@ -79,8 +79,12 @@ struct GroupDetailView: View {
                     .listRowBackground(Color.clear)
                     
                     // 2. Pending Actions (High Priority) — Split by role
-                    let receiverSplits = pendingSplits.filter { $0.toUid == appState.currentUserId }
-                    let senderSplits = pendingSplits.filter { $0.fromUid == appState.currentUserId }
+                    let receiverSplits = pendingSplits.filter {
+                        $0.presentation(for: appState.currentUserId).socialBucket == .actionRequired
+                    }
+                    let senderSplits = pendingSplits.filter {
+                        $0.presentation(for: appState.currentUserId).socialBucket == .yourRequests
+                    }
                     
                     // 2a. Splits I need to respond to
                     if !receiverSplits.isEmpty {
@@ -103,18 +107,13 @@ struct GroupDetailView: View {
                                 
                                 VStack(spacing: 12) {
                                     ForEach(receiverSplits) { split in
-                                        PendingSplitCard(split: split, userId: appState.currentUserId, onToggle: {
-                                            if split.isSettlement == true {
-                                                acceptSettlement(split)
-                                            } else {
-                                                requestToAccept = split // Open wizard instead of marking paid
-                                            }
-                                        }, onDelete: {
-                                            if split.isSettlement == true {
-                                                declineSettlement(split)
-                                            } else {
-                                                splitToDelete = split
-                                            }
+                                        let counterpartyName = getMemberName(id: split.fromUid, group: group)
+                                        let presentation = split.presentation(
+                                            for: appState.currentUserId,
+                                            counterpartyName: counterpartyName
+                                        )
+                                        PendingSplitCard(split: split, userId: appState.currentUserId, presentation: presentation, onAction: { action in
+                                            handleSplitCardAction(action, split: split)
                                         })
                                         .onTapGesture { HapticManager.shared.light();  activeSheet = .splitDetail(split) }
                                     }
@@ -148,20 +147,20 @@ struct GroupDetailView: View {
                                 
                                 VStack(spacing: 12) {
                                     ForEach(senderSplits) { split in
-                                        PendingSplitCard(split: split, userId: appState.currentUserId, onToggle: {
-                                            handleSplitToggle(split)
-                                        }, onDelete: {
-                                            splitToDelete = split
-                                        }, onNudge: {
-                                            Task {
-                                                try? await SocialTransactionManager.shared.nudgeSplitRequest(request: split)
-                                                HapticManager.shared.success()
-                                            }
+                                        let counterpartyName = getMemberName(id: split.toUid, group: group)
+                                        let presentation = split.presentation(
+                                            for: appState.currentUserId,
+                                            counterpartyName: counterpartyName
+                                        )
+                                        PendingSplitCard(split: split, userId: appState.currentUserId, presentation: presentation, onAction: { action in
+                                            handleSplitCardAction(action, split: split)
                                         })
                                         .onTapGesture { HapticManager.shared.light();  activeSheet = .splitDetail(split) }
                                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                            Button(role: .destructive) { HapticManager.shared.light();  deleteSplit(split) } label: {
-                                                Label("Cancel", systemImage: "trash")
+                                            if presentation.secondaryAction == .cancelRequest {
+                                                Button(role: .destructive) { HapticManager.shared.light();  deleteSplit(split) } label: {
+                                                    Label("Cancel", systemImage: "trash")
+                                                }
                                             }
                                         }
                                     }
@@ -468,7 +467,7 @@ struct GroupDetailView: View {
              groupBalances = newBalances
              debtInstructions = repo.calculateDebtResolution(balances: newBalances)
         }
-        .onReceive(repo.$myPendingGroupSplits) { newSplits in
+        .onReceive(repo.$myOutstandingGroupSplits) { newSplits in
              pendingSplits = newSplits.filter { 
                  guard let id = $0.id else { return false }
                  return !recentlyPaidSplitIds.contains(id) 
@@ -486,6 +485,10 @@ struct GroupDetailView: View {
     }
     
     private func handleSplitToggle(_ split: FirestoreModels.SplitRequest) {
+        guard split.canCurrentUserConfirmPaymentReceived(currentUserId: appState.currentUserId) else {
+            HapticManager.shared.error()
+            return
+        }
         HapticManager.shared.success()
         withAnimation { 
             pendingSplits.removeAll { $0.id == split.id } 
@@ -524,6 +527,30 @@ struct GroupDetailView: View {
             if let id = split.id { recentlyPaidSplitIds.remove(id) }
         }
         Task { try? await SocialTransactionManager.shared.unmarkSplitAsPaid(request: split, currentUserId: appState.currentUserId); loadGroupData() }
+    }
+
+    private func handleSplitCardAction(_ action: RequestAction, split: FirestoreModels.SplitRequest) {
+        switch action {
+        case .acceptSplit:
+            requestToAccept = split
+        case .declineSplit:
+            declineSplit(split)
+        case .acceptSettlement:
+            acceptSettlement(split)
+        case .declineSettlement:
+            declineSettlement(split)
+        case .confirmPaymentReceived:
+            handleSplitToggle(split)
+        case .cancelRequest:
+            splitToDelete = split
+        case .resendRequest:
+            resendRequest(split)
+        case .nudge:
+            Task {
+                try? await SocialTransactionManager.shared.nudgeSplitRequest(request: split)
+                HapticManager.shared.success()
+            }
+        }
     }
     
     private func deleteTransaction(_ transaction: FirestoreModels.GroupTransaction, group: FirestoreModels.Group) {
@@ -574,6 +601,25 @@ struct GroupDetailView: View {
                     HapticManager.shared.error()
                     // Revert
                     pendingSplits.append(split)
+                }
+            }
+        }
+    }
+
+    private func declineSplit(_ split: FirestoreModels.SplitRequest) {
+        HapticManager.shared.medium()
+        withAnimation {
+            pendingSplits.removeAll { $0.id == split.id }
+        }
+        Task {
+            do {
+                try await SocialTransactionManager.shared.resolveSplitRequestAction(request: split)
+                await MainActor.run { loadGroupData() }
+            } catch {
+                await MainActor.run {
+                    HapticManager.shared.error()
+                    pendingSplits.append(split)
+                    pendingSplits.sort { $0.createdAt > $1.createdAt }
                 }
             }
         }
@@ -633,6 +679,23 @@ struct GroupDetailView: View {
                     HapticManager.shared.error()
                     pendingSplits.append(split)
                 }
+            }
+        }
+    }
+
+    private func resendRequest(_ split: FirestoreModels.SplitRequest) {
+        guard let id = split.id else { return }
+        HapticManager.shared.medium()
+        Task {
+            do {
+                try await Firestore.firestore().collection("split_requests").document(id).updateData([
+                    "status": FirestoreModels.SplitRequest.RequestStatus.pending.rawValue,
+                    "createdAt": Date(),
+                    "lastUpdatedBy": appState.currentUserId
+                ])
+                await MainActor.run { loadGroupData() }
+            } catch {
+                await MainActor.run { HapticManager.shared.error() }
             }
         }
     }
@@ -760,17 +823,26 @@ struct GroupDetailView: View {
     // MARK: - Request Logic (Accept Flow matches HomeView)
     
     private func acceptRequest(_ request: FirestoreModels.SplitRequest, transaction: TransactionFormData) {
-        // 1. Add the transaction
-        addTransaction(transaction)
-        
-        // 2. Update Request Status
         Task {
             do {
-                guard let id = request.id else { return }
-                try await appState.requestRepo.updateRequestStatus(userId: appState.currentUserId, requestId: id, status: .accepted, lastUpdatedBy: appState.currentUserId)
+                let acceptedTransaction = transaction.firestoreModel(userId: appState.currentUserId)
+                _ = try await SocialTransactionManager.shared.acceptSplitRequest(
+                    request: request,
+                    acceptedTransaction: acceptedTransaction,
+                    currentUserId: appState.currentUserId
+                )
+
+                NotificationManager.shared.sendTransactionNotification(
+                    amount: acceptedTransaction.amount,
+                    category: transaction.title,
+                    type: transaction.type,
+                    originalAmount: transaction.originalAmount,
+                    currencyCode: transaction.currencyCode
+                )
+
                 await MainActor.run {
                     // Optimistic update to remove it from action required
-                    pendingSplits.removeAll { $0.id == id }
+                    pendingSplits.removeAll { $0.id == request.id }
                 }
             } catch {
                 DebugLogger.log("Failed to accept request: \(error)")
@@ -781,24 +853,8 @@ struct GroupDetailView: View {
     private func addTransaction(_ transaction: TransactionFormData) {
         Task {
             do {
-                // Convert UI Transaction to Firestore Transaction
                 let amount = CurrencyInput.parseOrZero(transaction.amount)
-                let firestoreTransaction = FirestoreModels.TransactionModel(
-                    userId: appState.currentUserId, // Use global user ID
-                    title: transaction.title,
-                    categoryId: transaction.categoryId,
-                    amount: amount,
-                    date: transaction.date,
-                    type: amount < 0 ? "expense" : "income",
-                    createdAt: Date(),
-                    note: transaction.notes,
-                    latitude: transaction.latitude,
-                    longitude: transaction.longitude,
-                    locationName: transaction.locationName,
-                    originalAmount: transaction.originalAmount,
-                    currencyCode: transaction.currencyCode,
-                    exchangeRate: transaction.exchangeRate
-                )
+                let firestoreTransaction = transaction.firestoreModel(userId: appState.currentUserId)
                 try await appState.transactionRepo.addTransaction(firestoreTransaction)
                 
                 // Send notification after successful save
@@ -817,7 +873,4 @@ struct GroupDetailView: View {
 }
 
 // MARK: - Subviews
-
-
-
 

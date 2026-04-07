@@ -72,6 +72,7 @@ struct SmallPrimaryButtonStyle: ButtonStyle {
             .padding(.vertical, 8) // Reduced padding
             .background(isEnabled ? (AppTheme.activeTheme == .system ? Color.textPrimary : Color.themeAccent) : Color.secondaryCardBackground)
             .clipShape(Capsule())
+            .frame(minHeight: 44)
             .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
             .animation(.easeInOut(duration: 0.2), value: configuration.isPressed)
             .onChange(of: configuration.isPressed) { _, isPressed in
@@ -94,6 +95,7 @@ struct SmallSecondaryButtonStyle: ButtonStyle {
             .padding(.vertical, 8)
             .background(Color.secondaryCardBackground)
             .clipShape(Capsule())
+            .frame(minHeight: 44)
             .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
             .animation(.easeInOut(duration: 0.2), value: configuration.isPressed)
             .onChange(of: configuration.isPressed) { _, isPressed in

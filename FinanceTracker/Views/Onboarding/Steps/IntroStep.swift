@@ -2,6 +2,7 @@ import SwiftUI
 
 struct IntroStep: View {
     @Environment(\.colorScheme) var colorScheme
+    var requestPermissions: Bool = true
     
     @ViewBuilder
     var body: some View {
@@ -51,6 +52,7 @@ struct IntroStep: View {
             Spacer()
         }
         .onAppear {
+            guard requestPermissions else { return }
             LocationManager.shared.requestPermission()
             NotificationManager.shared.requestPermission { _ in }
         }

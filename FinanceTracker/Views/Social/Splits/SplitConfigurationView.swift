@@ -66,7 +66,7 @@ struct SplitConfigurationView: View {
     var body: some View {
         ZStack {
             // Background
-            (colorScheme == .dark ? Color.black : Color.systemBackground)
+            Color.backgroundPrimary
                 .ignoresSafeArea()
                 .ignoresSafeArea(.keyboard, edges: .bottom)
             
@@ -400,9 +400,7 @@ struct SplitConfigurationView: View {
 
                                             if selectedGuestIds.contains(guest.id ?? "") {
                                                 Button(action: {
-                                                    if let gid = guest.id {
-                                                        toggleGuestSelection(guest)
-                                                    }
+                                                    toggleGuestSelection(guest)
                                                 }) {
                                                     Image(systemName: "xmark.circle.fill")
                                                         .font(.caption)

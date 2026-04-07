@@ -7,11 +7,15 @@ struct PostOnboardingGuideView: View {
     
     @State private var currentStep = 1
     @State private var direction: Edge = .trailing
+
+    init(initialStep: Int = 1) {
+        _currentStep = State(initialValue: initialStep)
+    }
     
     var body: some View {
         ZStack {
             // Background
-            (colorScheme == .dark ? Color.black : Color.white)
+            Color.backgroundPrimary
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {

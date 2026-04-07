@@ -27,7 +27,7 @@ struct LoginView: View {
     var body: some View {
         ZStack {
             // Background
-            (colorScheme == .dark ? Color.black : Color.white)
+            Color.backgroundPrimary
                 .ignoresSafeArea()
             
             VStack(spacing: 32) {

@@ -12,6 +12,7 @@ class BudgetRepository: ObservableObject {
     
     private var userId: String?
     private var isCreatingIncomeDefault = false
+    private var isCleaningUpDuplicates = false
     
     private var listener: ListenerRegistration?
     
@@ -83,9 +84,14 @@ class BudgetRepository: ObservableObject {
                     return sorted.dropFirst().compactMap { $0.id } // IDs of duplicates to delete
                 }
                 
-                if !duplicateIds.isEmpty {
+                if !duplicateIds.isEmpty && !isCleaningUpDuplicates {
+                    isCleaningUpDuplicates = true
                     Task { [weak self] in
-                        guard let self = self, let uid = self.userId else { return }
+                        guard let self = self, let uid = self.userId else {
+                            self?.isCleaningUpDuplicates = false
+                            return
+                        }
+                        defer { self.isCleaningUpDuplicates = false }
                         let batch = self.db.batch()
                         for id in duplicateIds {
                             let ref = self.db.collection("users").document(uid).collection("budgets").document(id)
@@ -195,7 +201,10 @@ class BudgetRepository: ObservableObject {
         let totalBudget = budgets
             .filter { $0.type == "expense" }
             .reduce(0) { sum, budget in
-                let monthlyAmount = budget.totalAmount * WalletLogic.monthlyMultiplier(for: budget.frequency)
+                let monthlyAmount = budget.totalAmount * WalletLogic.monthlyOccurrences(
+                    for: budget.frequency,
+                    anchor: budget.monthStartDate
+                )
                 return sum + monthlyAmount
             }
             

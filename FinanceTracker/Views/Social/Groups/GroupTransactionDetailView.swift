@@ -202,7 +202,7 @@ struct GroupTransactionDetailView: View {
                                                         .foregroundColor(.primary)
                                                     
                                                     if let status = Optional(split.status) {
-                                                        Text(status.rawValue.capitalized)
+                                                        Text(splitBadge(split))
                                                             .font(.caption2)
                                                             .fontWeight(.bold)
                                                             .foregroundColor(statusColor(for: status))
@@ -516,18 +516,28 @@ struct GroupTransactionDetailView: View {
     }
     
     private func toggleSplitPayment(_ split: FirestoreModels.SplitRequest) {
-        // Optimistic UI toggle
+        let canConfirm = split.canCurrentUserConfirmPaymentReceived(currentUserId: appState.currentUserId)
+        let canUndo = split.canCurrentUserUndoPaymentReceived(currentUserId: appState.currentUserId)
+
+        guard canConfirm || canUndo else {
+            HapticManager.shared.error()
+            return
+        }
+
         if let index = splits.firstIndex(where: { $0.id == split.id }) {
-            splits[index].status = (splits[index].status == .paid) ? .pending : .paid
+            splits[index].status = canConfirm ? .paid : split.revertStatusAfterUndoPayment
         }
         
         Task {
             do {
-                let currentStatus = split.status
-                if currentStatus == .pending || currentStatus == .accepted || currentStatus == .blocked_by_group || currentStatus == .declined {
-                     _ = try await SocialTransactionManager.shared.markSplitAsPaid(request: split, currentUserId: appState.currentUserId, currentUserName: appState.userName)
-                } else if currentStatus == .paid {
-                     try await SocialTransactionManager.shared.unmarkSplitAsPaid(request: split, currentUserId: appState.currentUserId)
+                if canConfirm {
+                    _ = try await SocialTransactionManager.shared.markSplitAsPaid(
+                        request: split,
+                        currentUserId: appState.currentUserId,
+                        currentUserName: appState.userName
+                    )
+                } else if canUndo {
+                    try await SocialTransactionManager.shared.unmarkSplitAsPaid(request: split, currentUserId: appState.currentUserId)
                 }
                 
                 // Refresh to ensure sync
@@ -540,6 +550,11 @@ struct GroupTransactionDetailView: View {
                 }
             }
         }
+    }
+
+    private func splitBadge(_ split: FirestoreModels.SplitRequest) -> String {
+        let counterpartyName = appState.userResolver.resolveName(for: split.toUid, fallbackName: split.toName)
+        return split.presentation(for: appState.currentUserId, counterpartyName: counterpartyName).badge
     }
 }
 

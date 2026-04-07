@@ -43,24 +43,7 @@ final class TransactionCoordinator {
                     return
                 }
 
-                let firestoreTransaction = FirestoreModels.TransactionModel(
-                    userId: currentUserIdProvider(),
-                    title: transaction.title,
-                    categoryId: transaction.categoryId,
-                    amount: amount,
-                    date: transaction.date,
-                    type: amount < 0 ? "expense" : "income",
-                    createdAt: Date(),
-                    note: transaction.notes,
-                    source: nil,
-                    latitude: transaction.latitude,
-                    longitude: transaction.longitude,
-                    locationName: transaction.locationName,
-                    splits: nil,
-                    originalAmount: transaction.originalAmount,
-                    currencyCode: transaction.currencyCode,
-                    exchangeRate: transaction.exchangeRate
-                )
+                let firestoreTransaction = transaction.firestoreModel(userId: currentUserIdProvider())
 
                 try await transactionRepo.addTransaction(firestoreTransaction)
 

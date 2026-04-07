@@ -12,6 +12,7 @@ struct SearchBar: View {
         HStack {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.secondary)
+                .accessibilityHidden(true)
             
             TextField(placeholder, text: $text)
                 .font(.body)
@@ -23,13 +24,14 @@ struct SearchBar: View {
                     .scaleEffect(0.8)
                     .padding(.trailing, 4)
             } else if !text.isEmpty {
-                Button(action: { HapticManager.shared.light();  
-                    text = "" 
+                Button(action: { HapticManager.shared.light();
+                    text = ""
                     // Optional: trigger empty search or just clear
                 }) {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.secondary)
                 }
+                .accessibilityLabel("Clear search")
             }
         }
         .padding(.vertical, 10)

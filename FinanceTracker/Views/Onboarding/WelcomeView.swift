@@ -11,7 +11,7 @@ struct WelcomeView: View {
         NavigationStack {
             ZStack {
                 // Background
-                (colorScheme == .dark ? Color.black : Color.white)
+                Color.backgroundPrimary
                     .ignoresSafeArea()
                 
                 VStack(spacing: 40) {

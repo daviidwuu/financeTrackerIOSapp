@@ -3,21 +3,20 @@ import SwiftUI
 struct ConfettiView: View {
     @State private var time: Double = 0.0
     @State private var particles: [Particle] = []
-    
+    @State private var startTime: Double = 0.0
+    private let duration: Double = 4.0
+
     var body: some View {
-        TimelineView(.animation) { timeline in
+        TimelineView(.periodic(from: .now, by: 1.0 / 30.0)) { timeline in
             Canvas { context, size in
                 let now = timeline.date.timeIntervalSinceReferenceDate
-                // delta removed
-                
+
                 for particle in particles {
                     let p = particle
                     let x = p.x
-                    let y = p.y + (p.speed * 2) // Move down
-                    
-                    // Simple sway
+                    let y = p.y + (p.speed * 2)
                     let sway = sin(now * p.swaySpeed + p.id) * 2
-                    
+
                     if y < size.height {
                         let rect = CGRect(x: x + sway, y: y, width: 8, height: 8)
                         var particleContext = context
@@ -30,19 +29,25 @@ struct ConfettiView: View {
                 }
             }
             .onChange(of: timeline.date) { _, newValue in
-                time = newValue.timeIntervalSinceReferenceDate
+                let now = newValue.timeIntervalSinceReferenceDate
+                guard !particles.isEmpty, now - startTime < duration else {
+                    if !particles.isEmpty { particles = [] }
+                    return
+                }
+                time = now
                 updateParticles(in: UIScreen.main.bounds.size)
             }
         }
         .onAppear {
+            startTime = Date().timeIntervalSinceReferenceDate
             createParticles()
         }
         .ignoresSafeArea()
     }
-    
+
     private func createParticles() {
         var newParticles: [Particle] = []
-        for i in 0..<100 {
+        for i in 0..<60 {
             newParticles.append(Particle(
                 id: Double(i),
                 x: Double.random(in: 0...UIScreen.main.bounds.width),

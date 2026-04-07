@@ -101,8 +101,8 @@ class FriendRepository: ObservableObject {
             fromUsername: currentUserInfo.username,
             createdAt: Date()
         )
-        // Use async setData so the caller can properly await and catch errors.
-        try await db.collection("friend_requests").document().setData(from: request)
+        // `setData(from:)` is a synchronous throwing Codable helper in this SDK.
+        try db.collection("friend_requests").document().setData(from: request)
     }
 
     /// Accepts a pending friend request by updating its status to "accepted".

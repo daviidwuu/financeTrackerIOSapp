@@ -421,6 +421,53 @@ import Foundation
         #expect(advanced == 1)
     }
 
+    // MARK: - WalletLogic.monthlyOccurrences / isRecurringDue
+
+    @Test("monthlyOccurrences: weekly schedules use exact anchored count within the month")
+    func test_monthlyOccurrences_weekly_exactAnchoredCount() {
+        let calendar = Calendar.current
+        let anchor = calendar.date(from: DateComponents(year: 2026, month: 4, day: 1))!
+        let referenceDate = calendar.date(from: DateComponents(year: 2026, month: 4, day: 15))!
+
+        let occurrences = WalletLogic.monthlyOccurrences(for: "Weekly", anchor: anchor, in: referenceDate)
+        #expect(occurrences == 5.0)
+    }
+
+    @Test("monthlyOccurrences: bi-weekly schedules use exact anchored count within the month")
+    func test_monthlyOccurrences_biWeekly_exactAnchoredCount() {
+        let calendar = Calendar.current
+        let anchor = calendar.date(from: DateComponents(year: 2026, month: 4, day: 1))!
+        let referenceDate = calendar.date(from: DateComponents(year: 2026, month: 4, day: 15))!
+
+        let occurrences = WalletLogic.monthlyOccurrences(for: "Bi-Weekly", anchor: anchor, in: referenceDate)
+        #expect(occurrences == 3.0)
+    }
+
+    @Test("isRecurringDue: weekly recurring matches only its anchored due day")
+    func test_isRecurringDue_weeklyChecksAnchoredDay() {
+        let calendar = Calendar.current
+        let anchor = calendar.date(from: DateComponents(year: 2026, month: 4, day: 1))!
+        let dueDate = calendar.date(from: DateComponents(year: 2026, month: 4, day: 15))!
+        let nonDueDate = calendar.date(from: DateComponents(year: 2026, month: 4, day: 16))!
+
+        let recurring = FirestoreModels.RecurringTransaction(
+            name: "Gym",
+            amount: 10,
+            frequency: "Weekly",
+            startDate: anchor,
+            categoryId: nil,
+            icon: nil,
+            colorHex: nil,
+            note: nil,
+            type: "expense",
+            userId: "u1",
+            createdAt: anchor
+        )
+
+        #expect(WalletLogic.isRecurringDue(recurring, on: dueDate) == true)
+        #expect(WalletLogic.isRecurringDue(recurring, on: nonDueDate) == false)
+    }
+
     // MARK: - WalletLogic.calculateTotalExpense
 
     @Test("calculateTotalExpense: sums absolute values of all expense amounts")

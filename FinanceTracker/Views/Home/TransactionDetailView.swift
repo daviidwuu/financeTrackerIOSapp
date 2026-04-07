@@ -181,10 +181,10 @@ struct TransactionDetailView: View {
                                                         .fontWeight(.semibold)
                                                     
                                                     if let status = split.status {
-                                                        Text(status.capitalized)
+                                                        Text(splitStatusLabel(for: split))
                                                             .font(.caption2)
                                                             .fontWeight(.bold)
-                                                            .foregroundColor(status == "paid" ? Color.functionalSuccess : (status == "declined" ? Color.functionalError : (status == "accepted" ? .blue : .orange)))
+                                                            .foregroundColor(splitStatusColor(rawStatus: status, isGuest: split.isGuest))
                                                     } else {
                                                         Text(split.isPaid ? "Paid" : "Pending")
                                                             .font(.caption2)
@@ -553,25 +553,7 @@ struct TransactionDetailView: View {
         }
         guard let transactionId = transaction.id else { return }
         
-        HapticManager.shared.medium() // Feedback for toggling payment status
-        
-        // Optimistic UI update — toggle both isPaid AND status so the label
-        // reflects the new state immediately, without waiting for Firestore.
-        if let index = transaction.splits?.firstIndex(where: { $0.id == split.id }) {
-            let currentlyPaid = transaction.splits![index].isPaid
-            let isGuestSplit = transaction.splits![index].isGuest
-            transaction.splits?[index].isPaid = !currentlyPaid
-            // Mirror the expected post-toggle status string:
-            // paid → pending (guests skip acceptance), paid → accepted (friends), anything else → paid
-            transaction.splits?[index].status = currentlyPaid ? (isGuestSplit ? "pending" : "accepted") : "paid"
-            
-            let updatedTx = transaction
-            Task {
-                await MainActor.run {
-                    transactionRepo.optimisticUpdateTransaction(updatedTx)
-                }
-            }
-        }
+        HapticManager.shared.medium()
         
         Task {
             do {
@@ -593,49 +575,51 @@ struct TransactionDetailView: View {
                     request = try? snapshot.documents.first?.data(as: FirestoreModels.SplitRequest.self)
                 }
                 
-                guard request != nil else {
+                guard let request else {
                     DebugLogger.log("DEBUGGING: Could not find split request for split: \(split.id). TransactionID: \(transactionId), ToUid: \(friendId)")
-                    // Revert UI if failed
-                    await MainActor.run {
-                        if let index = transaction.splits?.firstIndex(where: { $0.id == split.id }) {
-                            let isGuestSplit = transaction.splits![index].isGuest
-                            transaction.splits?[index].isPaid.toggle()
-                            let revertedPaid = transaction.splits![index].isPaid
-                            transaction.splits?[index].status = revertedPaid ? "paid" : (isGuestSplit ? "pending" : "accepted")
-                            transactionRepo.optimisticUpdateTransaction(transaction)
-                        }
-                    }
                     return
                 }
                 
-                // 2. Toggle using Manager
-                // Fetch FRESH split status from the request to be sure
-                // Actually, manager takes the request object. 
-                // We should check the REQUEST status.
-                let currentStatus = request!.status
-                
-                if currentStatus == .accepted || currentStatus == .blocked_by_group || (request?.isGuest == true && (currentStatus == .pending || currentStatus == .declined)) {
-                    // Mark as Paid
-                     if let generatedTx = try await SocialTransactionManager.shared.markSplitAsPaid(request: request!, currentUserId: appState.currentUserId, currentUserName: appState.userName) {
-                         await MainActor.run {
-                             transactionRepo.optimisticAddTransaction(generatedTx)
-                             if let index = transaction.splits?.firstIndex(where: { $0.id == split.id }) {
-                                 transaction.splits?[index].incomeTransactionId = generatedTx.id
-                                 transactionRepo.optimisticUpdateTransaction(transaction)
-                             }
-                         }
-                     }
-                } else if currentStatus == .paid {
-                    // Unmark
-                     try await SocialTransactionManager.shared.unmarkSplitAsPaid(request: request!, currentUserId: appState.currentUserId)
-                     if let index = transaction.splits?.firstIndex(where: { $0.id == split.id }),
-                        let incomeTxId = transaction.splits?[index].incomeTransactionId {
-                         await MainActor.run {
-                             transactionRepo.finalizeDelete(id: incomeTxId)
-                             transaction.splits?[index].incomeTransactionId = nil
-                             transactionRepo.optimisticUpdateTransaction(transaction)
-                         }
-                     }
+                let canConfirm = request.canCurrentUserConfirmPaymentReceived(currentUserId: appState.currentUserId)
+                let canUndo = request.canCurrentUserUndoPaymentReceived(currentUserId: appState.currentUserId)
+
+                guard canConfirm || canUndo else {
+                    await MainActor.run { HapticManager.shared.error() }
+                    return
+                }
+
+                await MainActor.run {
+                    applyOptimisticSplitStatus(
+                        splitId: split.id,
+                        isPaid: canConfirm,
+                        status: canConfirm ? FirestoreModels.SplitRequest.RequestStatus.paid.rawValue : request.revertStatusAfterUndoPayment.rawValue
+                    )
+                }
+
+                if canConfirm {
+                    if let generatedTx = try await SocialTransactionManager.shared.markSplitAsPaid(
+                        request: request,
+                        currentUserId: appState.currentUserId,
+                        currentUserName: appState.userName
+                    ) {
+                        await MainActor.run {
+                            transactionRepo.optimisticAddTransaction(generatedTx)
+                            if let index = transaction.splits?.firstIndex(where: { $0.id == split.id }) {
+                                transaction.splits?[index].incomeTransactionId = generatedTx.id
+                                transactionRepo.optimisticUpdateTransaction(transaction)
+                            }
+                        }
+                    }
+                } else if canUndo {
+                    try await SocialTransactionManager.shared.unmarkSplitAsPaid(request: request, currentUserId: appState.currentUserId)
+                    if let index = transaction.splits?.firstIndex(where: { $0.id == split.id }),
+                       let incomeTxId = transaction.splits?[index].incomeTransactionId {
+                        await MainActor.run {
+                            transactionRepo.finalizeDelete(id: incomeTxId)
+                            transaction.splits?[index].incomeTransactionId = nil
+                            transactionRepo.optimisticUpdateTransaction(transaction)
+                        }
+                    }
                 }
                 
                 // Deliberately NOT re-fetching the transaction here.
@@ -645,19 +629,52 @@ struct TransactionDetailView: View {
                 // will sync the authoritative state the next time the view opens.
             } catch {
                 DebugLogger.log("Error toggling split payment: \(error)")
-                // Revert UI — restore both isPaid and status
                 await MainActor.run {
-                    if let index = transaction.splits?.firstIndex(where: { $0.id == split.id }) {
-                        let revertedPaid = !transaction.splits![index].isPaid
-                        let isGuestSplit = transaction.splits![index].isGuest
-                        transaction.splits?[index].isPaid = revertedPaid
-                        transaction.splits?[index].status = revertedPaid ? "paid" : (isGuestSplit ? "pending" : "accepted")
-                        
-                        let revertedTx = transaction
-                        transactionRepo.optimisticUpdateTransaction(revertedTx)
-                    }
+                    applyOptimisticSplitStatus(
+                        splitId: split.id,
+                        isPaid: split.isPaid,
+                        status: split.status ?? (split.isPaid ? FirestoreModels.SplitRequest.RequestStatus.paid.rawValue : (split.isGuest ? FirestoreModels.SplitRequest.RequestStatus.pending.rawValue : FirestoreModels.SplitRequest.RequestStatus.accepted.rawValue))
+                    )
+                    HapticManager.shared.error()
                 }
             }
+        }
+    }
+
+    private func applyOptimisticSplitStatus(splitId: String, isPaid: Bool, status: String) {
+        guard let index = transaction.splits?.firstIndex(where: { $0.id == splitId }) else { return }
+        transaction.splits?[index].isPaid = isPaid
+        transaction.splits?[index].status = status
+        transactionRepo.optimisticUpdateTransaction(transaction)
+    }
+
+    private func splitStatusLabel(for split: FirestoreModels.Split) -> String {
+        switch split.status?.lowercased() {
+        case "pending":
+            return split.isGuest ? "Awaiting Payment" : "Waiting for Response"
+        case "accepted":
+            return "Awaiting Payment"
+        case "paid":
+            return "Paid"
+        case "declined":
+            return "Declined"
+        default:
+            return split.isPaid ? "Paid" : "Pending"
+        }
+    }
+
+    private func splitStatusColor(rawStatus: String, isGuest: Bool) -> Color {
+        switch rawStatus.lowercased() {
+        case "paid":
+            return Color.functionalSuccess
+        case "accepted":
+            return .blue
+        case "pending":
+            return isGuest ? .blue : .orange
+        case "declined":
+            return Color.functionalError
+        default:
+            return .secondary
         }
     }
 
@@ -667,7 +684,7 @@ struct TransactionDetailView: View {
         HapticManager.shared.warning()
         
         // 1. Check if it's a "Payment Received" transaction linked to a split
-        if transaction.type == "income", let requestId = transaction.source, !requestId.isEmpty, requestId != "recurring", !requestId.hasPrefix("recurring_") {
+        if transaction.type == "income", let requestId = transaction.source, !requestId.isEmpty, requestId != "recurring", requestId != "subscription", requestId != "social_v2", !requestId.hasPrefix("recurring_") {
             // It's linked. Check status.
             Task {
                 do {

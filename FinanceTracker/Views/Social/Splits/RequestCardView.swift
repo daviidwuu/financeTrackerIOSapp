@@ -2,8 +2,8 @@ import SwiftUI
 
 struct RequestCardView: View {
     let request: FirestoreModels.SplitRequest
-    let onAccept: () -> Void
-    let onDecline: () -> Void
+    var showsActions: Bool = true
+    let onAction: (RequestAction) -> Void
     
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var userPremiumRepo: UserPremiumRepository
@@ -11,8 +11,15 @@ struct RequestCardView: View {
     var body: some View {
         let iconName = request.isSettlement == true ? "arrow.turn.down.left" : (request.icon ?? "banknote.fill")
         let colorHex = request.isSettlement == true ? "#34C759" : (request.colorHex ?? "#FF9F0A") // Default orange
+        let currentUserId = appState.currentUserId
+        let otherUserId = request.fromUid == currentUserId ? request.toUid : request.fromUid
+        let counterpartyName = appState.userResolver.resolveName(
+            for: otherUserId,
+            fallbackName: request.fromUid == currentUserId ? request.toName : request.fromName
+        )
+        let presentation = request.presentation(for: currentUserId, counterpartyName: counterpartyName)
         
-        HStack(spacing: AppSpacing.element) {
+        HStack(alignment: .center, spacing: AppSpacing.element) {
             // Avatar / Icon
             Circle()
                 .fill(Color(hex: colorHex).opacity(0.1))
@@ -23,87 +30,48 @@ struct RequestCardView: View {
                         .foregroundColor(Color(hex: colorHex))
                 )
             
-            VStack(alignment: .leading, spacing: 4) {
-                // Primary Info: Sender Name
-                let senderName: String = {
-                    return appState.userResolver.resolveName(for: request.fromUid, fallbackName: request.fromName)
-                }()
-                
-                if request.isSettlement == true {
-                    Text("Settlement")
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Text(presentation.title)
                         .font(.body)
                         .fontWeight(.semibold)
                         .foregroundColor(.primary)
+                        .lineLimit(2)
+                        .layoutPriority(1)
                     
-                    HStack(spacing: 6) {
-                        Text(senderName)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        if userPremiumRepo.isPremium(userId: request.fromUid) == true {
-                            PremiumBadge(size: .small, overrideBadgeType: userPremiumRepo.badgeType(userId: request.fromUid))
-                        }
-
-                        Text("paid you $\(String(format: "%.2f", abs(request.amount)))")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
+                    if request.isGuest != true, userPremiumRepo.isPremium(userId: otherUserId) == true {
+                        PremiumBadge(size: .small, overrideBadgeType: userPremiumRepo.badgeType(userId: otherUserId))
                     }
-                } else {
-                    HStack(spacing: 8) {
-                        Text(senderName)
-                            .font(.body)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.primary)
-                        
-                        if userPremiumRepo.isPremium(userId: request.fromUid) == true {
-                            PremiumBadge(size: .small, overrideBadgeType: userPremiumRepo.badgeType(userId: request.fromUid))
-                        }
-                    }
-
-                    // Secondary Info: Request Details
-                    let note = request.note?.isEmpty == false ? request.note! : "Expense"
-                    Text("requests $\(String(format: "%.2f", abs(request.amount))) for \(note)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
                 }
+
+                if let cardBadge = presentation.cardBadge {
+                    statusBadge(text: cardBadge, accentHex: colorHex)
+                }
+
+                Text(presentation.subtitle)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
                 
                 // Timestamp
-                Text("Requested \(timeAgo(from: request.createdAt))")
+                Text("\(presentation.timestampPrefix) \(timeAgo(from: request.createdAt))")
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
+            .layoutPriority(1)
             
             Spacer()
             
-            // Actions
-            HStack(spacing: 8) {
-                Button(action: {
-                    HapticManager.shared.light()
-                    onDecline()
-                }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.secondary)
-                        .frame(width: 32, height: 32)
-                        .background(Color.secondaryCardBackground)
-                        .clipShape(Circle())
-                }
-                .buttonStyle(PlainButtonStyle())
+            if showsActions {
+                HStack(spacing: 8) {
+                    if let secondaryAction = presentation.secondaryAction {
+                        actionButton(secondaryAction, accentHex: colorHex)
+                    }
 
-                Button(action: {
-                    HapticManager.shared.success()
-                    onAccept()
-                }) {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.white)
-                        .frame(width: 32, height: 32)
-                        .background(Color.themeAccent)
-                        .clipShape(Circle())
+                    if let primaryAction = presentation.primaryAction {
+                        actionButton(primaryAction, accentHex: colorHex)
+                    }
                 }
-                .buttonStyle(PlainButtonStyle())
             }
         }
         .padding(AppSpacing.element)
@@ -112,9 +80,67 @@ struct RequestCardView: View {
                 .stroke(Color(hex: colorHex), lineWidth: 1)
         )
         .onAppear {
-            userPremiumRepo.prefetch(userIds: [request.fromUid])
+            if request.isGuest != true {
+                userPremiumRepo.prefetch(userIds: [otherUserId])
+            }
         }
         // Removed gray background as requested
+    }
+
+    @ViewBuilder
+    private func actionButton(_ action: RequestAction, accentHex: String) -> some View {
+        Button(action: {
+            switch action.emphasis {
+            case .primary:
+                HapticManager.shared.success()
+            case .secondary:
+                HapticManager.shared.light()
+            case .destructive:
+                HapticManager.shared.warning()
+            }
+            onAction(action)
+        }) {
+            Image(systemName: action.compactIconName)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(foregroundColor(for: action))
+                .frame(width: 44, height: 44)
+                .background(backgroundColor(for: action, accentHex: accentHex))
+                .clipShape(Circle())
+        }
+        .buttonStyle(PlainButtonStyle())
+        .accessibilityLabel(action.title)
+    }
+
+    private func statusBadge(text: String, accentHex: String) -> some View {
+        Text(text)
+            .font(.caption2)
+            .fontWeight(.bold)
+            .foregroundColor(Color(hex: accentHex))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color(hex: accentHex).opacity(0.1))
+            .clipShape(Capsule())
+            .lineLimit(1)
+            .minimumScaleFactor(0.9)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func foregroundColor(for action: RequestAction) -> Color {
+        switch action.emphasis {
+        case .primary:
+            return .white
+        case .secondary, .destructive:
+            return .secondary
+        }
+    }
+
+    private func backgroundColor(for action: RequestAction, accentHex: String) -> Color {
+        switch action.emphasis {
+        case .primary:
+            return action == .confirmPaymentReceived ? AppColors.functionalIncome : Color(hex: accentHex)
+        case .secondary, .destructive:
+            return Color.secondaryCardBackground
+        }
     }
     
     private func timeAgo(from date: Date) -> String {
@@ -147,8 +173,8 @@ struct RequestCardView: View {
             isGuest: false,
             createdAt: Date()
         ),
-        onAccept: {},
-        onDecline: {}
+        showsActions: true,
+        onAction: { _ in }
     )
     .padding()
 }

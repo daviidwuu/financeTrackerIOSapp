@@ -148,8 +148,8 @@ class GroupRepository: ObservableObject {
             }
         }
 
-        // Await the write so the caller receives any errors.
-        try await groupRef(groupId).setData(from: updatedGroup, merge: true)
+        // `setData(from:merge:)` is a synchronous throwing Codable helper in this SDK.
+        try groupRef(groupId).setData(from: updatedGroup, merge: true)
     }
 
     /// Hard-deletes a group document. Security Rules enforce that only the creator can do this.

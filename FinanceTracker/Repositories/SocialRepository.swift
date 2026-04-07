@@ -40,6 +40,7 @@ class SocialRepository: ObservableObject {
     
     // MARK: - Group Split Management
     @Published var myPendingGroupSplits: [FirestoreModels.SplitRequest] = []
+    @Published var myOutstandingGroupSplits: [FirestoreModels.SplitRequest] = []
     
     private var cancellables = Set<AnyCancellable>()
     
@@ -48,6 +49,13 @@ class SocialRepository: ObservableObject {
     private var globalSentListener: ListenerRegistration?
     private var globalReceivedListener: ListenerRegistration?
     
+    func stopListeningToGlobalBalances() {
+        globalSentListener?.remove()
+        globalSentListener = nil
+        globalReceivedListener?.remove()
+        globalReceivedListener = nil
+    }
+
     /// Listens to ALL active debts across all groups and friends
     func listenToGlobalBalances(currentUserId: String) {
         // Cancel existing
@@ -202,13 +210,13 @@ class SocialRepository: ObservableObject {
             // Owed To You (Positive)
             for req in sentRequests where req.status == .pending || req.status == .accepted {
                 let currency = req.currency ?? mainCurrency
-                newBalances[currency, default: 0] += req.amount
+                newBalances[currency, default: 0] = DecimalPrecision.sum([newBalances[currency, default: 0], req.amount])
             }
-            
+
             // You Owe (Negative)
             for req in receivedRequests where req.status == .pending || req.status == .accepted {
                 let currency = req.currency ?? mainCurrency
-                newBalances[currency, default: 0] -= req.amount
+                newBalances[currency, default: 0] = DecimalPrecision.subtract(newBalances[currency, default: 0], req.amount)
             }
             // Filter zero
             let filteredBalances = newBalances.filter { abs($0.value) > 0.01 }
@@ -276,13 +284,13 @@ class SocialRepository: ObservableObject {
             // Calculate Owed To You (Positive)
             for req in sent where req.status == .pending || req.status == .accepted {
                 let currency = req.currency ?? mainCurrency
-                balances[currency, default: 0] += req.amount
+                balances[currency, default: 0] = DecimalPrecision.sum([balances[currency, default: 0], req.amount])
             }
-            
+
             // Calculate You Owe (Negative)
             for req in received where req.status == .pending || req.status == .accepted {
                 let currency = req.currency ?? mainCurrency
-                balances[currency, default: 0] -= req.amount
+                balances[currency, default: 0] = DecimalPrecision.subtract(balances[currency, default: 0], req.amount)
             }
             
             // Filter out zero balances
@@ -331,14 +339,16 @@ class SocialRepository: ObservableObject {
                     balancesByCurrency[currency, default: [:]][req.toUid, default: 0] -= req.amount
                 }
                 
-                // Filter for "My Pending Splits" (Real-time)
-                let mySplits = activeRequests.filter { req in
-                    return req.status == .pending && (req.toUid == currentUserId || req.fromUid == currentUserId)
+                let myOutstandingSplits = activeRequests.filter { req in
+                    (req.status == .pending || req.status == .accepted) &&
+                    (req.toUid == currentUserId || req.fromUid == currentUserId)
                 }.sorted(by: { $0.createdAt > $1.createdAt })
+                let myPendingSplits = myOutstandingSplits.filter { $0.status == .pending }
                 
                 DispatchQueue.main.async {
                     self.groupBalances = balancesByCurrency
-                    self.myPendingGroupSplits = mySplits
+                    self.myPendingGroupSplits = myPendingSplits
+                    self.myOutstandingGroupSplits = myOutstandingSplits
                 }
             }
     }

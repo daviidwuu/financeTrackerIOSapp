@@ -195,6 +195,7 @@ struct SocialDashboardView: View {
         }
         .onDisappear {
             guestRepo.stopListening()
+            repo.stopListeningToGlobalBalances()
         }
     }
     

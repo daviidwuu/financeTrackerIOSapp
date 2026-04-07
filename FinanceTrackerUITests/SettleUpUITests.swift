@@ -93,10 +93,9 @@ final class SettleUpUITests: XCTestCase {
         if settleUpButton.waitForExistence(timeout: 3) {
             settleUpButton.tap()
 
-            // After tapping Settle Up, the SettleUpView sheet should appear.
-            // Verify: sheet is presented and contains the payer picker.
-            let payerPicker = app.pickers.firstMatch
-            let sheetVisible = payerPicker.waitForExistence(timeout: 3)
+            // After tapping Settle Up, the wizard should appear.
+            let nextButton = app.buttons["Next"].firstMatch
+            let sheetVisible = nextButton.waitForExistence(timeout: 3)
 
             if sheetVisible {
                 // The sheet presented successfully — verify cancel/dismiss works
@@ -137,26 +136,19 @@ final class SettleUpUITests: XCTestCase {
 
         settleUpButton.tap()
 
-        // The amount field should be empty initially
-        let amountField = app.textFields["0.00"].firstMatch
-        if amountField.waitForExistence(timeout: 2) {
-            // Amount is empty — the Confirm button should be disabled
-            let confirmButton = app.buttons["Confirm"].firstMatch
-            if confirmButton.waitForExistence(timeout: 2) {
-                // When amount is "0.00" or empty, confirm must not be enabled
-                // (The SettleUpView guards: amount > 0 before enabling)
-                let isEnabled = confirmButton.isEnabled
-                // We don't assert a specific value because UI state depends on other fields,
-                // but we document the expected behaviour in the failure message.
-                if isEnabled {
-                    // If enabled with empty amount, the UI isn't guarding correctly.
-                    // This would allow a $0 settlement to be submitted.
-                    XCTAssertFalse(
-                        isEnabled,
-                        "Confirm button must be disabled when amount is empty or zero"
-                    )
-                }
-            }
+        let nextButton = app.buttons["Next"].firstMatch
+        guard nextButton.waitForExistence(timeout: 2) else {
+            throw XCTSkip("Settle-up wizard did not appear")
+        }
+
+        nextButton.tap()
+
+        // Step 2 uses the same "Next" button, and it should be disabled until an amount is entered.
+        if app.textFields["0.00"].firstMatch.waitForExistence(timeout: 2) {
+            XCTAssertFalse(
+                nextButton.isEnabled,
+                "Next button must be disabled when amount is empty or zero"
+            )
         }
     }
 

@@ -5,6 +5,64 @@ import Combine
 
 extension SocialTransactionManager {
 
+func acceptSplitRequest(
+        request: FirestoreModels.SplitRequest,
+        acceptedTransaction: FirestoreModels.TransactionModel,
+        currentUserId: String
+    ) async throws -> FirestoreModels.TransactionModel {
+        guard let requestId = request.id else {
+            throw NSError(
+                domain: "SocialTransactionManager",
+                code: 400,
+                userInfo: [NSLocalizedDescriptionKey: "Split request is missing an ID."]
+            )
+        }
+
+        guard currentUserId == request.toUid else {
+            throw NSError(
+                domain: "SocialTransactionManager",
+                code: 403,
+                userInfo: [NSLocalizedDescriptionKey: "Only the receiver can accept this request."]
+            )
+        }
+
+        let batch = db.batch()
+        let transactionRef = acceptedTransaction.id.map {
+            db.collection("users").document(currentUserId).collection("transactions").document($0)
+        } ?? db.collection("users").document(currentUserId).collection("transactions").document()
+
+        var finalTransaction = acceptedTransaction
+        finalTransaction.id = transactionRef.documentID
+        finalTransaction.userId = currentUserId
+        finalTransaction.createdAt = Date()
+
+        try batch.setData(from: finalTransaction, forDocument: transactionRef)
+
+        let requestRef = db.collection("split_requests").document(requestId)
+        batch.updateData([
+            "status": FirestoreModels.SplitRequest.RequestStatus.accepted.rawValue,
+            "lastUpdatedBy": currentUserId
+        ], forDocument: requestRef)
+
+        if let groupId = request.groupId {
+            let groupTxs = try await db.collection("groups").document(groupId).collection("transactions")
+                .whereField("originalTransactionId", isEqualTo: request.transactionId)
+                .getDocuments()
+
+            if let groupTxDoc = groupTxs.documents.first {
+                batch.updateData([
+                    "involvedUserStatuses.\(request.toUid)": FirestoreModels.SplitRequest.RequestStatus.accepted.rawValue
+                ], forDocument: groupTxDoc.reference)
+            }
+        }
+
+        try await withRetry {
+            try await batch.commit()
+        }
+
+        return finalTransaction
+    }
+
 func resolveSplitRequestAction(request: FirestoreModels.SplitRequest) async throws {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
@@ -104,16 +162,22 @@ func markSplitAsPaid(request: FirestoreModels.SplitRequest, currentUserId: Strin
                                 splits[index].isPaid = true
                                 splits[index].paidDate = Date()
 
-                                // Create income transaction idempotently
-                                if splits[index].incomeTransactionId == nil {
+                                // Create income transaction idempotently.
+                                // Also handles the race condition where the Cloud Function hasn't yet
+                                // cleared incomeTransactionId after an unmark: if the split isn't
+                                // currently paid on the server, the old ID is stale and we create fresh.
+                                if splits[index].incomeTransactionId == nil || !splits[index].isPaid {
                                     let incomeRef = self.db.collection("users").document(creditorId).collection("transactions").document()
+                                    // Use the original transaction's date so the income entry always
+                                    // appears in the same month as the expense it settles.
+                                    let incomeDate = txData.date
                                     let incomeTx = FirestoreModels.TransactionModel(
                                         id: incomeRef.documentID,
                                         userId: creditorId,
                                         title: "Payment received from \(request.toName ?? "User")",
                                         categoryId: txData.categoryId,
                                         amount: request.amount,
-                                        date: Date(),
+                                        date: incomeDate,
                                         type: "income",
                                         createdAt: Date(),
                                         note: "Payment received from \(request.toName ?? "User")",
@@ -213,12 +277,15 @@ func unmarkSplitAsPaid(request: FirestoreModels.SplitRequest, currentUserId: Str
         let batch = db.batch()
         
         // 1. Update Request Status
+        // Smart revert: guest splits go back to .pending; real user splits go back to .accepted
+        // since the friend had already accepted the request before it was marked paid.
+        let revertStatus: FirestoreModels.SplitRequest.RequestStatus = (request.isGuest == true) ? .pending : .accepted
         let requestRef = db.collection("split_requests").document(requestId)
         batch.updateData([
-            "status": FirestoreModels.SplitRequest.RequestStatus.pending.rawValue,
+            "status": revertStatus.rawValue,
             "lastUpdatedBy": currentUserId
         ], forDocument: requestRef)
-        
+
         // 1b. Update Group Feed Badge
         if let groupId = request.groupId {
              let existingGroupTxs = try await db.collection("groups").document(groupId).collection("transactions")
@@ -226,7 +293,7 @@ func unmarkSplitAsPaid(request: FirestoreModels.SplitRequest, currentUserId: Str
                   .getDocuments()
              if let groupTxDoc = existingGroupTxs.documents.first {
                   batch.updateData([
-                       "involvedUserStatuses.\(request.toUid)": FirestoreModels.SplitRequest.RequestStatus.pending.rawValue
+                       "involvedUserStatuses.\(request.toUid)": revertStatus.rawValue
                   ], forDocument: groupTxDoc.reference)
              }
         }
