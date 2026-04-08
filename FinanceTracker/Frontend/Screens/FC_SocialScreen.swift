@@ -1,8 +1,16 @@
 // MARK: - FC_SocialScreen.swift
 // Frontend layer — Social tab screen preview for Figma.
-// Source: Views/Social/SocialDashboardView.swift
+// Source: Views/Social/SocialDashboardView.swift — 1:1 verified against source.
 //
-// Shows all 3 segments: Groups / Friends / Leaderboard
+// Key layout facts confirmed from source:
+//   - Header: title="Social", subtitle="Split bills and track shared expenses", NO trailing
+//   - CustomSegmentedControl: Color.primary fill Capsule, Color.backgroundPrimary selected text
+//     container is secondaryCardBackground clipped to Capsule, padding(5) inset
+//   - Segment first, then SearchBar below (in that order in the List)
+//   - Groups: DashedAddButton "Create New Group" above group cards
+//   - Friends: DashedAddButton "Add Guest" above friend cards
+//   - Adaptive banner at bottom (sticky)
+//   - Leaderboard: PodiumView for top 3, then ranked rows below
 
 import SwiftUI
 
@@ -27,7 +35,7 @@ import SwiftUI
         .previewDisplayName("Social — Dark")
 }
 
-// MARK: - Static View Implementation
+// MARK: - Static View
 
 private struct FC_SocialScreenView: View {
     @State private var selectedSegment: Int
@@ -40,102 +48,108 @@ private struct FC_SocialScreenView: View {
         _selectedSegment = State(initialValue: segment)
     }
 
+    var searchPlaceholder: String {
+        switch selectedSegment {
+        case 0: return "Search groups..."
+        case 1: return "Search friends..."
+        case 2: return "Search leaderboard..."
+        default: return "Search..."
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
                 Color.backgroundPrimary.ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                    Spacer().frame(height: 80)
+                List {
+                    ScrollOffsetTracker()
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets())
 
-                    // Search + Segment
-                    VStack(spacing: AppSpacing.element) {
-                        SearchBar(text: $searchText,
-                                  placeholder: selectedSegment == 0 ? "Search groups..." : "Search friends...")
-                            .padding(.horizontal, AppSpacing.margin)
+                    Color.clear.frame(height: 0)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
 
-                        // Custom segmented control
-                        HStack(spacing: 0) {
-                            ForEach(["Groups", "Friends", "Leaderboard"].indices, id: \.self) { i in
-                                Button {
-                                    withAnimation(.spring(response: 0.3)) {
-                                        selectedSegment = i
-                                    }
-                                } label: {
-                                    Text(["Groups", "Friends", "Leaderboard"][i])
-                                        .font(AppTypography.subheadline)
-                                        .fontWeight(selectedSegment == i ? .semibold : .regular)
-                                        .foregroundColor(selectedSegment == i ? .primary : .secondary)
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 8)
-                                        .background(
-                                            selectedSegment == i
-                                                ? Color.cardBackground
-                                                : Color.clear
-                                        )
-                                        .cornerRadius(AppRadius.small)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding(4)
-                        .background(Color.secondaryCardBackground)
-                        .cornerRadius(AppRadius.medium)
-                        .padding(.horizontal, AppSpacing.margin)
-                    }
+                    // MARK: Segment + Search (segment first, then search)
+                    // Source: SocialDashboardView lines 61–72
+                    Section {
+                        FC_CustomSegmentedControl(
+                            selection: $selectedSegment,
+                            options: ["Groups", "Friends", "Leaderboard"]
+                        )
+                        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
 
-                    // Content
-                    List {
-                        Color.clear.frame(height: AppSpacing.compact)
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
-
-                        switch selectedSegment {
-                        case 0: groupRows
-                        case 1: friendRows
-                        case 2: leaderboardRows
-                        default: EmptyView()
-                        }
-
-                        Color.clear.frame(height: 80)
+                        SearchBar(text: $searchText, placeholder: searchPlaceholder)
+                            .listRowInsets(EdgeInsets(top: 8, leading: AppSpacing.margin, bottom: 8, trailing: AppSpacing.margin))
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
                     }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
+
+                    // MARK: Content
+                    switch selectedSegment {
+                    case 0: groupRows
+                    case 1: friendRows
+                    case 2: leaderboardRows
+                    default: EmptyView()
+                    }
+
+                    // Bottom spacer for ad banner
+                    Color.clear.frame(height: 70)
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .padding(.top, -20)
 
-                // Overlay header
+                // Overlay header — title + subtitle, NO trailing
                 OverlayHeaderView(
                     mode: .root(
                         title: "Social",
-                        subtitle: nil,
-                        trailing: AnyView(
-                            Button {} label: {
-                                Image(systemName: "plus")
-                                    .font(.system(size: 18, weight: .semibold))
-                                    .foregroundColor(.primary)
-                                    .frame(width: AppSize.iconButton, height: AppSize.iconButton)
-                                    .background(Color.primary.opacity(0.05))
-                                    .clipShape(Circle())
-                            }
-                            .buttonStyle(.plain)
-                        )
+                        subtitle: "Split bills and track shared expenses"
                     ),
                     scrollOffset: 0
                 )
+
+                // Sticky adaptive banner at bottom
+                VStack {
+                    Spacer()
+                    mockBannerAd
+                        .padding(.horizontal, AppSpacing.margin)
+                        .padding(.bottom, AppSpacing.element)
+                }
             }
             .navigationBarHidden(true)
         }
     }
 
-    // MARK: - Groups
-
+    // MARK: - Groups List
+    // Source: SocialDashboardView.groupsList
+    // Has DashedAddButton "Create New Group" at top, then GroupCardView rows
     @ViewBuilder
     private var groupRows: some View {
+        // DashedAddButton first
+        DashedAddButton(label: "Create New Group", action: {})
+            .appListRow()
+
         ForEach(groups) { group in
             groupCard(group)
                 .appListRow()
+        }
+
+        if groups.isEmpty {
+            EmptyStateView(
+                icon: "person.3.fill",
+                title: "No Groups",
+                message: "Create a group to start splitting expenses."
+            )
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
         }
     }
 
@@ -145,10 +159,10 @@ private struct FC_SocialScreenView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(group.name)
-                    .font(AppTypography.headline)
+                    .font(.headline)
                     .foregroundColor(.primary)
                 Text("\(group.memberCount) members")
-                    .font(AppTypography.caption)
+                    .font(.subheadline)
                     .foregroundColor(.secondary)
             }
 
@@ -156,7 +170,7 @@ private struct FC_SocialScreenView: View {
 
             VStack(alignment: .trailing, spacing: 2) {
                 Text("\(group.totalBalance >= 0 ? "+" : "")$\(String(format: "%.2f", abs(group.totalBalance)))")
-                    .font(AppTypography.headline)
+                    .font(.headline)
                     .foregroundColor(group.totalBalance >= 0 ? Color.functionalSuccess : Color.functionalError)
                 Text(group.totalBalance >= 0 ? "you're owed" : "you owe")
                     .font(.caption2)
@@ -165,18 +179,31 @@ private struct FC_SocialScreenView: View {
 
             CardChevron()
         }
-        .padding(AppSpacing.element)
-        .background(Color.cardBackground)
-        .cornerRadius(AppRadius.medium)
+        .appCardStyle()
     }
 
-    // MARK: - Friends
-
+    // MARK: - Friends List
+    // Source: SocialDashboardView.friendsList
+    // Has DashedAddButton "Add Guest" at top, then FriendCardView rows
     @ViewBuilder
     private var friendRows: some View {
+        // DashedAddButton first
+        DashedAddButton(label: "Add Guest", action: {})
+            .appListRow()
+
         ForEach(friends) { friend in
             friendCard(friend)
                 .appListRow()
+        }
+
+        if friends.isEmpty {
+            EmptyStateView(
+                icon: "person.2.fill",
+                title: "No Friends",
+                message: "Add friends to split bills 1-on-1."
+            )
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
         }
     }
 
@@ -186,10 +213,10 @@ private struct FC_SocialScreenView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(friend.name)
-                    .font(AppTypography.headline)
+                    .font(.headline)
                     .foregroundColor(.primary)
                 Text("@\(friend.username)")
-                    .font(AppTypography.caption)
+                    .font(.subheadline)
                     .foregroundColor(.secondary)
             }
 
@@ -198,7 +225,7 @@ private struct FC_SocialScreenView: View {
             if friend.owedAmount != 0 {
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("\(friend.owedAmount > 0 ? "+" : "")$\(String(format: "%.2f", abs(friend.owedAmount)))")
-                        .font(AppTypography.headline)
+                        .font(.headline)
                         .foregroundColor(friend.owedAmount > 0 ? Color.functionalSuccess : Color.functionalError)
                     Text(friend.owedAmount > 0 ? "owes you" : "you owe")
                         .font(.caption2)
@@ -206,65 +233,42 @@ private struct FC_SocialScreenView: View {
                 }
             } else {
                 Text("Settled")
-                    .font(AppTypography.caption)
+                    .font(.caption)
                     .foregroundColor(.secondary)
             }
 
             CardChevron()
         }
-        .padding(AppSpacing.element)
-        .background(Color.cardBackground)
-        .cornerRadius(AppRadius.medium)
+        .appCardStyle()
     }
 
     // MARK: - Leaderboard
-
+    // Source: SocialDashboardView.leaderboardList
+    // PodiumView for top 3, then LeaderboardRow for the rest
     @ViewBuilder
     private var leaderboardRows: some View {
-        // Podium (top 3)
         Section {
             podiumView
-                .appListRow()
-                .padding(.bottom, AppSpacing.element)
+                .padding(.top, 20)
+                .frame(maxWidth: .infinity)
         }
+        .listRowInsets(EdgeInsets())
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
 
-        // Ranked list (4+)
         ForEach(Array(leaderboardEntries.dropFirst(3).enumerated()), id: \.offset) { i, entry in
-            HStack(spacing: AppSpacing.element) {
-                Text("#\(i + 4)")
-                    .font(AppTypography.caption)
-                    .foregroundColor(.secondary)
-                    .frame(width: 28)
-
-                ProfileAvatar(text: String(entry.name.prefix(1)), color: entry.color, size: AppSize.avatarMedium)
-
-                Text(entry.name)
-                    .font(AppTypography.headline)
-
-                Spacer()
-
-                Text("\(entry.points) pts")
-                    .font(AppTypography.caption)
-                    .foregroundColor(.secondary)
-            }
-            .padding(AppSpacing.element)
-            .background(Color.cardBackground)
-            .cornerRadius(AppRadius.medium)
-            .appListRow()
+            leaderboardRow(entry: entry, rank: i + 4)
+                .appListRow()
         }
     }
 
     private var podiumView: some View {
         HStack(alignment: .bottom, spacing: AppSpacing.element) {
-            // #2
             podiumSlot(entry: leaderboardEntries[1], rank: 2, height: 80)
-            // #1
             podiumSlot(entry: leaderboardEntries[0], rank: 1, height: 110)
-            // #3
             podiumSlot(entry: leaderboardEntries[2], rank: 3, height: 60)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, AppSpacing.element)
+        .padding(.horizontal, AppSpacing.margin)
     }
 
     private func podiumSlot(entry: (name: String, points: Int, color: Color), rank: Int, height: CGFloat) -> some View {
@@ -276,25 +280,33 @@ private struct FC_SocialScreenView: View {
             }
             ProfileAvatar(text: String(entry.name.prefix(1)), color: entry.color, size: AppSize.avatarMedium)
             Text(entry.name.components(separatedBy: " ").first ?? entry.name)
-                .font(AppTypography.caption)
-                .fontWeight(.semibold)
-            Text("\(entry.points)")
-                .font(.caption2)
-                .foregroundColor(.secondary)
+                .font(.caption).fontWeight(.semibold)
+            Text("\(entry.points) pts")
+                .font(.caption2).foregroundColor(.secondary)
 
             RoundedRectangle(cornerRadius: AppRadius.small)
                 .fill(Color.secondaryCardBackground)
                 .frame(height: height)
                 .overlay(
                     Text("#\(rank)")
-                        .font(AppTypography.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(.secondary)
+                        .font(AppTypography.headline).fontWeight(.bold).foregroundColor(.secondary)
                         .padding(.top, AppSpacing.compact),
                     alignment: .top
                 )
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private func leaderboardRow(entry: (name: String, points: Int, color: Color), rank: Int) -> some View {
+        HStack(spacing: AppSpacing.element) {
+            Text("#\(rank)")
+                .font(.caption).foregroundColor(.secondary).frame(width: 28)
+            ProfileAvatar(text: String(entry.name.prefix(1)), color: entry.color, size: AppSize.avatarMedium)
+            Text(entry.name).font(.headline)
+            Spacer()
+            Text("\(entry.points) pts").font(.caption).foregroundColor(.secondary)
+        }
+        .appCardStyle()
     }
 
     private let leaderboardEntries: [(name: String, points: Int, color: Color)] = [
@@ -304,4 +316,67 @@ private struct FC_SocialScreenView: View {
         ("Jordan K.",1200, Color(hex: "#34C759")),
         ("Morgan L.", 980, Color(hex: "#FF2D55")),
     ]
+
+    // MARK: - Mock Banner Ad
+    private var mockBannerAd: some View {
+        HStack {
+            Text("Advertisement")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+            Spacer()
+            Text("Ad")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 6).padding(.vertical, 2)
+                .overlay(RoundedRectangle(cornerRadius: 2).stroke(Color.secondary.opacity(0.4)))
+        }
+        .padding(AppSpacing.compact)
+        .background(Color.cardBackground)
+        .cornerRadius(AppRadius.small)
+        .frame(height: 50)
+    }
+}
+
+// MARK: - CustomSegmentedControl replica
+// Source: SocialDashboardView lines 712–751
+// Selected: Color.primary Capsule fill via matchedGeometryEffect, text Color.backgroundPrimary
+// Unselected: .secondary text
+// Container: secondaryCardBackground, clipShape(Capsule()), padding(5)
+private struct FC_CustomSegmentedControl: View {
+    @Binding var selection: Int
+    let options: [String]
+    @Namespace private var ns
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(options.indices, id: \.self) { index in
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        selection = index
+                    }
+                } label: {
+                    ZStack {
+                        if selection == index {
+                            Capsule()
+                                .fill(Color.primary)
+                                .matchedGeometryEffect(id: "bg", in: ns)
+                        }
+                        Text(options[index])
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                            .foregroundColor(selection == index ? Color.backgroundPrimary : .secondary)
+                            .padding(.vertical, 10)
+                            .padding(.horizontal, AppSpacing.compact)
+                    }
+                }
+                .buttonStyle(PlainButtonStyle())
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(5)
+        .background(Color.secondaryCardBackground)
+        .clipShape(Capsule())
+    }
 }

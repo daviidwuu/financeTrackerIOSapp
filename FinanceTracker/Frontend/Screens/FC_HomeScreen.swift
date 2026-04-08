@@ -1,15 +1,19 @@
 // MARK: - FC_HomeScreen.swift
 // Frontend layer — Home tab screen preview for Figma.
-// Source: Views/Home/HomeView.swift
+// Source: Views/Home/HomeView.swift — 1:1 verified against source.
 //
-// Static replica showing the exact layout of the Home screen.
-// No Firebase, no @EnvironmentObject. All data from FC_MockData.
+// Key layout facts confirmed from source:
+//   - Header: isWelcomeStyle=true, title="Welcome", subtitle=userName
+//   - titleAccessory: orange flame + streak count pill (orange.opacity(0.15) bg)
+//   - Trailing: trophy + bell + person.fill icon (all secondary.opacity(0.15) bg circles)
+//   - Balance card: AppSpacing.large (24) padding, AppRadius.large (28) radius
+//   - Progress bar: 24pt tall Capsule, Color.primary fill (not themeAccent), no color change
+//   - Section header: .title2 bold, "View All" with chevron.right in .secondary
+//   - NativeAdView appears inline above transaction rows (free users)
 
 import SwiftUI
 
-// MARK: - Screen Preview
-
-#Preview("Home Screen — Default State") {
+#Preview("Home Screen — Default") {
     FC_HomeScreenView()
         .previewDisplayName("Home — Default")
 }
@@ -20,16 +24,16 @@ import SwiftUI
         .previewDisplayName("Home — Dark")
 }
 
-// MARK: - Static View Implementation
+// MARK: - Static View
 
 private struct FC_HomeScreenView: View {
     @State private var showRemainingBudget = false
+    @State private var isAnimating = false
 
-    private let transactions = Array(FC_MockData.transactions.prefix(6))
-    private let totalSpent  = FC_MockData.totalSpent
-    private let totalBudget = FC_MockData.totalBudget
-    private let user        = FC_MockData.userProfile
-    private let streak      = FC_MockData.userProfile.streakCount
+    private let transactions = Array(FC_MockData.transactions.prefix(5))
+    private let totalSpent   = FC_MockData.totalSpent
+    private let totalBudget  = FC_MockData.totalBudget
+    private let user         = FC_MockData.userProfile
 
     var body: some View {
         NavigationStack {
@@ -43,34 +47,45 @@ private struct FC_HomeScreenView: View {
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets())
 
-                    // Top spacer to clear the overlay header
-                    Color.clear.frame(height: 44)
+                    Color.clear.frame(height: 40)
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
 
                     // MARK: Balance Card
                     Section {
                         balanceCard
-                            .appListRow()
+                            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                            .padding(.bottom, AppSpacing.compact)
                     }
 
-                    // MARK: Recent Transactions header
-                    Section {
+                    // MARK: Recent Transactions section header
+                    Section(header:
                         HStack {
                             Text("Recent Transactions")
-                                .font(AppTypography.headline)
+                                .font(.title2)
+                                .fontWeight(.bold)
                                 .foregroundColor(.primary)
                             Spacer()
-                            Text("See all")
-                                .font(AppTypography.caption)
-                                .foregroundColor(Color.themeAccent)
+                            HStack(spacing: 4) {
+                                Text("View All")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.bold))
+                            }
+                            .foregroundColor(.secondary)
                         }
-                        .appListRow()
-                        .padding(.top, AppSpacing.compact)
-                    }
+                        .textCase(nil)
+                    ) {
+                        // Native ad placeholder (appears for free users above transactions)
+                        MockNativeAdView()
+                            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                            .padding(.bottom, AppSpacing.compact)
 
-                    // MARK: Transaction Rows
-                    Section {
                         ForEach(transactions) { tx in
                             let cat = FC_MockData.category(id: tx.categoryId)
                             FC_TransactionRowView(
@@ -86,9 +101,13 @@ private struct FC_HomeScreenView: View {
                             )
                             .background(Color.cardBackground)
                             .cornerRadius(AppRadius.medium)
-                            .appListRow()
+                            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                            .padding(.bottom, AppSpacing.compact)
                         }
                     }
+                    .listRowBackground(Color.clear)
 
                     Color.clear.frame(height: 80)
                         .listRowSeparator(.hidden)
@@ -97,18 +116,29 @@ private struct FC_HomeScreenView: View {
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
 
-                // MARK: Overlay Header
-                overlayHeader
+                // MARK: Overlay Header (isWelcomeStyle)
+                OverlayHeaderView(
+                    mode: .root(
+                        title: "Welcome",
+                        subtitle: user.name,
+                        trailing: AnyView(headerTrailing),
+                        titleAccessory: AnyView(streakPill),
+                        isWelcomeStyle: true
+                    ),
+                    scrollOffset: 0
+                )
             }
             .navigationBarHidden(true)
         }
     }
 
     // MARK: - Balance Card
-
+    // Source: HomeView lines 61–108. Key details:
+    //   VStack spacing:20, inner VStack spacing:8
+    //   Progress: Capsule height 24, Color.primary fill, shadow(0.05, r:2)
+    //   Padding: AppSpacing.large (24), radius: AppRadius.large (28)
     private var balanceCard: some View {
-        VStack(alignment: .leading, spacing: AppSpacing.element) {
-            // Amount toggle row
+        VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Balance")
                     .font(.subheadline)
@@ -130,88 +160,118 @@ private struct FC_HomeScreenView: View {
                         showRemainingBudget.toggle()
                     }
                 }
-
-                // Budget progress bar
-                let progress = totalSpent / totalBudget
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color.secondaryCardBackground).frame(height: 8)
-                        Capsule()
-                            .fill(progress > 0.9 ? Color.functionalError : Color.themeAccent)
-                            .frame(width: geo.size.width * min(progress, 1.0), height: 8)
-                    }
-                }
-                .frame(height: 8)
-
-                HStack {
-                    Text("of $\(String(format: "%.2f", totalBudget)) budget")
-                        .font(.caption).foregroundColor(.secondary)
-                    Spacer()
-                    Text("\(Int(totalSpent / totalBudget * 100))% used")
-                        .font(.caption).foregroundColor(.secondary)
-                }
             }
+
+            // Pill-shaped 24pt progress bar — Color.primary fill (matches source exactly)
+            GeometryReader { geometry in
+                Capsule()
+                    .fill(Color.secondaryCardBackground)
+                    .frame(height: 24)
+                    .overlay(
+                        Capsule()
+                            .fill(Color.primary)
+                            .frame(width: min(geometry.size.width * (totalSpent / max(totalBudget, 0.01)), geometry.size.width)),
+                        alignment: .leading
+                    )
+                    .clipShape(Capsule())
+            }
+            .frame(height: 24)
+            .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+        }
+        .padding(AppSpacing.large)
+        .background(Color.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.large))
+    }
+
+    // MARK: - Streak Pill (titleAccessory)
+    // Source: HomeView lines 310–322
+    // Orange flame + count, orange.opacity(0.15) Capsule background
+    private var streakPill: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "flame.fill")
+                .font(.system(size: 14))
+                .foregroundColor(.orange)
+                .scaleEffect(isAnimating ? 1.2 : 1.0)
+            Text("\(user.streakCount)")
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundColor(.orange)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Capsule().fill(Color.orange.opacity(0.15)))
+        .onAppear {
+            withAnimation(Animation.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
+                isAnimating = true
+            }
+        }
+    }
+
+    // MARK: - Header Trailing (trophy + bell + person.fill)
+    // Source: HomeView lines 251–307
+    // All icons use Color.secondary.opacity(0.15) circle background
+    private var headerTrailing: some View {
+        HStack(spacing: 8) {
+            // Trophy with circular progress ring
+            ZStack {
+                Image(systemName: "trophy.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.primary)
+                    .frame(width: 44, height: 44)
+                    .background(Color.secondary.opacity(0.15))
+                    .clipShape(Circle())
+
+                CircularProgressView(progress: 0.6, color: .primary)
+                    .frame(width: 44, height: 44)
+            }
+
+            // Bell (with notification badge)
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: "bell.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.primary)
+                    .frame(width: 44, height: 44)
+                    .background(Color.secondary.opacity(0.15))
+                    .clipShape(Circle())
+
+                // Red badge (shown when there are pending requests)
+                Circle()
+                    .fill(Color.red)
+                    .frame(width: 10, height: 10)
+                    .offset(x: -2, y: 2)
+            }
+
+            // Profile — person.fill icon (not ProfileAvatar)
+            Image(systemName: "person.fill")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.primary)
+                .frame(width: 44, height: 44)
+                .background(Color.secondary.opacity(0.15))
+                .clipShape(Circle())
+        }
+    }
+}
+
+// MARK: - Native Ad Placeholder
+// Matches the shimmer/card footprint of NativeAdView while Firebase-free.
+private struct MockNativeAdView: View {
+    var body: some View {
+        HStack(spacing: AppSpacing.element) {
+            RoundedRectangle(cornerRadius: AppRadius.small)
+                .fill(Color.secondaryCardBackground)
+                .frame(width: 56, height: 56)
+            VStack(alignment: .leading, spacing: 4) {
+                RoundedRectangle(cornerRadius: 4).fill(Color.secondaryCardBackground).frame(width: 120, height: 12)
+                RoundedRectangle(cornerRadius: 4).fill(Color.secondaryCardBackground).frame(width: 80, height: 10)
+            }
+            Spacer()
+            Text("Ad")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 6).padding(.vertical, 2)
+                .overlay(RoundedRectangle(cornerRadius: 2).stroke(Color.secondary.opacity(0.4)))
         }
         .padding(AppSpacing.element)
         .background(Color.cardBackground)
         .cornerRadius(AppRadius.medium)
-    }
-
-    // MARK: - Overlay Header
-
-    private var overlayHeader: some View {
-        HStack {
-            // Left: greeting + streak
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Home")
-                    .font(AppTypography.titleDisplay)
-                    .foregroundColor(.primary)
-            }
-
-            Spacer()
-
-            // Right: streak + missions + bell + avatar
-            HStack(spacing: AppSpacing.compact) {
-                // Streak pill
-                HStack(spacing: 4) {
-                    Image(systemName: "flame.fill")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.orange)
-                    Text("\(streak)")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(.primary)
-                }
-                .padding(.horizontal, 10).padding(.vertical, 6)
-                .background(Color.cardBackground)
-                .clipShape(Capsule())
-
-                // Trophy / missions
-                ZStack {
-                    Image(systemName: "trophy.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.primary)
-                    CircularProgressView(progress: 0.6, lineWidth: 3, color: Color(hex: "#F5A623"))
-                        .frame(width: 36, height: 36)
-                }
-                .frame(width: AppSize.iconButton, height: AppSize.iconButton)
-                .background(Color.primary.opacity(0.05))
-                .clipShape(Circle())
-
-                // Bell
-                Image(systemName: "bell.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.primary)
-                    .frame(width: AppSize.iconButton, height: AppSize.iconButton)
-                    .background(Color.primary.opacity(0.05))
-                    .clipShape(Circle())
-
-                // Profile avatar
-                ProfileAvatar(text: user.initial, color: user.color, size: 36)
-            }
-        }
-        .padding(.horizontal, AppSpacing.margin)
-        .padding(.top, 16)
-        .padding(.bottom, 12)
-        .background(Color.backgroundPrimary)
     }
 }
