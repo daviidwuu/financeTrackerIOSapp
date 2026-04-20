@@ -2,7 +2,7 @@ import SwiftUI
 
 struct CircularProgressView: View {
     let progress: Double
-    let lineWidth: CGFloat = 4
+    var lineWidth: CGFloat = 4
     var color: Color = .blue
     
     var body: some View {

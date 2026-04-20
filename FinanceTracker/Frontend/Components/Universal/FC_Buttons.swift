@@ -24,7 +24,6 @@ import SwiftUI
     }
     .padding(AppSpacing.margin)
     .background(Color.backgroundPrimary)
-    .previewDisplayName("Primary Button")
 }
 
 #Preview("Secondary Button — All States") {
@@ -40,7 +39,6 @@ import SwiftUI
     }
     .padding(AppSpacing.margin)
     .background(Color.backgroundPrimary)
-    .previewDisplayName("Secondary Button")
 }
 
 #Preview("Small Buttons") {
@@ -65,7 +63,6 @@ import SwiftUI
     }
     .padding(AppSpacing.margin)
     .background(Color.backgroundPrimary)
-    .previewDisplayName("Small Buttons")
 }
 
 #Preview("Button Pair — Primary + Secondary") {
@@ -79,7 +76,6 @@ import SwiftUI
     }
     .padding(AppSpacing.margin)
     .background(Color.backgroundPrimary)
-    .previewDisplayName("Button Pair")
 }
 
 #Preview("Icon Buttons (circle)") {
@@ -131,7 +127,6 @@ import SwiftUI
     }
     .padding(AppSpacing.margin)
     .background(Color.backgroundPrimary)
-    .previewDisplayName("Icon Buttons")
 }
 
 #Preview("Accept / Decline Buttons") {
@@ -139,7 +134,6 @@ import SwiftUI
     AcceptDeclineButtons(onAccept: {}, onDecline: {})
         .padding(AppSpacing.margin)
         .background(Color.backgroundPrimary)
-        .previewDisplayName("Accept / Decline")
 }
 
 #Preview("Dashed Add Button") {
@@ -148,5 +142,4 @@ import SwiftUI
         .appCardStyle()
         .padding(AppSpacing.margin)
         .background(Color.backgroundPrimary)
-        .previewDisplayName("Dashed Add")
 }

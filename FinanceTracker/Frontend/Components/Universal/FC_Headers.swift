@@ -67,7 +67,6 @@ import SwiftUI
         }
         .navigationBarHidden(true)
     }
-    .previewDisplayName("Root — Home (no scroll)")
 }
 
 #Preview("OverlayHeader — Root Mode (Welcome style)") {
@@ -89,7 +88,6 @@ import SwiftUI
         }
         .navigationBarHidden(true)
     }
-    .previewDisplayName("Root — Welcome Style")
 }
 
 #Preview("OverlayHeader — Navigation Mode (Settings / Detail)") {
@@ -119,7 +117,6 @@ import SwiftUI
         }
         .navigationBarHidden(true)
     }
-    .previewDisplayName("Navigation — Settings")
 }
 
 #Preview("OverlayHeader — Navigation Mode (Sheet / xmark)") {
@@ -137,7 +134,6 @@ import SwiftUI
         }
         .navigationBarHidden(true)
     }
-    .previewDisplayName("Navigation — xmark (sheet)")
 }
 
 // MARK: - ModalHeader Previews
@@ -209,7 +205,6 @@ import SwiftUI
     }
     .background(Color.backgroundPrimary)
     .ignoresSafeArea(edges: .top)
-    .previewDisplayName("Transaction Detail Header")
 }
 
 #Preview("DetailHeaderView — Group Detail") {
@@ -244,7 +239,6 @@ import SwiftUI
     }
     .background(Color.backgroundPrimary)
     .ignoresSafeArea(edges: .top)
-    .previewDisplayName("Group Detail Header")
 }
 
 #Preview("DetailHeaderView — Friend Detail") {
@@ -273,5 +267,4 @@ import SwiftUI
     }
     .background(Color.backgroundPrimary)
     .ignoresSafeArea(edges: .top)
-    .previewDisplayName("Friend Detail Header")
 }

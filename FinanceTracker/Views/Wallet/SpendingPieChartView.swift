@@ -149,15 +149,14 @@ struct SpendingPieChartView: View {
             centerLabel
 
             // Tap overlay: maps touch angle to the correct sector.
-            // Uses simultaneousGesture so vertical drags are still passed
-            // through to the parent List's scroll recogniser.
+            // onTapGesture has built-in scroll-vs-tap discrimination and
+            // does not compete with the parent List's scroll gesture.
             GeometryReader { geo in
                 Color.clear
                     .contentShape(Rectangle())
-                    .simultaneousGesture(
-                        DragGesture(minimumDistance: 0)
-                            .onEnded { handleChartTap(at: $0.location, in: geo) }
-                    )
+                    .onTapGesture(coordinateSpace: .local) { location in
+                        handleChartTap(at: location, in: geo)
+                    }
             }
             .frame(height: 220)
         }

@@ -14,13 +14,11 @@ import SwiftUI
 
 #Preview("Component Catalog — Light") {
     FC_ComponentCatalogView()
-        .previewDisplayName("Catalog — Light")
 }
 
 #Preview("Component Catalog — Dark") {
     FC_ComponentCatalogView()
         .preferredColorScheme(.dark)
-        .previewDisplayName("Catalog — Dark")
 }
 
 // MARK: - View

@@ -53,7 +53,6 @@ import SwiftUI
         Button("Continue") {}
             .buttonStyle(PrimaryButtonStyle())
     }
-    .previewDisplayName("Step 1 — Amount")
 }
 
 #Preview("WizardLayout — Step 2 (Category Select)") {
@@ -103,7 +102,6 @@ import SwiftUI
                 .buttonStyle(SecondaryButtonStyle())
         }
     }
-    .previewDisplayName("Step 2 — Category")
 }
 
 #Preview("WizardLayout — Step 3 (Details)") {
@@ -172,7 +170,6 @@ import SwiftUI
                 .buttonStyle(SecondaryButtonStyle())
         }
     }
-    .previewDisplayName("Step 3 — Details")
 }
 
 #Preview("WizardLayout — Group Creation Step 1") {
@@ -210,5 +207,4 @@ import SwiftUI
         Button("Continue") {}
             .buttonStyle(PrimaryButtonStyle())
     }
-    .previewDisplayName("Group — Step 1 (Name)")
 }

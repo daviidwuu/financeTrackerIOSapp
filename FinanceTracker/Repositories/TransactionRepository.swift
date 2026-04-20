@@ -22,10 +22,15 @@ class TransactionRepository: ObservableObject {
     private var allTransactionsListener: ListenerRegistration? // For savings pool
     private var currentLimit: Int = 50
     private var currentMonth: Date? = nil // Track selected month
-    
+
     private var calendarMonth: Date = Date() // Track selected month specifically for the Calendar
     private var currentMonthListenerMonth: Date? = nil // Track which calendar month the listener covers
     private var significantTimeChangeCancellable: AnyCancellable? // Refresh month listener at midnight
+
+    // Cursor-based pagination state for all-time history (savings pool)
+    private var allTransactionsLastDocument: DocumentSnapshot?
+    private var isLoadingHistory: Bool = false
+    @Published var canLoadMoreHistory: Bool = false
 
     // Optimistic Deletion Cache — in-memory ONLY, never persisted to UserDefaults
     private var optimisticDeletedTransactions: [String: FirestoreModels.TransactionModel] = [:]
@@ -157,7 +162,7 @@ class TransactionRepository: ObservableObject {
                         var tx = try document.data(as: FirestoreModels.TransactionModel.self)
                         tx.amount = FirestoreModels.TransactionModel.normalizeAmount(tx.amount, type: tx.type)
                         guard let id = tx.id,
-                              self.optimisticDeletedTransactions[id] == nil else {
+                              !self.optimisticDeletedTransactions.keys.contains(id) else {
                             return nil
                         }
                         // REMOVED pendingDeleteIds check - if transaction exists in Firestore, show it
@@ -208,7 +213,7 @@ class TransactionRepository: ObservableObject {
                     var tx = try document.data(as: FirestoreModels.TransactionModel.self)
                     tx.amount = FirestoreModels.TransactionModel.normalizeAmount(tx.amount, type: tx.type)
                     guard let id = tx.id,
-                          self.optimisticDeletedTransactions[id] == nil else {
+                          !self.optimisticDeletedTransactions.keys.contains(id) else {
                         return nil
                     }
                     return tx
@@ -257,7 +262,7 @@ class TransactionRepository: ObservableObject {
                     var tx = try document.data(as: FirestoreModels.TransactionModel.self)
                     tx.amount = FirestoreModels.TransactionModel.normalizeAmount(tx.amount, type: tx.type)
                     guard let id = tx.id,
-                          self.optimisticDeletedTransactions[id] == nil else {
+                          !self.optimisticDeletedTransactions.keys.contains(id) else {
                         return nil
                     }
                     return tx
@@ -271,40 +276,68 @@ class TransactionRepository: ObservableObject {
     
     private func startListeningToAllTransactions() {
         guard let userId = userId else { return }
-        
-        allTransactionsListener?.remove()
-        
-        let query = db.collection("users").document(userId).collection("transactions")
-            .order(by: "date", descending: true)
 
-        allTransactionsListener = query.addSnapshotListener { [weak self] snapshot, error in
+        allTransactionsListener?.remove()
+        allTransactionsListener = nil
+        allTransactions = []
+        allTransactionsLastDocument = nil
+        isLoadingHistory = false
+        canLoadMoreHistory = false
+
+        fetchAllTransactionsPage(userId: userId)
+    }
+
+    private func fetchAllTransactionsPage(userId: String) {
+        guard !isLoadingHistory else { return }
+        isLoadingHistory = true
+
+        var query = db.collection("users").document(userId).collection("transactions")
+            .order(by: "date", descending: true)
+            .limit(to: 500)
+
+        if let cursor = allTransactionsLastDocument {
+            query = query.start(afterDocument: cursor)
+        }
+
+        query.getDocuments { [weak self] snapshot, error in
             guard let self = self else { return }
-            
+            self.isLoadingHistory = false
+
             if let error = error {
-                DebugLogger.log("Error fetching all transactions: \(error.localizedDescription)")
+                DebugLogger.log("Error fetching all transactions page: \(error.localizedDescription)")
                 return
             }
-            
-            guard let documents = snapshot?.documents else {
-                self.allTransactions = []
+
+            guard let documents = snapshot?.documents, !documents.isEmpty else {
+                DispatchQueue.main.async { self.canLoadMoreHistory = false }
                 return
             }
-            
-            self.allTransactions = documents.compactMap { document in
+
+            let page = documents.compactMap { document -> FirestoreModels.TransactionModel? in
                 do {
                     var tx = try document.data(as: FirestoreModels.TransactionModel.self)
                     tx.amount = FirestoreModels.TransactionModel.normalizeAmount(tx.amount, type: tx.type)
                     guard let id = tx.id,
-                          self.optimisticDeletedTransactions[id] == nil else {
-                        return nil
-                    }
+                          !self.optimisticDeletedTransactions.keys.contains(id) else { return nil }
                     return tx
                 } catch {
-                    DebugLogger.log("Failed to decode transaction \(document.documentID) in startListeningToAllTransactions: \(error)")
+                    DebugLogger.log("Failed to decode transaction \(document.documentID) in fetchAllTransactionsPage: \(error)")
                     return nil
                 }
             }
+
+            DispatchQueue.main.async {
+                self.allTransactions.append(contentsOf: page)
+                self.allTransactionsLastDocument = documents.last
+                self.canLoadMoreHistory = documents.count >= 500
+            }
         }
+    }
+
+    /// Load the next page of all-time history for savings pool calculation.
+    func loadMoreHistory() {
+        guard let userId = userId, canLoadMoreHistory, !isLoadingHistory else { return }
+        fetchAllTransactionsPage(userId: userId)
     }
     
     func loadMore() {
@@ -326,6 +359,9 @@ class TransactionRepository: ObservableObject {
         calendarListener = nil
         allTransactionsListener?.remove()
         allTransactionsListener = nil
+        allTransactionsLastDocument = nil
+        isLoadingHistory = false
+        canLoadMoreHistory = false
         userId = nil
         transactions = []
         currentMonthTransactions = []

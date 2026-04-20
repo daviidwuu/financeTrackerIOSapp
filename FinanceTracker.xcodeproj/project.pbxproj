@@ -113,6 +113,7 @@
 				"/Localized: LaunchScreen.storyboard",
 				AppState.swift,
 				Assets.xcassets,
+				BudgetModels.swift,
 				"Color+Extensions.swift",
 				ContentView.swift,
 				DesignSystem.swift,
@@ -121,13 +122,24 @@
 				Features/AppIntents/TransactionCategoryEntity.swift,
 				FinanceTrackerApp.swift,
 				FirestoreModels.swift,
+				FriendModels.swift,
 				"GoogleService-Info.plist",
+				GroupModels.swift,
 				Info.plist,
 				Models.swift,
 				PrivacyInfo.xcprivacy,
+				ProfileState.swift,
+				TransactionModels.swift,
+				UserModels.swift,
 				Utilities/DebugLogger.swift,
 				Utils/NotificationContent.swift,
 				Utils/WidgetDataManager.swift,
+				ViewModels/FriendDetailViewModel.swift,
+				ViewModels/SplitConfigurationViewModel.swift,
+				ViewModels/WalletViewModel.swift,
+				Views/Wallet/WalletBudgetsSection.swift,
+				Views/Wallet/WalletRecurringSection.swift,
+				Views/Wallet/WalletSavingGoalsSection.swift,
 			);
 			target = 4A7997D82F3661B800F57974 /* FinanceTracker copy */;
 		};
@@ -539,7 +551,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = FinanceWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = H6U663Z4ZQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FinanceWidget/Info.plist;
@@ -570,7 +582,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = FinanceWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = H6U663Z4ZQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FinanceWidget/Info.plist;
@@ -602,7 +614,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = FinanceTracker/FinanceTracker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = H6U663Z4ZQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "FinanceTracker copy-Info.plist";
@@ -645,7 +657,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = FinanceTracker/FinanceTracker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = H6U663Z4ZQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "FinanceTracker copy-Info.plist";
@@ -688,7 +700,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = FinanceTracker/FinanceTracker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = H6U663Z4ZQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FinanceTracker/Info.plist;
@@ -731,7 +743,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = FinanceTracker/FinanceTracker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = H6U663Z4ZQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FinanceTracker/Info.plist;
@@ -894,7 +906,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = H6U663Z4ZQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
@@ -916,7 +928,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = H6U663Z4ZQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
@@ -937,7 +949,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = H6U663Z4ZQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.1.3;
@@ -957,7 +969,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = H6U663Z4ZQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.1.3;
