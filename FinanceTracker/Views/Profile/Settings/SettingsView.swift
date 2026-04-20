@@ -53,7 +53,7 @@ struct SettingsView: View {
                         }
 
                         MenuDivider()
-                        
+
                         MenuControlRow(
                             icon: "waveform",
                             title: "Haptic Feedback"

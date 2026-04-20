@@ -3,18 +3,18 @@ import FirebaseFirestore
 
 struct FriendDetailView: View {
     let friend: FirestoreModels.Friend
-    
+
     @EnvironmentObject var appState: AppState
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
     @StateObject private var repo = SocialRepository()
-    
-    // UI State
+    @StateObject private var viewModel = FriendDetailViewModel()
+
     enum FriendSheet: Identifiable, Equatable {
         case addExpense
         case settleUp
         case transactionDetail(FirestoreModels.TransactionModel)
-        
+
         var id: String {
             switch self {
             case .addExpense: return "addExpense"
@@ -22,46 +22,32 @@ struct FriendDetailView: View {
             case .transactionDetail(let tx): return "tx-\(tx.id ?? "")"
             }
         }
-        
-        static func == (lhs: FriendSheet, rhs: FriendSheet) -> Bool {
-            return lhs.id == rhs.id
-        }
+
+        static func == (lhs: FriendSheet, rhs: FriendSheet) -> Bool { lhs.id == rhs.id }
     }
 
     @State private var activeSheet: FriendSheet?
     @State private var transactionToEdit: FirestoreModels.TransactionModel?
     @State private var requestToAccept: FirestoreModels.SplitRequest?
-    
-    // Undo State
-    @State private var recentlyToggledTx: FirestoreModels.TransactionModel?
-    @State private var recentlyPaidSplitIds: Set<String> = []
-    @State private var showUndoToast = false
-    @State private var undoWorkItem: DispatchWorkItem?
-    
-    // Derived State
+
+    // MARK: - Derived State
+
     private var visibleRequests: [FirestoreModels.SplitRequest] {
-        repo.friendTransactions
-            .filter { !recentlyPaidSplitIds.contains($0.id ?? "") }
-            .compactMap { reconstructRequest(from: $0) }
-            .sorted { $0.createdAt > $1.createdAt }
+        viewModel.visibleRequests(from: repo.friendTransactions, currentUserId: appState.currentUserId, friend: friend)
     }
 
     private var incomingActionRequiredRequests: [FirestoreModels.SplitRequest] {
-        visibleRequests.filter {
-            $0.presentation(for: appState.currentUserId, counterpartyName: friend.name).socialBucket == .actionRequired
-        }
+        viewModel.incomingActionRequired(from: visibleRequests, currentUserId: appState.currentUserId, friendName: friend.name)
     }
 
     private var outgoingOutstandingRequests: [FirestoreModels.SplitRequest] {
-        visibleRequests.filter {
-            $0.presentation(for: appState.currentUserId, counterpartyName: friend.name).socialBucket == .yourRequests
-        }
+        viewModel.outgoingOutstanding(from: visibleRequests, currentUserId: appState.currentUserId, friendName: friend.name)
     }
-    
+
     var body: some View {
         ZStack(alignment: .bottom) {
             Color.backgroundPrimary.edgesIgnoringSafeArea(.all)
-            
+
             List {
                 headerSection
                 actionRequiredSection
@@ -72,13 +58,12 @@ struct FriendDetailView: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .scrollIndicators(.hidden)
-            
-            // Undo Toast
-            if showUndoToast {
-                UndoToast(text: "Status updated", onUndo: undoToggle)
-                .padding(.bottom, 20)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-                .zIndex(100)
+
+            if viewModel.showUndoToast {
+                UndoToast(text: "Status updated", onUndo: { undoToggle() })
+                    .padding(.bottom, 20)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .zIndex(100)
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -88,15 +73,20 @@ struct FriendDetailView: View {
             switch sheet {
             case .addExpense:
                 EditGroupTransactionWizardView(group: nil, preSelectedFriend: friend, transactionToEdit: nil) { amount, note, category, splits, originalAmount, currencyCode, exchangeRate in
-                    handleAddExpense(amount: amount, note: note, category: category, splits: splits, originalAmount: originalAmount, currencyCode: currencyCode, exchangeRate: exchangeRate)
+                    viewModel.handleAddExpense(
+                        amount: amount, note: note, category: category, splits: splits,
+                        originalAmount: originalAmount, currencyCode: currencyCode, exchangeRate: exchangeRate,
+                        currentUserId: appState.currentUserId, userName: appState.userName,
+                        friendCache: appState.friendRepo.friends, groupCache: appState.groupRepo.groups,
+                        onComplete: { loadData() }
+                    )
                 }
                 .presentationDetents([.large])
             case .settleUp:
                 SettleUpWizardView(group: nil, preSelectedFriend: friend)
                     .presentationDetents([.large])
             case .transactionDetail(let tx):
-                 // Always show SplitRequestDetailView if we can reconstruct the request
-                 if let req = reconstructRequest(from: tx) {
+                if let req = viewModel.reconstructRequest(from: tx, currentUserId: appState.currentUserId, friend: friend) {
                     SplitRequestDetailView(request: req)
                         .presentationDetents([.medium, .large])
                 } else {
@@ -105,44 +95,50 @@ struct FriendDetailView: View {
             }
         }
         .sheet(item: $transactionToEdit) { tx in
-             // Construct mock group transaction for the wizard
-             let groupTx = FirestoreModels.GroupTransaction(
-                 id: nil,
-                 title: tx.title,
-                 amount: tx.amount,
-                 payerId: tx.userId,
-                 payerName: appState.userName,
-                 receiverId: nil,
-                 receiverName: nil,
-                 date: tx.date,
-                 type: tx.type,
-                 currencyCode: nil,
-                 note: tx.note,
-                 originalTransactionId: tx.id,
-                 originalAmount: nil,
-                 exchangeRate: nil,
-                 editHistory: nil
-             )
-             
-             EditGroupTransactionWizardView(group: nil, preSelectedFriend: friend, transactionToEdit: groupTx) { amount, note, category, splits, originalAmount, currencyCode, exchangeRate in
-                 handleUpdateTransaction(originalTx: tx, amount: amount, note: note, category: category, splits: splits, originalAmount: originalAmount, currencyCode: currencyCode, exchangeRate: exchangeRate)
-             }
-             .presentationDetents([.large])
+            let groupTx = FirestoreModels.GroupTransaction(
+                id: nil,
+                title: tx.title,
+                amount: tx.amount,
+                payerId: tx.userId,
+                payerName: appState.userName,
+                receiverId: nil,
+                receiverName: nil,
+                date: tx.date,
+                type: tx.type,
+                currencyCode: nil,
+                note: tx.note,
+                originalTransactionId: tx.id,
+                originalAmount: nil,
+                exchangeRate: nil,
+                editHistory: nil
+            )
+            EditGroupTransactionWizardView(group: nil, preSelectedFriend: friend, transactionToEdit: groupTx) { amount, note, category, splits, originalAmount, currencyCode, exchangeRate in
+                viewModel.handleUpdateTransaction(
+                    originalTx: tx, amount: amount, note: note, category: category, splits: splits,
+                    originalAmount: originalAmount, currencyCode: currencyCode, exchangeRate: exchangeRate,
+                    currentUserId: appState.currentUserId, userName: appState.userName,
+                    friendCache: appState.friendRepo.friends, groupCache: appState.groupRepo.groups,
+                    budgetRepo: appState.budgetRepo,
+                    onComplete: { transactionToEdit = nil; loadData() }
+                )
+            }
+            .presentationDetents([.large])
         }
         .sheet(item: $requestToAccept) { request in
             AddTransactionView(requestToAccept: request, onSave: { transaction in
-                acceptRequest(request, transaction: transaction)
+                viewModel.acceptRequest(request, transaction: transaction, currentUserId: appState.currentUserId) {
+                    requestToAccept = nil
+                    loadData()
+                }
             })
         }
         .onChange(of: activeSheet) { _, newValue in
-             if newValue == nil {
-                 loadData()
-             }
+            if newValue == nil { loadData() }
         }
     }
 
     // MARK: - Sections
-    
+
     private var headerSection: some View {
         SocialDetailHeaderSection(
             title: friend.name,
@@ -155,35 +151,26 @@ struct FriendDetailView: View {
                 )
             },
             subtitle: {
-                SocialHeaderPill {
-                    Text("@\(friend.username ?? "")")
-                }
+                SocialHeaderPill { Text("@\(friend.username ?? "")") }
             },
             onSettle: { activeSheet = .settleUp },
             onAddExpense: { activeSheet = .addExpense }
         )
     }
-    
+
     @ViewBuilder
     private var actionRequiredSection: some View {
         if !incomingActionRequiredRequests.isEmpty {
             Section {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Image(systemName: "exclamationmark.circle.fill")
-                            .foregroundColor(.orange)
-                        Text("Action Required")
-                            .font(.headline)
+                        Image(systemName: "exclamationmark.circle.fill").foregroundColor(.orange)
+                        Text("Action Required").font(.headline)
                         Spacer()
                         Text("\(incomingActionRequiredRequests.count)")
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .padding(6)
-                            .background(AppColors.functionalExpense)
-                            .clipShape(Circle())
+                            .font(.caption).fontWeight(.bold).foregroundColor(.white)
+                            .padding(6).background(AppColors.functionalExpense).clipShape(Circle())
                     }
-                    
                     VStack(spacing: 12) {
                         ForEach(incomingActionRequiredRequests) { split in
                             let presentation = split.presentation(for: appState.currentUserId, counterpartyName: friend.name)
@@ -192,11 +179,17 @@ struct FriendDetailView: View {
                                 userId: appState.currentUserId,
                                 presentation: presentation,
                                 onAction: { action in
-                                    handleSplitCardAction(action, split: split)
+                                    viewModel.handleSplitCardAction(
+                                        action, split: split,
+                                        currentUserId: appState.currentUserId, currentUserName: appState.userName,
+                                        friendTransactions: repo.friendTransactions,
+                                        onLoadData: loadData,
+                                        onRequestToAccept: { requestToAccept = $0 }
+                                    )
                                 }
                             )
-                            .onTapGesture { HapticManager.shared.light(); 
-                                // Find original transaction to select
+                            .onTapGesture {
+                                HapticManager.shared.light()
                                 if let tx = repo.friendTransactions.first(where: { $0.id == split.id }) {
                                     activeSheet = .transactionDetail(tx)
                                 }
@@ -218,20 +211,13 @@ struct FriendDetailView: View {
             Section {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Image(systemName: "paperplane.fill")
-                            .foregroundColor(.blue)
-                        Text("Your Requests")
-                            .font(.headline)
+                        Image(systemName: "paperplane.fill").foregroundColor(.blue)
+                        Text("Your Requests").font(.headline)
                         Spacer()
                         Text("\(outgoingOutstandingRequests.count)")
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .padding(6)
-                            .background(Color.blue)
-                            .clipShape(Circle())
+                            .font(.caption).fontWeight(.bold).foregroundColor(.white)
+                            .padding(6).background(Color.blue).clipShape(Circle())
                     }
-
                     VStack(spacing: 12) {
                         ForEach(outgoingOutstandingRequests) { split in
                             let presentation = split.presentation(for: appState.currentUserId, counterpartyName: friend.name)
@@ -240,10 +226,17 @@ struct FriendDetailView: View {
                                 userId: appState.currentUserId,
                                 presentation: presentation,
                                 onAction: { action in
-                                    handleSplitCardAction(action, split: split)
+                                    viewModel.handleSplitCardAction(
+                                        action, split: split,
+                                        currentUserId: appState.currentUserId, currentUserName: appState.userName,
+                                        friendTransactions: repo.friendTransactions,
+                                        onLoadData: loadData,
+                                        onRequestToAccept: { requestToAccept = $0 }
+                                    )
                                 }
                             )
-                            .onTapGesture { HapticManager.shared.light();
+                            .onTapGesture {
+                                HapticManager.shared.light()
                                 if let tx = repo.friendTransactions.first(where: { $0.id == split.id }) {
                                     activeSheet = .transactionDetail(tx)
                                 }
@@ -258,22 +251,17 @@ struct FriendDetailView: View {
             .listRowBackground(Color.clear)
         }
     }
-    
+
     private var overviewSection: some View {
         Section {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Overview")
-                    .font(.headline)
-                
+                Text("Overview").font(.headline)
                 let balance = repo.friendBalances.values.reduce(0, +)
-                let totalSharedByCurrency = calculateTotalSharedByCurrency(transactions: repo.friendTransactions)
-                let totalSharedText = formatCurrencyBreakdown(totalSharedByCurrency)
-                
+                let totalSharedText = viewModel.formatCurrencyBreakdown(
+                    viewModel.totalSharedByCurrency(transactions: repo.friendTransactions)
+                )
                 SocialTwoCardRow(
-                    left: SocialStatCard(
-                        title: "Total Shared",
-                        value: totalSharedText
-                    ),
+                    left: SocialStatCard(title: "Total Shared", value: totalSharedText),
                     right: SocialStatCard(
                         title: balance >= 0 ? "Owed to You" : "You Owe",
                         value: String(format: "$%.2f", abs(balance)),
@@ -288,98 +276,58 @@ struct FriendDetailView: View {
         .listRowBackground(Color.clear)
     }
 
-    private func calculateTotalSharedByCurrency(transactions: [FirestoreModels.TransactionModel]) -> [String: Double] {
-        var totals: [String: Double] = [:]
-        var seen: Set<String> = []
-        
-        for tx in transactions {
-            if tx.type == "settlement" {
-                continue
-            }
-            
-            let currency = tx.currencyCode ?? CurrencyManager.shared.mainCurrency
-            let identity = tx.source ?? tx.id ?? UUID().uuidString
-            let key = "\(currency)|\(identity)"
-            
-            if seen.contains(key) {
-                continue
-            }
-            seen.insert(key)
-            
-            let value = abs(tx.originalAmount ?? tx.amount)
-            totals[currency, default: 0] += value
-        }
-        
-        return totals.filter { abs($0.value) > 0.01 }
-    }
-    
-    private func formatCurrencyBreakdown(_ totals: [String: Double]) -> String {
-        let sorted = totals.sorted(by: { $0.key < $1.key })
-        if sorted.isEmpty {
-            return String(format: "$%.2f", 0.0)
-        }
-        
-        func format(amount: Double, currencyCode: String) -> String {
-            let formatter = NumberFormatter()
-            formatter.numberStyle = .currency
-            formatter.currencyCode = currencyCode
-            formatter.maximumFractionDigits = 2
-            formatter.minimumFractionDigits = 2
-            return formatter.string(from: NSNumber(value: amount)) ?? String(format: "%.2f %@", amount, currencyCode)
-        }
-        
-        if sorted.count == 1, let (code, amount) = sorted.first {
-            return format(amount: amount, currencyCode: code)
-        }
-        
-        return sorted
-            .map { code, amount in "\(code) \(format(amount: amount, currencyCode: code))" }
-            .joined(separator: "\n")
-    }
-    
     private var recentActivitySection: some View {
-        Section(header: 
-            Text("Recent Activity")
-                .font(.headline)
-                .padding(.vertical, 8)
+        Section(header:
+            Text("Recent Activity").font(.headline).padding(.vertical, 8)
         ) {
             if repo.isLoading && repo.friendTransactions.isEmpty {
                 ProgressView().padding()
-                 .listRowSeparator(.hidden)
-                 .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
             } else if repo.friendTransactions.isEmpty {
                 ContentUnavailableView("No activity", systemImage: "clock.arrow.circlepath", description: Text("Shared expenses will appear here."))
-                 .listRowSeparator(.hidden)
-                 .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
             } else {
                 ForEach(repo.friendTransactions) { transaction in
-                    let request = reconstructRequest(from: transaction)
+                    let request = viewModel.reconstructRequest(from: transaction, currentUserId: appState.currentUserId, friend: friend)
                     let canTogglePayment = request?.canCurrentUserConfirmPaymentReceived(currentUserId: appState.currentUserId) == true
                         || request?.canCurrentUserUndoPaymentReceived(currentUserId: appState.currentUserId) == true
 
                     FriendCardRow(transaction: transaction, friendName: friend.name)
                         .background(Color.cardBackground)
                         .cornerRadius(AppRadius.medium)
-                        .onTapGesture { HapticManager.shared.light();  activeSheet = .transactionDetail(transaction) }
+                        .onTapGesture { HapticManager.shared.light(); activeSheet = .transactionDetail(transaction) }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) { HapticManager.shared.light();  deleteTransaction(transaction) } label: {
+                            Button(role: .destructive) {
+                                HapticManager.shared.light()
+                                viewModel.deleteTransaction(transaction, repo: repo, onLoadData: loadData)
+                            } label: {
                                 Label("Delete", systemImage: "trash")
                             }
                             .tint(.red)
 
                             if canTogglePayment {
                                 let isPaid = request?.status == .paid
-                                Button { HapticManager.shared.light();  toggleTransactionStatus(transaction) } label: {
-                                    Label(isPaid == true ? "Undo Paid" : "Confirm Paid", systemImage: isPaid == true ? "arrow.uturn.backward" : "checkmark.circle")
+                                Button {
+                                    HapticManager.shared.light()
+                                    viewModel.toggleTransactionStatus(
+                                        transaction,
+                                        currentUserId: appState.currentUserId,
+                                        currentUserName: appState.userName,
+                                        friend: friend,
+                                        onLoadData: loadData
+                                    )
+                                } label: {
+                                    Label(isPaid ? "Undo Paid" : "Confirm Paid",
+                                          systemImage: isPaid ? "arrow.uturn.backward" : "checkmark.circle")
                                 }
-                                .tint(isPaid == true ? .orange : .green)
+                                .tint(isPaid ? .orange : .green)
                             }
                         }
                         .swipeActions(edge: .leading, allowsFullSwipe: true) {
                             if transaction.userId == appState.currentUserId && transaction.type != "income" {
-                                Button { HapticManager.shared.light(); 
-                                    transactionToEdit = transaction
-                                } label: {
+                                Button { HapticManager.shared.light(); transactionToEdit = transaction } label: {
                                     Label("Edit", systemImage: "pencil")
                                 }
                                 .tint(.blue)
@@ -389,8 +337,7 @@ struct FriendDetailView: View {
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                 }
-                
-                // [NEW] Native Ad
+
                 NativeAdView()
                     .listRowInsets(EdgeInsets(top: AppSpacing.compact, leading: AppSpacing.margin, bottom: AppSpacing.compact, trailing: AppSpacing.margin))
                     .listRowSeparator(.hidden)
@@ -399,407 +346,35 @@ struct FriendDetailView: View {
         }
         .headerProminence(.increased)
     }
-    
-    // Logic
+
+    // MARK: - Helpers
+
     private func loadData() {
-        if let fid = friend.id {
-            repo.fetchFriendTransactions(currentUserId: appState.currentUserId, friendId: fid)
-        }
-    }
-    
-    private func sendNudge() {
-        guard let fid = friend.id else { return }
-        HapticManager.shared.medium()
-        Task {
-            do {
-                try await repo.sendNudge(friendId: fid)
-            } catch { DebugLogger.log("Error sending nudge: \(error)") }
-        }
-    }
-    
-    private func handleAddExpense(amount: Double, note: String, category: FirestoreModels.CategoryBudget?, splits: [FirestoreModels.Split], originalAmount: Double?, currencyCode: String?, exchangeRate: Double?) {
-        // Construct TransactionModel
-        // NOTE: In Friend context, we don't have a groupId.
-        // We create a generic transaction and the Manager handles creating split requests.
-        
-        let transaction = FirestoreModels.TransactionModel(
-            userId: appState.currentUserId,
-            title: note.isEmpty ? (category?.category ?? "Expense") : note,
-            subtitle: category?.category, // ✅ FIX: Populate category name for social propagation
-            categoryId: category?.id,
-            amount: -abs(amount),
-            date: Date(),
-            type: "expense",
-            createdAt: Date(),
-            icon: category?.icon, // ✅ FIX: Populate icon for social propagation
-            colorHex: category?.colorHex, // ✅ FIX: Populate color for social propagation
-            note: note,
-            splits: splits,
-            originalAmount: originalAmount,
-            currencyCode: currencyCode,
-            exchangeRate: exchangeRate
-        )
-        
-        Task {
-            do {
-                // Use generic creation. Manager will handle creating split requests based on 'splits' array.
-                // Note: We don't have a 'createFriendTransaction' specifically, but 'createSocialTransaction' can handle nil groupId if designed well,
-                // OR we need to manually handle it if Manager expects group.
-                // Looking at GroupDetailView: SocialTransactionManager.shared.createSocialTransaction
-                // Let's assume it handles nil group or we fallback to friend logic.
-                
-                // Since 'createSocialTransaction' usually writes to group collection, we might need a different path for 1:1.
-                // However, the 'splits' are what matter for 1:1.
-                // If groupId is nil, the manager should just create the split requests.
-                
-                _ = try await SocialTransactionManager.shared.createSocialTransaction(
-                    transaction: transaction,
-                    payerUid: appState.currentUserId,
-                    payerName: appState.userName,
-                    groupId: nil, // No Group
-                    friendCache: appState.friendRepo.friends,
-                    groupCache: appState.groupRepo.groups
-                )
-                
-                await MainActor.run {
-                    HapticManager.shared.success()
-                    loadData()
-                }
-            } catch {
-                DebugLogger.log("Error adding friend expense: \(error)")
-                HapticManager.shared.error()
-            }
-        }
-    }
-    
-    private func handleUpdateTransaction(originalTx: FirestoreModels.TransactionModel, amount: Double, note: String, category: FirestoreModels.CategoryBudget?, splits: [FirestoreModels.Split], originalAmount: Double?, currencyCode: String?, exchangeRate: Double?) {
-        // ✅ FIX: Resolve category for social propagation
-        let resolvedCatId = category?.id ?? originalTx.categoryId
-        let resolvedCategory = category ?? (resolvedCatId.flatMap { appState.budgetRepo.getCategory(for: $0) })
-        
-        let transaction = FirestoreModels.TransactionModel(
-            id: originalTx.id,
-            userId: appState.currentUserId,
-            title: note.isEmpty ? (resolvedCategory?.category ?? "Expense") : note,
-            subtitle: resolvedCategory?.category, // ✅ FIX: Populate category name
-            categoryId: resolvedCatId,
-            amount: -abs(amount),
-            date: originalTx.date,
-            type: originalTx.type,
-            createdAt: originalTx.createdAt,
-            icon: resolvedCategory?.icon, // ✅ FIX: Populate icon
-            colorHex: resolvedCategory?.colorHex, // ✅ FIX: Populate color
-            note: note,
-            splits: splits,
-            originalAmount: originalAmount ?? originalTx.originalAmount,
-            currencyCode: currencyCode ?? originalTx.currencyCode,
-            exchangeRate: exchangeRate ?? originalTx.exchangeRate
-        )
-        
-        Task {
-            do {
-                _ = try await SocialTransactionManager.shared.createSocialTransaction(
-                    transaction: transaction,
-                    payerUid: appState.currentUserId,
-                    payerName: appState.userName,
-                    groupId: nil,
-                    friendCache: appState.friendRepo.friends,
-                    groupCache: appState.groupRepo.groups
-                )
-                
-                await MainActor.run {
-                    HapticManager.shared.success()
-                    loadData()
-                    transactionToEdit = nil
-                }
-            } catch {
-                DebugLogger.log("Error updating friend expense: \(error)")
-                HapticManager.shared.error()
-            }
-        }
-    }
-    
-    private func reconstructRequest(from tx: FirestoreModels.TransactionModel) -> FirestoreModels.SplitRequest? {
-        guard let id = tx.id else { return nil }
-        let status = FirestoreModels.SplitRequest.RequestStatus(rawValue: tx.note ?? "") ?? .pending
-        let isIncome = tx.type == "income"
-        
-        let fromUid = isIncome ? appState.currentUserId : (friend.id ?? "")
-        let fromName = isIncome ? "You" : friend.name
-        let toUid = isIncome ? (friend.id ?? "") : appState.currentUserId
-        let toName = isIncome ? friend.name : "You"
-        
-        // Use the 'source' field if available, which holds the original transaction ID
-        let originalTxId = tx.source ?? id
-        
-        return FirestoreModels.SplitRequest(
-            id: id,
-            transactionId: originalTxId,
-            groupId: nil,
-            fromUid: fromUid,
-            toUid: toUid,
-            fromName: fromName,
-            toName: toName,
-            amount: abs(tx.amount),
-            currency: nil,
-            note: tx.title,
-            category: tx.subtitle,
-            icon: tx.icon,
-            colorHex: tx.colorHex,
-            status: status,
-            dependencyId: nil,
-            lastNudgedAt: nil,
-            originalTotalAmount: tx.originalAmount, // Pass through if available
-            createdAt: tx.date
-        )
+        viewModel.loadData(friendId: friend.id, currentUserId: appState.currentUserId, repo: repo)
     }
 
-    private func acceptRequest(_ request: FirestoreModels.SplitRequest, transaction: TransactionFormData) {
-        Task {
-            do {
-                let acceptedTransaction = transaction.firestoreModel(userId: appState.currentUserId)
-                _ = try await SocialTransactionManager.shared.acceptSplitRequest(
-                    request: request,
-                    acceptedTransaction: acceptedTransaction,
-                    currentUserId: appState.currentUserId
-                )
-
-                NotificationManager.shared.sendTransactionNotification(
-                    amount: acceptedTransaction.amount,
-                    category: transaction.title,
-                    type: transaction.type,
-                    originalAmount: transaction.originalAmount,
-                    currencyCode: transaction.currencyCode
-                )
-
-                await MainActor.run {
-                    requestToAccept = nil
-                    loadData()
-                }
-            } catch {
-                DebugLogger.log("Failed to accept friend split request: \(error)")
-                HapticManager.shared.error()
-            }
-        }
-    }
-
-    private func handleSplitCardAction(_ action: RequestAction, split: FirestoreModels.SplitRequest) {
-        switch action {
-        case .acceptSplit:
-            requestToAccept = split
-        case .declineSplit:
-            resolveSplitAction(split)
-        case .acceptSettlement:
-            acceptSettlement(split)
-        case .declineSettlement:
-            declineSettlement(split)
-        case .confirmPaymentReceived:
-            handleSplitToggle(split)
-        case .cancelRequest:
-            resolveSplitAction(split)
-        case .resendRequest:
-            resendRequest(split)
-        case .nudge:
-            Task {
-                try? await SocialTransactionManager.shared.nudgeSplitRequest(request: split)
-                HapticManager.shared.success()
-            }
-        }
-    }
-    
-    private func handleSplitToggle(_ split: FirestoreModels.SplitRequest) {
-        guard split.canCurrentUserConfirmPaymentReceived(currentUserId: appState.currentUserId) else {
-            HapticManager.shared.error()
-            return
-        }
-        HapticManager.shared.success()
-        withAnimation { 
-            if let id = split.id { recentlyPaidSplitIds.insert(id) }
-        }
-        
-        // Find corresponding transaction model for undo
-        if let tx = repo.friendTransactions.first(where: { $0.id == split.id }) {
-            recentlyToggledTx = tx
-        }
-        
-        withAnimation { showUndoToast = true }
-        undoWorkItem?.cancel()
-        
-        Task {
-            do {
-                _ = try await SocialTransactionManager.shared.markSplitAsPaid(request: split, currentUserId: appState.currentUserId, currentUserName: appState.userName)
-                loadData()
-                try? await Task.sleep(nanoseconds: 2 * 1_000_000_000)
-                await MainActor.run { if let id = split.id { recentlyPaidSplitIds.remove(id) } }
-            } catch {
-                await MainActor.run { 
-                     if let id = split.id { recentlyPaidSplitIds.remove(id) }
-                }
-            }
-        }
-        
-        let workItem = DispatchWorkItem { withAnimation { showUndoToast = false; recentlyToggledTx = nil } }
-        undoWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4, execute: workItem)
-    }
-    
     private func undoToggle() {
-        guard let tx = recentlyToggledTx, let req = reconstructRequest(from: tx) else { return }
-        let targetStatus = (tx.note ?? "").lowercased()
-        
-        HapticManager.shared.medium()
-        
-        Task {
-            do {
-                if targetStatus == "paid" {
-                    _ = try await SocialTransactionManager.shared.markSplitAsPaid(request: req, currentUserId: appState.currentUserId, currentUserName: appState.userName)
-                } else {
-                    try await SocialTransactionManager.shared.unmarkSplitAsPaid(request: req, currentUserId: appState.currentUserId)
-                }
-                
-                await MainActor.run {
-                    showUndoToast = false // Hide toast immediately on undo
-                    if let id = req.id { recentlyPaidSplitIds.remove(id) }
-                    loadData()
-                }
-            } catch {
-                DebugLogger.log("Error undoing toggle: \(error)")
-            }
-        }
-    }
-    
-    private func toggleTransactionStatus(_ transaction: FirestoreModels.TransactionModel) {
-        guard let req = reconstructRequest(from: transaction) else { return }
-        let isPaid = req.status == .paid
-        let canConfirm = req.canCurrentUserConfirmPaymentReceived(currentUserId: appState.currentUserId)
-        let canUndo = req.canCurrentUserUndoPaymentReceived(currentUserId: appState.currentUserId)
-
-        guard (!isPaid && canConfirm) || (isPaid && canUndo) else {
-            HapticManager.shared.error()
-            return
-        }
-        
-        HapticManager.shared.medium()
-        recentlyToggledTx = transaction
-        
-        Task {
-            do {
-                if !isPaid {
-                    _ = try await SocialTransactionManager.shared.markSplitAsPaid(request: req, currentUserId: appState.currentUserId, currentUserName: appState.userName)
-                } else {
-                    try await SocialTransactionManager.shared.unmarkSplitAsPaid(request: req, currentUserId: appState.currentUserId)
-                }
-                
-                await MainActor.run {
-                    showUndoToast = true
-                    loadData()
-                    
-                    undoWorkItem?.cancel()
-                    let workItem = DispatchWorkItem { withAnimation { showUndoToast = false } }
-                    undoWorkItem = workItem
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 4, execute: workItem)
-                }
-            } catch {
-                DebugLogger.log("Error toggling: \(error)")
-            }
-        }
-    }
-
-    private func resendRequest(_ split: FirestoreModels.SplitRequest) {
-        guard let id = split.id else { return }
-        HapticManager.shared.medium()
-        Task {
-            do {
-                try await Firestore.firestore().collection("split_requests").document(id).updateData([
-                    "status": FirestoreModels.SplitRequest.RequestStatus.pending.rawValue,
-                    "createdAt": Date(),
-                    "lastUpdatedBy": appState.currentUserId
-                ])
-                await MainActor.run { loadData() }
-            } catch {
-                DebugLogger.log("Failed to resend friend split request: \(error)")
-                await MainActor.run { HapticManager.shared.error() }
-            }
-        }
-    }
-    
-    private func deleteTransaction(_ transaction: FirestoreModels.TransactionModel) {
-         guard let id = transaction.id else { return }
-        HapticManager.shared.light()
-        withAnimation { repo.removeLocalTransaction(id: id) }
-        Task {
-            do {
-                try await repo.deleteFriendTransaction(transactionId: id)
-            } catch { await MainActor.run { loadData() } }
-        }
-    }
-    
-    // Add missing accept/decline handlers
-    private func acceptSettlement(_ split: FirestoreModels.SplitRequest) {
-        HapticManager.shared.success()
-        Task {
-            do {
-                try await SocialTransactionManager.shared.acceptSettlement(request: split, currentUserId: appState.currentUserId, currentUserName: appState.userName)
-                await MainActor.run { loadData() }
-            } catch {
-                await MainActor.run {
-                    HapticManager.shared.error()
-                }
-            }
-        }
-    }
-    
-    private func declineSettlement(_ split: FirestoreModels.SplitRequest) {
-        HapticManager.shared.heavy()
-        Task {
-            do {
-                try await SocialTransactionManager.shared.declineSettlement(request: split)
-                await MainActor.run { loadData() }
-            } catch {
-                await MainActor.run {
-                    HapticManager.shared.error()
-                }
-            }
-        }
-    }
-    
-    private func resolveSplitAction(_ split: FirestoreModels.SplitRequest) {
-        HapticManager.shared.heavy()
-        if let id = split.id {
-            _ = withAnimation {
-                recentlyPaidSplitIds.insert(id)
-            }
-        }
-        
-        Task {
-            do {
-                try await SocialTransactionManager.shared.resolveSplitRequestAction(request: split)
-                await MainActor.run { loadData() }
-            } catch {
-                await MainActor.run {
-                    HapticManager.shared.error()
-                    if let id = split.id {
-                        recentlyPaidSplitIds.remove(id)
-                    }
-                }
-            }
-        }
+        viewModel.undoToggle(
+            currentUserId: appState.currentUserId,
+            currentUserName: appState.userName,
+            friend: friend,
+            onLoadData: loadData
+        )
     }
 }
 
-// MARK: - Subviews
+// MARK: - FriendCardRow
 
 struct FriendCardRow: View {
     let transaction: FirestoreModels.TransactionModel
     let friendName: String
-    
+
     @EnvironmentObject var appState: AppState
-    @State private var fetchedOriginalAmount: Double?
-    
+
     var body: some View {
         let isYouPaid = transaction.type == "income"
-        let totalAmount = transaction.originalAmount ?? fetchedOriginalAmount
-        
+        let totalAmount = transaction.originalAmount
+
         let subtitle: String
         if let total = totalAmount {
             let formattedTotal = String(format: "$%.2f", total)
@@ -809,19 +384,16 @@ struct FriendCardRow: View {
             let formattedShare = String(format: "$%.2f", shareAmount)
             subtitle = isYouPaid ? "You lent \(formattedShare)" : "\(friendName) lent you \(formattedShare)"
         }
-        
+
         let statusBadge: String? = reconstructedRequest?.presentation(
             for: appState.currentUserId,
             counterpartyName: friendName
         ).badge
-        
+
         let amountColor: Color = transaction.type == "income" ? .green : .red
-        
         let isSettlement = transaction.categoryId == "settlement"
-        
         let payerDisplayName = isYouPaid ? (appState.userName.isEmpty ? "You" : appState.userName) : friendName
-        
-        // ✅ FIX: Resolve category dynamically from categoryId
+
         let resolvedCat: FirestoreModels.CategoryBudget? = {
             if let catId = transaction.categoryId, catId != "settlement" {
                 return appState.budgetRepo.getCategory(for: catId)
@@ -831,7 +403,7 @@ struct FriendCardRow: View {
         let displayCategory = resolvedCat?.category ?? transaction.subtitle ?? "Shared Expense"
         let displayIcon = isSettlement ? "arrow.turn.down.left" : (resolvedCat?.icon ?? transaction.icon ?? "person.2.fill")
         let displayColor = isSettlement ? "#34C759" : (resolvedCat?.colorHex ?? transaction.colorHex ?? "#808080")
-        
+
         return SocialTransactionCardView(
             title: transaction.title,
             subtitle: subtitle,
@@ -850,26 +422,19 @@ struct FriendCardRow: View {
     }
 
     private var reconstructedRequest: FirestoreModels.SplitRequest? {
-        guard let id = transaction.id else { return nil }
-        guard let status = FirestoreModels.SplitRequest.RequestStatus(rawValue: transaction.note ?? "") else {
-            return nil
-        }
+        guard let id = transaction.id,
+              let status = FirestoreModels.SplitRequest.RequestStatus(rawValue: transaction.note ?? "")
+        else { return nil }
 
         let isYouPaid = transaction.type == "income"
-        let fromUid = isYouPaid ? appState.currentUserId : ""
-        let fromName = isYouPaid ? (appState.userName.isEmpty ? "You" : appState.userName) : friendName
-        let toUid = isYouPaid ? "" : appState.currentUserId
-        let toName = isYouPaid ? friendName : "You"
-        let originalTxId = transaction.source ?? id
-
         return FirestoreModels.SplitRequest(
             id: id,
-            transactionId: originalTxId,
+            transactionId: transaction.source ?? id,
             groupId: nil,
-            fromUid: fromUid,
-            toUid: toUid,
-            fromName: fromName,
-            toName: toName,
+            fromUid: isYouPaid ? appState.currentUserId : "",
+            toUid: isYouPaid ? "" : appState.currentUserId,
+            fromName: isYouPaid ? (appState.userName.isEmpty ? "You" : appState.userName) : friendName,
+            toName: isYouPaid ? friendName : "You",
             amount: abs(transaction.amount),
             currency: transaction.currencyCode,
             note: transaction.title,
@@ -882,14 +447,5 @@ struct FriendCardRow: View {
             originalTotalAmount: transaction.originalAmount,
             createdAt: transaction.date
         )
-    }
-    
-    func statusColor(_ status: String) -> Color {
-        switch status.lowercased() {
-        case "pending": return .orange
-        case "paid", "settled", "accepted": return .green
-        case "declined": return .red
-        default: return .secondary
-        }
     }
 }

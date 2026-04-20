@@ -9,10 +9,6 @@ struct AddGroupMemberView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var userPremiumRepo: UserPremiumRepository
     
-    // Repositories
-    @StateObject private var friendRepo = FriendRepository()
-    @StateObject private var guestRepo = GuestRepository()
-    
     // State
     @State private var selectedFriendIds: Set<String> = []
     @State private var createdGuests: [FirestoreModels.Guest] = []
@@ -42,7 +38,7 @@ struct AddGroupMemberView: View {
                                 .textInputAutocapitalization(.never)
                                 .onChange(of: searchText) { _, newValue in
                                     Task {
-                                        try? await friendRepo.searchUsers(username: newValue)
+                                        try? await appState.friendRepo.searchUsers(username: newValue)
                                     }
                                 }
                         }
@@ -61,7 +57,7 @@ struct AddGroupMemberView: View {
                                 .padding(.horizontal)
                             
                             LazyVStack(spacing: 0) {
-                                let filteredFriends = friendRepo.friends.filter {
+                                let filteredFriends = appState.friendRepo.friends.filter {
                                     searchText.isEmpty || $0.name.localizedCaseInsensitiveContains(searchText)
                                 }
                                 
@@ -111,8 +107,8 @@ struct AddGroupMemberView: View {
                                 
                                 // Global Search Results
                                 if !searchText.isEmpty {
-                                    let nonFriends = friendRepo.searchResults.filter { user in
-                                        !friendRepo.friends.contains { $0.id == user.id } &&
+                                    let nonFriends = appState.friendRepo.searchResults.filter { user in
+                                        !appState.friendRepo.friends.contains { $0.id == user.id } &&
                                         !selectedFriendIds.contains(user.id ?? "")
                                     }
                                     
@@ -236,7 +232,7 @@ struct AddGroupMemberView: View {
             .safeAreaInset(edge: .bottom) {
                 VStack {
                    Button(action: { HapticManager.shared.light(); 
-                       let friends = friendRepo.friends.filter { selectedFriendIds.contains($0.id ?? "") }
+                       let friends = appState.friendRepo.friends.filter { selectedFriendIds.contains($0.id ?? "") }
                        onAddMembers(friends, createdGuests)
                        dismiss()
                    }) {
@@ -254,16 +250,9 @@ struct AddGroupMemberView: View {
             }
         }
         .overlayHeader(.navigation(title: "Add Members", onBack: { dismiss() }, backIcon: "xmark"))
-        .onAppear {
-            if !appState.currentUserId.isEmpty {
-                friendRepo.startListening(userId: appState.currentUserId)
-                guestRepo.startListening(userId: appState.currentUserId)
-            }
-        }
         .sheet(isPresented: $showGuestInput) {
             GuestInputView { name in
                 // Typically we create guest in Repo then add to list
-                // Reusing guestRepo logic
                 createGuest(name: name)
             }
             .presentationDetents([.fraction(0.4)])
@@ -287,7 +276,7 @@ struct AddGroupMemberView: View {
         Task {
             do {
                 if !appState.currentUserId.isEmpty {
-                    try await friendRepo.addFriend(
+                    try await appState.friendRepo.addFriend(
                         currentUserId: appState.currentUserId,
                         currentUserInfo: (appState.currentUserUsername, appState.userName, appState.userEmail),
                         targetUser: user
@@ -307,7 +296,7 @@ struct AddGroupMemberView: View {
     private func createGuest(name: String) {
         Task {
             do {
-                let newGuest = try await guestRepo.createGuest(name: name)
+                let newGuest = try await appState.guestRepo.createGuest(name: name)
                 await MainActor.run {
                     HapticManager.shared.success()
                     createdGuests.append(newGuest)

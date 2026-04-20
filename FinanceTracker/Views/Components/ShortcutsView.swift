@@ -123,7 +123,7 @@ struct ShortcutSetupGuideView: View {
                                 "Open the Shortcuts app",
                                 "Tap the Automation tab at the bottom",
                                 "Tap + → New Automation",
-                                "Choose a trigger (e.g. Time of Day)",
+                                "Choose 'Transaction' as the trigger (for Apple Pay)",
                                 "Tap New Blank Automation",
                                 "Search for and add 'Log Transaction'",
                                 "Turn off 'Ask Before Running'"

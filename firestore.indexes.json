@@ -1,4 +1,113 @@
 {
-    "indexes": [],
+    "indexes": [
+        {
+            "collectionGroup": "split_requests",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "toUid", "order": "ASCENDING" },
+                { "fieldPath": "status", "order": "ASCENDING" },
+                { "fieldPath": "createdAt", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "split_requests",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "fromUid", "order": "ASCENDING" },
+                { "fieldPath": "status", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "split_requests",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "fromUid", "order": "ASCENDING" },
+                { "fieldPath": "toUid", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "split_requests",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "groupId", "order": "ASCENDING" },
+                { "fieldPath": "status", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "split_requests",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "groupId", "order": "ASCENDING" },
+                { "fieldPath": "toUid", "order": "ASCENDING" },
+                { "fieldPath": "status", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "split_requests",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "groupId", "order": "ASCENDING" },
+                { "fieldPath": "fromUid", "order": "ASCENDING" },
+                { "fieldPath": "status", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "split_requests",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "transactionId", "order": "ASCENDING" },
+                { "fieldPath": "fromUid", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "split_requests",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "transactionId", "order": "ASCENDING" },
+                { "fieldPath": "groupId", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "groups",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "members", "arrayConfig": "CONTAINS" },
+                { "fieldPath": "updatedAt", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "friend_requests",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "toUid", "order": "ASCENDING" },
+                { "fieldPath": "status", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "friend_requests",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "fromUid", "order": "ASCENDING" },
+                { "fieldPath": "status", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "friend_requests",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "fromUid", "order": "ASCENDING" },
+                { "fieldPath": "toUid", "order": "ASCENDING" },
+                { "fieldPath": "status", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "group_invitations",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "toUid", "order": "ASCENDING" },
+                { "fieldPath": "status", "order": "ASCENDING" }
+            ]
+        }
+    ],
     "fieldOverrides": []
 }

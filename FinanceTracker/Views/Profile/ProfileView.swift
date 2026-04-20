@@ -128,6 +128,15 @@ struct ProfileView: View {
                             }
 
                             MenuDivider()
+
+                            NavigationLink(destination: ShortcutsView()) {
+                                MenuRowView(
+                                    icon: "bolt.fill",
+                                    title: "Shortcuts"
+                                )
+                            }
+
+                            MenuDivider()
                             
                             MenuControlRow(
                                 icon: "waveform",

@@ -2,11 +2,188 @@ const { onDocumentCreated, onDocumentUpdated, onDocumentDeleted } = require('fir
 const admin = require('firebase-admin');
 const { checkIdempotency, getUserInfo, sendNotification } = require('../helpers');
 
+const ACTIVE_STATUSES = ['pending', 'accepted'];
+
+function splitStatusForRequest(status) {
+    return ['pending', 'accepted', 'declined', 'paid'].includes(status) ? status : 'pending';
+}
+
+function isPaidStatus(status) {
+    return status === 'paid';
+}
+
+function isAcceptedStatus(status) {
+    return status === 'accepted' || status === 'paid';
+}
+
+function shouldCreateIncomeForPaidRequest(data) {
+    return data.status === 'paid' && data.isSettlement !== true && !data.settledByRequestId;
+}
+
+function buildSplitProjection(requestId, data, existing = {}) {
+    const paid = isPaidStatus(data.status);
+    const accepted = isAcceptedStatus(data.status);
+    const projection = {
+        ...existing,
+        id: existing.id || data.toUid || requestId,
+        name: data.toName || existing.name || 'Member',
+        amount: data.amount,
+        splitStatus: splitStatusForRequest(data.status),
+        isPaid: paid,
+        isAccepted: accepted,
+        status: splitStatusForRequest(data.status),
+        paidDate: paid ? (existing.paidDate || new Date()) : null,
+        requestId
+    };
+
+    if (data.isGuest) {
+        projection.isGuest = true;
+        projection.guestId = data.toUid;
+        delete projection.friendId;
+    } else {
+        projection.isGuest = false;
+        projection.friendId = data.toUid;
+        delete projection.guestId;
+    }
+
+    if (data.toUsername || existing.username) {
+        projection.username = data.toUsername || existing.username;
+    }
+
+    return projection;
+}
+
+function findSplitIndex(splits, requestId, data) {
+    return splits.findIndex(s => (
+        s.requestId === requestId
+        || (!s.requestId && data.isGuest && s.guestId === data.toUid)
+        || (!s.requestId && !data.isGuest && s.friendId === data.toUid)
+    ));
+}
+
+function groupTransactionQuery(db, groupId, originalTransactionId) {
+    return db.collection('groups')
+        .doc(groupId)
+        .collection('transactions')
+        .where('originalTransactionId', '==', originalTransactionId)
+        .limit(10);
+}
+
+async function syncGroupStatusProjection(db, requestId, before, after) {
+    if (!after.groupId || !after.transactionId) return;
+
+    const snapshot = await groupTransactionQuery(db, after.groupId, after.transactionId).get();
+    if (snapshot.empty) return;
+
+    const batch = db.batch();
+    snapshot.docs.forEach((doc, index) => {
+        if (index === 0) {
+            batch.update(doc.ref, {
+                [`involvedUserStatuses.${after.toUid}`]: after.status
+            });
+        } else {
+            console.warn(`[Split] Duplicate group transaction for ${requestId}; leaving duplicate ${doc.id} unchanged.`);
+        }
+    });
+    await batch.commit();
+}
+
+async function syncSourceTransactionProjection(db, requestId, before, after) {
+    if (!after.transactionId || !after.fromUid || !after.toUid) return;
+
+    const transactionRef = db.collection('users')
+        .doc(after.fromUid)
+        .collection('transactions')
+        .doc(after.transactionId);
+
+    await db.runTransaction(async (t) => {
+        const doc = await t.get(transactionRef);
+        if (!doc.exists) return;
+
+        const txData = doc.data();
+        const splits = Array.isArray(txData.splits) ? [...txData.splits] : [];
+        const splitIndex = findSplitIndex(splits, requestId, after);
+
+        if (after.status === 'declined') {
+            if (splitIndex !== -1) {
+                t.update(transactionRef, {
+                    splits: splits.filter(s => s.requestId !== requestId)
+                });
+                console.log(`[Split] DECLINED: Removed split projection for ${requestId}.`);
+            }
+            return;
+        }
+
+        const existingSplit = splitIndex === -1 ? {} : splits[splitIndex];
+        const nextSplit = buildSplitProjection(requestId, after, existingSplit);
+
+        if (isPaidStatus(after.status) && shouldCreateIncomeForPaidRequest(after)) {
+            const existingIncomeId = existingSplit.incomeTransactionId;
+            const incomeRef = db.collection('users')
+                .doc(after.fromUid)
+                .collection('transactions')
+                .doc(existingIncomeId || `split_income_${requestId}`);
+
+            const incomeData = {
+                title: `Payment received from ${after.toName || 'User'}`,
+                amount: after.amount,
+                date: txData.date || new Date(),
+                note: `Payment received from ${after.toName || 'User'}`,
+                userId: after.fromUid,
+                type: 'income',
+                source: requestId,
+                categoryId: txData.categoryId || null,
+                createdAt: admin.firestore.FieldValue.serverTimestamp()
+            };
+
+            t.set(incomeRef, incomeData, { merge: true });
+            nextSplit.incomeTransactionId = incomeRef.id;
+        }
+
+        if (before && before.status === 'paid' && after.status !== 'paid') {
+            const incomeId = existingSplit.incomeTransactionId;
+            if (incomeId) {
+                const incomeRef = db.collection('users')
+                    .doc(after.fromUid)
+                    .collection('transactions')
+                    .doc(incomeId);
+                t.delete(incomeRef);
+            }
+            nextSplit.incomeTransactionId = null;
+        }
+
+        if (splitIndex === -1) {
+            splits.push(nextSplit);
+        } else {
+            splits[splitIndex] = nextSplit;
+        }
+
+        t.update(transactionRef, { splits });
+        console.log(`[Split] Synced status '${after.status}' to source transaction for ${requestId}.`);
+    });
+}
+
+async function syncSplitSideEffects(requestId, before, after) {
+    const db = admin.firestore();
+    const created = !before;
+    const statusChanged = created || before.status !== after.status;
+
+    if (!statusChanged && before.amount === after.amount && before.toUid === after.toUid) {
+        return;
+    }
+
+    await syncSourceTransactionProjection(db, requestId, before, after);
+    if (statusChanged) {
+        await syncGroupStatusProjection(db, requestId, before, after);
+    }
+}
+
 // 1. Split Request Created
 exports.v2_onSplitRequestCreated = onDocumentCreated('split_requests/{requestId}', async (event) => {
     if (await checkIdempotency(event.id)) return;
     const data = event.data.data();
     if (!data || data.status === 'blocked_by_group') return; // Don't notify if blocked
+    await syncSplitSideEffects(event.params.requestId, null, data);
     if (data.isGuest) return; // Guests don't have accounts — skip notifications
     const sender = await getUserInfo(data.fromUid);
 
@@ -50,100 +227,8 @@ exports.v2_onSplitRequestUpdated = onDocumentUpdated('split_requests/{requestId}
 
     // --- Status Change Logic ---
     if (after.status !== before.status) {
-        const transactionRef = admin.firestore().collection('users').doc(after.fromUid).collection('transactions').doc(after.transactionId);
-
         try {
-            // FIX #2: Increase max retry attempts to handle contention with client batch writes
-            await admin.firestore().runTransaction(async (t) => {
-                const doc = await t.get(transactionRef);
-                if (!doc.exists) return;
-                const txData = doc.data();
-
-                const splits = txData.splits || [];
-                const splitIndex = splits.findIndex(s => s.requestId === event.params.requestId);
-
-                if (splitIndex !== -1) {
-                    let needsUpdate = false;
-
-                    // Sync Status Field
-                    if (splits[splitIndex].status !== after.status) {
-                        splits[splitIndex].status = after.status;
-                        needsUpdate = true;
-                    }
-
-                    // Sync Paid Status
-                    if (after.status === 'paid') {
-                        if (!splits[splitIndex].isPaid) {
-                            splits[splitIndex].isPaid = true;
-                            splits[splitIndex].paidDate = new Date();
-                            needsUpdate = true;
-                        }
-
-                        // Idempotency check — only create income if not already present AND this is
-                        // not a settlement-cascade transition. When `settledByRequestId` is set it
-                        // means acceptSettlement() already created a single income transaction covering
-                        // the full settlement amount; creating additional income here would be a duplicate.
-                        if (!splits[splitIndex].incomeTransactionId && !after.settledByRequestId) {
-                            // Create "Payment Received" income transaction for the Creditor (fromUid)
-                            const incomeRef = admin.firestore().collection('users').doc(after.fromUid).collection('transactions').doc();
-                            const incomeData = {
-                                title: `Payment received from ${after.toName || 'User'}`,
-                                amount: after.amount,
-                                date: new Date(),
-                                note: `Payment received from ${after.toName || 'User'}`,
-                                userId: after.fromUid,
-                                type: 'income',
-                                source: event.params.requestId,
-                                categoryId: txData.categoryId || null,
-                                createdAt: admin.firestore.FieldValue.serverTimestamp()
-                            };
-
-                            t.set(incomeRef, incomeData);
-                            splits[splitIndex].incomeTransactionId = incomeRef.id;
-                            needsUpdate = true;
-                        }
-
-
-                    }
-
-                    // Sync Unpaid Status (revert paid → pending/accepted)
-                    if (before.status === 'paid' && after.status !== 'paid') {
-                        splits[splitIndex].isPaid = false;
-                        splits[splitIndex].paidDate = null;
-                        needsUpdate = true;
-
-                        // Delete linked creditor income transaction
-                        if (splits[splitIndex].incomeTransactionId) {
-                            const incomeRef = admin.firestore().collection('users').doc(after.fromUid).collection('transactions').doc(splits[splitIndex].incomeTransactionId);
-                            t.delete(incomeRef);
-                            splits[splitIndex].incomeTransactionId = null;
-                        }
-
-
-                    }
-
-                    // Sync Accepted Status
-                    if (after.status === 'accepted' && !splits[splitIndex].isAccepted) {
-                        splits[splitIndex].isAccepted = true;
-                        needsUpdate = true;
-                    }
-
-                    // FIX 3.3: (Removed) We no longer auto-adjust creditor's expense when split is declined.
-                    // The original transaction amount remains unchanged.
-                    if (after.status === 'declined' && before.status !== 'declined') {
-                        t.update(transactionRef, {
-                            splits: splits.filter(s => s.requestId !== event.params.requestId)
-                        });
-                        console.log(`[Split] DECLINED: Removed split from transaction without changing original amount.`);
-                        needsUpdate = false; // Already updated above
-                    }
-
-                    if (needsUpdate) {
-                        t.update(transactionRef, { splits: splits });
-                        console.log(`[Split] Synced status '${after.status}' to transaction.`);
-                    }
-                }
-            });
+            await syncSplitSideEffects(event.params.requestId, before, after);
 
             // --- Send Notifications Based on Status Change ---
             // Skip notifications for guest splits — guests don't have user accounts
