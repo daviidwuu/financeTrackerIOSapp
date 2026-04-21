@@ -41,7 +41,7 @@ struct FriendSearchView: View {
                             HStack(spacing: AppSpacing.element) {
                                 ProfileAvatar(
                                     text: String(user.name.prefix(1)),
-                                    color: Color.random(seed: user.name),
+                                    color: appState.userResolver.resolveAvatarColor(for: user.id ?? "").map { Color(hex: $0) } ?? Color.random(seed: user.name),
                                     size: 40
                                 )
                                 

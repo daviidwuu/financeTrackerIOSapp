@@ -38,6 +38,7 @@ struct UndoToast: View {
 
 struct BalanceCard: View {
     @EnvironmentObject var userPremiumRepo: UserPremiumRepository
+    @EnvironmentObject var appState: AppState
     
     var userId: String? = nil
     let name: String
@@ -52,7 +53,8 @@ struct BalanceCard: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            ProfileAvatar(text: String(name.prefix(1)), color: Color.random(seed: name), size: 40)
+            let colorHex = userId.flatMap { appState.userResolver.resolveAvatarColor(for: $0) }
+            ProfileAvatar(text: String(name.prefix(1)), color: colorHex.map { Color(hex: $0) } ?? Color.random(seed: name), size: 40)
             
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 8) {

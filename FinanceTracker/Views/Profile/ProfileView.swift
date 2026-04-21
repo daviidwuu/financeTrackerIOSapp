@@ -177,15 +177,6 @@ struct ProfileView: View {
                                     title: "Support & About"
                                 )
                             }
-
-                            MenuDivider()
-
-                            NavigationLink(destination: GuidesListView()) {
-                                MenuRowView(
-                                    icon: "book.fill",
-                                    title: "Guides"
-                                )
-                            }
                         }
                         
                         // Log Out

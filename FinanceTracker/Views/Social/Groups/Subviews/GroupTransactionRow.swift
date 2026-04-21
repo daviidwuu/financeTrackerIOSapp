@@ -13,6 +13,7 @@ struct GroupTransactionRow: View {
     var body: some View {
         let displayTitle = (transaction.note?.isEmpty == false) ? transaction.note! : transaction.title
         let payerName = appState.userResolver.resolveName(for: transaction.payerId, fallbackName: transaction.payerName)
+        let payerAvatarColor = appState.userResolver.resolveAvatarColor(for: transaction.payerId)
         
         let subtitle: String
         let statusBadge: String?
@@ -117,6 +118,7 @@ struct GroupTransactionRow: View {
             amountColor: amountColor,
             statusBadge: statusBadge,
             payerName: payerName,
+            payerAvatarColor: payerAvatarColor,
             originalAmount: transaction.originalAmount,
             currencyCode: transaction.currencyCode
         )

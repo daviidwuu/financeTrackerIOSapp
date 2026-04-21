@@ -1,9 +1,12 @@
 import SwiftUI
 import WidgetKit
+import StoreKit
 
 struct HelpCenterView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.dismiss) var dismiss
+    @Environment(\.openURL) var openURL
+    @Environment(\.requestReview) var requestReview
     @State private var showTerms = false
     @State private var showPrivacy = false
     
@@ -52,14 +55,23 @@ struct HelpCenterView: View {
                     .padding(.top, 0)
                     
                     MenuSection("Contact") {
-                        Button(action: { HapticManager.shared.light();  }) {
+                        Button(action: { 
+                            HapticManager.shared.light()
+                            if let url = URL(string: "mailto:support@wym.app") {
+                                openURL(url)
+                            }
+                        }) {
                             MenuRowView(icon: "envelope.fill", title: "Contact Support", iconColor: .purple)
                         }
                         
-                        
                         MenuDivider()
                         
-                        Button(action: { HapticManager.shared.light();  }) {
+                        Button(action: { 
+                            HapticManager.shared.light()
+                            if let url = URL(string: "mailto:bugs@wym.app") {
+                                openURL(url)
+                            }
+                        }) {
                             MenuRowView(icon: "ant.fill", title: "Report a Bug", iconColor: .red)
                         }
                         
@@ -70,7 +82,10 @@ struct HelpCenterView: View {
                         
                         MenuDivider()
                         
-                        Button(action: { HapticManager.shared.light(); }) {
+                        Button(action: { 
+                            HapticManager.shared.light()
+                            requestReview()
+                        }) {
                             MenuRowView(icon: "star.fill", title: "Rate App", showChevron: true, iconColor: .yellow)
                         }
                         

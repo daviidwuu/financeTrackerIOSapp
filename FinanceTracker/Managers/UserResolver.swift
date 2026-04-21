@@ -60,6 +60,29 @@ class UserResolver {
         
         return "Unknown"
     }
+
+    /// Resolves an avatar color for the given UID.
+    /// Priority: "You" -> FriendRepo -> GuestRepo
+    func resolveAvatarColor(for uid: String) -> String? {
+        guard let appState = appState else { return nil }
+        
+        // 1. Current user
+        if uid == appState.currentUserId {
+            return appState.userAvatarColor
+        }
+        
+        // 2. Friend cache
+        if let friend = appState.friendRepo.friends.first(where: { $0.id == uid }) {
+            return friend.avatarColor
+        }
+        
+        // 3. Guest cache
+        if let guest = appState.guestRepo.guests.first(where: { $0.id == uid }) {
+            return guest.avatarColor
+        }
+        
+        return nil
+    }
     
     /// Resolves the current user's own display name.
     func currentUserName() -> String {

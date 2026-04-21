@@ -14,12 +14,14 @@ struct FriendDetailView: View {
         case addExpense
         case settleUp
         case transactionDetail(FirestoreModels.TransactionModel)
+        case allPendingRequests // [NEW] Navigation to all pending requests
 
         var id: String {
             switch self {
             case .addExpense: return "addExpense"
             case .settleUp: return "settleUp"
             case .transactionDetail(let tx): return "tx-\(tx.id ?? "")"
+            case .allPendingRequests: return "allPendingRequests"
             }
         }
 
@@ -44,14 +46,19 @@ struct FriendDetailView: View {
         viewModel.outgoingOutstanding(from: visibleRequests, currentUserId: appState.currentUserId, friendName: friend.name)
     }
 
+    // [NEW] Combined array sorted by latest
+    private var allPendingRequests: [FirestoreModels.SplitRequest] {
+        let all = incomingActionRequiredRequests + outgoingOutstandingRequests
+        return all.sorted { $0.createdAt > $1.createdAt }
+    }
+
     var body: some View {
         ZStack(alignment: .bottom) {
             Color.backgroundPrimary.edgesIgnoringSafeArea(.all)
 
             List {
                 headerSection
-                actionRequiredSection
-                yourRequestsSection
+                pendingRequestsSection
                 overviewSection
                 recentActivitySection
             }
@@ -92,6 +99,26 @@ struct FriendDetailView: View {
                 } else {
                     Text("Error loading details")
                 }
+            case .allPendingRequests:
+                PendingRequestsListSheet(
+                    incomingRequests: incomingActionRequiredRequests,
+                    outgoingRequests: outgoingOutstandingRequests,
+                    counterpartyName: friend.name,
+                    onAction: { action, split in
+                        viewModel.handleSplitCardAction(
+                            action, split: split,
+                            currentUserId: appState.currentUserId, currentUserName: appState.userName,
+                            friendTransactions: repo.friendTransactions,
+                            onLoadData: loadData,
+                            onRequestToAccept: { requestToAccept = $0 }
+                        )
+                    },
+                    onCardTap: { split in
+                        if let tx = repo.friendTransactions.first(where: { $0.id == split.id }) {
+                            activeSheet = .transactionDetail(tx)
+                        }
+                    }
+                )
             }
         }
         .sheet(item: $transactionToEdit) { tx in
@@ -146,7 +173,7 @@ struct FriendDetailView: View {
             avatar: {
                 ProfileAvatar(
                     text: String(friend.name.prefix(1)),
-                    color: Color.random(seed: friend.name),
+                    color: friend.avatarColor.map { Color(hex: $0) } ?? Color.random(seed: friend.name),
                     size: AppSize.avatarHero
                 )
             },
@@ -159,88 +186,39 @@ struct FriendDetailView: View {
     }
 
     @ViewBuilder
-    private var actionRequiredSection: some View {
-        if !incomingActionRequiredRequests.isEmpty {
+    private var pendingRequestsSection: some View {
+        if let mostRecentSplit = allPendingRequests.first {
             Section {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Image(systemName: "exclamationmark.circle.fill").foregroundColor(.orange)
-                        Text("Action Required").font(.headline)
+                        Text("Pending Requests").font(.headline)
                         Spacer()
-                        Text("\(incomingActionRequiredRequests.count)")
-                            .font(.caption).fontWeight(.bold).foregroundColor(.white)
-                            .padding(6).background(AppColors.functionalExpense).clipShape(Circle())
-                    }
-                    VStack(spacing: 12) {
-                        ForEach(incomingActionRequiredRequests) { split in
-                            let presentation = split.presentation(for: appState.currentUserId, counterpartyName: friend.name)
-                            PendingSplitCard(
-                                split: split,
-                                userId: appState.currentUserId,
-                                presentation: presentation,
-                                onAction: { action in
-                                    viewModel.handleSplitCardAction(
-                                        action, split: split,
-                                        currentUserId: appState.currentUserId, currentUserName: appState.userName,
-                                        friendTransactions: repo.friendTransactions,
-                                        onLoadData: loadData,
-                                        onRequestToAccept: { requestToAccept = $0 }
-                                    )
-                                }
-                            )
-                            .onTapGesture {
-                                HapticManager.shared.light()
-                                if let tx = repo.friendTransactions.first(where: { $0.id == split.id }) {
-                                    activeSheet = .transactionDetail(tx)
-                                }
-                            }
+                        if allPendingRequests.count > 1 {
+                            Text("1 of \(allPendingRequests.count)")
+                                .font(.caption).fontWeight(.medium).foregroundColor(.secondary)
                         }
                     }
-                }
-                .padding(.vertical, 8)
-            }
-            .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
-        }
-    }
-
-    @ViewBuilder
-    private var yourRequestsSection: some View {
-        if !outgoingOutstandingRequests.isEmpty {
-            Section {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Image(systemName: "paperplane.fill").foregroundColor(.blue)
-                        Text("Your Requests").font(.headline)
-                        Spacer()
-                        Text("\(outgoingOutstandingRequests.count)")
-                            .font(.caption).fontWeight(.bold).foregroundColor(.white)
-                            .padding(6).background(Color.blue).clipShape(Circle())
-                    }
+                    
                     VStack(spacing: 12) {
-                        ForEach(outgoingOutstandingRequests) { split in
-                            let presentation = split.presentation(for: appState.currentUserId, counterpartyName: friend.name)
-                            PendingSplitCard(
-                                split: split,
-                                userId: appState.currentUserId,
-                                presentation: presentation,
-                                onAction: { action in
-                                    viewModel.handleSplitCardAction(
-                                        action, split: split,
-                                        currentUserId: appState.currentUserId, currentUserName: appState.userName,
-                                        friendTransactions: repo.friendTransactions,
-                                        onLoadData: loadData,
-                                        onRequestToAccept: { requestToAccept = $0 }
-                                    )
-                                }
-                            )
-                            .onTapGesture {
-                                HapticManager.shared.light()
-                                if let tx = repo.friendTransactions.first(where: { $0.id == split.id }) {
-                                    activeSheet = .transactionDetail(tx)
-                                }
+                        let presentation = mostRecentSplit.presentation(for: appState.currentUserId, counterpartyName: friend.name)
+                        PendingSplitCard(
+                            split: mostRecentSplit,
+                            userId: appState.currentUserId,
+                            presentation: presentation,
+                            onAction: { action in
+                                viewModel.handleSplitCardAction(
+                                    action, split: mostRecentSplit,
+                                    currentUserId: appState.currentUserId, currentUserName: appState.userName,
+                                    friendTransactions: repo.friendTransactions,
+                                    onLoadData: loadData,
+                                    onRequestToAccept: { requestToAccept = $0 }
+                                )
                             }
+                        )
+                        .onTapGesture {
+                            HapticManager.shared.light()
+                            activeSheet = .allPendingRequests
                         }
                     }
                 }
@@ -294,7 +272,7 @@ struct FriendDetailView: View {
                     let canTogglePayment = request?.canCurrentUserConfirmPaymentReceived(currentUserId: appState.currentUserId) == true
                         || request?.canCurrentUserUndoPaymentReceived(currentUserId: appState.currentUserId) == true
 
-                    FriendCardRow(transaction: transaction, friendName: friend.name)
+                    FriendCardRow(transaction: transaction, friendName: friend.name, friendAvatarColor: friend.avatarColor)
                         .background(Color.cardBackground)
                         .cornerRadius(AppRadius.medium)
                         .onTapGesture { HapticManager.shared.light(); activeSheet = .transactionDetail(transaction) }
@@ -368,6 +346,7 @@ struct FriendDetailView: View {
 struct FriendCardRow: View {
     let transaction: FirestoreModels.TransactionModel
     let friendName: String
+    let friendAvatarColor: String?
 
     @EnvironmentObject var appState: AppState
 
@@ -393,6 +372,7 @@ struct FriendCardRow: View {
         let amountColor: Color = transaction.type == "income" ? .green : .red
         let isSettlement = transaction.categoryId == "settlement"
         let payerDisplayName = isYouPaid ? (appState.userName.isEmpty ? "You" : appState.userName) : friendName
+        let payerAvatarColor = isYouPaid ? appState.userAvatarColor : friendAvatarColor
 
         let resolvedCat: FirestoreModels.CategoryBudget? = {
             if let catId = transaction.categoryId, catId != "settlement" {
@@ -416,6 +396,7 @@ struct FriendCardRow: View {
             amountColor: amountColor,
             statusBadge: statusBadge,
             payerName: payerDisplayName,
+            payerAvatarColor: payerAvatarColor,
             originalAmount: transaction.originalAmount,
             currencyCode: transaction.currencyCode
         )

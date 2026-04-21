@@ -314,8 +314,7 @@ extension View {
             .scrollContentBackground(.hidden)
         }
         .overlayHeader(.root(
-            title: "Social",
-            subtitle: "Split bills and track shared expenses"
+            title: "Social"
         ))
     }
 }

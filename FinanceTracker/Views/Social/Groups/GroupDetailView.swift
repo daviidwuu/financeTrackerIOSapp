@@ -23,6 +23,7 @@ struct GroupDetailView: View {
         case simplification
         case splitDetail(FirestoreModels.SplitRequest)
         case transactionDetail(FirestoreModels.GroupTransaction)
+        case allPendingRequests // [NEW] Navigation to all pending requests
         
         var id: String {
             switch self {
@@ -33,6 +34,7 @@ struct GroupDetailView: View {
             case .simplification: return "simplification"
             case .splitDetail(let split): return "split-\(split.id ?? "")"
             case .transactionDetail(let tx): return "tx-\(tx.id ?? "")"
+            case .allPendingRequests: return "allPendingRequests"
             }
         }
         
@@ -78,91 +80,44 @@ struct GroupDetailView: View {
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
                     
-                    // 2. Pending Actions (High Priority) — Split by role
-                    let receiverSplits = pendingSplits.filter {
-                        $0.presentation(for: appState.currentUserId).socialBucket == .actionRequired
+                    // 2. Pending Actions (High Priority) — Consolidated
+                    let filteredPendingSplits = pendingSplits.filter { split -> Bool in
+                        let bucket = split.presentation(for: appState.currentUserId).socialBucket
+                        return bucket == .actionRequired || bucket == .yourRequests
                     }
-                    let senderSplits = pendingSplits.filter {
-                        $0.presentation(for: appState.currentUserId).socialBucket == .yourRequests
-                    }
+                    let allPendingSplits = filteredPendingSplits.sorted { $0.createdAt > $1.createdAt }
                     
-                    // 2a. Splits I need to respond to
-                    if !receiverSplits.isEmpty {
+                    if let mostRecentSplit = allPendingSplits.first {
                         Section {
                             VStack(alignment: .leading, spacing: 12) {
                                 HStack {
-                                    Image(systemName: "exclamationmark.circle.fill")
-                                    .foregroundColor(.orange)
-                                    Text("Action Required")
-                                        .font(.headline)
+                                    Image(systemName: "exclamationmark.circle.fill").foregroundColor(.orange)
+                                    Text("Pending Requests").font(.headline)
                                     Spacer()
-                                    Text("\(receiverSplits.count)")
-                                        .font(.caption)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.white)
-                                        .padding(6)
-                                        .background(AppColors.functionalExpense)
-                                        .clipShape(Circle())
-                                }
-                                
-                                VStack(spacing: 12) {
-                                    ForEach(receiverSplits) { split in
-                                        let counterpartyName = getMemberName(id: split.fromUid, group: group)
-                                        let presentation = split.presentation(
-                                            for: appState.currentUserId,
-                                            counterpartyName: counterpartyName
-                                        )
-                                        PendingSplitCard(split: split, userId: appState.currentUserId, presentation: presentation, onAction: { action in
-                                            handleSplitCardAction(action, split: split)
-                                        })
-                                        .onTapGesture { HapticManager.shared.light();  activeSheet = .splitDetail(split) }
+                                    if allPendingSplits.count > 1 {
+                                        Text("1 of \(allPendingSplits.count)")
+                                            .font(.caption).fontWeight(.medium).foregroundColor(.secondary)
                                     }
                                 }
-                            }
-                            .padding(.vertical, 8)
-                        }
-                        .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-                    }
-                    
-                    // 2b. Splits I sent (waiting for response)
-                    if !senderSplits.isEmpty {
-                        Section {
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack {
-                                    Image(systemName: "paperplane.fill")
-                                    .foregroundColor(.blue)
-                                    Text("Your Requests")
-                                        .font(.headline)
-                                    Spacer()
-                                    Text("\(senderSplits.count)")
-                                        .font(.caption)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.white)
-                                        .padding(6)
-                                        .background(Color.blue)
-                                        .clipShape(Circle())
-                                }
                                 
                                 VStack(spacing: 12) {
-                                    ForEach(senderSplits) { split in
-                                        let counterpartyName = getMemberName(id: split.toUid, group: group)
-                                        let presentation = split.presentation(
-                                            for: appState.currentUserId,
-                                            counterpartyName: counterpartyName
-                                        )
-                                        PendingSplitCard(split: split, userId: appState.currentUserId, presentation: presentation, onAction: { action in
-                                            handleSplitCardAction(action, split: split)
-                                        })
-                                        .onTapGesture { HapticManager.shared.light();  activeSheet = .splitDetail(split) }
-                                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                            if presentation.secondaryAction == .cancelRequest {
-                                                Button(role: .destructive) { HapticManager.shared.light();  deleteSplit(split) } label: {
-                                                    Label("Cancel", systemImage: "trash")
-                                                }
-                                            }
+                                    let counterpartyId = mostRecentSplit.fromUid == appState.currentUserId ? mostRecentSplit.toUid : mostRecentSplit.fromUid
+                                    let counterpartyName = getMemberName(id: counterpartyId, group: group)
+                                    let presentation = mostRecentSplit.presentation(
+                                        for: appState.currentUserId,
+                                        counterpartyName: counterpartyName
+                                    )
+                                    PendingSplitCard(
+                                        split: mostRecentSplit,
+                                        userId: appState.currentUserId,
+                                        presentation: presentation,
+                                        onAction: { action in
+                                            handleSplitCardAction(action, split: mostRecentSplit)
                                         }
+                                    )
+                                    .onTapGesture {
+                                        HapticManager.shared.light()
+                                        activeSheet = .allPendingRequests
                                     }
                                 }
                             }
@@ -436,6 +391,21 @@ struct GroupDetailView: View {
                          GroupTransactionDetailView(transaction: transaction, group: group)
                              .presentationDetents([.medium, .large])
                              .presentationDragIndicator(.visible)
+                     case .allPendingRequests:
+                         let incoming = pendingSplits.filter { $0.presentation(for: appState.currentUserId).socialBucket == .actionRequired }
+                         let outgoing = pendingSplits.filter { $0.presentation(for: appState.currentUserId).socialBucket == .yourRequests }
+                         
+                         PendingRequestsListSheet(
+                             incomingRequests: incoming,
+                             outgoingRequests: outgoing,
+                             counterpartyName: group.name,
+                             onAction: { action, split in
+                                 handleSplitCardAction(action, split: split)
+                             },
+                             onCardTap: { split in
+                                 activeSheet = .splitDetail(split)
+                             }
+                         )
                      }
                  } else {
                      // Fallback if group is missing (rare but possible during sync)

@@ -3,6 +3,9 @@ import Combine
 import FirebaseCore
 import FirebaseAuth
 import FirebaseFirestore
+#if canImport(FirebaseRemoteConfig)
+import FirebaseRemoteConfig
+#endif
 
 /// Centralized Firebase manager for authentication and database operations
 class FirebaseManager: ObservableObject {
@@ -10,6 +13,9 @@ class FirebaseManager: ObservableObject {
     
     private let auth: Auth
     private let db: Firestore
+#if canImport(FirebaseRemoteConfig)
+    private let remoteConfig: RemoteConfig
+#endif
     
     @Published var currentUser: User?
     @Published var isAuthenticated = false
@@ -27,6 +33,14 @@ class FirebaseManager: ObservableObject {
         let db = Firestore.firestore()
         db.settings = settings
         self.db = db
+        
+#if canImport(FirebaseRemoteConfig)
+        // Initialize Remote Config
+        self.remoteConfig = RemoteConfig.remoteConfig()
+        let rcSettings = RemoteConfigSettings()
+        rcSettings.minimumFetchInterval = 3600 // Fetch once per hour
+        self.remoteConfig.configSettings = rcSettings
+#endif
         
         // Listen to auth state changes
         let _ = auth.addStateDidChangeListener { [weak self] _, user in
@@ -433,5 +447,45 @@ class FirebaseManager: ObservableObject {
             "lastVisitDate": Timestamp(date: lastVisitDate)
         ]
         try await db.collection("users").document(userId).setData(data, merge: true)
+    }
+    
+    // MARK: - Remote Config
+    
+    /// Fetches all remote configurations
+    func fetchRemoteConfig() async {
+#if canImport(FirebaseRemoteConfig)
+        do {
+            let status = try await remoteConfig.fetchAndActivate()
+            DebugLogger.log("Remote Config fetch status: \(status)")
+        } catch {
+            DebugLogger.log("Remote Config fetch failed: \(error.localizedDescription)")
+        }
+#else
+        DebugLogger.log("FirebaseRemoteConfig module not available.")
+#endif
+    }
+    
+    /// Gets a list of motivational tips from Remote Config
+    func getRemoteMotivationalTips() -> [String] {
+#if canImport(FirebaseRemoteConfig)
+        let jsonString = remoteConfig.configValue(forKey: "motivational_tips").stringValue ?? "[]"
+        if let data = jsonString.data(using: .utf8),
+           let tips = try? JSONDecoder().decode([String].self, from: data) {
+            return tips
+        }
+#endif
+        return []
+    }
+    
+    /// Gets dynamic missions from Remote Config
+    func getRemoteMissions() -> [[String: Any]] {
+#if canImport(FirebaseRemoteConfig)
+        let jsonString = remoteConfig.configValue(forKey: "seasonal_misisons").stringValue ?? "[]"
+        if let data = jsonString.data(using: .utf8),
+           let missions = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+            return missions
+        }
+#endif
+        return []
     }
 }

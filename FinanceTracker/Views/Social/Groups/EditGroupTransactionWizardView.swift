@@ -454,8 +454,9 @@ struct EditGroupTransactionWizardView: View {
         return Button(action: { HapticManager.shared.light();  toggleMember(id: id, name: name) }) {
             HStack(spacing: 16) {
                 ZStack {
+                    let avatarColor = appState.userResolver.resolveAvatarColor(for: id).map { Color(hex: $0) } ?? Color.random(seed: name)
                     Circle()
-                        .fill(Color.random(seed: name))
+                        .fill(avatarColor)
                         .frame(width: 48, height: 48)
                     Text(String(name.prefix(1)).uppercased())
                         .font(.headline)

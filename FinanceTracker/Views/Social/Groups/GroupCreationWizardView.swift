@@ -296,7 +296,7 @@ struct GroupCreationWizardView: View {
                                     // Avatar
                                     ProfileAvatar(
                                         text: String(friend.name.prefix(1)),
-                                        color: Color.random(seed: friend.name),
+                                        color: appState.userResolver.resolveAvatarColor(for: friend.id ?? "").map { Color(hex: $0) } ?? Color.random(seed: friend.name),
                                         size: AppSize.avatarList
                                     )
                                     

@@ -102,6 +102,8 @@ struct FinanceTrackerApp: App {
                 LocationManager.shared.checkLocation()
                 // Sync theme to widgets
                 WidgetDataManager.shared.saveAppTheme(AppTheme(rawValue: premiumAppTheme) ?? .system)
+                // Fetch Remote Config
+                Task { await FirebaseManager.shared.fetchRemoteConfig() }
             case .background:
                 // Schedule background refresh if enabled
                 NotificationManager.shared.scheduleDailySummary()

@@ -7,3 +7,17 @@ DerivedData/
 .swiftpm/
 FUTURE_PROGRESSION.md
 *.log
+
+# Build Artifacts
+build/
+DerivedDataArm64/
+
+# Agent/Tool specific
+.claude/
+.codex-derived/
+.mcp.json
+.spm-cache/
+
+# Binary/Temporary
+main-*.js
+test_url.swift

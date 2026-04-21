@@ -31,6 +31,7 @@ struct PodiumView: View {
 struct PodiumUser: View {
     let entry: SocialRepository.LeaderboardEntry
     let rank: Int
+    @EnvironmentObject var appState: AppState
     
     var scale: CGFloat {
         rank == 1 ? 1.2 : 0.9
@@ -63,7 +64,7 @@ struct PodiumUser: View {
                 
                 ProfileAvatar(
                     text: String(entry.name.prefix(1)),
-                    color: Color.random(seed: entry.name),
+                    color: appState.userResolver.resolveAvatarColor(for: entry.id).map { Color(hex: $0) } ?? Color.random(seed: entry.name),
                     size: 64 * scale
                 )
                 
@@ -110,6 +111,7 @@ struct LeaderboardRow: View {
     let entry: SocialRepository.LeaderboardEntry
     let rank: Int
     let isCurrentUser: Bool
+    @EnvironmentObject var appState: AppState
 
     var body: some View {
         HStack(spacing: AppSpacing.element) {
@@ -124,7 +126,7 @@ struct LeaderboardRow: View {
             // Avatar
             ProfileAvatar(
                 text: String(entry.name.prefix(1)),
-                color: Color.random(seed: entry.name),
+                color: appState.userResolver.resolveAvatarColor(for: entry.id).map { Color(hex: $0) } ?? Color.random(seed: entry.name),
                 size: AppSize.avatarSmall
             )
 

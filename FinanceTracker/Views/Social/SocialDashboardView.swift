@@ -57,9 +57,14 @@ struct SocialDashboardView: View {
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
 
-                    // Custom Segmented Control
+                    // Native Segmented Control
                     Section {
-                        CustomSegmentedControl(selection: $selectedSegment, options: ["Groups", "Friends", "Leaderboard"])
+                        Picker("Social Options", selection: $selectedSegment) {
+                            Text("Groups").tag(0)
+                            Text("Friends").tag(1)
+                            Text("Leaderboard").tag(2)
+                        }
+                        .pickerStyle(.segmented)
                             .listRowInsets(EdgeInsets(top: 0, leading: AppSpacing.margin, bottom: 0, trailing: AppSpacing.margin))
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
@@ -109,7 +114,7 @@ struct SocialDashboardView: View {
                         .padding(.bottom, AppSpacing.element)
                 }
             }
-            .overlayHeader(.root(title: "Social", subtitle: "Split bills and track shared expenses"))
+            .overlayHeader(.root(title: "Social"))
             .navigationBarHidden(true)
             .navigationDestination(for: SocialDestination.self) { destination in
                 switch destination {
@@ -709,46 +714,7 @@ struct SocialDashboardView: View {
 
 // MARK: - Components
 
-struct CustomSegmentedControl: View {
-    @Binding var selection: Int
-    let options: [String]
-    @Namespace private var ns
-    
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(options.indices, id: \.self) { index in
-                Button(action: { HapticManager.shared.light(); 
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        selection = index
-                    }
-                    HapticManager.shared.selection()
-                }) {
-                    ZStack {
-                        if selection == index {
-                            Capsule()
-                                .fill(Color.primary)
-                                .matchedGeometryEffect(id: "bg", in: ns)
-                        }
-                        
-                        Text(options[index])
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.75)
-                            .foregroundColor(selection == index ? Color.backgroundPrimary : .secondary)
-                            .padding(.vertical, 10) // TODO: add DS token for 10pt segment padding
-                            .padding(.horizontal, AppSpacing.compact)
-                    }
-                }
-                .buttonStyle(PlainButtonStyle())
-                .frame(maxWidth: .infinity)
-            }
-        }
-        .padding(5) // TODO: add DS token for 5pt capsule inset
-        .background(Color.secondaryCardBackground)
-        .clipShape(Capsule())
-    }
-}
+
 
 // Extracted Subviews for cleaner code
 struct InvitationCard: View {
@@ -810,7 +776,7 @@ struct FriendRequestCard: View {
         HStack(spacing: AppSpacing.element) {
             ProfileAvatar(
                 text: String(displayName.prefix(1)).uppercased(),
-                color: Color.random(seed: displayName),
+                color: appState.userResolver.resolveAvatarColor(for: request.fromUid).map { Color(hex: $0) } ?? Color.random(seed: displayName),
                 size: AppSize.avatarList
             )
 

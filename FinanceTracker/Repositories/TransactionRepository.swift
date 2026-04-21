@@ -136,6 +136,7 @@ class TransactionRepository: ObservableObject {
         }
             
         listener = query.addSnapshotListener { [weak self] snapshot, error in
+            Task { @MainActor in
                 guard let self = self else { return }
                 if self.isLoading { self.isLoading = false }
 
@@ -157,25 +158,27 @@ class TransactionRepository: ObservableObject {
                 // Update canLoadMore: if we got as many docs as our limit, there are likely more
                 self.canLoadMore = self.currentMonth == nil && documents.count >= self.currentLimit
                 // Only keep transactions that are not optimistically deleted
-                self.transactions = documents.compactMap { document in
+                var parsedTransactions: [FirestoreModels.TransactionModel] = []
+                for document in documents {
                     do {
                         var tx = try document.data(as: FirestoreModels.TransactionModel.self)
                         tx.amount = FirestoreModels.TransactionModel.normalizeAmount(tx.amount, type: tx.type)
                         guard let id = tx.id,
                               !self.optimisticDeletedTransactions.keys.contains(id) else {
-                            return nil
+                            continue
                         }
                         // REMOVED pendingDeleteIds check - if transaction exists in Firestore, show it
-                        return tx
+                        parsedTransactions.append(tx)
                     } catch {
                         DebugLogger.log("Failed to decode transaction \(document.documentID) in setupListener: \(error)")
-                        return nil
                     }
                 }
+                self.transactions = parsedTransactions
                 
                 // Update Widget Data
                 self.updateWidgetData(transactions: self.transactions)
             }
+        }
     }
     
     private func startListeningToCurrentMonth() {
@@ -196,35 +199,38 @@ class TransactionRepository: ObservableObject {
             .order(by: "date", descending: true)
             
         currentMonthListener = query.addSnapshotListener { [weak self] snapshot, error in
-            guard let self = self else { return }
-            
-            if let error = error {
-                DebugLogger.log("Error fetching current month transactions: \(error.localizedDescription)")
-                return
-            }
-            
-            guard let documents = snapshot?.documents else {
-                self.currentMonthTransactions = []
-                return
-            }
-            
-            self.currentMonthTransactions = documents.compactMap { document in
-                do {
-                    var tx = try document.data(as: FirestoreModels.TransactionModel.self)
-                    tx.amount = FirestoreModels.TransactionModel.normalizeAmount(tx.amount, type: tx.type)
-                    guard let id = tx.id,
-                          !self.optimisticDeletedTransactions.keys.contains(id) else {
-                        return nil
-                    }
-                    return tx
-                } catch {
-                    DebugLogger.log("Failed to decode transaction \(document.documentID) in startListeningToCurrentMonth: \(error)")
-                    return nil
+            Task { @MainActor in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    DebugLogger.log("Error fetching current month transactions: \(error.localizedDescription)")
+                    return
                 }
+                
+                guard let documents = snapshot?.documents else {
+                    self.currentMonthTransactions = []
+                    return
+                }
+                
+                var parsedTransactions: [FirestoreModels.TransactionModel] = []
+                for document in documents {
+                    do {
+                        var tx = try document.data(as: FirestoreModels.TransactionModel.self)
+                        tx.amount = FirestoreModels.TransactionModel.normalizeAmount(tx.amount, type: tx.type)
+                        guard let id = tx.id,
+                              !self.optimisticDeletedTransactions.keys.contains(id) else {
+                            continue
+                        }
+                        parsedTransactions.append(tx)
+                    } catch {
+                        DebugLogger.log("Failed to decode transaction \(document.documentID) in startListeningToCurrentMonth: \(error)")
+                    }
+                }
+                self.currentMonthTransactions = parsedTransactions
+                DebugLogger.log("Fetched current month transactions: \(self.currentMonthTransactions.count) items.")
+                // Update widget monthly spend now that currentMonthTransactions is fresh
+                self.updateWidgetData(transactions: self.transactions)
             }
-            DebugLogger.log("Fetched current month transactions: \(self.currentMonthTransactions.count) items.")
-            // Update widget monthly spend now that currentMonthTransactions is fresh
-            self.updateWidgetData(transactions: self.transactions)
         }
     }
 
@@ -245,31 +251,34 @@ class TransactionRepository: ObservableObject {
             .order(by: "date", descending: true)
             
         calendarListener = query.addSnapshotListener { [weak self] snapshot, error in
-            guard let self = self else { return }
-            
-            if let error = error {
-                DebugLogger.log("Error fetching calendar month transactions: \(error.localizedDescription)")
-                return
-            }
-            
-            guard let documents = snapshot?.documents else {
-                self.calendarTransactions = []
-                return
-            }
-            
-            self.calendarTransactions = documents.compactMap { document in
-                do {
-                    var tx = try document.data(as: FirestoreModels.TransactionModel.self)
-                    tx.amount = FirestoreModels.TransactionModel.normalizeAmount(tx.amount, type: tx.type)
-                    guard let id = tx.id,
-                          !self.optimisticDeletedTransactions.keys.contains(id) else {
-                        return nil
-                    }
-                    return tx
-                } catch {
-                    DebugLogger.log("Failed to decode transaction \(document.documentID) in startListeningToCalendarMonth: \(error)")
-                    return nil
+            Task { @MainActor in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    DebugLogger.log("Error fetching calendar month transactions: \(error.localizedDescription)")
+                    return
                 }
+                
+                guard let documents = snapshot?.documents else {
+                    self.calendarTransactions = []
+                    return
+                }
+                
+                var parsedTransactions: [FirestoreModels.TransactionModel] = []
+                for document in documents {
+                    do {
+                        var tx = try document.data(as: FirestoreModels.TransactionModel.self)
+                        tx.amount = FirestoreModels.TransactionModel.normalizeAmount(tx.amount, type: tx.type)
+                        guard let id = tx.id,
+                              !self.optimisticDeletedTransactions.keys.contains(id) else {
+                            continue
+                        }
+                        parsedTransactions.append(tx)
+                    } catch {
+                        DebugLogger.log("Failed to decode transaction \(document.documentID) in startListeningToCalendarMonth: \(error)")
+                    }
+                }
+                self.calendarTransactions = parsedTransactions
             }
         }
     }
@@ -301,35 +310,36 @@ class TransactionRepository: ObservableObject {
 
         query.getDocuments { [weak self] snapshot, error in
             guard let self = self else { return }
-            self.isLoadingHistory = false
+            let capturedSelf = self
+            Task { @MainActor in
+                capturedSelf.isLoadingHistory = false
 
-            if let error = error {
-                DebugLogger.log("Error fetching all transactions page: \(error.localizedDescription)")
-                return
-            }
-
-            guard let documents = snapshot?.documents, !documents.isEmpty else {
-                DispatchQueue.main.async { self.canLoadMoreHistory = false }
-                return
-            }
-
-            let page = documents.compactMap { document -> FirestoreModels.TransactionModel? in
-                do {
-                    var tx = try document.data(as: FirestoreModels.TransactionModel.self)
-                    tx.amount = FirestoreModels.TransactionModel.normalizeAmount(tx.amount, type: tx.type)
-                    guard let id = tx.id,
-                          !self.optimisticDeletedTransactions.keys.contains(id) else { return nil }
-                    return tx
-                } catch {
-                    DebugLogger.log("Failed to decode transaction \(document.documentID) in fetchAllTransactionsPage: \(error)")
-                    return nil
+                if let error = error {
+                    DebugLogger.log("Error fetching all transactions page: \(error.localizedDescription)")
+                    return
                 }
-            }
 
-            DispatchQueue.main.async {
-                self.allTransactions.append(contentsOf: page)
-                self.allTransactionsLastDocument = documents.last
-                self.canLoadMoreHistory = documents.count >= 500
+                guard let documents = snapshot?.documents, !documents.isEmpty else {
+                    capturedSelf.canLoadMoreHistory = false
+                    return
+                }
+
+                var page: [FirestoreModels.TransactionModel] = []
+                for document in documents {
+                    do {
+                        var tx = try document.data(as: FirestoreModels.TransactionModel.self)
+                        tx.amount = FirestoreModels.TransactionModel.normalizeAmount(tx.amount, type: tx.type)
+                        guard let id = tx.id,
+                              !capturedSelf.optimisticDeletedTransactions.keys.contains(id) else { continue }
+                        page.append(tx)
+                    } catch {
+                        DebugLogger.log("Failed to decode transaction \(document.documentID) in fetchAllTransactionsPage: \(error)")
+                    }
+                }
+
+                capturedSelf.allTransactions.append(contentsOf: page)
+                capturedSelf.allTransactionsLastDocument = documents.last
+                capturedSelf.canLoadMoreHistory = documents.count >= 500
             }
         }
     }

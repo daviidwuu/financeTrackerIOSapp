@@ -4,6 +4,8 @@ import WidgetKit
 struct PrivacySettingsView: View {
     @State private var faceIDEnabled = true
     @State private var analyticsEnabled = true
+    @State private var showPrivacy = false
+    @State private var show2FAAlert = false
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.dismiss) var dismiss
     
@@ -20,9 +22,8 @@ struct PrivacySettingsView: View {
                     MenuSection("Security") {
                         MenuRowView(icon: "faceid", title: "Use Face ID", showChevron: false, showToggle: $faceIDEnabled, iconColor: .green)
                         MenuDivider()
-                        NavigationLink {
-                            Text("2FA Setup")
-                                .navigationTitle("2FA")
+                        Button {
+                            show2FAAlert = true
                         } label: {
                             MenuRowView(icon: "lock.shield", title: "Two-Factor Authentication", iconColor: .blue)
                         }
@@ -33,9 +34,8 @@ struct PrivacySettingsView: View {
                     MenuSection("Data") {
                         MenuRowView(icon: "chart.bar.xaxis", title: "Share Analytics", showChevron: false, showToggle: $analyticsEnabled, iconColor: .orange)
                         MenuDivider()
-                        NavigationLink {
-                            Text("Privacy Policy Content")
-                                .navigationTitle("Privacy Policy")
+                        Button {
+                            showPrivacy = true
                         } label: {
                             MenuRowView(icon: "hand.raised.fill", title: "Data & Privacy Info", iconColor: .purple)
                         }
@@ -49,6 +49,14 @@ struct PrivacySettingsView: View {
         }
         .overlayHeader(.navigation(title: "Privacy & Security", onBack: { dismiss() }))
         .navigationBarBackButtonHidden(true)
+        .sheet(isPresented: $showPrivacy) {
+            LegalDocumentView(document: .privacy)
+        }
+        .alert("Coming Soon", isPresented: $show2FAAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Two-Factor Authentication will be available in a future update.")
+        }
     }
 }
 

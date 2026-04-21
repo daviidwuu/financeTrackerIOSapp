@@ -66,10 +66,11 @@ struct AddGroupMemberView: View {
                                         HStack(spacing: 16) {
                                             // Avatar
                                             ZStack {
+                                                let avatarColor = appState.userResolver.resolveAvatarColor(for: friend.id ?? "").map { Color(hex: $0) } ?? Color.random(seed: friend.name)
                                                 Circle()
-                                                    .fill(Color.random(seed: friend.name))
+                                                    .fill(avatarColor)
                                                     .frame(width: 48, height: 48)
-                                                    .shadow(color: Color.random(seed: friend.name).opacity(0.3), radius: 4, x: 0, y: 2)
+                                                    .shadow(color: avatarColor.opacity(0.3), radius: 4, x: 0, y: 2)
                                                 
                                                 Text(String(friend.name.prefix(1)).uppercased())
                                                     .font(.headline)

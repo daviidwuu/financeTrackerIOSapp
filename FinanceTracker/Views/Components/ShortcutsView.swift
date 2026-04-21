@@ -141,12 +141,18 @@ struct ShortcutSetupGuideView: View {
                             MenuDivider()
                             Button {
                                 HapticManager.shared.light()
-                                // Try deep-linking to Accessibility Settings, fallback to general Settings if needed
-                                if let url = URL(string: "App-Prefs:root=ACCESSIBILITY") {
-                                    UIApplication.shared.open(url)
-                                } else if let url = URL(string: UIApplication.openSettingsURLString) {
-                                    UIApplication.shared.open(url)
+                                // canOpenURL requires scheme whitelisting, so open directly with fallbacks
+                                func tryOpen(_ strings: [String]) {
+                                    guard let first = strings.first, let url = URL(string: first) else { return }
+                                    UIApplication.shared.open(url, options: [:]) { success in
+                                        if !success { tryOpen(Array(strings.dropFirst())) }
+                                    }
                                 }
+                                tryOpen([
+                                    "App-Prefs:root=ACCESSIBILITY&path=BACK_TAP",
+                                    "App-Prefs:root=ACCESSIBILITY&path=TOUCH",
+                                    "App-Prefs:root=ACCESSIBILITY"
+                                ])
                             } label: {
                                 MenuControlRow(
                                     title: "Accessibility Settings",

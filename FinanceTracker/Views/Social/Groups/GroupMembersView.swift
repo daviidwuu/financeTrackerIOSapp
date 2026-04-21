@@ -121,6 +121,7 @@ struct GroupMembersView: View {
 
 struct MemberRow: View {
     @EnvironmentObject var userPremiumRepo: UserPremiumRepository
+    @EnvironmentObject var appState: AppState
     
     let memberId: String
     let name: String
@@ -129,9 +130,10 @@ struct MemberRow: View {
     
     var body: some View {
         HStack(spacing: 16) {
+            let colorHex = appState.userResolver.resolveAvatarColor(for: memberId)
             ProfileAvatar(
                 text: String(name.prefix(1)),
-                color: Color.random(seed: name),
+                color: colorHex.map { Color(hex: $0) } ?? Color.random(seed: name),
                 size: 48
             )
             

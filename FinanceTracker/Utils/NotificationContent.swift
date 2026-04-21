@@ -207,6 +207,21 @@ struct NotificationContent {
     // MARK: - Motivational Messages
 
     private static func getMotivationalMessage(name: String, hour: Int) -> (String, String) {
+        // 1. Check if AIContentManager has a fresh daily tip
+        if let aiTip = AIContentManager.shared.dailyTip {
+            // Cycle through possible AI titles
+            let aiTitles = ["AI Insight", "Personalized Tip", "Wealth Guide", "Focus Mode", "Smart Suggestion"]
+            return (aiTitles.randomElement()!, aiTip)
+        }
+
+        // 2. Check if Firebase Remote Config has custom tips
+        let remoteTips = FirebaseManager.shared.getRemoteMotivationalTips()
+        if !remoteTips.isEmpty {
+            let titles = ["Wealth wisdom", "Pro tip", "Reality check", "Smart move"]
+            return (titles.randomElement()!, remoteTips.randomElement()!)
+        }
+
+        // 3. Fallback to hardcoded list
         // Morning (6am–10am)
         if hour >= 6 && hour < 10 {
             let titles = ["Rise and shine", "Morning motivation", "Start strong", "Daily focus", "Wake up wealthy"]
@@ -234,7 +249,7 @@ struct NotificationContent {
                 "A penny saved is a penny earned — good evening.",
                 "Relax — you're in control of your money.",
                 "The best pillow is a clear conscience and a balanced budget.",
-                "Did you make your money work for you today?",
+                "Did today's make your money work for you today?",
                 "Wind down and review — you're doing great, \(name).",
                 "If you bought something impulsively, it's okay — just track it.",
                 "Reviewing your day is the best way to improve tomorrow.",

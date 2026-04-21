@@ -162,9 +162,10 @@ struct SplitConfigurationView: View {
                             }) {
                                 HStack(spacing: AppSpacing.element) {
                                     ZStack {
-                                        Circle().fill(Color.random(seed: friend.name))
+                                        let avatarColor = appState.userResolver.resolveAvatarColor(for: friend.id ?? "").map { Color(hex: $0) } ?? Color.random(seed: friend.name)
+                                        Circle().fill(avatarColor)
                                             .frame(width: AppSize.avatarList, height: AppSize.avatarList)
-                                            .shadow(color: Color.random(seed: friend.name).opacity(0.3), radius: 4, x: 0, y: 2)
+                                            .shadow(color: avatarColor.opacity(0.3), radius: 4, x: 0, y: 2)
                                         Text(String(friend.name.prefix(1)).uppercased()).font(.headline).foregroundColor(.white)
                                     }
                                     HStack(spacing: AppSpacing.compact) {
@@ -438,7 +439,7 @@ struct CustomSplitRow: View {
 
     var body: some View {
         HStack(spacing: AppSpacing.element) {
-            SplitAvatar(name: split.name, isGuest: split.isGuest)
+            SplitAvatar(split: split)
             VStack(alignment: .leading, spacing: AppSpacing.micro) {
                 Text(split.name).font(.body).fontWeight(.medium)
                 if split.isGuest {
@@ -479,7 +480,7 @@ struct PercentageSplitRow: View {
 
     var body: some View {
         HStack(spacing: AppSpacing.element) {
-            SplitAvatar(name: split.name, isGuest: split.isGuest)
+            SplitAvatar(split: split)
             VStack(alignment: .leading, spacing: AppSpacing.micro) {
                 Text(split.name).font(.body).fontWeight(.medium)
                 Text(currencySymbol + String(format: "%.2f", split.amount)).font(.caption).foregroundColor(.secondary)
@@ -505,7 +506,7 @@ struct ShareSplitRow: View {
 
     var body: some View {
         HStack(spacing: AppSpacing.element) {
-            SplitAvatar(name: split.name, isGuest: split.isGuest)
+            SplitAvatar(split: split)
             VStack(alignment: .leading, spacing: AppSpacing.micro) {
                 Text(split.name).font(.body).fontWeight(.medium)
                 Text(currencySymbol + String(format: "%.2f", split.amount)).font(.caption).foregroundColor(.secondary)
@@ -529,19 +530,20 @@ struct ShareSplitRow: View {
 }
 
 struct SplitAvatar: View {
-    let name: String
-    let isGuest: Bool
+    let split: FirestoreModels.Split
+    @EnvironmentObject var appState: AppState
 
     var body: some View {
         ZStack {
-            if isGuest {
+            if split.isGuest {
                 Circle().fill(Color.themeAccent.opacity(0.15)).frame(width: AppSize.avatarList, height: AppSize.avatarList)
                 Image(systemName: "person.fill").font(.headline).foregroundColor(.themeAccent)
             } else {
-                Circle().fill(Color.random(seed: name))
+                let avatarColor = appState.userResolver.resolveAvatarColor(for: split.friendId ?? split.id).map { Color(hex: $0) } ?? Color.random(seed: split.name)
+                Circle().fill(avatarColor)
                     .frame(width: AppSize.avatarList, height: AppSize.avatarList)
-                    .shadow(color: Color.random(seed: name).opacity(0.3), radius: 4, x: 0, y: 2)
-                Text(String(name.prefix(1)).uppercased()).font(.headline).fontWeight(.bold).foregroundColor(.white)
+                    .shadow(color: avatarColor.opacity(0.3), radius: 4, x: 0, y: 2)
+                Text(String(split.name.prefix(1)).uppercased()).font(.headline).fontWeight(.bold).foregroundColor(.white)
             }
         }
     }
